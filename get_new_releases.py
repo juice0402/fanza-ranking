@@ -2,10 +2,15 @@ import os
 import urllib.request
 import urllib.parse
 import json
+import time
 
 API_ID = os.environ.get("API_ID", "SEn7wgXp4VS0veFFZ05L")
 AFFILIATE_ID = os.environ.get("AFFILIATE_ID", "juice0402-990")
+# GitHubのSecrets（金庫）から鍵を読み込むので空でOK！
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+# 動作確認できた最新モデル
+MODEL_NAME = "gemini-3.6-flash"
 
 def generate_ai_comment(title, actress, maker):
     """Gemini APIを使って作品の魅力的な一言コメントを自動生成する"""
@@ -15,7 +20,7 @@ def generate_ai_comment(title, actress, maker):
     actress_str = ", ".join(actress) if actress else "注目の女優"
     prompt = f"以下のFANZA作品の魅力を引き立てる、思わず見たくなるような情熱的な紹介・見どころコメント（80〜120文字程度）を1つ作成してください。キャッチーで魅力的、かつ自然な日本語で書いてください。余計な挨拶や解説は不要で、コメント本文のみを出力してください。\n\nタイトル: {title}\n出演: {actress_str}\nメーカー: {maker}"
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={GEMINI_API_KEY}"
     headers = {'Content-Type': 'application/json'}
     data = {
         "contents": [{
@@ -23,19 +28,29 @@ def generate_ai_comment(title, actress, maker):
         }]
     }
 
-    try:
-        req = urllib.request.Request(
-            url, 
-            data=json.dumps(data).encode('utf-8'), 
-            headers=headers
-        )
-        with urllib.request.urlopen(req, timeout=10) as response:
-            res_data = json.loads(response.read().decode('utf-8'))
-            comment = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
-            return comment
-    except Exception as e:
-        print(f"⚠️ AIコメント生成エラー ({title[:15]}...): {e}")
-        return "期待の話題作！ぜひ詳細をチェックしてみてください！"
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(
+                url, 
+                data=json.dumps(data).encode('utf-8'), 
+                headers=headers
+            )
+            with urllib.request.urlopen(req, timeout=15) as response:
+                res_data = json.loads(response.read().decode('utf-8'))
+                comment = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+                return comment
+        except urllib.error.HTTPError as e:
+            if e.code in [429, 503]:
+                print(f"⏳ 混雑中({e.code})… 5秒休んで再挑戦するよ！ ({attempt+1}/3)")
+                time.sleep(5)
+            else:
+                print(f"⚠ APIエラー({e.code})")
+                time.sleep(2)
+        except Exception as e:
+            print(f"⚠️ エラー: {e}")
+            time.sleep(2)
+            
+    return "注目の新作登場！要チェックです！"
 
 def fetch_fanza_new_releases():
     url = "https://api.dmm.com/affiliate/v3/ItemList"
@@ -62,7 +77,7 @@ def fetch_fanza_new_releases():
             items = data.get("result", {}).get("items", [])
             item_list = []
             
-            print("🤖 AIコメント生成を開始するよ...")
+            print("🤖 AIコメント生成をスタートするよ...")
             for rank, item in enumerate(items, 1):
                 img_info = item.get("imageURL", {})
                 image_url = img_info.get("large") or img_info.get("list") or img_info.get("small") or ""
@@ -72,7 +87,9 @@ def fetch_fanza_new_releases():
                 actress = [a.get("name") for a in item.get("iteminfo", {}).get("actress", [])]
                 
                 ai_comment = generate_ai_comment(title, actress, maker)
-                print(f"[{rank}/20] 生成完了: {title[:15]}...")
+                print(f"[{rank}/20] 生成完了 ➔ {ai_comment[:22]}...")
+                
+                time.sleep(3)
 
                 info = {
                     "no": rank,
@@ -89,8 +106,8 @@ def fetch_fanza_new_releases():
             with open("new_releases.json", "w", encoding="utf-8") as f:
                 json.dump(item_list, f, ensure_ascii=False, indent=2)
                 
-            print(f"✨ 成功！AIコメント付きで {len(item_list)} 件のデータを保存したよ！")
-            
+            print("\n✨ 成功！")
+                
     except Exception as e:
         print(f"❌ エラーが発生しちゃった: {e}")
 
