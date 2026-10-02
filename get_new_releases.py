@@ -6,14 +6,11 @@ import time
 
 API_ID = os.environ.get("API_ID", "SEn7wgXp4VS0veFFZ05L")
 AFFILIATE_ID = os.environ.get("AFFILIATE_ID", "juice0402-990")
-# GitHubのSecrets（金庫）から鍵を読み込むので空でOK！
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
-# 動作確認できた最新モデル
 MODEL_NAME = "gemini-3.6-flash"
 
 def generate_ai_comment(title, actress, maker):
-    """Gemini APIを使って作品の魅力的な一言コメントを自動生成する"""
     if not GEMINI_API_KEY:
         return "注目の新作登場！要チェックです！"
         
@@ -41,13 +38,10 @@ def generate_ai_comment(title, actress, maker):
                 return comment
         except urllib.error.HTTPError as e:
             if e.code in [429, 503]:
-                print(f"⏳ 混雑中({e.code})… 5秒休んで再挑戦するよ！ ({attempt+1}/3)")
                 time.sleep(5)
             else:
-                print(f"⚠ APIエラー({e.code})")
                 time.sleep(2)
-        except Exception as e:
-            print(f"⚠️ エラー: {e}")
+        except Exception:
             time.sleep(2)
             
     return "注目の新作登場！要チェックです！"
@@ -103,10 +97,14 @@ def fetch_fanza_new_releases():
                 }
                 item_list.append(info)
                 
-            with open("new_releases.json", "w", encoding="utf-8") as f:
-                json.dump(item_list, f, ensure_ascii=False, indent=2)
+            # ルートと site/src/data/ の両方に保存！
+            save_paths = ["new_releases.json", "site/src/data/new_releases.json"]
+            for path in save_paths:
+                os.makedirs(os.path.dirname(path), exist_ok=True) if os.path.dirname(path) else None
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(item_list, f, ensure_ascii=False, indent=2)
                 
-            print("\n✨ 成功！")
+            print("\n✨ 保存完了！")
                 
     except Exception as e:
         print(f"❌ エラーが発生しちゃった: {e}")

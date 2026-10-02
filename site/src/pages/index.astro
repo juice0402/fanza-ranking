@@ -71,10 +71,27 @@ const dummyImage = "data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%
       .info {
         font-size: 0.85rem;
         color: #666;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
       }
       .info p {
         margin: 4px 0;
+      }
+      /* AIレビュー吹き出しのスタイル */
+      .ai-comment {
+        background: #fff8e1;
+        border-left: 4px solid #ffa000;
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        font-size: 0.85rem;
+        color: #424242;
+        line-height: 1.5;
+      }
+      .ai-comment-title {
+        font-weight: bold;
+        color: #e65100;
+        margin-bottom: 4px;
+        font-size: 0.8rem;
       }
       .btn {
         display: block;
@@ -113,6 +130,14 @@ const dummyImage = "data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%
                 <p>🏷️ メーカー: {item.maker}</p>
                 {item.actress.length > 0 && <p>💃 出演: {item.actress.join(', ')}</p>}
               </div>
+              
+              {/* AIコメントの吹き出し表示 */}
+              {item.comment && (
+                <div class="ai-comment">
+                  <div class="ai-comment-title">🤖 AI見どころレビュー</div>
+                  <div>{item.comment}</div>
+                </div>
+              )}
             </div>
             <a href={item.url} target="_blank" rel="noopener noreferrer" class="btn">詳細を見る（FANZA公式）</a>
           </div>
