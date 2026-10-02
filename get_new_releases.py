@@ -1,9 +1,11 @@
+import os
 import urllib.request
 import urllib.parse
 import json
 
-API_ID = "SEn7wgXp4VS0veFFZ05L"
-AFFILIATE_ID = "juice0402-990"
+# 環境変数から取得（ローカル実行用にデフォルト値も用意）
+API_ID = os.environ.get("API_ID", "SEn7wgXp4VS0veFFZ05L")
+AFFILIATE_ID = os.environ.get("AFFILIATE_ID", "juice0402-990")
 
 def fetch_fanza_new_releases():
     url = "https://api.dmm.com/affiliate/v3/ItemList"
@@ -31,7 +33,6 @@ def fetch_fanza_new_releases():
             item_list = []
             
             for rank, item in enumerate(items, 1):
-                # 画像取得の安全策（VR作品などの対応）
                 img_info = item.get("imageURL", {})
                 image_url = img_info.get("large") or img_info.get("list") or img_info.get("small") or ""
                 
