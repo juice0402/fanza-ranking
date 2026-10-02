@@ -3,9 +3,39 @@ import urllib.request
 import urllib.parse
 import json
 
-# 環境変数から取得（ローカル実行用にデフォルト値も用意）
 API_ID = os.environ.get("API_ID", "SEn7wgXp4VS0veFFZ05L")
 AFFILIATE_ID = os.environ.get("AFFILIATE_ID", "juice0402-990")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+def generate_ai_comment(title, actress, maker):
+    """Gemini APIを使って作品の魅力的な一言コメントを自動生成する"""
+    if not GEMINI_API_KEY:
+        return "注目の新作登場！要チェックです！"
+        
+    actress_str = ", ".join(actress) if actress else "注目の女優"
+    prompt = f"以下のFANZA作品の魅力を引き立てる、思わず見たくなるような情熱的な紹介・見どころコメント（80〜120文字程度）を1つ作成してください。キャッチーで魅力的、かつ自然な日本語で書いてください。余計な挨拶や解説は不要で、コメント本文のみを出力してください。\n\nタイトル: {title}\n出演: {actress_str}\nメーカー: {maker}"
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }]
+    }
+
+    try:
+        req = urllib.request.Request(
+            url, 
+            data=json.dumps(data).encode('utf-8'), 
+            headers=headers
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            res_data = json.loads(response.read().decode('utf-8'))
+            comment = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+            return comment
+    except Exception as e:
+        print(f"⚠️ AIコメント生成エラー ({title[:15]}...): {e}")
+        return "期待の話題作！ぜひ詳細をチェックしてみてください！"
 
 def fetch_fanza_new_releases():
     url = "https://api.dmm.com/affiliate/v3/ItemList"
@@ -32,25 +62,34 @@ def fetch_fanza_new_releases():
             items = data.get("result", {}).get("items", [])
             item_list = []
             
+            print("🤖 AIコメント生成を開始するよ...")
             for rank, item in enumerate(items, 1):
                 img_info = item.get("imageURL", {})
                 image_url = img_info.get("large") or img_info.get("list") or img_info.get("small") or ""
                 
+                title = item.get("title")
+                maker = item.get("iteminfo", {}).get("maker", [{}])[0].get("name", "不明")
+                actress = [a.get("name") for a in item.get("iteminfo", {}).get("actress", [])]
+                
+                ai_comment = generate_ai_comment(title, actress, maker)
+                print(f"[{rank}/20] 生成完了: {title[:15]}...")
+
                 info = {
                     "no": rank,
-                    "title": item.get("title"),
+                    "title": title,
                     "url": item.get("affiliateURL"),
                     "image_url": image_url,
                     "date": item.get("date"),
-                    "maker": item.get("iteminfo", {}).get("maker", [{}])[0].get("name", "不明"),
-                    "actress": [a.get("name") for a in item.get("iteminfo", {}).get("actress", [])]
+                    "maker": maker,
+                    "actress": actress,
+                    "comment": ai_comment
                 }
                 item_list.append(info)
                 
             with open("new_releases.json", "w", encoding="utf-8") as f:
                 json.dump(item_list, f, ensure_ascii=False, indent=2)
                 
-            print(f"✨ 成功！{len(item_list)}件の新着データを new_releases.json に保存したよ！")
+            print(f"✨ 成功！AIコメント付きで {len(item_list)} 件のデータを保存したよ！")
             
     except Exception as e:
         print(f"❌ エラーが発生しちゃった: {e}")

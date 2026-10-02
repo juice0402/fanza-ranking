@@ -21,6 +21,7 @@ jobs:
         env:
           API_ID: ${{ secrets.API_ID }}
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python get_new_releases.py
 
       - name: Commit and push if changed
@@ -28,4 +29,4 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git diff --staged --quiet || (git commit -m "Secure update script with GitHub Secrets" && git push)
+          git diff --staged --quiet || (git commit -m "Add AI generated comments to new releases" && git push)
