@@ -26,7 +26,8 @@ def generate_ai_comment(title, actress, maker):
         }]
     }
 
-    for attempt in range(3):
+    # 429エラー発生時はしっかり待ってから再挑戦するよ
+    for attempt in range(4):
         try:
             req = urllib.request.Request(
                 url, 
@@ -38,14 +39,16 @@ def generate_ai_comment(title, actress, maker):
                 comment = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
                 return comment
         except urllib.error.HTTPError as e:
-            print(f"⚠️ APIエラー(HTTP {e.code}): {e.reason}")
             if e.code in [429, 503]:
-                time.sleep(5)
+                wait_time = 12 * (attempt + 1)
+                print(f"⏳ 混雑中(HTTP {e.code})… {wait_time}秒休憩して再挑戦するよ！ ({attempt+1}/4)")
+                time.sleep(wait_time)
             else:
-                time.sleep(2)
+                print(f"⚠️ APIエラー(HTTP {e.code}): {e.reason}")
+                time.sleep(3)
         except Exception as e:
             print(f"⚠️ エラー発生: {e}")
-            time.sleep(2)
+            time.sleep(3)
             
     return "注目の新作登場！要チェックです！"
 
@@ -86,7 +89,8 @@ def fetch_fanza_new_releases():
                 ai_comment = generate_ai_comment(title, actress, maker)
                 print(f"[{rank}/20] 生成完了 ➔ {ai_comment[:22]}...")
                 
-                time.sleep(2)
+                # API連投制限（429）を防ぐため5秒待機するよ
+                time.sleep(5)
 
                 info = {
                     "no": rank,
