@@ -12,6 +12,7 @@ MODEL_NAME = "gemini-3.6-flash"
 
 def generate_ai_comment(title, actress, maker):
     if not GEMINI_API_KEY:
+        print("⚠️ GEMINI_API_KEY が設定されていません！")
         return "注目の新作登場！要チェックです！"
         
     actress_str = ", ".join(actress) if actress else "注目の女優"
@@ -37,11 +38,13 @@ def generate_ai_comment(title, actress, maker):
                 comment = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
                 return comment
         except urllib.error.HTTPError as e:
+            print(f"⚠️ APIエラー(HTTP {e.code}): {e.reason}")
             if e.code in [429, 503]:
                 time.sleep(5)
             else:
                 time.sleep(2)
-        except Exception:
+        except Exception as e:
+            print(f"⚠️ エラー発生: {e}")
             time.sleep(2)
             
     return "注目の新作登場！要チェックです！"
@@ -83,7 +86,7 @@ def fetch_fanza_new_releases():
                 ai_comment = generate_ai_comment(title, actress, maker)
                 print(f"[{rank}/20] 生成完了 ➔ {ai_comment[:22]}...")
                 
-                time.sleep(3)
+                time.sleep(2)
 
                 info = {
                     "no": rank,
@@ -97,7 +100,6 @@ def fetch_fanza_new_releases():
                 }
                 item_list.append(info)
                 
-            # ルートと site/src/data/ の両方に保存！
             save_paths = ["new_releases.json", "site/src/data/new_releases.json"]
             for path in save_paths:
                 os.makedirs(os.path.dirname(path), exist_ok=True) if os.path.dirname(path) else None
