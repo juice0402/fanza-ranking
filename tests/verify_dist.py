@@ -151,6 +151,27 @@ else:
         picked = [q["cid"] for q in (r.get("picks") or []) if isinstance(q, dict) and q.get("cid") in valid]
         check(f"{week}: 注目の作品（{len(picked)}件）へのリンクが記事にある", all(f'href="/item/{c}/"' in html for c in picked), [c for c in picked if f'href="/item/{c}/"' not in html][:3])
 
+print("\n■ 作品ページの表示（サンプル画像の拡大・カード）")
+check("拡大表示のスクリプト（lightbox.js）が公開されている", os.path.isfile(os.path.join(DIST, "lightbox.js")))
+bad_samples = []
+for cid, x in valid.items():
+    page = os.path.join(DIST, "item", cid, "index.html")
+    if not os.path.isfile(page):
+        continue
+    html = read(page)
+    shown = min(len([u for u in (x.get("sample_images") or []) if u]), 8)  # 画面に出すのは最大8枚
+    links = len(re.findall(r'class="sample-link"', html))
+    has_dialog = 'id="lightbox"' in html
+    has_script = 'src="/lightbox.js"' in html
+    if shown:
+        if not (links == shown and has_dialog and has_script):
+            bad_samples.append((cid, shown, links, has_dialog, has_script))
+    elif links or has_dialog:
+        bad_samples.append((cid, 0, links, has_dialog, has_script))
+check("サンプル画像のある作品ページに、拡大表示の部品（リンク・ダイアログ・スクリプト）が揃っている", not bad_samples, bad_samples[:3])
+with_spine = [os.path.relpath(p, DIST) for p in glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True) if 'class="spine"' in read(p)]
+check("カードに、画像をさえぎるメーカーの縦帯（spine）が出ていない", not with_spine, with_spine[:3])
+
 print("\n■ 必須の表記が全ページにある")
 # 404 を含む、すべてのページ（どのページも共通レイアウトを使うので、必須の表記は全部にあるはず）
 pages = sorted(glob.glob(os.path.join(DIST, "**", "index.html"), recursive=True))

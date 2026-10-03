@@ -113,10 +113,26 @@ const makerPage = makerByName.get(item.maker)?.path;
         <h2 id="samples-title" class="subsection-title">サンプル画像</h2>
         <ul class="samples">
           {samples.map((src, i) => (
-            <li><img class="sample-img" src={src} alt={`サンプル画像 ${i + 1}`} loading="lazy" decoding="async" /></li>
+            <li>
+              <a class="sample-link" href={src} target="_blank" rel="noopener noreferrer" aria-label={`サンプル画像 ${i + 1} を拡大して見る`}>
+                <img class="sample-img" src={src} alt={`サンプル画像 ${i + 1}`} loading="lazy" decoding="async" />
+              </a>
+            </li>
           ))}
         </ul>
       </section>
+    )}
+
+    {samples.length > 0 && (
+      <dialog id="lightbox" class="lightbox" aria-label="サンプル画像の拡大表示">
+        <div class="lightbox-stage">
+          <img class="lightbox-img" alt="" />
+          <button type="button" class="lightbox-btn lightbox-prev" data-lightbox="prev" aria-label="前の画像">‹</button>
+          <button type="button" class="lightbox-btn lightbox-next" data-lightbox="next" aria-label="次の画像">›</button>
+          <button type="button" class="lightbox-btn lightbox-close" data-lightbox="close" aria-label="閉じる">×</button>
+          <p class="lightbox-count" aria-live="polite"></p>
+        </div>
+      </dialog>
     )}
 
     {related.length > 0 && (
@@ -130,6 +146,8 @@ const makerPage = makerByName.get(item.maker)?.path;
       </section>
     )}
   </div>
+
+  {samples.length > 0 && <script is:inline src="/lightbox.js" defer></script>}
 
   {item.url && (
     <div class="sticky-cta">
