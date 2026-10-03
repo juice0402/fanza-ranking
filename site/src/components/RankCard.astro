@@ -1,0 +1,27 @@
+---
+// 売れ筋ランキングの1本（トップページ用）。見た目は ItemCard と同じ（棚に並ぶカード）。
+// 掲載している作品（品番が保存データにある）なら、作品ページへのリンク。無ければ、FANZAへのアフィリエイトリンク。
+// ランキングの作品にはAIコメントを付けない（事実の情報だけを出す）。
+import { itemPath } from '../lib/items.js';
+import { all } from '../lib/data.js';
+
+// level: 見出しの階層（トップページでは「売れ筋」が h2 なので、既定は h3）
+const { entry, level = 'h3' } = Astro.props;
+const Heading = level;
+const inSite = all.some((i) => i.cid === entry.cid);
+const href = inSite ? itemPath(entry.cid) : entry.url;
+const outbound = inSite ? {} : { target: '_blank', rel: 'sponsored nofollow noopener noreferrer' };
+---
+
+<article class="item rank-item">
+  <a class="item-cover" href={href} tabindex="-1" aria-hidden="true" {...outbound}>
+    {entry.image_url && (
+      <img class="item-img" src={entry.image_url} alt="" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'" />
+    )}
+    <span class="rank-badge">{entry.rank}位</span>
+  </a>
+  <Heading class="item-title"><a class="item-title-link" href={href} {...outbound}>{entry.title}</a></Heading>
+  <p class="item-cast">{entry.actress.length ? entry.actress.join('、') : '出演者の記載なし'}</p>
+  {entry.maker && <p class="rank-maker">{entry.maker}</p>}
+  <a class="btn btn-hot btn-block" href={entry.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで見る</a>
+</article>

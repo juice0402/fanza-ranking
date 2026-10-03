@@ -6,6 +6,7 @@
 """
 import datetime
 import glob
+import html as htmllib
 import json
 import os
 import re
@@ -16,6 +17,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "site", "dist")
 DATA = os.path.join(ROOT, "site", "src", "data", "new_releases.json")
 ROUNDUPS = os.path.join(ROOT, "site", "src", "data", "roundups.json")
+ACTRESSES = os.path.join(ROOT, "site", "src", "data", "actresses.json")
+RANKING = os.path.join(ROOT, "site", "src", "data", "ranking.json")
 
 # 法令・規約の面で、どのページにも必ず必要な表記
 REQUIRED_ON_EVERY_PAGE = {
@@ -43,6 +46,29 @@ def warn(name, ok, detail=""):
 def read(path):
     with open(path, encoding="utf-8") as f:
         return f.read()
+
+
+def tags(text, name):
+    """<name ...> タグを、属性の辞書（値はHTMLの記号を元に戻したもの）にして、出てきた順に返す"""
+    out = []
+    for m in re.finditer(r"<%s\b((?:[^>\"']|\"[^\"]*\"|'[^']*')*)>" % name, text):
+        attrs = {}
+        for a in re.finditer(r"""([A-Za-z_:][-A-Za-z0-9_:.]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?""", m.group(1)):
+            val = next((g for g in a.groups()[1:] if g is not None), "")
+            attrs[a.group(1)] = htmllib.unescape(val)
+        out.append(attrs)
+    return out
+
+
+def has_class(attrs, name):
+    return name in attrs.get("class", "").split()
+
+
+def fanza_https(url, hosts):
+    """https で、ホストが hosts のどれか（またはそのサブドメイン）のURLか"""
+    m = re.match(r"^https://([A-Za-z0-9.\-]+)(?:[:/?#]|$)", str(url or ""))
+    host = m.group(1).lower() if m else ""
+    return bool(m) and any(host == h or host.endswith("." + h) for h in hosts)
 
 
 def page_file(url_path):
@@ -160,6 +186,8 @@ for cid, x in valid.items():
         continue
     html = read(page)
     shown = min(len([u for u in (x.get("sample_images") or []) if u]), 8)  # 画面に出すのは最大8枚
+    if fanza_https(x.get("sample_movie"), ["dmm.co.jp"]) and str(x.get("image_url") or "").strip():
+        shown += 1  # サンプル動画がある作品は、パッケージ画像が画像の並びの先頭に入る
     links = len(re.findall(r'class="sample-link"', html))
     has_dialog = 'id="lightbox"' in html
     has_script = 'src="/lightbox.js"' in html
@@ -171,6 +199,236 @@ for cid, x in valid.items():
 check("サンプル画像のある作品ページに、拡大表示の部品（リンク・ダイアログ・スクリプト）が揃っている", not bad_samples, bad_samples[:3])
 with_spine = [os.path.relpath(p, DIST) for p in glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True) if 'class="spine"' in read(p)]
 check("カードに、画像をさえぎるメーカーの縦帯（spine）が出ていない", not with_spine, with_spine[:3])
+
+# ---------- サンプル動画・出演者プロフィール・出演者検索・売れ筋 ----------
+JST_TODAY = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime("%Y-%m-%d")
+DMM = ["dmm.co.jp"]
+FANZA_LINK = ["fanza.co.jp", "dmm.co.jp"]
+SPONSORED = {"sponsored", "nofollow", "noopener", "noreferrer"}
+
+
+def load_json(path):
+    try:
+        return json.load(open(path, encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def age_on(birthday, today):
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", str(birthday or ""))
+    if not m:
+        return None
+    y, mo, d = map(int, m.groups())
+    ty, tmo, td = map(int, today.split("-"))
+    age = ty - y - ((tmo, td) < (mo, d))
+    return age if 18 <= age <= 80 else None
+
+
+all_html = sorted(glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True))  # 404 を含む、すべてのHTML
+
+print("\n■ サンプル動画（作品ページ）")
+check("動画の枠の縮小スクリプト（movie.js）が公開されている", os.path.isfile(os.path.join(DIST, "movie.js")))
+bad_movie = []
+movie_count = 0
+for cid, x in valid.items():
+    page = os.path.join(DIST, "item", cid, "index.html")
+    if not os.path.isfile(page):
+        continue
+    text = read(page)
+    iframes = tags(text, "iframe")
+    movie = str(x.get("sample_movie") or "").strip()
+    cover = str(x.get("image_url") or "").strip()
+    sample_links = [t for t in tags(text, "a") if has_class(t, "sample-link")]
+    cover_links = [t for t in sample_links if t.get("data-label") == "パッケージ画像"]
+    if fanza_https(movie, DMM):
+        movie_count += 1
+        frame = iframes[0] if iframes else {}
+        problems_here = []
+        if len(iframes) != 1 or frame.get("src") != movie:
+            problems_here.append("動画の枠(iframe)が1つで、動画のURLと同じではない")
+        if frame.get("width") != "476" or frame.get("height") != "306":
+            problems_here.append("枠のサイズが 476x306 ではない")
+        if 'src="/movie.js"' not in text:
+            problems_here.append("movie.js を読み込んでいない")
+        if any(has_class(t, "detail-cover") for t in tags(text, "img")):
+            problems_here.append("動画があるのに、表紙が上に出ている")
+        if cover and not (cover_links and sample_links[0] is cover_links[0] and cover_links[0].get("href") == cover):
+            problems_here.append("パッケージ画像が、画像の並びの先頭(左上)にない")
+        if x.get("url") and not any(has_class(t, "movie-link") and fanza_https(t.get("href"), FANZA_LINK) for t in tags(text, "a")):
+            problems_here.append("「FANZAで見る」の代わりのリンクがない")
+        if problems_here:
+            bad_movie.append((cid, problems_here))
+    else:
+        problems_here = []
+        if iframes:
+            problems_here.append("動画が無いのに iframe がある")
+        if cover and not any(has_class(t, "detail-cover") for t in tags(text, "img")):
+            problems_here.append("動画が無いのに、表紙が上に出ていない")
+        if cover_links:
+            problems_here.append("動画が無いのに、パッケージ画像が画像の並びに入っている")
+        if 'src="/movie.js"' in text:
+            problems_here.append("動画が無いのに movie.js を読み込んでいる")
+        if problems_here:
+            bad_movie.append((cid, problems_here))
+check(f"動画がある作品（{movie_count}件）は動画を表紙の場所に出し、パッケージ画像を画像の並びの先頭に移している／動画が無い作品は、これまでどおり表紙", not bad_movie, bad_movie[:3])
+foreign_frames = []
+for pth in all_html:
+    for t in tags(read(pth), "iframe"):
+        if not fanza_https(t.get("src"), DMM):
+            foreign_frames.append((os.path.relpath(pth, DIST), t.get("src")))
+check("どのページの iframe も、FANZA(DMM)の https のURLだけ", not foreign_frames, foreign_frames[:3])
+
+print("\n■ 出演者の顔写真・プロフィール")
+act_raw = load_json(ACTRESSES) if os.path.isfile(ACTRESSES) else None
+profiles = {}
+if isinstance(act_raw, dict):
+    for r in act_raw.get("actresses", []):
+        if isinstance(r, dict) and str(r.get("name", "")).strip() and r.get("fetched") and str(r["name"]).strip() not in profiles:
+            profiles[str(r["name"]).strip()] = r
+bad_faces = []
+for pth in all_html:
+    for t in tags(read(pth), "img"):
+        if has_class(t, "face-img") and not fanza_https(t.get("src"), DMM):
+            bad_faces.append((os.path.relpath(pth, DIST), t.get("src")))
+check("顔写真（face-img）は、すべて FANZA(DMM) の https の画像", not bad_faces, bad_faces[:3])
+
+actress_pages = glob.glob(os.path.join(DIST, "actress", "*", "index.html"))
+bad_profile_pages = []
+for pth in actress_pages:
+    text = read(pth)
+    m = re.search(r'<h1 class="hero-title">(.*?)</h1>', text, re.S)
+    h1_text = htmllib.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip() if m else ""  # 見出しが <span> で分かれていても読む
+    name = h1_text[: -len("の新作・出演作品")] if h1_text.endswith("の新作・出演作品") else ""
+    prof = profiles.get(name)
+    btn_text = f"FANZAで{name}の全作品を見る"
+    btns = [t for t in tags(text, "a") if has_class(t, "btn") and has_class(t, "btn-hot")]
+    list_url = str((prof or {}).get("list_url") or "")
+    here = []
+    if not name:
+        here.append("見出しから名前を読めない")
+    elif prof and fanza_https(list_url, FANZA_LINK):
+        link = [t for t in btns if t.get("href") == list_url]
+        if not link or not SPONSORED <= set(link[0].get("rel", "").split()) or link[0].get("target") != "_blank" or btn_text not in text:
+            here.append("「FANZAで全作品を見る」のリンクが無い・属性が足りない")
+    elif btn_text in text:
+        here.append("リンク先が無い人なのに「FANZAで全作品を見る」が出ている")
+    faces = [t for t in tags(text, "img") if has_class(t, "face-img")]
+    if prof and (prof.get("image_large") or prof.get("image_small")) and not faces:
+        here.append("顔写真があるはずなのに出ていない")
+    if not prof and faces:
+        here.append("プロフィールが無い人に顔写真が出ている")
+    age = age_on(str((prof or {}).get("birthday") or ""), JST_TODAY)
+    has_age_row = '<dt class="spec-term">年齢</dt>' in text
+    if has_age_row != (age is not None):
+        here.append(f"年齢の行の有無が、データと合わない（行={has_age_row}・年齢={age}）")
+    for label, key in (("身長", "height"), ("バスト", "bust"), ("ウエスト", "waist"), ("ヒップ", "hip")):
+        has_row = f'<dt class="spec-term">{label}</dt>' in text
+        have = isinstance((prof or {}).get(key), int)
+        if has_row != have:
+            here.append(f"{label}の行の有無が、データと合わない")
+    if here:
+        bad_profile_pages.append((name or os.path.relpath(pth, DIST), here))
+check(f"出演者ページ（{len(actress_pages)}ページ）: 顔写真・年齢/身長/サイズの行・FANZAの全作品ボタンが、データのとおりに出ている", not bad_profile_pages, bad_profile_pages[:3])
+
+# 個人情報: 生年月日そのものを、公開するファイルに出さない（出すのは、計算した年齢だけ）
+births = {str(r.get("birthday")) for r in profiles.values() if re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("birthday") or ""))}
+leaks = []
+json_leaks = []
+if births:
+    pattern = re.compile("|".join(re.escape(b) for b in sorted(births)))
+    for pth in glob.glob(os.path.join(DIST, "**", "*"), recursive=True):
+        if os.path.isfile(pth) and pth.endswith((".html", ".json", ".xml", ".ics", ".js", ".txt")):
+            if pattern.search(read(pth)):
+                leaks.append(os.path.relpath(pth, DIST))
+check(f"生年月日（{len(births)}件）が、公開ファイルのどこにも出ていない", not leaks, leaks[:3])
+for pth in glob.glob(os.path.join(DIST, "data", "*.json")):
+    if re.search(r"birthday|blood|hobby|prefecture", read(pth)):
+        json_leaks.append(os.path.relpath(pth, DIST))
+check("公開するJSONに、生年月日・血液型・趣味・出身地の項目が無い", not json_leaks, json_leaks[:3])
+
+print("\n■ 出演者検索（/actress/）")
+search_page = os.path.join(DIST, "actress", "index.html")
+idx_path = os.path.join(DIST, "data", "actresses-index.json")
+act_index = load_json(idx_path) if os.path.isfile(idx_path) else None
+check("出演者検索の索引（/data/actresses-index.json）がある・形が正しい", isinstance(act_index, dict) and isinstance(act_index.get("actresses"), list) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(act_index.get("generated", ""))), str(act_index)[:80])
+rows = act_index["actresses"] if isinstance(act_index, dict) and isinstance(act_index.get("actresses"), list) else []
+check(f"索引の人数 = プロフィールを取得済みの人数（{len(profiles)}人）", len(rows) == len(profiles), (len(rows), len(profiles)))
+ALLOWED_KEYS = {"n", "r", "s", "k", "i", "a", "h", "b", "c", "wa", "hi", "l"}
+page_slugs = {os.path.basename(os.path.dirname(pth)) for pth in actress_pages}
+
+
+def int_in(v, lo, hi):
+    return v is None or (isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi)
+
+
+bad_rows = []
+for r in rows:
+    here = []
+    if not isinstance(r, dict) or set(r) != ALLOWED_KEYS:
+        bad_rows.append((str(r)[:60], ["項目が決まった形ではない"]))
+        continue
+    if not str(r["n"]).strip():
+        here.append("名前が空")
+    if not (isinstance(r["k"], int) and r["k"] >= 0):
+        here.append("作品数が整数でない")
+    elif (r["s"] != "") != (r["k"] >= 2):
+        here.append("出演者ページの有無（s）が、作品数（2本以上）と合わない")
+    if r["s"] and (not re.fullmatch(r"[0-9a-f]{10}", str(r["s"])) or r["s"] not in page_slugs):
+        here.append("s のページが存在しない")
+    if r["i"] and not fanza_https(r["i"], DMM):
+        here.append("顔写真のURLが FANZA(DMM) の https ではない")
+    if r["l"] and not fanza_https(r["l"], FANZA_LINK):
+        here.append("全作品リンクが FANZA の https ではない")
+    if not (int_in(r["a"], 18, 80) and int_in(r["h"], 120, 210) and int_in(r["b"], 50, 160) and int_in(r["wa"], 40, 130) and int_in(r["hi"], 50, 160)):
+        here.append("年齢・身長・サイズが範囲外")
+    if not (isinstance(r["c"], str) and re.fullmatch(r"[A-Z]?", r["c"])):
+        here.append("カップが英字1文字でない")
+    if here:
+        bad_rows.append((r.get("n"), here))
+check("索引の各項目: 決まった項目だけ・ページの有無が作品数と合う・URLがFANZAのhttps・数字が範囲内", not bad_rows, bad_rows[:3])
+check("索引は作品の多い順", all(rows[i]["k"] >= rows[i + 1]["k"] for i in range(len(rows) - 1)) if rows and all(isinstance(r, dict) and isinstance(r.get("k"), int) for r in rows) else True)
+if os.path.isfile(search_page):
+    stext = read(search_page)
+    check("検索のスクリプト（actress-search.js）が公開されている", os.path.isfile(os.path.join(DIST, "actress-search.js")))
+    if rows:
+        section = [t for t in tags(stext, "section") if t.get("id") == "actress-search"]
+        check("検索の部品がある（最初は隠れていて、索引のURLを持つ）", bool(section) and "hidden" in section[0] and section[0].get("data-index") == "/data/actresses-index.json" and 'src="/actress-search.js"' in stext, section[:1])
+        names = {t.get("name") for tag in ("input", "select") for t in tags(stext, tag)}
+        need = {"text", "age", "height", "bust", "cup", "waist", "hip", "sort"}
+        check("検索の入力欄が揃っている（名前・年齢・身長・バスト・カップ・ウエスト・ヒップ・並び順）", need <= names, sorted(need - names))
+        values = [t.get("value", "") for t in tags(stext, "option")]
+        bad_values = [v for v in values if not re.fullmatch(r"|\d{0,3}-\d{0,3}|[A-Z]\+?|works|name", v)]
+        check("選択肢の値が、スクリプトの読める形（20-24 / -19 / 40- / D / K+）だけ", not bad_values, bad_values[:5])
+        ids = {t.get("id") for tag in ("ul", "p", "button", "section") for t in tags(stext, tag)}
+        check("検索結果の表示先（#as-list・#as-count・#as-more・#as-note）がある", {"as-list", "as-count", "as-more", "as-note"} <= ids, sorted({"as-list", "as-count", "as-more", "as-note"} - ids))
+    else:
+        check("索引が空のときは、検索の部品を出さない", 'id="actress-search"' not in stext and 'src="/actress-search.js"' not in stext)
+    static_rows = len([t for t in tags(stext, "li") if has_class(t, "actress-row")])
+    check(f"JavaScriptが使えないとき用の一覧に、専用ページのある出演者が全員いる（{len(actress_pages)}人）", static_rows == len(actress_pages) and any(t.get("id") == "actress-static" for t in tags(stext, "section")), (static_rows, len(actress_pages)))
+    check("検索の注意書き（載っていない人は絞り込みで外れる・データのある人数）が、ページにある", (not rows) or ("結果に出ません" in stext and "調べ済み" in stext))
+
+print("\n■ 売れ筋ランキング（トップページ）")
+rk_raw = load_json(RANKING) if os.path.isfile(RANKING) else None
+rk_items = []
+rk_fresh = False
+if isinstance(rk_raw, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(rk_raw.get("date", ""))) and isinstance(rk_raw.get("items"), list):
+    gap = (datetime.date.fromisoformat(JST_TODAY) - datetime.date.fromisoformat(rk_raw["date"])).days
+    rk_fresh = gap <= 7
+    for r in rk_raw["items"]:
+        if isinstance(r, dict) and re.fullmatch(r"[A-Za-z0-9_\-]+", str(r.get("cid", ""))) and str(r.get("title", "")).strip() and fanza_https(r.get("url"), FANZA_LINK):
+            rk_items.append(r)
+    rk_items = rk_items[:3]
+home_sections = [t for t in tags(home_html, "section") if t.get("id") == "ranking"]
+rank_cards = [t for t in tags(home_html, "article") if has_class(t, "rank-item")]
+if rk_fresh and rk_items:
+    check("ランキングがあるとき: トップに「売れ筋」の欄があり、本数が合う", len(home_sections) == 1 and len(rank_cards) == len(rk_items), (len(home_sections), len(rank_cards), len(rk_items)))
+    hrefs = {t.get("href"): t for t in tags(home_html, "a")}
+    missing = [r["cid"] for r in rk_items if r["url"] not in hrefs or not SPONSORED <= set(hrefs[r["url"]].get("rel", "").split())]
+    check("各作品の「FANZAで見る」は、アフィリエイトのURLで、広告のリンクの属性（sponsored など）が付いている", not missing, missing)
+    check("「人気順」と書いてある（FANZAのデイリーランキングと同じとは書かない）", "人気順" in home_html and "デイリーランキング" not in home_html)
+    check("ページ内の移動に「売れ筋TOP3」がある", 'href="#ranking"' in home_html)
+else:
+    check("ランキングが無い・古い（7日より前）・使える行が無いときは、トップに売れ筋の欄を出さない", not home_sections and not rank_cards and 'href="#ranking"' not in home_html)
 
 print("\n■ お気に入り・発売日カレンダー")
 all_pages = sorted(glob.glob(os.path.join(DIST, "**", "index.html"), recursive=True))

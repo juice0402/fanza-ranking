@@ -3,7 +3,8 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import DaySection from '../../components/DaySection.astro';
 import FavButton from '../../components/FavButton.astro';
-import { actressGroups, makerByName } from '../../lib/data.js';
+import Face from '../../components/Face.astro';
+import { actressGroups, makerByName, profilesByName } from '../../lib/data.js';
 import {
   ACTRESS_INDEX_PATH,
   actressPageTitle,
@@ -14,6 +15,7 @@ import {
   summaryDescription,
 } from '../../lib/items.js';
 import { CALENDAR_PATH, actressIcsPath, webcalUrl } from '../../lib/calendar.js';
+import { compactSpec, faceUrl, profileFacts } from '../../lib/profiles.js';
 
 // 作品が2本以上ある出演者ごとに1ページ作る
 export function getStaticPaths() {
@@ -25,6 +27,9 @@ const summary = actressSummary(group);
 const groups = groupByDate(group.items);
 const makers = [...new Set(group.items.map((i) => i.maker).filter((m) => m !== '不明'))];
 const formats = formatsOf(group.items);
+const profile = profilesByName.get(group.name); // FANZA公式の出演者データ（無い人もいる）
+const facts = profileFacts(profile);
+const spec = compactSpec(profile);
 const trail = [
   { name: 'トップ', path: '/' },
   { name: '出演者一覧', path: ACTRESS_INDEX_PATH },
@@ -42,18 +47,34 @@ const trail = [
     <Breadcrumb trail={trail} />
 
     <section class="hero">
-      <h1 class="hero-title">{group.name}の新作・出演作品</h1>
+      <div class="profile">
+        <Face name={group.name} src={faceUrl(profile, true)} size="lg" eager />
+        <div class="profile-body">
+          <h1 class="hero-title"><span class="phrase">{group.name}の</span><span class="phrase">新作・出演作品</span></h1>
+          {spec && <p class="profile-spec">{spec}</p>}
+        </div>
+      </div>
       <p class="summary">{summary}</p>
       <div class="hero-actions">
+        {profile?.listUrl && (
+          <a class="btn btn-hot" href={profile.listUrl} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで{group.name}の全作品を見る</a>
+        )}
         <FavButton type="actress" favKey={group.name} slug={group.slug} off="この出演者をお気に入りに追加" on="お気に入り済み（新作が「お気に入り」に出ます）" />
         <a class="cal-link" href={webcalUrl(actressIcsPath(group.slug))}>発売日をカレンダーで受け取る</a>
         <a class="cal-help" href={CALENDAR_PATH}>使い方</a>
       </div>
+      {profile?.listUrl && <p class="fine">広告｜リンク先はFANZAの公式ページです。当サイトに載せていない作品も、リンク先で見られます。</p>}
     </section>
 
     <dl class="spec section">
       <dt class="spec-term">掲載作品</dt>
       <dd class="spec-desc">{group.items.length}本</dd>
+      {facts.map(([label, value]) => (
+        <>
+          <dt class="spec-term">{label}</dt>
+          <dd class="spec-desc">{value}</dd>
+        </>
+      ))}
       {makers.length > 0 && (
         <>
           <dt class="spec-term">メーカー</dt>
@@ -74,6 +95,8 @@ const trail = [
         </>
       )}
     </dl>
+
+    {facts.length > 0 && <p class="profile-source">年齢・身長・サイズは、FANZAに載っている情報にもとづきます（載っていない項目は表示していません）。年齢は、FANZAに載っている生年月日から毎日計算しています。</p>}
 
     <section class="section" aria-labelledby="works-title">
       <div class="section-head">

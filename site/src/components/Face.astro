@@ -1,0 +1,26 @@
+---
+// 出演者の顔写真（丸）。FANZA公式の出演者データの写真。
+// 写真が無い・読み込めないときは、名前の最初の1文字を丸の中に出す（写真は文字の上に重ねて出すので、消えれば文字が見える）。
+// 名前は隣に文字で出ているので、画像は装飾あつかい（読み上げない）。
+// size: sm 32px（作品ページの出演者）/ md 56px（一覧）/ lg 112px（出演者ページの見出し）
+const { name, src = '', size = 'md', eager = false } = Astro.props;
+const px = { sm: 32, md: 56, lg: 112 }[size] ?? 56;
+const initial = Array.from(String(name ?? ''))[0] ?? '';
+---
+
+<span class={`face face-${size}`} aria-hidden="true">
+  <span class="face-initial">{initial}</span>
+  {src && (
+    <img
+      class="face-img"
+      src={src}
+      alt=""
+      width={px}
+      height={px}
+      loading={eager ? 'eager' : 'lazy'}
+      decoding="async"
+      referrerpolicy="no-referrer"
+      onerror="this.remove()"
+    />
+  )}
+</span>

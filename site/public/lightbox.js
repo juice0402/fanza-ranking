@@ -1,5 +1,5 @@
 // サンプル画像の拡大表示（作品ページ用）。
-// 小さく並んだサンプル画像（a.sample-link）をタップすると、画面いっぱいに拡大して表示する。
+// 小さく並んだ画像（a.sample-link。サンプル動画がある作品では、先頭にパッケージ画像も入る）をタップすると、画面いっぱいに拡大して表示する。
 // 前後ボタン・キーボードの ← →・横スワイプで送れる。背景や「閉じる」・Escで閉じる。
 // JavaScript が使えない／<dialog> に対応していないときは、リンクのまま（画像が別タブで開く）。
 (function () {
@@ -11,6 +11,11 @@
     return (((index + delta) % count) + count) % count;
   }
 
+  // 拡大表示の画像の説明（alt）。リンクに data-label があればそれ（パッケージ画像など）、なければ「サンプル画像 N」
+  function labelOf(label, index) {
+    return label ? String(label) : 'サンプル画像 ' + (index + 1);
+  }
+
   // スワイプの向き。左へ動かしたら次(+1)、右なら前(-1)。縦の動きのほうが大きいとき（スクロール）は 0
   function swipeDelta(dx, dy) {
     if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy) * 1.2) return 0;
@@ -18,7 +23,7 @@
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { step: step, swipeDelta: swipeDelta }; // tests/test_lightbox.mjs 用
+    module.exports = { step: step, swipeDelta: swipeDelta, labelOf: labelOf }; // tests/test_lightbox.mjs 用
     return;
   }
   if (typeof document === 'undefined') return;
@@ -32,13 +37,16 @@
   var sources = Array.prototype.map.call(links, function (a) {
     return a.getAttribute('href');
   });
+  var labels = Array.prototype.map.call(links, function (a, i) {
+    return labelOf(a.getAttribute('data-label'), i);
+  });
   var current = 0;
   var opener = null;
 
   function show(index) {
     current = step(index, 0, sources.length);
     img.src = sources[current];
-    img.alt = 'サンプル画像 ' + (current + 1);
+    img.alt = labels[current];
     counter.textContent = current + 1 + ' / ' + sources.length;
     // 前後の画像を先に読み込んでおく（送ったときに待たないように）
     [step(current, 1, sources.length), step(current, -1, sources.length)].forEach(function (i) {
