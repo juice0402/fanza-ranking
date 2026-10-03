@@ -206,12 +206,12 @@ def main():
     if os.environ.get("GITHUB_ACTIONS"):
         sections = []
         for text in lines:
-            if text.startswith("## ") or not sections:
+            if text.lstrip("\n").startswith("## ") or not sections:
                 sections.append([text])
             else:
                 sections[-1].append(text)
         for block in sections[:10]:
-            title = block[0].lstrip("# ").strip()[:100]
+            title = block[0].strip().lstrip("# ").strip()[:100]
             body = "\n".join(block[1:]).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
             print(f"::notice title={title}::{body}")
 
