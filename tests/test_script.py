@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(ROOT, "get_new_releases.py")
 # 毎日変わる本番データではなく、固定した20件で試す（テストの結果がぶれないように）
-OLD_DATA = os.path.join(ROOT, "tests", "fixtures", "archive_20items.json")
+SAVED_DATA = os.path.join(ROOT, "tests", "fixtures", "archive_20items.json")
 JST = timezone(timedelta(hours=9))
 TODAY = datetime.now(JST).replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -128,7 +128,7 @@ class Env:
             if i == 4:
                 kw["actress"] = ()
             items.append(make_api_item(f"rel{i:03d}", -(i // 4), **kw))
-        # 既に保存済みの作品（古いデータにある cid）も混ぜる → 重複しないことの確認用
+        # 既に保存済みの作品（保存データにある cid）も混ぜる → 重複しないことの確認用
         items.insert(2, make_api_item("bibivr00176", -1, actress=("蓮実クレア",), maker="KMPVR-bibi-"))
         return FakeResponse({"result": {"status": 200, "items": items[: int(q["hits"][0])]}})
 
@@ -188,8 +188,8 @@ def run_main_capture(mod, env):
 tmp = tempfile.mkdtemp()
 path = os.path.join(tmp, "new_releases.json")
 
-print("\n■ 1回目: 古い形式の20件に追記する")
-shutil.copy(OLD_DATA, path)
+print("\n■ 1回目: 保存済みの20件に追記する")
+shutil.copy(SAVED_DATA, path)
 env = Env()
 mod = load_module(path)
 code = run_main(mod, env)
@@ -198,11 +198,9 @@ by_cid = {d["cid"]: d for d in data}
 check("正常終了(0)", code == 0, code)
 check("cid が全件ある", all(d.get("cid") for d in data))
 check("cid の重複なし", len(by_cid) == len(data))
-check("古い20件が残っている", "bibivr00176" in by_cid and "1dldss00538" in by_cid)
+check("保存済みの20件が残っている", "bibivr00176" in by_cid and "1dldss00538" in by_cid)
 old_ai = by_cid["bibivr00176"]
-check("古いAIコメントはそのまま保持", old_ai["comment_kind"] == "ai" and "蓮実クレア" in old_ai["comment"], old_ai["comment"])
-old_generic = [d for d in data if d["cid"] == "vrkm01942"][0]
-check("古い定型文は新しい代わりの文に置換", "注目の新作登場" not in old_generic["comment"], old_generic["comment"])
+check("保存済みのAIコメントはそのまま保持", old_ai["comment_kind"] == "ai" and "蓮実クレア" in old_ai["comment"], old_ai["comment"])
 check("新しい発売済みが追加された(上限=NEW_ITEMS_PER_RUN)", len([d for d in data if d["cid"].startswith("rel")]) == mod.NEW_ITEMS_PER_RUN,
       len([d for d in data if d["cid"].startswith("rel")]))
 check("予約が追加された(上限=UPCOMING_ITEMS)", len([d for d in data if d["cid"].startswith("up")]) == mod.UPCOMING_ITEMS)
@@ -251,7 +249,7 @@ check("再挑戦の上限(3回)を超えない", max(d["comment_tries"] for d in
 
 print("\n■ Geminiが使えない/APIキー無しでも止まらない")
 path_b = os.path.join(tmp, "b.json")
-shutil.copy(OLD_DATA, path_b)
+shutil.copy(SAVED_DATA, path_b)
 e = Env()
 m = load_module(path_b, gemini="")
 code = run_main(m, e)
@@ -261,7 +259,7 @@ check("キー無し: Geminiを1回も呼ばない", e.gemini_calls == 0)
 check("キー無し: 全件にコメントがある", all(x["comment"] for x in d))
 
 path_c = os.path.join(tmp, "c.json")
-shutil.copy(OLD_DATA, path_c)
+shutil.copy(SAVED_DATA, path_c)
 e = Env()
 e.gemini_mode = "always_error"
 m = load_module(path_c)
@@ -274,7 +272,7 @@ check("Gemini全滅: 失敗は再挑戦回数に数えない", all(x["comment_tr
 print("\n■ 失敗のときは、既存データを壊さない")
 print("  （この下に出る ❌ で始まるエラー文は、わざと失敗させたときの正しいメッセージです）")
 path_d = os.path.join(tmp, "d.json")
-shutil.copy(OLD_DATA, path_d)
+shutil.copy(SAVED_DATA, path_d)
 orig = open(path_d, "rb").read()
 e = Env()
 e.dmm_mode = "fail"
@@ -295,6 +293,26 @@ m = load_module(path_e)
 code = run_main(m, Env())
 check("保存データが壊れていたら上書きせず中止", code == 1 and open(path_e).read() == "{壊れたJSON")
 
+path_g = os.path.join(tmp, "g.json")
+good = json.load(open(SAVED_DATA, encoding="utf-8"))
+broken = good + [{"title": "cid の無い作品", "date": "2026-10-01 00:00:00"}]  # 1件だけ読めない
+json.dump(broken, open(path_g, "w", encoding="utf-8"), ensure_ascii=False)
+before_g = open(path_g, "rb").read()
+code, out = run_main_capture(load_module(path_g), Env())
+check("読めない作品が1件でもあれば、作品が消えないよう中止(1)", code == 1 and open(path_g, "rb").read() == before_g and "読めない作品が1件" in out, (code, out[-120:]))
+
+path_h = os.path.join(tmp, "h.json")
+open(path_h, "w", encoding="utf-8").write('{"items": []}')
+code, out = run_main_capture(load_module(path_h), Env())
+check("データが作品のリストでなければ、上書きせず中止(1)", code == 1 and open(path_h, encoding="utf-8").read() == '{"items": []}', code)
+
+path_i = os.path.join(tmp, "i.json")
+partial = [{k: v for k, v in good[0].items() if k not in ("comment_kind", "tags", "comment_tries", "sample_images", "genres")}]
+json.dump(partial, open(path_i, "w", encoding="utf-8"), ensure_ascii=False)
+mi = load_module(path_i)
+norm = mi.load_archive()[good[0]["cid"]]
+check("項目が足りなくても読める（既定値で補う）", norm["comment_kind"] == "template" and norm["comment_tries"] == 0 and norm["sample_images"] == [] and isinstance(norm["tags"], list), norm)
+
 m = load_module(os.path.join(tmp, "f.json"), api_id="")
 code = run_main(m, Env())
 check("API_ID未設定: 分かりやすく中止(1)", code == 1)
@@ -307,7 +325,7 @@ check("エラー本文の読み取り: 1分あたりの上限は『1日』と判
 check("エラー本文の読み取り: 壊れた本文でも落ちない", mod.gemini_error_info("<html>oops") == ("", False, None) and mod.gemini_error_info(None) == ("", False, None))
 
 path_q = os.path.join(tmp, "q.json")
-shutil.copy(OLD_DATA, path_q)
+shutil.copy(SAVED_DATA, path_q)
 e = Env()
 e.gemini_mode = "quota_daily"
 m = load_module(path_q)
@@ -323,7 +341,7 @@ check("1日の上限: ログに理由が出る", "利用上限" in out and "limi
 check("1日の上限: Actionsの警告表示(::warning)を出す", "::warning title=" in out)
 
 path_m = os.path.join(tmp, "m.json")
-shutil.copy(OLD_DATA, path_m)
+shutil.copy(SAVED_DATA, path_m)
 e = Env()
 e.gemini_mode = "per_minute"
 m = load_module(path_m)
@@ -334,7 +352,7 @@ check("1分あたりの上限: 待ったあとは成功してAIコメントが�
 check("1分あたりの上限: そのあとは止まらずに続ける", e.gemini_calls > 3, e.gemini_calls)
 
 path_w = os.path.join(tmp, "w.json")
-shutil.copy(OLD_DATA, path_w)
+shutil.copy(SAVED_DATA, path_w)
 e = Env()
 e.gemini_mode = "wait_too_long"
 m = load_module(path_w)
@@ -343,7 +361,7 @@ check("待ち時間が長すぎる(3600秒): すぐあきらめて、長く待�
 
 print("\n■ 1回の実行でGeminiに頼む回数の上限")
 path_c5 = os.path.join(tmp, "c5.json")
-shutil.copy(OLD_DATA, path_c5)
+shutil.copy(SAVED_DATA, path_c5)
 e = Env()
 e.first_429_done = True  # このテストでは429は出さない
 m = load_module(path_c5, max_calls=5)
@@ -358,7 +376,7 @@ print("\n■ 実行結果の要約（GitHub Actionsの画面に出る）")
 summary_path = os.path.join(tmp, "summary.md")
 os.environ["GITHUB_STEP_SUMMARY"] = summary_path
 path_s = os.path.join(tmp, "s.json")
-shutil.copy(OLD_DATA, path_s)
+shutil.copy(SAVED_DATA, path_s)
 e = Env()
 e.first_429_done = True
 m = load_module(path_s)
