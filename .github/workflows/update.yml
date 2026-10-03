@@ -2,7 +2,7 @@ name: Daily FANZA Update
 
 on:
   schedule:
-    - cron: '40 13 * * *' # 毎日 日本時間の午後10時40分（UTC 13:40）。そのあと 23:20 に Claude がコメントを書き足す
+    - cron: '5 15 * * *' # 毎日 日本時間の午前0時5分（UTC 15:05）。日付が変わった直後に更新して、その日発売の作品を朝から「発売中」にする。ちょうど0時にしないのは、GitHubの定時実行が正時に混み合って遅れやすいため。そのあと 0:20 に Claude がコメントを書き足す
   workflow_dispatch: # GitHubの Actions 画面から「Run workflow」で手動実行もできる
 
 # 更新したデータをリポジトリに保存（commit）するために必要な権限

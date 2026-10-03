@@ -5,16 +5,16 @@ FANZAの新作・予約作品を毎日自動で集めて、AIのひとことコ�
 
 ## 自動で動くしくみ
 
-1. 毎日 午後10時40分（日本時間）に GitHub Actions が `get_new_releases.py` を実行
+1. 毎日 午前0時5分（日本時間。日付が変わった直後）に GitHub Actions が `get_new_releases.py` を実行
 2. FANZAの新作・予約を取得 → Geminiでコメントを作成 → `site/src/data/new_releases.json` にためていく
 3. データが更新されると Cloudflare Pages が自動でサイトを作り直して公開
-4. AIコメントが付かなかった作品には、毎日 午後11時20分ごろ（日本時間）に Claude の予約タスクがコメントを書き足します（手順は [docs/claude-comments.md](docs/claude-comments.md)）
+4. AIコメントが付かなかった作品には、毎日 午前0時20分ごろ（日本時間）に Claude の予約タスクがコメントを書き足します（手順は [docs/claude-comments.md](docs/claude-comments.md)）
 
 ## 運営の手引き（iPad・スマホでOK／ターミナルは不要）
 
 **今すぐ更新したいとき**: GitHub のこのリポジトリ → `Actions` → `Daily FANZA Update` → `Run workflow` → 緑のボタン。
 終わったら、そのRunのページの上に出る「FANZA更新の結果」で、取得件数とAIコメントの成功数が確認できます。赤い × が付いたら、ログをそのままClaudeに貼ってください。
-※ AIコメント（Gemini）の無料枠は1日20回ほどです。**手動実行は1日1回まで**にしてください（毎日の自動実行と合わせた回数で数えます）。
+※ AIコメント（Gemini）の無料枠は1日20回ほどです（日本時間の午後4時に新しい1日が始まります）。**手動実行は1日1回まで**にしてください。手動で動かした分だけ、次の0時5分の自動実行で使える枠が減ります（足りない分は、そのあと Claude が書き足します）。
 
 **サイトを変えたいとき**: Claudeに頼む → Claudeがプルリクエスト（変更の提案）を作る → プレビューのURLで見た目を確認 → 問題なければ `Merge pull request` → `Confirm merge`。
 プルリクエストの画面で、緑の ✓（CI）が付いているのを確認してからMergeしてください。赤い × のときはMergeせず、Claudeに伝えてください。
