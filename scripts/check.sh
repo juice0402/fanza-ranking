@@ -38,6 +38,12 @@ node tests/test_calendar.mjs || failed=1
 step "お気に入りの部品 (Node.js)"
 node tests/test_favorites.mjs || failed=1
 
+step "出演者プロフィール・売れ筋・出演者検索の部品 (Node.js)"
+node tests/test_profiles.mjs || failed=1
+
+step "サンプル動画の枠の部品 (Node.js)"
+node tests/test_movie.mjs || failed=1
+
 if [ "${1:-}" = "--build" ]; then
   step "サイトのビルド"
   if (cd site && npm ci --no-audit --no-fund && npm run build); then

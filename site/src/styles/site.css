@@ -35,8 +35,17 @@ html {
   scroll-behavior: smooth;
 }
 
+/* 横に動かせてしまう（画面がグラグラする）のを防ぐ。はみ出す部品があっても、横にはスクロールさせない。
+   clip を知らない古いブラウザは hidden を使う（あとの指定が使えるときは clip が勝つ） */
+html {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
+  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--ink);
   color: var(--paper);
   font: 400 15px/1.75 var(--font-body);
@@ -115,9 +124,9 @@ button:focus-visible {
   flex-wrap: wrap; /* 狭い画面では、メニューが2段目に回る */
   align-items: center;
   justify-content: space-between;
-  gap: 4px 16px;
-  padding-top: 14px;
-  padding-bottom: 14px;
+  gap: 0 16px;
+  padding-top: 12px;
+  padding-bottom: 4px; /* メニューの文字リンクが上下に11pxずつ広い（押しやすさのため）ので、そのぶん詰める */
 }
 
 .brand {
@@ -135,7 +144,7 @@ button:focus-visible {
 }
 
 .site-nav-link {
-  padding: 6px 0;
+  padding: 11px 0; /* 指で押しやすいよう、高さ44px前後にする */
   white-space: nowrap;
   color: var(--paper-dim);
   text-decoration: none;
@@ -183,7 +192,7 @@ button:focus-visible {
 .chip-link {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -519,6 +528,9 @@ button:focus-visible {
 }
 
 .crumbs-link {
+  display: inline-block;
+  margin: -12px -4px; /* 押せる範囲だけ広げる（見た目の並びは変えない） */
+  padding: 12px 4px;
   text-decoration: none;
 }
 
@@ -716,6 +728,9 @@ button:focus-visible {
 }
 
 .foot-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px; /* 指で押しやすい高さ */
   text-underline-offset: 3px;
 }
 
@@ -793,7 +808,7 @@ button:focus-visible {
 .foot-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 18px;
+  gap: 0 18px;
   margin: 0 0 14px;
 }
 
@@ -919,6 +934,21 @@ button:focus-visible {
 .week-card-lead {
   color: var(--paper-dim);
   font-size: 13px;
+}
+
+/* ---------- パッケージ写真（動画がある作品の、サンプル画像の下） ---------- */
+
+.package .sample-link {
+  max-width: 800px;
+}
+
+.package-img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 800 / 538;
+  border-radius: 3px;
+  background: var(--board);
+  object-fit: contain;
 }
 
 /* ---------- サンプル画像の拡大表示 ---------- */
@@ -1053,9 +1083,9 @@ html.lightbox-open {
 
 /* 名前の横の小さな☆（押しやすいよう、見た目より広くタップできる） */
 .fav-btn-mini {
-  min-width: 40px;
-  min-height: 40px;
-  margin: -8px 0 -8px 2px;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -10px 0 -10px 2px;
   padding: 0 8px;
   border-color: transparent;
   vertical-align: middle;
@@ -1075,6 +1105,13 @@ html.lightbox-open {
   align-items: center;
   gap: 10px 18px;
   margin-top: 16px;
+}
+
+.cal-link,
+.cal-help {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 .cal-link {
@@ -1203,4 +1240,413 @@ html.lightbox-open {
 .cal-url {
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+/* ---------- 出演者の顔写真・出演者のプロフィール ---------- */
+
+.face {
+  position: relative;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--line);
+  color: var(--paper);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.face-sm {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
+.face-md {
+  width: 56px;
+  height: 56px;
+  font-size: 22px;
+}
+
+.face-lg {
+  width: 112px;
+  height: 112px;
+  font-size: 44px;
+}
+
+/* 幅の狭い画面では、見出しの文字の場所を空けるため、少し小さくする */
+@media (max-width: 480px) {
+  .face-lg {
+    width: 88px;
+    height: 88px;
+    font-size: 36px;
+  }
+}
+
+.face-initial {
+  position: relative;
+}
+
+/* 写真は文字の上に重ねる（読み込めなければ消えて、文字が見える）。顔は上のほうにあることが多いので、上寄せで切り抜く */
+.face-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+}
+
+.cast-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cast-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-body {
+  min-width: 0;
+}
+
+.profile-body .hero-title {
+  margin: 0;
+}
+
+.profile-spec {
+  margin: 6px 0 0;
+  color: var(--paper-dim);
+  font-size: 13px;
+}
+
+.profile-source {
+  margin: 8px 0 0;
+  color: var(--paper-dim);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* ---------- サンプル動画（作品ページ） ---------- */
+
+.movie {
+  margin: 0;
+}
+
+/* FANZAの再生ページは 476x306 の固定サイズ。枠の幅に合わせて、中のiframeを拡大・縮小する（倍率は site/public/movie.js が決める） */
+.movie-box {
+  position: relative;
+  isolation: isolate; /* iPhone・iPadのSafariは、角丸＋overflow:hidden だと、拡大・縮小（transform）した中身を枠で切らないことがある。それで横にはみ出すのを防ぐ */
+  contain: paint;
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 476 / 306;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #000;
+}
+
+.movie-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 476px;
+  height: 306px;
+  max-width: none;
+  border: 0;
+  transform-origin: 0 0;
+  transform: scale(var(--movie-scale, 1));
+}
+
+.movie-note {
+  margin: 8px 0 0;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.movie-link {
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+/* ---------- 出演者検索 ---------- */
+
+/* hidden を付けた要素は、ほかの display の指定（.btn の inline-flex など）に負けずに隠す */
+.btn[hidden],
+.more-btn[hidden],
+.chip-link[hidden],
+.lightbox:not([open]) {
+  display: none;
+}
+
+.actress-search[hidden],
+.actress-static[hidden],
+.as-more[hidden],
+.as-note[hidden] {
+  display: none;
+}
+
+.as-form {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--board);
+}
+
+.as-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+@media (min-width: 720px) {
+  .as-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.as-field {
+  display: grid;
+  gap: 4px;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.as-field-wide {
+  grid-column: 1 / -1;
+}
+
+/* 入力欄の文字は16px以上にする（iPhone・iPadで、入力するたびに画面が拡大されるのを防ぐ） */
+.as-field input,
+.as-field select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 16px;
+}
+
+.as-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.as-count {
+  margin: 18px 0 0;
+  font-weight: 700;
+}
+
+.as-note,
+.as-coverage {
+  margin: 6px 0 0;
+  color: var(--paper-dim);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.actress-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.actress-row-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: var(--board);
+  text-decoration: none;
+}
+
+.actress-row-link:hover {
+  border-color: var(--paper);
+}
+
+.actress-row-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.actress-row-name {
+  font-weight: 700;
+}
+
+.actress-row-spec {
+  font-size: 12px;
+}
+
+.actress-row-spec.is-empty,
+.actress-row-meta {
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.more-btn {
+  margin-top: 14px;
+}
+
+/* ---------- 売れ筋ランキング（トップページ） ---------- */
+
+.rank-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  min-width: 36px;
+  padding: 3px 9px 2px;
+  background: var(--hot);
+  box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font: 400 14px/1.4 var(--font-display);
+  text-align: center;
+  transform: rotate(-4deg);
+}
+
+.rank-maker {
+  margin: 0 0 10px;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+#ranking .shelf {
+  margin-top: 14px;
+}
+
+/* 売れ筋TOP3は、棚のほかの作品より大きく見せる。
+   スマホ：1位は横幅いっぱい（カバーが左・文字が右）、2位と3位は横に並べる
+   ひろい画面：3本を横いっぱいに（1位だけ少し広く） */
+.rank-podium {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 12px;
+}
+
+.rank-podium .rank-cell:first-child {
+  grid-column: 1 / -1;
+}
+
+.rank-item .item-cover {
+  aspect-ratio: 3 / 4; /* パッケージ画像の右半分（表紙）は、ほぼ3:4。2:3だと左右が削れる */
+}
+
+.rank-item .btn {
+  margin-top: auto; /* タイトルの行数が違っても、ボタンは下にそろえる */
+}
+
+.rank-item .rank-badge {
+  top: 10px;
+  left: 10px;
+  padding: 4px 11px 3px;
+  font-size: 17px;
+}
+
+.rank-item .item-title {
+  font-size: 14px;
+}
+
+.rank-1 {
+  display: grid;
+  grid-template-columns: minmax(0, 46%) minmax(0, 1fr);
+  grid-template-rows: auto auto auto 1fr;
+  column-gap: 14px;
+  align-items: start;
+}
+
+.rank-1 .item-cover {
+  grid-row: 1 / 5;
+}
+
+.rank-1 .item-title,
+.rank-1 .item-cast,
+.rank-1 .rank-maker,
+.rank-1 .btn {
+  grid-column: 2;
+}
+
+.rank-1 .item-title {
+  margin-top: 2px;
+  min-height: 0;
+  font-size: 16px;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+}
+
+.rank-1 .item-cast {
+  white-space: normal;
+}
+
+.rank-1 .btn {
+  align-self: end;
+}
+
+.rank-1 .rank-badge {
+  padding: 5px 13px 4px;
+  font-size: 22px;
+}
+
+@media (min-width: 720px) {
+  .rank-podium {
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 22px 20px;
+    align-items: stretch;
+  }
+
+  .rank-podium .rank-cell:first-child {
+    grid-column: auto;
+  }
+
+  .rank-1 {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch; /* 上の「横いっぱいの1位」の align-items: start を戻す（戻さないと、カバーの幅が0になる） */
+  }
+
+  .rank-1 .item-title {
+    margin-top: 10px;
+    min-height: 4.65em;
+    font-size: 17px;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+
+  .rank-1 .item-cast {
+    white-space: nowrap;
+  }
+
+  .rank-item .item-title {
+    font-size: 15px;
+  }
+
+  .rank-item .item-cast,
+  .rank-item .rank-maker {
+    font-size: 13px;
+  }
 }

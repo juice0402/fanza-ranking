@@ -50,13 +50,20 @@ const compact = (day) => day.replace(/-/g, '');
 const nextDay = (day) => compact(new Date(Date.UTC(+day.slice(0, 4), +day.slice(5, 7) - 1, +day.slice(8, 10)) + 86400000).toISOString().slice(0, 10));
 const minusDays = (day, n) => new Date(Date.UTC(+day.slice(0, 4), +day.slice(5, 7) - 1, +day.slice(8, 10)) - n * 86400000).toISOString().slice(0, 10);
 
-/** カレンダーに入れる作品: 発売日が（今日 − CALENDAR_PAST_DAYS日）以降のもの。発売日の早い順。多すぎるときは近い日から */
+/**
+ * カレンダーに入れる作品: 発売日が（今日 − CALENDAR_PAST_DAYS日）以降のもの。発売日の早い順。
+ * 多すぎるときは、これから発売される作品（今日以降）を先に残し、枠が余れば、最近発売された作品を新しい方から入れる
+ * （古い方から入れると、遠い先の予約が切れてしまうため）。
+ */
 export function calendarItems(items, today, limit = CALENDAR_MAX_EVENTS) {
   const from = minusDays(today, CALENDAR_PAST_DAYS);
-  return items
+  const sorted = items
     .filter((i) => i.dateKey >= from)
-    .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.cid.localeCompare(b.cid))
-    .slice(0, limit);
+    .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.cid.localeCompare(b.cid));
+  const upcoming = sorted.filter((i) => i.dateKey >= today).slice(0, limit);
+  const past = sorted.filter((i) => i.dateKey < today);
+  const room = limit - upcoming.length;
+  return [...(room > 0 ? past.slice(Math.max(0, past.length - room)) : []), ...upcoming];
 }
 
 /** 予定の題名（作品タイトルは入れない）。subject は出演者名・メーカー名。無ければ作品の出演者→メーカーから */

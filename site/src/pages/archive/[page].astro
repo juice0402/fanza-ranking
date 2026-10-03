@@ -3,7 +3,7 @@ import Base from '../../layouts/Base.astro';
 import DaySection from '../../components/DaySection.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import { released } from '../../lib/data.js';
-import { ARCHIVE_PAGE_SIZE, breadcrumbLd, groupByDate, archivePath, pageWindow, SITE_NAME } from '../../lib/items.js';
+import { ARCHIVE_PAGE_SIZE, breadcrumbLd, countByDate, groupByDate, archivePath, pageWindow, SITE_NAME } from '../../lib/items.js';
 
 // 発売済みの作品を、新しい順に ARCHIVE_PAGE_SIZE 件ずつのページに分ける
 export function getStaticPaths({ paginate }) {
@@ -13,7 +13,7 @@ export function getStaticPaths({ paginate }) {
 const { page } = Astro.props;
 const current = page.currentPage;
 const last = page.lastPage;
-const groups = groupByDate(page.data);
+const groups = groupByDate(page.data, countByDate(released)); // 日の途中でページが分かれても、その日の全部の本数を出す
 const pages = pageWindow(current, last);
 const trail = [
   { name: 'トップ', path: '/' },

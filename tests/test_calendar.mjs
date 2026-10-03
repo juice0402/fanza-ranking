@@ -34,7 +34,16 @@ const today = '2026-10-03';
 const ci = C.calendarItems(items, today);
 check('対象は、発売日が14日前以降の作品だけ（古い作品は入らない）', ci.map((i) => i.cid).join() === 'recent1,today1,soon1,soon2', ci.map((i) => i.cid).join());
 check('14日前ちょうど(9/19)は入り、その前日(9/18)は入らない', C.calendarItems(normalizeItems([{ cid: 'e1', title: 't', date: '2026-09-19' }, { cid: 'e2', title: 't', date: '2026-09-18' }]), today).map((i) => i.cid).join() === 'e1');
-check('件数の上限（近い日から残す）', C.calendarItems(items, today, 2).map((i) => i.cid).join() === 'recent1,today1');
+check('件数の上限: これから発売される作品（今日以降）を先に残す（枠が余れば、最近発売された作品を新しい方から）', C.calendarItems(items, today, 2).map((i) => i.cid).join() === 'today1,soon1' && C.calendarItems(items, today, 3).map((i) => i.cid).join() === 'today1,soon1,soon2' && C.calendarItems(items, today, 4).map((i) => i.cid).join() === 'recent1,today1,soon1,soon2');
+// 毎日12本ずつ14日ぶんの発売済み（168本）＋ 予約130本 → 上限200では、予約はすべて残り、過去は新しい方の70本
+const dayOf = (n) => new Date(Date.UTC(2026, 9, 3 + n)).toISOString().slice(0, 10);
+const crowd = normalizeItems([
+  ...Array.from({ length: 168 }, (_, i) => ({ cid: `p${String(i).padStart(3, '0')}`, title: 't', date: dayOf(-1 - Math.floor(i / 12)) })),
+  ...Array.from({ length: 130 }, (_, i) => ({ cid: `u${String(i).padStart(3, '0')}`, title: 't', date: dayOf(1 + Math.floor(i / 5)) })),
+]);
+const kept = C.calendarItems(crowd, today);
+check('多すぎるとき（298本・上限200本）: 予約130本はすべて残り、枠が余った70本分は最近の発売済み', kept.length === 200 && kept.filter((i) => i.dateKey >= today).length === 130 && kept.filter((i) => i.dateKey < today).length === 70 && kept.every((i, n) => n === 0 || kept[n - 1].dateKey <= i.dateKey), kept.length + ' / ' + kept.filter((i) => i.dateKey >= today).length);
+check('予約だけで上限を超えるときは、近い日から残す', C.calendarItems(normalizeItems(Array.from({ length: 10 }, (_, i) => ({ cid: `x${i}`, title: 't', date: dayOf(i + 1) }))), today, 3).map((i) => i.cid).join() === 'x0,x1,x2');
 const ics = C.buildIcs({ calName: 'テスト,カレンダー', items, today });
 const text = unfold(ics);
 check('CRLF で、BEGIN:VCALENDAR で始まり END:VCALENDAR で終わる', ics.startsWith('BEGIN:VCALENDAR\r\n') && ics.endsWith('END:VCALENDAR\r\n') && !/[^\r]\n/.test(ics));
@@ -61,6 +70,8 @@ const idx = F.buildFavoritesIndex(items, today);
 check('索引: 予約も含めて、新しい順（9/1 は32日前なので入る）', idx.items.map((i) => i.c).join() === 'soon2,soon1,today1,recent1,old1', idx.items.map((i) => i.c).join());
 check('索引: ちょうど60日前(8/4)は入り、その前日(8/3)は入らない', F.buildFavoritesIndex(normalizeItems([{ cid: 'in', title: 't', date: '2026-08-04' }, { cid: 'out', title: 't', date: '2026-08-03' }]), today).items.map((i) => i.c).join() === 'in');
 check('索引: 日付は generated に入る', idx.generated === today);
+check('索引: 専用ページのある出演者・メーカーの {名前: 短い名前}（pages）。渡さなければ空', JSON.stringify(idx.pages) === JSON.stringify({ actress: {}, maker: {} }) && JSON.stringify(F.buildFavoritesIndex(items, today, 60, { actress: { A: 'abcdef0123' }, maker: {} }).pages) === JSON.stringify({ actress: { A: 'abcdef0123' }, maker: {} }));
+check('索引: グループ → {名前: 短い名前}', JSON.stringify(F.pageSlugMap([{ name: 'A', slug: 's1' }, { name: 'B', slug: 's2' }])) === JSON.stringify({ A: 's1', B: 's2' }) && JSON.stringify(F.pageSlugMap([])) === '{}');
 const one = idx.items.find((i) => i.c === 'recent1');
 check('索引: 短い名前の項目（c,t,d,a,m,i）', one && one.t.includes('最近の作品') && one.d === '2026-09-25' && one.a.join() === 'A' && one.m === 'M' && 'i' in one, JSON.stringify(one));
 check('索引: メーカー「不明」は空文字にする', idx.items.find((i) => i.c === 'today1').m === '');

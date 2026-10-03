@@ -18,7 +18,7 @@ const DayHeading = headingLevel;
           <span>{p.m}月{p.d}日</span>
           <span class="divider-wd">{p.wd}曜</span>
         </DayHeading>
-        <p class="divider-count">{g.items.length}本</p>
+        <p class="divider-count">{g.total > g.items.length ? `${g.items.length}本（全${g.total}本）` : `${g.items.length}本`}</p>
       </header>
       <ul class="shelf">
         {g.items.map((item) => (

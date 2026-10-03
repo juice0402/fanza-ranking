@@ -43,7 +43,9 @@ const canonical = SITE_URL + path;
 
     {jsonLd.map((data) => <script is:inline type="application/ld+json" set:html={jsonLdScript(data)} />)}
 
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="sitemap" href="/sitemap.xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -72,20 +74,52 @@ const canonical = SITE_URL + path;
           ok = localStorage.getItem('age-ok') === '1';
         } catch (e) {}
         if (ok || !gate) return;
+        var yes = document.getElementById('gate-yes');
+        var no = gate.querySelector('a');
+        // 確認画面が出ているあいだ、後ろの本文は、キーボード・読み上げで触れないようにする（inert）。
+        // このスクリプトは本文の途中で動くので、後ろの部品は、読み込みが終わってから探す
+        function setInert(on) {
+          for (var el = document.body.firstElementChild; el; el = el.nextElementSibling) {
+            if (el === gate || el.tagName === 'SCRIPT') continue;
+            if (on) el.setAttribute('inert', '');
+            else el.removeAttribute('inert');
+          }
+        }
         gate.hidden = false;
         document.documentElement.classList.add('gate-open');
-        document.getElementById('gate-yes').addEventListener('click', function () {
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            if (!gate.hidden) setInert(true);
+          });
+        } else {
+          setInert(true);
+        }
+        yes.focus();
+        // Tab キーで、確認画面の外に出ない（「はい」と「いいえ」の2つを行き来する）
+        gate.addEventListener('keydown', function (e) {
+          if (e.key !== 'Tab') return;
+          if (e.shiftKey && document.activeElement === yes) {
+            e.preventDefault();
+            no.focus();
+          } else if (!e.shiftKey && document.activeElement === no) {
+            e.preventDefault();
+            yes.focus();
+          }
+        });
+        yes.addEventListener('click', function () {
           try {
             localStorage.setItem('age-ok', '1');
           } catch (e) {}
           gate.hidden = true;
           document.documentElement.classList.remove('gate-open');
+          setInert(false);
         });
       })();
     </script>
 
     <a class="skip" href="#main">本文へ移動</a>
     <p class="pr-strip">広告｜当サイトはアフィリエイト広告（FANZA）を利用しています。</p>
+    <noscript><p class="pr-strip noscript-note">このサイトにはアダルト作品の紹介が含まれます。18歳未満の方はご利用いただけません。（JavaScriptが無効のため、年齢の確認画面を出せません）</p></noscript>
 
     <header class="site-head wrap">
       <a class="brand" href="/">{SITE_NAME}</a>

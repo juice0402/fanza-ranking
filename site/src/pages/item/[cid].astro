@@ -3,7 +3,9 @@ import Base from '../../layouts/Base.astro';
 import ItemCard from '../../components/ItemCard.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FavButton from '../../components/FavButton.astro';
-import { all, actressByName, makerByName } from '../../lib/data.js';
+import Face from '../../components/Face.astro';
+import SampleMovie from '../../components/SampleMovie.astro';
+import { all, actressByName, makerByName, profilesByName } from '../../lib/data.js';
 import {
   breadcrumbLd,
   formatDateJp,
@@ -14,6 +16,7 @@ import {
   truncate,
 } from '../../lib/items.js';
 import { workFavoriteAttrs } from '../../lib/favorites.js';
+import { faceUrl } from '../../lib/profiles.js';
 
 // 作品ごとに1ページ作る
 export function getStaticPaths() {
@@ -23,6 +26,13 @@ export function getStaticPaths() {
 const { item } = Astro.props;
 const related = relatedItems(item, all, 8);
 const samples = item.sample_images.slice(0, 8);
+// サンプル動画がある作品は、動画を表紙の場所に出し、パッケージ写真は、サンプル画像の下に別の欄で大きく出す
+// （サンプル画像の並びに混ぜると、枚数が増えて並びが崩れやすいため）。
+// 動画が無い作品は、これまでどおり表紙を上に出す
+const hasMovie = Boolean(item.sample_movie);
+const coverBelow = hasMovie && Boolean(item.image_url);
+const gallery = samples.map((src, i) => ({ src, label: `サンプル画像 ${i + 1}` }));
+const zoomable = gallery.length > 0 || coverBelow; // 拡大表示（lightbox）を使う画像がある
 const trail = [
   { name: 'トップ', path: '/' },
   { name: truncate(item.title, 30), path: itemPath(item.cid) },
@@ -43,16 +53,18 @@ const makerPage = makerByName.get(item.maker)?.path;
 
     <article class="detail-grid">
       <div class="detail-media">
-        {item.image_url && (
-          <img
-            class="detail-cover"
-            src={item.image_url}
-            alt={`${truncate(item.title, 60)} のパッケージ画像`}
-            width="800"
-            height="538"
-            decoding="async"
-          />
-        )}
+        {hasMovie
+          ? <SampleMovie src={item.sample_movie} title={truncate(item.title, 60)} fallbackUrl={item.url} />
+          : item.image_url && (
+            <img
+              class="detail-cover"
+              src={item.image_url}
+              alt={`${truncate(item.title, 60)} のパッケージ画像`}
+              width="800"
+              height="538"
+              decoding="async"
+            />
+          )}
       </div>
 
       <div class="detail-body">
@@ -70,13 +82,15 @@ const makerPage = makerByName.get(item.maker)?.path;
             <>
               <dt class="spec-term">出演</dt>
               <dd class="spec-desc">
-                {item.actress.map((name, i) => (
-                  <>
-                    {i > 0 && '、'}
-                    {actressByName.get(name) ? <a class="spec-link" href={actressByName.get(name).path}>{name}</a> : name}
-                    <FavButton type="actress" favKey={name} slug={actressByName.get(name)?.slug ?? ''} size="mini" />
-                  </>
-                ))}
+                <ul class="cast-list">
+                  {item.actress.map((name) => (
+                    <li class="cast-person">
+                      <Face name={name} src={faceUrl(profilesByName.get(name))} size="sm" />
+                      {actressByName.get(name) ? <a class="spec-link" href={actressByName.get(name).path}>{name}</a> : <span>{name}</span>}
+                      <FavButton type="actress" favKey={name} slug={actressByName.get(name)?.slug ?? ''} size="mini" />
+                    </li>
+                  ))}
+                </ul>
               </dd>
             </>
           )}
@@ -116,14 +130,14 @@ const makerPage = makerByName.get(item.maker)?.path;
       </div>
     </article>
 
-    {samples.length > 0 && (
+    {gallery.length > 0 && (
       <section class="subsection" aria-labelledby="samples-title">
         <h2 id="samples-title" class="subsection-title">サンプル画像</h2>
         <ul class="samples">
-          {samples.map((src, i) => (
+          {gallery.map((g) => (
             <li>
-              <a class="sample-link" href={src} target="_blank" rel="noopener noreferrer" aria-label={`サンプル画像 ${i + 1} を拡大して見る`}>
-                <img class="sample-img" src={src} alt={`サンプル画像 ${i + 1}`} loading="lazy" decoding="async" />
+              <a class="sample-link" href={g.src} data-label={g.label} target="_blank" rel="noopener noreferrer" aria-label={`${g.label} を拡大して見る`}>
+                <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" />
               </a>
             </li>
           ))}
@@ -131,8 +145,25 @@ const makerPage = makerByName.get(item.maker)?.path;
       </section>
     )}
 
-    {samples.length > 0 && (
-      <dialog id="lightbox" class="lightbox" aria-label="サンプル画像の拡大表示">
+    {coverBelow && (
+      <section class="subsection package" aria-labelledby="package-title">
+        <h2 id="package-title" class="subsection-title">パッケージ写真</h2>
+        <a class="sample-link" href={item.image_url} data-label="パッケージ画像" target="_blank" rel="noopener noreferrer" aria-label="パッケージ写真を拡大して見る">
+          <img
+            class="package-img"
+            src={item.image_url}
+            alt={`${truncate(item.title, 60)} のパッケージ画像`}
+            width="800"
+            height="538"
+            loading="lazy"
+            decoding="async"
+          />
+        </a>
+      </section>
+    )}
+
+    {zoomable && (
+      <dialog id="lightbox" class="lightbox" aria-label="画像の拡大表示">
         <div class="lightbox-stage">
           <img class="lightbox-img" alt="" />
           <button type="button" class="lightbox-btn lightbox-prev" data-lightbox="prev" aria-label="前の画像">‹</button>
@@ -155,7 +186,8 @@ const makerPage = makerByName.get(item.maker)?.path;
     )}
   </div>
 
-  {samples.length > 0 && <script is:inline src="/lightbox.js" defer></script>}
+  {zoomable && <script is:inline src="/lightbox.js" defer></script>}
+  {hasMovie && <script is:inline src="/movie.js" defer></script>}
 
   {item.url && (
     <div class="sticky-cta">

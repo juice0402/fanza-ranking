@@ -125,14 +125,24 @@ export function splitByRelease(items, today) {
 }
 
 /** 並び順はそのままに、同じ発売日ごとにまとめる */
-export function groupByDate(items) {
+export function groupByDate(items, totals = null) {
   const groups = [];
   for (const item of items) {
     const last = groups[groups.length - 1];
     if (last && last.dateKey === item.dateKey) last.items.push(item);
     else groups.push({ dateKey: item.dateKey, items: [item] });
   }
+  // total: その日の作品の全部の数。一覧が途中で切れている（トップの件数の上限・過去の作品のページ分け）とき、
+  // 「その日の本数」を、見えている数ではなく全部の数で出すため。totals（countByDate の結果）を渡さなければ、見えている数
+  for (const g of groups) g.total = totals?.get(g.dateKey) ?? g.items.length;
   return groups;
+}
+
+/** 発売日ごとの作品の数 Map（"YYYY-MM-DD" → 本数） */
+export function countByDate(items) {
+  const counts = new Map();
+  for (const item of items) counts.set(item.dateKey, (counts.get(item.dateKey) ?? 0) + 1);
+  return counts;
 }
 
 /** 'new'（発売から数日）/ 'wait'（予約）/ ''（それ以外） */

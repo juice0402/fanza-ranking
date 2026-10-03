@@ -80,6 +80,17 @@ check('お気に入りが無ければ、何も出ない', F.pickNew(F.emptyStore
 check('索引が壊れていても落ちない', F.pickNew(fav, null, today, 30).upcoming.length === 0 && F.pickNew(fav, [null, 1, {}], today, 30).recent.length === 0);
 check('出演者・メーカーのお気に入りがあるか（作品だけなら false）', F.hasPeople(fav) === true && F.hasPeople(F.toggle(F.emptyStore(), 'work', 'abc', work, 1).store) === false);
 
+console.log('\n■ 専用ページができたとき、☆を付けた人のリンクを補う');
+const withNew = plain(F.toggle(F.toggle(F.toggle(F.emptyStore(), 'actress', '新人', { slug: '' }, 1).store, 'actress', '前から', { slug: 'ffffffffff' }, 2).store, 'maker', '小さなメーカー', { slug: '' }, 3).store);
+const pagesNow = { actress: { 新人: '0123456789', 前から: 'aaaaaaaaaa' }, maker: { 小さなメーカー: 'abcdef0123' } };
+const resolved = F.resolveSlugs(withNew, pagesNow);
+check('ページができた出演者・メーカーに、リンク用の短い名前が入る（もともと持っている人は変えない）', resolved.changed && resolved.store.actress['新人'].slug === '0123456789' && resolved.store.actress['前から'].slug === 'ffffffffff' && resolved.store.maker['小さなメーカー'].slug === 'abcdef0123', JSON.stringify(plain(resolved.store)));
+check('元の保存データは書き換えない', withNew.actress['新人'].slug === '' && withNew.maker['小さなメーカー'].slug === '');
+check('まだページが無い人は、空のまま・変わらなければ changed は false', !F.resolveSlugs(withNew, { actress: {}, maker: {} }).changed && !F.resolveSlugs(resolved.store, pagesNow).changed);
+check('形が違う短い名前・索引が壊れているときは、補わない', !F.resolveSlugs(withNew, { actress: { 新人: 'xyz' }, maker: { 小さなメーカー: '<script>' } }).changed && [null, undefined, {}, [], 'x', { actress: null }, { actress: [] }].every((v) => !F.resolveSlugs(withNew, v).changed));
+const protoStore = plain(F.toggle(F.emptyStore(), 'actress', 'constructor', { slug: '' }, 1).store);
+check('名前が constructor のような特別な名前でも、取り違えない', !F.resolveSlugs(protoStore, { actress: {}, maker: {} }).changed);
+
 console.log('\n■ 日付');
 check('日本時間の今日（UTC 15:00 → 翌日）', F.jstToday(Date.UTC(2026, 9, 3, 15, 0)) === '2026-10-04' && F.jstToday(Date.UTC(2026, 9, 3, 14, 59)) === '2026-10-03');
 check('日数の足し引き（月またぎ・うるう年）', F.addDays('2026-10-01', -1) === '2026-09-30' && F.addDays('2028-02-28', 1) === '2028-02-29');

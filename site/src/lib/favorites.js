@@ -10,17 +10,23 @@ const minusDays = (day, n) => new Date(Date.UTC(+day.slice(0, 4), +day.slice(5, 
  * 「お気に入りの出演者・メーカーの新作」を、ブラウザ側で探すための索引。
  * 短い名前の項目 {c: 品番, t: タイトル, d: 発売日, a: 出演者, m: メーカー, i: 画像} を、発売日の新しい順に並べる。
  * 古い作品まで入れると大きくなるので、最近の作品と予約だけにする。
+ * pages: 専用ページがある出演者・メーカーの {名前: 短い名前}（{ actress: {...}, maker: {...} }）。
+ *   ☆を付けたときは専用ページが無かった人（作品が1本）に、あとからページができたとき、「お気に入り」ページでリンクを出すため。
  */
-export function buildFavoritesIndex(items, today, days = FAVORITES_INDEX_DAYS) {
+export function buildFavoritesIndex(items, today, days = FAVORITES_INDEX_DAYS, pages = { actress: {}, maker: {} }) {
   const from = minusDays(today, days);
   return {
     generated: today,
+    pages,
     items: items
       .filter((i) => i.dateKey >= from)
       .sort((a, b) => b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid))
       .map((i) => ({ c: i.cid, t: i.title, d: i.dateKey, a: i.actress, m: i.maker === '不明' ? '' : i.maker, i: i.image_url })),
   };
 }
+
+/** 出演者・メーカーのまとまり（groupByActress / groupByMaker の結果）→ {名前: 短い名前}（索引の pages 用） */
+export const pageSlugMap = (groups) => Object.fromEntries(groups.map((g) => [g.name, g.slug]));
 
 /** 作品の☆ボタンに持たせる情報（data-* に入れる値） */
 export const workFavoriteAttrs = (item) => ({
