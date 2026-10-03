@@ -9,10 +9,13 @@ import {
   HOME_UPCOMING_LIMIT,
   ARCHIVE_PAGE_SIZE,
   NEW_BADGE_DAYS,
+  ENTITY_MIN_ITEMS,
 } from '../config.js';
 
 // ページ側が items.js からまとめて読めるように、そのまま出し直しています
-export { SITE_NAME, SITE_URL, HOME_RELEASED_LIMIT, HOME_UPCOMING_LIMIT, ARCHIVE_PAGE_SIZE, NEW_BADGE_DAYS };
+export { SITE_NAME, SITE_URL, HOME_RELEASED_LIMIT, HOME_UPCOMING_LIMIT, ARCHIVE_PAGE_SIZE, NEW_BADGE_DAYS, ENTITY_MIN_ITEMS };
+
+import { createHash } from 'node:crypto';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -75,6 +78,8 @@ export function normalizeItems(raw) {
       actress: Array.isArray(r.actress) ? r.actress.filter(Boolean) : [],
       genres: Array.isArray(r.genres) ? r.genres.filter(Boolean) : [],
       duration_min: Number.isFinite(+r.duration_min) && +r.duration_min > 0 ? +r.duration_min : null,
+      // 形式（VR・8K など）。英数字だけのタグに絞る（日本語のタグは作品の内容を表す言葉が混ざるため使わない）
+      formats: Array.isArray(r.tags) ? r.tags.filter((t) => typeof t === 'string' && /^[0-9A-Za-z]{1,6}$/.test(t)) : [],
       comment: String(r.comment ?? ''),
       isAi: r.comment_kind === 'ai',
       // データ（コメント）を最後に変えた日。分からなければ ''（sitemap には載せない）
@@ -184,4 +189,147 @@ export function itemPageTitle(item) {
 export function itemPageDescription(item) {
   const base = `${item.maker}の${formatDateJp(item.dateKey)}発売作品。`;
   return truncate(`${item.comment} ${base}`.trim(), 120);
+}
+
+// ------------------------------------------------------------------
+// 出演者ページ・メーカーページ
+// ------------------------------------------------------------------
+
+/**
+ * 出演者名・メーカー名から、URLに使う短い英数字の名前を作る。
+ * 日本語や記号（/ や ? など）をURLに入れないため。同じ名前なら必ず同じ名前になる。
+ */
+export function entitySlug(name) {
+  return createHash('sha1').update(String(name).normalize('NFC')).digest('hex').slice(0, 10);
+}
+
+export const actressPath = (slug) => `/actress/${slug}/`;
+export const makerPath = (slug) => `/maker/${slug}/`;
+export const ACTRESS_INDEX_PATH = '/actress/';
+export const MAKER_INDEX_PATH = '/maker/';
+
+const byNewest = (a, b) => b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid);
+
+/** 名前ごとに作品をまとめる（slugOf は短い名前の作り方。テストで差し替えるために引数にしてある） */
+export function groupItems(items, namesOf, pathOf, minItems, slugOf = entitySlug) {
+  const groups = new Map(); // 短い名前 → { name, slug, path, items }
+  for (const item of items) {
+    for (const name of new Set(namesOf(item))) {
+      const slug = slugOf(name);
+      let g = groups.get(slug);
+      if (!g) {
+        g = { name, slug, path: pathOf(slug), items: [] };
+        groups.set(slug, g);
+      }
+      if (g.name !== name) continue; // 別の名前が同じ短い名前になったとき（ほぼ起きない）は、あとの名前のページは作らない
+      g.items.push(item);
+    }
+  }
+  return [...groups.values()]
+    .filter((g) => g.items.length >= minItems)
+    .map((g) => ({ ...g, items: [...g.items].sort(byNewest) }))
+    .sort((a, b) => b.items.length - a.items.length || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+/** 出演者ごとの作品グループ（作品が minItems 本未満の人は作らない）。作品数の多い順 */
+export const groupByActress = (items, minItems = ENTITY_MIN_ITEMS) =>
+  groupItems(items, (i) => i.actress, actressPath, minItems);
+
+/** メーカーごとの作品グループ（「不明」は作らない）。作品数の多い順 */
+export const groupByMaker = (items, minItems = ENTITY_MIN_ITEMS) =>
+  groupItems(items, (i) => (i.maker === '不明' ? [] : [i.maker]), makerPath, minItems);
+
+/** 名前 → グループ（作品ページなどから、ページがあるときだけリンクするため） */
+export const indexByName = (groups) => new Map(groups.map((g) => [g.name, g]));
+
+/** 多く出てきた順に、重複なしで並べる（同数なら先に出てきた順） */
+function rankedNames(names, limit) {
+  const counts = new Map();
+  for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1);
+  const ranked = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a));
+  return { names: ranked.slice(0, limit), more: ranked.length > limit };
+}
+
+/** 重複なし・出てきた順の形式（VR・8K など） */
+export function formatsOf(items) {
+  return [...new Set(items.flatMap((i) => i.formats))];
+}
+
+function dateRangeJp(items) {
+  const days = items.map((i) => i.dateKey).sort();
+  const [first, last] = [days[0], days[days.length - 1]];
+  return first === last ? `${formatDateJp(first)}` : `${formatDateJp(first)}から${formatDateJp(last)}`;
+}
+
+/** 出演者ページの紹介文。作品データ（件数・発売日・メーカー・形式）だけから作るので、事実と食い違わない */
+export function actressSummary(group) {
+  const { name, items } = group;
+  const makers = rankedNames(items.map((i) => i.maker).filter((m) => m !== '不明'), 3);
+  const formats = formatsOf(items);
+  const parts = [
+    `FANZAの新作・予約として掲載している${name}さん出演の作品は${items.length}本です。`,
+    `発売日は${dateRangeJp(items)}です。`,
+  ];
+  if (makers.names.length) parts.push(`メーカーは${makers.names.join('、')}${makers.more ? 'ほか' : ''}です。`);
+  if (formats.length) parts.push(`${formats.join('・')}の作品を含みます。`);
+  return parts.join('');
+}
+
+/** メーカーページの紹介文 */
+export function makerSummary(group) {
+  const { name, items } = group;
+  const cast = rankedNames(items.flatMap((i) => i.actress), 4);
+  const formats = formatsOf(items);
+  const parts = [
+    `FANZAの新作・予約として掲載している${name}の作品は${items.length}本です。`,
+    `発売日は${dateRangeJp(items)}です。`,
+  ];
+  if (cast.names.length) parts.push(`出演は${cast.names.join('、')}${cast.more ? 'ほか' : ''}などです。`);
+  if (formats.length) parts.push(`${formats.join('・')}の作品を含みます。`);
+  return parts.join('');
+}
+
+export const actressPageTitle = (g) => `${truncate(g.name, 30)}の新作・出演作品一覧（${g.items.length}本）｜${SITE_NAME}`;
+export const makerPageTitle = (g) => `${truncate(g.name, 30)}の新作・作品一覧（${g.items.length}本）｜${SITE_NAME}`;
+export const summaryDescription = (summary) => truncate(summary, 120);
+
+// ------------------------------------------------------------------
+// 構造化データ（JSON-LD）
+// ------------------------------------------------------------------
+
+const absoluteUrl = (path, siteUrl = SITE_URL) => siteUrl + path;
+
+/** パンくず。trail は [{ name, path }, ...]（最後が今のページ） */
+export function breadcrumbLd(trail, siteUrl = SITE_URL) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: trail.map((t, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: t.name,
+      item: absoluteUrl(t.path, siteUrl),
+    })),
+  };
+}
+
+/** サイト全体の情報（トップページ用） */
+export function websiteLd(siteUrl = SITE_URL) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    url: absoluteUrl('/', siteUrl),
+    inLanguage: 'ja',
+  };
+}
+
+/** <script type="application/ld+json"> の中身にする文字列。</script> などでページが壊れないよう記号を置き換える */
+export function jsonLdScript(data) {
+  return JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
 }

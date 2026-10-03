@@ -1,8 +1,10 @@
 ---
 import Base from '../../layouts/Base.astro';
 import ItemCard from '../../components/ItemCard.astro';
-import { all } from '../../lib/data.js';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { all, actressByName, makerByName } from '../../lib/data.js';
 import {
+  breadcrumbLd,
   formatDateJp,
   itemPath,
   itemPageDescription,
@@ -19,6 +21,11 @@ export function getStaticPaths() {
 const { item } = Astro.props;
 const related = relatedItems(item, all, 8);
 const samples = item.sample_images.slice(0, 8);
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: truncate(item.title, 30), path: itemPath(item.cid) },
+];
+const makerPage = makerByName.get(item.maker)?.path;
 ---
 
 <Base
@@ -27,14 +34,10 @@ const samples = item.sample_images.slice(0, 8);
   path={itemPath(item.cid)}
   image={item.image_url}
   stickyCta={Boolean(item.url)}
+  jsonLd={[breadcrumbLd(trail)]}
 >
   <div class="wrap">
-    <nav aria-label="パンくずリスト">
-      <ol class="crumbs">
-        <li class="crumbs-item"><a class="crumbs-link" href="/">トップ</a></li>
-        <li class="crumbs-item" aria-current="page">{truncate(item.title, 30)}</li>
-      </ol>
-    </nav>
+    <Breadcrumb trail={trail} />
 
     <article class="detail-grid">
       <div class="detail-media">
@@ -57,11 +60,18 @@ const samples = item.sample_images.slice(0, 8);
           <dt class="spec-term">発売日</dt>
           <dd class="spec-desc">{formatDateJp(item.dateKey)}</dd>
           <dt class="spec-term">メーカー</dt>
-          <dd class="spec-desc">{item.maker}</dd>
+          <dd class="spec-desc">{makerPage ? <a class="spec-link" href={makerPage}>{item.maker}</a> : item.maker}</dd>
           {item.actress.length > 0 && (
             <>
               <dt class="spec-term">出演</dt>
-              <dd class="spec-desc">{item.actress.join('、')}</dd>
+              <dd class="spec-desc">
+                {item.actress.map((name, i) => (
+                  <>
+                    {i > 0 && '、'}
+                    {actressByName.get(name) ? <a class="spec-link" href={actressByName.get(name).path}>{name}</a> : name}
+                  </>
+                ))}
+              </dd>
             </>
           )}
           {item.duration_min && (

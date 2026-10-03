@@ -1,0 +1,15 @@
+---
+// パンくずリスト。trail は [{ name, path }, ...]（最後が今のページ。リンクにしない）
+// 検索エンジン向けの構造化データ（breadcrumbLd）と同じ trail を使うこと
+const { trail } = Astro.props;
+---
+
+<nav aria-label="パンくずリスト">
+  <ol class="crumbs">
+    {trail.map((t, i) => (
+      i < trail.length - 1
+        ? <li class="crumbs-item"><a class="crumbs-link" href={t.path}>{t.name}</a></li>
+        : <li class="crumbs-item" aria-current="page">{t.name}</li>
+    ))}
+  </ol>
+</nav>

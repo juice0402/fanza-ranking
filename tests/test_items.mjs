@@ -94,5 +94,70 @@ check('タイトルを切り詰める', L.itemPageTitle(long).length < 80, L.ite
 check('説明文は120字以内', L.itemPageDescription({ ...base, comment: 'い'.repeat(300) }).length <= 120);
 check('作品パス', L.itemPath('abc123') === '/item/abc123/' && L.archivePath(3) === '/archive/3/');
 
+console.log('\n■ 出演者ページ・メーカーページ');
+check('形式(formats)は英数字のタグだけ', items.every((i) => i.formats.every((t) => /^[0-9A-Za-z]{1,6}$/.test(t))));
+check('形式(formats): 日本語のタグは入れない', L.normalizeItems([{ cid: 'a', title: 't', date: '2026-10-01', tags: ['VR', '内容を表す言葉', '8K', 123] }])[0].formats.join() === 'VR,8K');
+const slugA = L.entitySlug('花守夏歩');
+check('URL用の名前: 10文字の英数字で、同じ名前なら同じ', /^[0-9a-f]{10}$/.test(slugA) && slugA === L.entitySlug('花守夏歩'), slugA);
+check('URL用の名前: 違う名前なら違う（/ や 括弧を含む名前でも英数字だけ）',
+  new Set(['花守夏歩', '花守夏帆', 'チキチキカマー/妄想族', '善場まみ（茉城まみ）']).size === new Set(['花守夏歩', '花守夏帆', 'チキチキカマー/妄想族', '善場まみ（茉城まみ）'].map(L.entitySlug)).size
+  && ['チキチキカマー/妄想族', '善場まみ（茉城まみ）', 'a b?c#d%'].every((n) => /^[0-9a-f]{10}$/.test(L.entitySlug(n))));
+const aGroups = L.groupByActress(items);
+const mGroups = L.groupByMaker(items);
+check('出演者グループ: 2本以上の人だけ', aGroups.length > 0 && aGroups.every((g) => g.items.length >= 2));
+const mixed = L.normalizeItems([
+  { cid: 's1', title: 't', date: '2026-10-01', actress: ['Solo', 'Duo'], maker: 'M1' },
+  { cid: 's2', title: 't', date: '2026-10-02', actress: ['Duo'], maker: 'M1' },
+  { cid: 's3', title: 't', date: '2026-10-03', actress: [], maker: 'M2' },
+]);
+check('出演者グループ: 作品が1本だけの人は作らない（最小本数を1にすれば作る）', L.groupByActress(mixed).map((g) => g.name).join() === 'Duo' && L.groupByActress(mixed, 1).length === 2);
+check('メーカーグループ: 作品が1本だけのメーカーは作らない', L.groupByMaker(mixed).map((g) => g.name).join() === 'M1' && L.groupByMaker(mixed, 1).length === 2);
+check('出演者グループ: 件数が実際の作品数と一致', aGroups.every((g) => g.items.length === items.filter((i) => i.actress.includes(g.name)).length));
+check('出演者グループ: 作品は新しい順', aGroups.every((g) => g.items.every((x, i, a) => i === 0 || a[i - 1].dateKey >= x.dateKey)));
+check('出演者グループ: 作品数の多い順', aGroups.every((g, i, a) => i === 0 || a[i - 1].items.length >= g.items.length));
+check('出演者グループ: ページのパスと短い名前が重複しない', new Set(aGroups.map((g) => g.path)).size === aGroups.length && aGroups.every((g) => g.path === `/actress/${L.entitySlug(g.name)}/`));
+check('メーカーグループ: 「不明」は作らない', !mGroups.some((g) => g.name === '不明') && !L.groupByMaker(items, 1).some((g) => g.name === '不明'));
+check('メーカーグループ: 2本以上・パスは /maker/', mGroups.length > 0 && mGroups.every((g) => g.items.length >= 2 && g.path.startsWith('/maker/')));
+const dup = L.normalizeItems([
+  { cid: 'x1', title: 't', date: '2026-10-01', actress: ['A', 'A'], maker: 'M' },
+  { cid: 'x2', title: 't', date: '2026-10-02', actress: ['A'], maker: 'M' },
+  { cid: 'x3', title: 't', date: '2026-10-03', actress: [], maker: '' },
+  { cid: 'x4', title: 't', date: '2026-10-04', actress: [], maker: '' },
+]);
+check('同じ作品に同じ名前が2回あっても1本と数える', L.groupByActress(dup)[0].items.length === 2 && L.groupByActress(dup)[0].items[0].cid === 'x2');
+check('メーカーが「不明」の作品が何本あっても、「不明」のページは作らない', dup.filter((i) => i.maker === '不明').length === 2 && L.groupByMaker(dup).map((g) => g.name).join() === 'M');
+const clash = L.groupItems(L.normalizeItems([
+  { cid: 'c1', title: 't', date: '2026-10-01', actress: ['先に出た人'] }, { cid: 'c2', title: 't', date: '2026-10-02', actress: ['先に出た人', '同じ短い名前になった人'] },
+  { cid: 'c3', title: 't', date: '2026-10-03', actress: ['同じ短い名前になった人'] },
+]), (i) => i.actress, L.actressPath, 1, () => 'same');
+check('別の名前が同じ短い名前になったときは、先の名前のページだけ作り、混ぜない', clash.length === 1 && clash[0].name === '先に出た人' && clash[0].items.length === 2, JSON.stringify(clash.map((g) => [g.name, g.items.length])));
+check('空のデータでも落ちない', L.groupByActress([]).length === 0 && L.groupByMaker([]).length === 0);
+check('名前から探す表（indexByName）', L.indexByName(aGroups).get(aGroups[0].name) === aGroups[0] && !L.indexByName(aGroups).has('いない人'));
+check('形式の一覧: 重複なし・出てきた順', L.formatsOf([{ formats: ['VR', '8K'] }, { formats: ['8K', 'VR'] }]).join() === 'VR,8K');
+
+const g0 = aGroups[0];
+const sum = L.actressSummary(g0);
+check('出演者の紹介文: 名前・本数・発売日の範囲が入る', sum.includes(g0.name) && sum.includes(`${g0.items.length}本`) && sum.includes('年') && sum.includes('発売日は'), sum);
+const oneDay = { name: 'A', items: [{ dateKey: '2026-10-01', maker: '不明', actress: ['A'], formats: [] }, { dateKey: '2026-10-01', maker: '不明', actress: ['A'], formats: [] }] };
+check('出演者の紹介文: 発売日が1日だけなら「から」を使わない・メーカー不明の文は出さない', !L.actressSummary(oneDay).includes('から') && !L.actressSummary(oneDay).includes('メーカー'), L.actressSummary(oneDay));
+const manyMakers = { name: 'A', items: ['M1', 'M2', 'M3', 'M4'].map((m) => ({ dateKey: '2026-10-01', maker: m, actress: ['A'], formats: ['VR'] })) };
+check('出演者の紹介文: メーカーは3つまで＋「ほか」・形式を書く', /M1、M2、M3ほか/.test(L.actressSummary(manyMakers)) && !L.actressSummary(manyMakers).includes('M4') && L.actressSummary(manyMakers).includes('VRの作品を含みます'), L.actressSummary(manyMakers));
+const mg = mGroups[0];
+check('メーカーの紹介文: 名前・本数が入る', L.makerSummary(mg).includes(mg.name) && L.makerSummary(mg).includes(`${mg.items.length}本`), L.makerSummary(mg));
+check('紹介文に作品タイトルを含めない', aGroups.every((g) => !g.items.some((i) => L.actressSummary(g).includes(i.title))) && mGroups.every((g) => !g.items.some((i) => L.makerSummary(g).includes(i.title))));
+check('ページのタイトル・説明文の長さ', L.actressPageTitle({ name: 'あ'.repeat(100), items: [1, 2] }).length < 70 && L.summaryDescription('い'.repeat(300)).length <= 120 && L.makerPageTitle(mg).includes(`${mg.items.length}本`));
+
+console.log('\n■ 構造化データ（JSON-LD）');
+const bc = L.breadcrumbLd([{ name: 'トップ', path: '/' }, { name: 'メーカー一覧', path: '/maker/' }, { name: 'A', path: '/maker/abc/' }]);
+check('パンくず: 種類と順番（1から）', bc['@type'] === 'BreadcrumbList' && bc['@context'] === 'https://schema.org' && bc.itemListElement.map((e) => e.position).join() === '1,2,3');
+check('パンくず: URLは絶対URL', bc.itemListElement.every((e) => e.item.startsWith('https://fanza-ranking.pages.dev/')) && bc.itemListElement[2].item === 'https://fanza-ranking.pages.dev/maker/abc/');
+check('パンくず: 指定したURLを使う', L.breadcrumbLd([{ name: 'a', path: '/x/' }], 'https://example.com').itemListElement[0].item === 'https://example.com/x/');
+const ws = L.websiteLd();
+check('サイト情報: 名前・URL・言語', ws['@type'] === 'WebSite' && ws.name === L.SITE_NAME && ws.url === 'https://fanza-ranking.pages.dev/' && ws.inLanguage === 'ja');
+const evil = { name: '</script><script>alert(1)</script>& ' };
+const script = L.jsonLdScript(evil);
+check('JSON-LD: ページを壊す記号（</script> など）を置き換える', !script.includes('<') && !script.includes('>') && !script.includes('&') && !script.includes(' '), script);
+check('JSON-LD: 置き換えても、読み戻すと元のデータと同じ', JSON.stringify(JSON.parse(script)) === JSON.stringify(evil));
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

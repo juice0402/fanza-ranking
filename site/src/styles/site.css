@@ -804,3 +804,61 @@ button:focus-visible {
     scroll-behavior: auto;
   }
 }
+
+/* ---------- フッターの案内リンク ---------- */
+
+.foot-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0 0 14px;
+}
+
+/* ---------- 出演者・メーカーの一覧 ---------- */
+
+.name-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.name-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  background: var(--board);
+  text-decoration: none;
+}
+
+.name-link:hover {
+  border-color: var(--paper);
+}
+
+.name-link-name {
+  font-weight: 700;
+}
+
+.name-link-count {
+  flex: none;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+/* 出演者・メーカーのページの紹介文 */
+.summary {
+  margin: 14px 0 0;
+  max-width: 40em;
+  color: var(--paper-dim);
+  font-size: 14px;
+}
+
+.spec-link {
+  text-underline-offset: 3px;
+}
