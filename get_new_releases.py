@@ -416,6 +416,26 @@ def parse_api_item(raw):
     }
 
 
+def refresh_blank_cast(archive, fetched, today_str):
+    """保存済みで出演者が空の作品に、今回取得したデータに載っていた出演者を入れる。補った作品の cid のリストを返す。
+
+    FANZAは、予約の作品に出演者をあとから載せることがある。保存済みの作品は取り直さないので、
+    今回の取得（発売済み・予約）にもう一度出てきたときに、空だった出演者だけを補う。
+    ・API の追加の呼び出しはしない（今回取得した分だけを使う）
+    ・出演者がすでにある作品は書き換えない（空欄を埋めるだけ）
+    ・補ったら更新日（updated）を進める（sitemap の lastmod に使うため）
+    """
+    filled = []
+    for fresh in fetched:
+        old = archive.get(fresh["cid"])
+        if old is None or old.get("actress") or not fresh.get("actress"):
+            continue
+        old["actress"] = list(fresh["actress"])
+        old["updated"] = today_str
+        filled.append(old["cid"])
+    return filled
+
+
 def iso(dt):
     return dt.strftime("%Y-%m-%dT%H:%M:%S")
 
@@ -467,6 +487,10 @@ def main():
     if released and all(p["date"][:10] > today_str for p in released):
         print("⚠️ 発売済みのはずの取得結果が、すべて未来の日付でした。日付の絞り込みが効いていないかも。")
 
+    filled = refresh_blank_cast(archive, released + upcoming, today_str)
+    if filled:
+        print(f"👤 出演者が空だった作品に、出演者を補いました: {len(filled)}件")
+
     newcomers = [p for p in released if p["cid"] not in archive][:NEW_ITEMS_PER_RUN]
     newcomers += [p for p in upcoming if p["cid"] not in archive and p["cid"] not in {n["cid"] for n in newcomers}]
     print(f"🆕 新しく追加: {len(newcomers)}件")
@@ -507,6 +531,7 @@ def main():
         "",
         f"- 取得: 発売済み {len(released)}件 / 予約 {len(upcoming)}件",
         f"- 新しく追加: {len(newcomers)}件",
+        f"- 出演者が空だった作品に補った: {len(filled)}件",
         f"- 合計: {len(archive)}件（AIコメント {total_ai}件 / 代わりの文 {len(archive) - total_ai}件）",
         f"- 今回のAIコメント: 成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / Geminiに頼んだ回数 {maker.calls}回",
     ]

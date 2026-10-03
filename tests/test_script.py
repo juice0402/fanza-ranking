@@ -101,6 +101,7 @@ class Env:
         self.dmm_mode = "ok"            # ok / fail / status400
         self.first_429_done = False
         self.prompts = []
+        self.dmm_calls = 0              # FANZA APIを呼んだ回数
 
     def urlopen(self, req, timeout=None):
         url = req.full_url if hasattr(req, "full_url") else req
@@ -111,6 +112,7 @@ class Env:
         raise AssertionError("想定外のURL: " + url)
 
     def _dmm(self, url):
+        self.dmm_calls += 1
         q = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
         if self.dmm_mode == "fail":
             raise urllib.error.URLError("network down")
@@ -408,6 +410,42 @@ check("回数上限(GEMINI_MAX_CALLS=5): Geminiに頼むのは5回まで", e.gem
 check("回数上限: 残りは代わりの文で載る（作品は減らない）", code == 0 and len([x for x in d5 if x["cid"].startswith(("rel", "up"))]) == m.NEW_ITEMS_PER_RUN + m.UPCOMING_ITEMS)
 check("回数上限: ログに理由が出る", "上限(5回)" in out)
 
+print("\n■ 出演者が空の作品を、あとから載った出演者で補う")
+path_c = os.path.join(tmp, "cast.json")
+seed = json.load(open(SAVED_DATA, encoding="utf-8"))
+
+
+def seeded(cid, days, actress, kind="ai"):
+    """保存済みの作品（APIの偽の応答にも出てくる cid を使う）。更新日は昔の日付にしておく"""
+    api = make_api_item(cid, days, actress=tuple(actress))
+    return {"cid": cid, "title": api["title"], "url": api["affiliateURL"], "image_url": api["imageURL"]["large"],
+            "sample_images": [], "date": api["date"], "maker": "テストメーカー", "actress": list(actress), "genres": [],
+            "tags": ["VR", "8K"], "duration_min": 120, "comment": "保存済みのコメントです。" * 5, "comment_kind": kind,
+            "comment_tries": 0, "updated": "2000-01-01"}
+
+
+seed += [
+    seeded("rel001", -0, []),                 # 発売済み・空 → 今回の取得にテスト花子が載っている → 補う
+    seeded("up000", 3, []),                   # 予約・空 → 今回の取得にテスト花子が載っている → 補う
+    seeded("rel002", -0, ["既存の人"]),       # すでに出演者がある → 今回の取得が違っても書き換えない
+    seeded("rel004", -1, []),                 # 空 → 今回の取得も空 → 空のまま・更新日も動かない
+]
+json.dump(seed, open(path_c, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+e = Env()
+e.first_429_done = True
+m = load_module(path_c)
+code, out = run_main_capture(m, e)
+got = {d["cid"]: d for d in json.load(open(path_c, encoding="utf-8"))}
+check("正常終了(0)", code == 0)
+check("空だった発売済みの作品に、出演者が入る", got["rel001"]["actress"] == ["テスト花子"], got["rel001"]["actress"])
+check("空だった予約の作品にも、出演者が入る", got["up000"]["actress"] == ["テスト花子"], got["up000"]["actress"])
+check("補った作品は、更新日が今日になる（sitemap の lastmod に使う）", got["rel001"]["updated"] == TODAY_STR and got["up000"]["updated"] == TODAY_STR)
+check("補っても、コメントや種類は書き換えない", got["rel001"]["comment"] == "保存済みのコメントです。" * 5 and got["rel001"]["comment_kind"] == "ai")
+check("すでに出演者がある作品は、書き換えない（更新日も動かない）", got["rel002"]["actress"] == ["既存の人"] and got["rel002"]["updated"] == "2000-01-01", got["rel002"])
+check("今回の取得も空の作品は、空のまま（更新日も動かない）", got["rel004"]["actress"] == [] and got["rel004"]["updated"] == "2000-01-01", got["rel004"])
+check("ログに補った件数が出る（2件）", "補いました: 2件" in out, out[-300:])
+check("補うために、APIを余計に呼んでいない（発売済み1回＋予約1回）", e.dmm_calls == 2, e.dmm_calls)
+
 print("\n■ 実行結果の要約（GitHub Actionsの画面に出る）")
 summary_path = os.path.join(tmp, "summary.md")
 os.environ["GITHUB_STEP_SUMMARY"] = summary_path
@@ -419,6 +457,7 @@ m = load_module(path_s)
 run_main(m, e)
 sm = open(summary_path, encoding="utf-8").read() if os.path.exists(summary_path) else ""
 check("要約: 取得件数・追加件数・AIの成功数が書かれる", "FANZA更新の結果" in sm and "新しく追加" in sm and "成功" in sm, sm[:200])
+check("要約: 出演者を補った件数が書かれる", "出演者が空だった作品に補った" in sm, sm[:300])
 os.remove(summary_path)
 e = Env()
 e.dmm_mode = "fail"

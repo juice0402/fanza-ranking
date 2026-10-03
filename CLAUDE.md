@@ -12,6 +12,7 @@ FANZAの新作・予約作品を毎日自動で集め、AIのひとことコメ�
 GitHub Actions（毎日 0:05 JST。日付が変わった直後）
   → get_new_releases.py
       FANZA(DMM) アフィリエイトAPI から「発売済み」「予約」を別々に取得
+      出演者が空の保存済み作品は、今回の取得に載っていれば補う（refresh_blank_cast）
       Gemini でひとことコメント作成（ブロック時は代替文 → 次回再挑戦）
       → site/src/data/new_releases.json に作品IDごとにためていく
   → main に commit → Cloudflare Pages が自動ビルド（Astro, 静的サイト）→ 公開
