@@ -43,9 +43,10 @@ export function formatDateJp(dateKey) {
   return `${y}年${m}月${d}日`;
 }
 
+/** 長い文字列を max 文字までに切る。絵文字や旧字体の「𠮷」のような2つ分の文字（サロゲートペア）の途中では切らない */
 export function truncate(text, max) {
-  const s = String(text ?? '');
-  return s.length > max ? s.slice(0, max - 1) + '…' : s;
+  const chars = Array.from(String(text ?? ''));
+  return chars.length > max ? chars.slice(0, max - 1).join('') + '…' : chars.join('');
 }
 
 /** "YYYY-MM-DD" の形か */
@@ -69,8 +70,10 @@ export function safeHttpsUrl(url, hostSuffixes) {
   return text;
 }
 
-/** サンプル動画・出演者の顔写真として使ってよいホスト（FANZA / DMM） */
+/** サンプル動画・画像（顔写真・パッケージ・サンプル画像）として使ってよいホスト（DMM） */
 export const FANZA_HOSTS = ['dmm.co.jp'];
+/** 作品・出演者のリンク（アフィリエイトのURL）として使ってよいホスト（FANZA / DMM） */
+export const FANZA_LINK_HOSTS = ['fanza.co.jp', 'dmm.co.jp'];
 
 /** JSONの中身を、画面で使いやすい形に揃える（足りない項目があっても落ちない） */
 export function normalizeItems(raw) {
@@ -87,9 +90,10 @@ export function normalizeItems(raw) {
     items.push({
       cid,
       title,
-      url: String(r.url ?? ''),
-      image_url: String(r.image_url ?? ''),
-      sample_images: Array.isArray(r.sample_images) ? r.sample_images.filter(Boolean) : [],
+      // URLは、FANZA(DMM)のhttpsだけ通す（javascript: や他のサイトのURLがデータに紛れても、画面に出さない）
+      url: safeHttpsUrl(r.url, FANZA_LINK_HOSTS),
+      image_url: safeHttpsUrl(r.image_url, FANZA_HOSTS),
+      sample_images: Array.isArray(r.sample_images) ? r.sample_images.map((u) => safeHttpsUrl(u, FANZA_HOSTS)).filter(Boolean) : [],
       date,
       dateKey: date.slice(0, 10),
       maker: String(r.maker ?? '') || '不明',

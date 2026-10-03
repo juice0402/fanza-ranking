@@ -129,6 +129,7 @@ class Env:
         self.actress_mode = "ok"        # 出演者の検索: ok / fail
         self.rank_mode = "ok"           # 売れ筋ランキング: ok / fail
         self.rank_items = None          # 売れ筋ランキングの応答（None なら標準の3本）
+        self.actress_total_extra = 0    # 名前での出演者検索に「該当は全部で、返した一覧よりこれだけ多い」と答える（一覧が途中で切れた場合）
 
     def urlopen(self, req, timeout=None):
         url = req.full_url if hasattr(req, "full_url") else req
@@ -168,7 +169,10 @@ class Env:
                 rows = [self._actress_row(fake_actress_id(name) + k, name) for k in (0, 1)]
             else:
                 rows = [self._actress_row(fake_actress_id(name), name), self._actress_row(fake_actress_id(name + "別人"), name + "別人")]
-            return FakeResponse({"result": {"status": 200, "actress": rows}})
+            result = {"status": 200, "actress": rows}
+            if self.actress_total_extra:
+                result["total_count"] = len(rows) + self.actress_total_extra
+            return FakeResponse({"result": result})
         if q.get("cid"):
             if self.cid_mode == "fail":
                 raise urllib.error.URLError("cid api down")
@@ -705,10 +709,84 @@ open(os.path.join(folder, "actresses.json"), "w", encoding="utf-8").write("{oops
 before_pc = open(path_pc, "rb").read()
 env_pc = Env()
 m_pc, code_pc, out_pc = run_with(path_pc, env_pc, "--refresh-only")
-check("出演者データが壊れていたら、何もせず止まる（上書きしない）", code_pc == 1 and open(path_pc, "rb").read() == before_pc and open(os.path.join(folder, "actresses.json"), encoding="utf-8").read() == "{oops" and env_pc.dmm_calls == 0, out_pc[-200:])
-open(os.path.join(folder, "actresses.json"), "w", encoding="utf-8").write('{"actresses": "x"}')
+act_file_pc = os.path.join(folder, "actresses.json")
+check("出演者データが壊れていても、作品の更新は止めない（正常終了）。出演者データは上書きせず、出演者の検索もしない", code_pc == 0 and open(act_file_pc, encoding="utf-8").read() == "{oops" and not any(ep == "ActressSearch" for ep, q in env_pc.queries) and len(json.load(open(path_pc, encoding="utf-8"))) == 1, out_pc[-300:])
+check("そのことが、警告として出力に出る", "出演者データを読めませんでした" in out_pc and "::warning" in out_pc, out_pc[-300:])
+check("売れ筋ランキングは、出演者データが壊れていても保存される", os.path.exists(os.path.join(folder, "ranking.json")))
+open(act_file_pc, "w", encoding="utf-8").write('{"actresses": "x"}')
 code_pc2 = run_with(path_pc, Env(), "--refresh-only")[1]
-check("出演者データの形が違っても、止まる", code_pc2 == 1)
+check("出演者データの形が違っても、同じように止めず、上書きしない", code_pc2 == 0 and open(act_file_pc, encoding="utf-8").read() == '{"actresses": "x"}')
+
+print("\n■ 出演者プロフィールの取り違えを防ぐ")
+# 名前での検索が途中で切れているとき（該当が一覧より多い）は、完全一致が1人でも採用しない
+folder = scenario_dir("profiles_cut")
+path_cut = write_archive(folder, [seed_item("x", -2, ["既知の人"])])
+env_cut = Env()
+env_cut.actress_total_extra = 15
+run_with(path_cut, env_cut, "--refresh-only")
+act_cut = json.load(open(os.path.join(folder, "actresses.json"), encoding="utf-8"))
+check("一覧が途中で切れているとき（該当が一覧より多い）は、完全一致が1人でも採用しない（同じ名前の人が、一覧の外にいるかもしれない）", "既知の人" not in {a["name"] for a in act_cut["actresses"]} and act_cut["unmatched"].get("既知の人") == TODAY_STR, act_cut["unmatched"])
+kw_cut = [q for ep, q in env_cut.queries if ep == "ActressSearch" and "keyword" in q]
+check("名前での検索は100件まで頼む（切れにくくする）", kw_cut and all(q["hits"] == "100" for q in kw_cut), kw_cut)
+
+# 中身の無い応答で、保存済みの顔写真・体型を消さない
+folder = scenario_dir("profiles_bare")
+path_bare = write_archive(folder, [seed_item("x", -2, ["保存済みの人"])])
+sid = str(fake_actress_id("保存済みの人"))
+ACTRESS_NAMES[sid] = "保存済みの人"
+good = {"id": sid, "name": "保存済みの人", "ruby": "ほぞん", "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/a1.jpg",
+        "image_large": "https://pics.dmm.co.jp/mono/actjpgs/a1.jpg", "bust": 86, "cup": "F", "waist": 57, "hip": 87, "height": 158,
+        "birthday": "1999-03-04", "list_url": "https://al.fanza.co.jp/?lurl=x&af_id=y-990", "fetched": old_day}
+act_file_bare = os.path.join(folder, "actresses.json")
+json.dump({"actresses": [good], "unmatched": {}}, open(act_file_bare, "w", encoding="utf-8"))
+env_bare = Env()
+env_bare.actress_rows[sid] = {"id": sid, "name": "保存済みの人"}  # 中身の無い応答（一時的な不具合を想定）
+run_with(path_bare, env_bare, "--refresh-only")
+got_bare = {x["name"]: x for x in json.load(open(act_file_bare, encoding="utf-8"))["actresses"]}["保存済みの人"]
+check("中身の無い応答では、保存済みの顔写真・体型・生年月日・リンクを消さない（取得日だけ進める）", (got_bare["bust"], got_bare["image_small"] != "", got_bare["birthday"], got_bare["list_url"] != "", got_bare["fetched"]) == (86, True, "1999-03-04", True, TODAY_STR), got_bare)
+json.dump({"actresses": [good], "unmatched": {}}, open(act_file_bare, "w", encoding="utf-8"))
+env_bare2 = Env()
+env_bare2.actress_rows[sid] = {"id": sid, "name": "保存済みの人", "bust": "90"}  # 新しい中身がある応答
+run_with(path_bare, env_bare2, "--refresh-only")
+got_bare2 = {x["name"]: x for x in json.load(open(act_file_bare, encoding="utf-8"))["actresses"]}["保存済みの人"]
+check("新しい中身がある応答なら、新しい内容に置き換える", got_bare2["bust"] == 90 and got_bare2["fetched"] == TODAY_STR, got_bare2)
+
+# 品番で取り直して分かった出演者の id も、プロフィール取得に使う（同じ名前の人が複数いても、取り違えずに済む）
+folder = scenario_dir("profiles_refetched")
+path_rf = write_archive(folder, [seed_item("emptycast", 3, [], movie=True)])
+env_rf = Env()
+env_rf.by_cid = {"emptycast": make_api_item("emptycast", 3, actress=("同名さん",))}
+run_with(path_rf, env_rf, "--refresh-only")
+act_rf = json.load(open(os.path.join(folder, "actresses.json"), encoding="utf-8"))
+by_rf = {a["name"]: a for a in act_rf["actresses"]}
+check("品番の取り直しで分かった出演者の id を使う（名前で探すと同名が2人いて決められない人も、id で取れる）", by_rf.get("同名さん", {}).get("id") == str(fake_actress_id("同名さん")) and by_rf["同名さん"]["fetched"] == TODAY_STR and "同名さん" not in act_rf["unmatched"], (by_rf.get("同名さん"), act_rf["unmatched"]))
+
+print("\n■ 取り直しの枠（出演者が空の作品が多くても、動画の取り直しが後回しにならない）")
+folder = scenario_dir("refetch_fair")
+fair_items = [seed_item(f"far{i:02d}", 20 + i, [], movie=False) for i in range(25)] + [seed_item(f"rel{i}", -2 - i, ["動画なし"], movie=False) for i in range(3)]
+path_fair = write_archive(folder, fair_items)
+env_fair = Env()
+run_with(path_fair, env_fair, "--refresh-only")
+asked_fair = cid_queries(env_fair)
+check(f"出演者が空の作品が25件あっても、発売済みの動画なしの3件も取り直す（合計 {m_p.REFRESH_PER_RUN} 件）", len(asked_fair) == m_p.REFRESH_PER_RUN and all(f"rel{i}" in asked_fair for i in range(3)), asked_fair)
+check("出演者が空の作品は、発売日が今日に近いものから", all(f"far{i:02d}" in asked_fair for i in range(17)) and "far17" not in asked_fair, asked_fair)
+folder = scenario_dir("refetch_fair2")
+fair2 = [seed_item(f"c{i}", 3 + i, [], movie=True) for i in range(3)] + [seed_item(f"m{i:02d}", -2 - i, ["動画なし"], movie=False) for i in range(25)]
+env_fair2 = Env()
+run_with(write_archive(folder, fair2), env_fair2, "--refresh-only")
+asked_fair2 = cid_queries(env_fair2)
+check("動画なしが25件あっても、出演者が空の3件はすべて取り直す（合計 20 件）", len(asked_fair2) == m_p.REFRESH_PER_RUN and all(f"c{i}" in asked_fair2 for i in range(3)), asked_fair2)
+
+print("\n■ 形式タグ・URL・生年月日の検査")
+tags_item = m_p.parse_api_item(make_api_item("tag001", -1, title="【VR】【痴●団地】【8K】【ケツずり】【4K60fps】テスト作品"))
+check("形式タグは英数字6文字までだけ（日本語の括弧書き・長すぎるものはタイトルの断片なので除く）", tags_item["tags"] == ["VR", "8K"], tags_item["tags"])
+check("保存済みのタグも、形式タグだけに直す（日本語の断片は消える）", m_p.normalize_loaded({"cid": "a", "title": "テスト", "tags": ["ケツずり", "VR", "VR"]})["tags"] == ["VR"] and m_p.normalize_loaded({"cid": "a", "title": "【痴●団地】テスト", "tags": ["痴●団地"]})["tags"] == [])
+frag = m_p.normalize_loaded({"cid": "b", "title": "【ケツずり】テスト", "tags": ["ケツずり", "8K"], "actress": ["花子"], "maker": "M", "date": "2026-10-01"})
+check("AIへの依頼にも、定型文にも、タイトルの断片は入らない", "ケツずり" not in m_p.build_prompt(frag, 0) and "ケツずり" not in m_p.template_comment(frag) and "8K" in m_p.build_prompt(frag, 0))
+H = ("dmm.co.jp",)
+check("URL: DMMのhttpsだけ通す（httpはhttpsに直す）", m_p.safe_https_url("http://pics.dmm.co.jp/a.jpg", H) == "https://pics.dmm.co.jp/a.jpg" and m_p.safe_https_url("https://evil.example/dmm.co.jp", H) == "")
+check("URL: ブラウザと解釈がずれるもの（バックスラッシュ・@つき・空白）は通さない", all(m_p.safe_https_url(u, H) == "" for u in ["https://evil.com\\@dmm.co.jp/x", "https://dmm.co.jp:x@evil.com/", "https://u:p@pics.dmm.co.jp/a", "https://pics.dmm.co.jp/a b.jpg", "javascript:alert(1)"]))
+check("生年月日: 実在しない日付（2月30日・13月）は使わない", m_p.valid_birthday("1999-02-30", TODAY_STR) == "" and m_p.valid_birthday("1999-13-45", TODAY_STR) == "" and m_p.valid_birthday("1999-02-28", TODAY_STR) == "1999-02-28")
 
 print("\n■ 売れ筋ランキング（FANZAの人気順の上位3本）")
 folder = scenario_dir("ranking")

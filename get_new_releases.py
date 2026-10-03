@@ -93,9 +93,22 @@ def day_key(value):
     return m.group(1) if m else ""
 
 
+FORMAT_TAG = re.compile(r"[0-9A-Za-z]{1,6}")  # 形式タグ（VR・8K など）。日本語の括弧書きはタイトルの一部なので、タグにしない
+
+
+def clean_tags(tags):
+    """形式タグだけを残す（英数字6文字まで。重複なし）。タイトルの断片を、AIへの依頼や定型文に混ぜないため"""
+    out = []
+    for t in tags or []:
+        t = t.strip() if isinstance(t, str) else ""
+        if FORMAT_TAG.fullmatch(t) and t not in out:
+            out.append(t)
+    return out[:4]
+
+
 def title_tags(title):
-    """タイトルの【VR】【8K】のような括弧書きを取り出す"""
-    return [t.strip() for t in re.findall(r"【([^】]{1,10})】", title or "")][:4]
+    """タイトルの【VR】【8K】のような括弧書きから、形式タグだけを取り出す"""
+    return clean_tags(re.findall(r"【([^】]{1,10})】", title or ""))
 
 
 # ------------------------------------------------------------------
@@ -316,7 +329,7 @@ def normalize_loaded(item):
         "maker": item.get("maker") or "不明",
         "actress": actress,
         "genres": item.get("genres") or [],
-        "tags": item.get("tags") or title_tags(title),
+        "tags": clean_tags(item.get("tags")) or title_tags(title),  # 保存済みのタグも、形式タグだけに直す
         "duration_min": item.get("duration_min"),
         "sample_movie": safe_https_url(item.get("sample_movie"), MOVIE_HOSTS),
         "movie_tries": int(item.get("movie_tries") or 0),
@@ -402,7 +415,13 @@ def call_item_list(extra_params):
 
 
 def call_actress_search(params):
-    return call_api("ActressSearch", params).get("actress") or []
+    """出演者検索の応答から (出演者の一覧, 該当した全人数 or None) を返す。全人数が一覧より多ければ、一覧は途中までということ"""
+    result = call_api("ActressSearch", params)
+    try:
+        total = int(result.get("total_count"))
+    except (TypeError, ValueError):
+        total = None
+    return result.get("actress") or [], total
 
 
 def safe_https_url(url, host_suffixes):
@@ -410,11 +429,13 @@ def safe_https_url(url, host_suffixes):
     if not isinstance(url, str):
         return ""
     url = url.strip()
+    if re.search(r"[\\\x00-\x20\x7f]", url):  # バックスラッシュ・空白・制御文字は、ブラウザと解釈がずれるため通さない
+        return ""
     if url.startswith("http://"):
         url = "https://" + url[len("http://"):]
     parsed = urllib.parse.urlparse(url)
     host = (parsed.hostname or "").lower()
-    if parsed.scheme != "https" or not any(host == suffix or host.endswith("." + suffix) for suffix in host_suffixes):
+    if parsed.scheme != "https" or "@" in parsed.netloc or not any(host == suffix or host.endswith("." + suffix) for suffix in host_suffixes):
         return ""
     return url
 
@@ -509,6 +530,7 @@ def refetch_targets(archive, today_str, skip):
     ・次に、発売済みでサンプル動画がまだ無い作品（取り直しは MAX_MOVIE_TRIES 回まで）
     skip は、今回すでに取得できた作品の cid"""
     window_start = (datetime.strptime(today_str, "%Y-%m-%d") - timedelta(days=REFRESH_WINDOW_DAYS)).strftime("%Y-%m-%d")
+    today_day = datetime.strptime(today_str, "%Y-%m-%d")
     cast, movie = [], []
     for item in archive.values():
         if item["cid"] in skip:
@@ -518,13 +540,19 @@ def refetch_targets(archive, today_str, skip):
             cast.append(item)
         elif not item.get("sample_movie") and day and day <= today_str and int(item.get("movie_tries") or 0) < MAX_MOVIE_TRIES:
             movie.append(item)
-    newest_first = lambda x: (x.get("date") or "", x["cid"])
-    return (sorted(cast, key=newest_first, reverse=True) + sorted(movie, key=newest_first, reverse=True))[:REFRESH_PER_RUN]
+    # 出演者は、発売日が今日に近い作品から（出演者は発売の前後に載ることが多い）。動画は、新しい作品から
+    closest_first = lambda x: (abs((datetime.strptime(day_key(x.get("date")), "%Y-%m-%d") - today_day).days), x["cid"])
+    cast.sort(key=closest_first)
+    movie.sort(key=lambda x: (x.get("date") or "", x["cid"]), reverse=True)
+    # 枠は出演者を先に使うが、動画にも最低でも半分（REFRESH_PER_RUN の半分）は残す。どちらかが余れば、もう一方が使う
+    cast_part = cast[: max(REFRESH_PER_RUN // 2, REFRESH_PER_RUN - len(movie))]
+    return cast_part + movie[: REFRESH_PER_RUN - len(cast_part)]
 
 
-def refetch_by_cid(archive, today_str, skip):
+def refetch_by_cid(archive, today_str, skip, raw_sink=None):
     """出演者が空・サンプル動画が未取得の保存済みの作品を、品番（cid）を指定して取り直す。
-    {cid: [補った項目名]} と、取り直した件数を返す。APIが続けて失敗したら、その回はやめる"""
+    {cid: [補った項目名]} と、取り直した件数を返す。APIが続けて失敗したら、その回はやめる。
+    raw_sink（リスト）を渡すと、取り直した作品の生データを入れる（出演者の id を、プロフィール取得で使うため）"""
     filled = {}
     done = 0
     fails = 0
@@ -541,6 +569,8 @@ def refetch_by_cid(archive, today_str, skip):
             continue
         time.sleep(DMM_INTERVAL_SEC)
         done += 1
+        if raw_sink is not None:
+            raw_sink.extend(rows)
         fresh = next((p for p in map(parse_api_item, rows) if p and p["cid"] == item["cid"]), None)
         if fresh is not None:
             changed = apply_fresh(item, fresh, today_str)
@@ -567,6 +597,10 @@ def valid_birthday(value, today_str):
     if not day:
         return ""
     y, m, d = int(day[:4]), int(day[5:7]), int(day[8:10])
+    try:
+        datetime(y, m, d)  # 1999-02-30 のような、無い日付は使わない
+    except ValueError:
+        return ""
     ty, tm, td = int(today_str[:4]), int(today_str[5:7]), int(today_str[8:10])
     age = ty - y - ((tm, td) < (m, d))
     return day if 18 <= age <= 80 else ""
@@ -604,8 +638,18 @@ def clean_actress_entry(raw, today_str):
     }
 
 
+PROFILE_DETAIL_KEYS = ("image_small", "image_large", "bust", "cup", "waist", "hip", "height", "birthday", "list_url")
+
+
+def has_profile_details(entry):
+    """顔写真・体型・生年月日・FANZAの全作品リンクの、どれか1つでも入っているか"""
+    return any(entry.get(k) not in (None, "") for k in PROFILE_DETAIL_KEYS)
+
+
 def load_actress_state(today_str):
-    """保存済みの出演者データ {"actresses": {id: 1件}, "unmatched": {名前: 探した日}} を読む（壊れていたら止める）"""
+    """保存済みの出演者データ {"actresses": {id: 1件}, "unmatched": {名前: 探した日}} を読む。
+    壊れていて読めないときは None を返す（呼び出し側は、出演者プロフィールの更新だけをやめて、ファイルは上書きしない。
+    新しい作品の追加やコメントは、出演者データの不具合では止めないため）"""
     state = {"actresses": {}, "unmatched": {}}
     if not os.path.exists(ACTRESSES_PATH):
         return state
@@ -613,11 +657,11 @@ def load_actress_state(today_str):
         with open(ACTRESSES_PATH, encoding="utf-8") as f:
             raw = json.load(f)
     except (OSError, json.JSONDecodeError) as e:
-        print(f"❌ 出演者データを読めませんでした（{e}）。上書きを防ぐため中止します")
-        sys.exit(1)
+        print(f"⚠️ 出演者データを読めませんでした（{e}）。上書きを防ぐため、出演者プロフィールの更新はやめます")
+        return None
     if not isinstance(raw, dict) or not isinstance(raw.get("actresses"), list):
-        print("❌ 出演者データの形が違います。上書きを防ぐため中止します")
-        sys.exit(1)
+        print("⚠️ 出演者データの形が違います。上書きを防ぐため、出演者プロフィールの更新はやめます")
+        return None
     for row in raw["actresses"]:
         entry = clean_actress_entry(row, today_str)
         if entry:
@@ -684,9 +728,9 @@ def update_profiles(state, archive, today_str):
     for kind, key in jobs[:PROFILE_PER_RUN]:
         try:
             if kind == "id":
-                rows = call_actress_search({"actress_id": key, "hits": 1})
+                rows, total = call_actress_search({"actress_id": key, "hits": 1})
             else:
-                rows = call_actress_search({"keyword": key, "hits": 10})
+                rows, total = call_actress_search({"keyword": key, "hits": 100})
             fails = 0
         except RuntimeError as e:
             fails += 1
@@ -700,7 +744,9 @@ def update_profiles(state, archive, today_str):
             row = next((r for r in rows if str(r.get("id")) == key), None)
             entry = clean_actress_entry(row, today_str) if row else None
             old = entries[key]
-            if entry:
+            if entry and not has_profile_details(entry) and has_profile_details(old):
+                old["fetched"] = today_str  # 中身の無い応答（一時的な不具合かも）で、保存済みの顔写真・体型を消さない
+            elif entry:
                 entry["fetched"] = today_str
                 entries[key] = entry
                 fetched += 1
@@ -708,7 +754,8 @@ def update_profiles(state, archive, today_str):
                 old["fetched"] = today_str  # 見つからなかった。毎日探し続けないよう、取り直しの日まで待つ
         else:
             exact = [r for r in rows if str(r.get("name") or "").strip() == key]
-            entry = clean_actress_entry(exact[0], today_str) if len(exact) == 1 else None
+            cut_short = total is not None and total > len(rows)  # 一覧が途中までのとき、同じ名前の人が一覧の外にもいるかもしれない
+            entry = clean_actress_entry(exact[0], today_str) if len(exact) == 1 and not cut_short else None
             if entry and entry["id"] not in entries:
                 entry["fetched"] = today_str
                 entries[entry["id"]] = entry
@@ -790,8 +837,10 @@ def main():
     today = datetime.now(JST).replace(hour=0, minute=0, second=0, microsecond=0)
     today_str = today.strftime("%Y-%m-%d")
     archive = load_archive()
-    actress_state = load_actress_state(today_str)  # 壊れていたら、ここで（何も始める前に）止める
-    print(f"📚 保存済みの作品: {len(archive)}件 / 出演者: {len(actress_state['actresses'])}人")
+    actress_state = load_actress_state(today_str)  # 壊れていたら None（プロフィールの更新だけをやめる。ほかの更新は続ける）
+    if actress_state is None:
+        print("::warning title=出演者データを読めませんでした::actresses.json が壊れています。出演者プロフィールの更新はスキップしました（ファイルは変更していません）")
+    print(f"📚 保存済みの作品: {len(archive)}件 / 出演者: {len(actress_state['actresses']) if actress_state else '読めず'}人")
     if refresh_only:
         print("🔄 取り直しだけを行います（新しい作品の追加・AIコメントはしません）")
 
@@ -821,7 +870,8 @@ def main():
     # 保存済みで、出演者・サンプル動画が空の作品を補う。まず今回の取得に載っていた分（APIの追加呼び出しなし）、
     # 次に、取得に出てこなかった分を品番で取り直す
     filled = refresh_from_fetched(archive, released + upcoming, today_str)
-    refetched = run_stage("保存済み作品の取り直し", lambda: refetch_by_cid(archive, today_str, {p["cid"] for p in released + upcoming}))
+    refetched_raw = []  # 品番で取り直した作品の生データ（出演者の id を、プロフィール取得で使う）
+    refetched = run_stage("保存済み作品の取り直し", lambda: refetch_by_cid(archive, today_str, {p["cid"] for p in released + upcoming}, refetched_raw))
     if refetched:
         filled.update({cid: sorted(set(filled.get(cid, [])) | set(fields)) for cid, fields in refetched[0].items()})
     filled_cast = [c for c, f in filled.items() if "actress" in f]
@@ -874,7 +924,7 @@ def main():
 
     # ---- 出演者のプロフィール・売れ筋ランキング（作品の保存のあと。失敗しても、ほかの更新は止めない）----
     def profiles_stage():
-        raw_all = released_raw + upcoming_raw + (ranking_raw or [])
+        raw_all = released_raw + upcoming_raw + refetched_raw + (ranking_raw or [])
         added = upsert_actresses(actress_state, collect_actresses(raw_all), today_str)
         fetched_n, unmatched_n = update_profiles(actress_state, archive, today_str)
         save_actress_state(actress_state)
@@ -886,7 +936,7 @@ def main():
         ranking_raw = ranking[1]
         run_stage("売れ筋ランキングの保存", lambda: save_ranking(ranking[0], today_str))
         print(f"🏆 売れ筋ランキング: {len(ranking[0])}本（1位 {ranking[0][0]['cid']}）")
-    profile_result = run_stage("出演者プロフィールの取得", profiles_stage)
+    profile_result = run_stage("出演者プロフィールの取得", profiles_stage) if actress_state is not None else None
     if profile_result:
         print(f"👤 出演者プロフィール: 新しく見つけた {profile_result[0]}人 / 取得 {profile_result[1]}人 / 名前で見つからなかった {profile_result[2]}人（保存中 {len(actress_state['actresses'])}人）")
 
@@ -909,6 +959,8 @@ def main():
     summary.append(f"- 売れ筋ランキング: {str(len(ranking[0])) + '本' if ranking else '取得できず（前回のまま）'}")
     if profile_result:
         summary.append(f"- 出演者プロフィール: 取得 {profile_result[1]}人 / 名前で見つからなかった {profile_result[2]}人（保存中 {len(actress_state['actresses'])}人）")
+    elif actress_state is None:
+        summary.append("- 出演者プロフィール: 保存データ（actresses.json）が壊れているため、更新をスキップ（ファイルは変更していません）")
     else:
         summary.append("- 出演者プロフィール: 取得できず（前回のまま）")
     write_step_summary(summary)
