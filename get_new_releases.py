@@ -45,15 +45,6 @@ GEMINI_INTERVAL_SEC = float(os.environ.get("GEMINI_INTERVAL_SEC", "5"))  # API�
 MAX_AI_FAILS_IN_ROW = 3     # 連続で失敗したら、その回はAI呼び出しをやめる
 MAX_RETRY_WAIT_SEC = 60     # 「混雑中」で待つ最大秒数。これより長く待てと言われたら、その回はあきらめる
 
-# 昔のバージョンで使っていた定型文（見つけたら新しい代わりの文に置き換える）
-OLD_GENERIC_COMMENTS = {
-    "注目の新作登場！要チェックです！",
-    "話題の最新作！キャストの美しさと魅力がギュッと詰まった必見の一作です✨",
-    "注目の新着タイトル！期待を裏切らない見ごたえ十分のストーリー展開🔥",
-    "いま一番チェックしたい注目作品！圧倒的な世界観と映像美を楽しめます💖",
-    "ファン必見の最新リリース！見どころ満載で満足度の高い仕上がりです🌟",
-}
-
 ANGLES = [
     "出演者の魅力",
     "新作として発売されるタイミングの注目度",
@@ -80,19 +71,6 @@ def format_date_jp(date_str):
 def title_tags(title):
     """タイトルの【VR】【8K】のような括弧書きを取り出す"""
     return [t.strip() for t in re.findall(r"【([^】]{1,10})】", title or "")][:4]
-
-
-def cid_from_old_item(item):
-    """古い形式のデータには cid が無いので、URLから作品IDを取り出す"""
-    for key in ("url", "image_url"):
-        value = urllib.parse.unquote(item.get(key) or "")
-        m = re.search(r"[?&]id=([A-Za-z0-9_]+)", value)
-        if m:
-            return m.group(1)
-        m = re.search(r"/video/([A-Za-z0-9_]+)/", value)
-        if m:
-            return m.group(1)
-    return None
 
 
 # ------------------------------------------------------------------
@@ -297,8 +275,8 @@ class CommentMaker:
 # データの読み書き
 # ------------------------------------------------------------------
 def normalize_loaded(item):
-    """保存済みデータを今の形に揃える（古い形式のデータも読めるようにする）"""
-    cid = item.get("cid") or cid_from_old_item(item)
+    """保存済みデータの1件を今の形に揃える（足りない項目は既定値で補う）。読めない場合は None"""
+    cid = str(item.get("cid") or "").strip()
     title = (item.get("title") or "").strip()
     if not cid or not title:
         return None
@@ -316,13 +294,10 @@ def normalize_loaded(item):
         "tags": item.get("tags") or title_tags(title),
         "duration_min": item.get("duration_min"),
         "comment": item.get("comment") or "",
-        "comment_kind": item.get("comment_kind") or "",
+        "comment_kind": item.get("comment_kind") if item.get("comment_kind") in ("ai", "template") else "template",
         "comment_tries": int(item.get("comment_tries") or 0),
     }
-    if not out["comment_kind"]:
-        generic = (not out["comment"]) or out["comment"] in OLD_GENERIC_COMMENTS
-        out["comment_kind"] = "template" if generic else "ai"
-    if out["comment_kind"] == "template" and (not out["comment"] or out["comment"] in OLD_GENERIC_COMMENTS):
+    if out["comment_kind"] == "template" and not out["comment"]:
         out["comment"] = template_comment(out)
     return out
 
@@ -336,11 +311,21 @@ def load_archive():
     except (OSError, json.JSONDecodeError) as e:
         print(f"❌ 保存済みデータを読めませんでした（{e}）。上書きを防ぐため中止します")
         sys.exit(1)
+    if not isinstance(raw, list):
+        print("❌ 保存済みデータの形が違います（作品のリストではありません）。上書きを防ぐため中止します")
+        sys.exit(1)
     archive = {}
-    for item in raw if isinstance(raw, list) else []:
-        norm = normalize_loaded(item)
+    unreadable = 0
+    for item in raw:
+        norm = normalize_loaded(item) if isinstance(item, dict) else None
         if norm:
             archive.setdefault(norm["cid"], norm)
+        else:
+            unreadable += 1
+    if unreadable:
+        # 黙って捨てると、保存のときに作品が消えてしまう。止めて気づけるようにする
+        print(f"❌ 保存済みデータに、読めない作品が{unreadable}件あります（cid かタイトルが無い）。消えてしまうのを防ぐため中止します")
+        sys.exit(1)
     return archive
 
 
