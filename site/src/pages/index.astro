@@ -2,12 +2,15 @@
 import Base from '../layouts/Base.astro';
 import DaySection from '../components/DaySection.astro';
 import RankCard from '../components/RankCard.astro';
+import VrToggle from '../components/VrToggle.astro';
 import { released, upcoming, roundups, ranking } from '../lib/data.js';
 import { weeklyPath } from '../lib/roundups.js';
+import { SEARCH_PATH } from '../lib/search.js';
 import {
   dateParts,
   groupByDate,
   countByDate,
+  vrAttrs,
   archivePath,
   websiteLd,
   SITE_NAME,
@@ -38,6 +41,7 @@ const rankingDay = ranking ? dateParts(ranking.date) : null;
       <h1 class="hero-title"><span class="phrase">FANZAの新作を、</span><span class="phrase">発売日ごとに。</span></h1>
       <p class="hero-lead"><span class="phrase">発売日ごとに新作をまとめて、</span><span class="phrase">作品ごとにひとこと添えています。</span><span class="phrase">毎日更新。</span></p>
       <nav class="hero-jump" aria-label="ページ内の移動">
+        <a class="chip-link chip-link-main" href={SEARCH_PATH}>作品を探す</a>
         {ranking && <a class="chip-link" href="#ranking">売れ筋TOP3</a>}
         {released.length > 0 && <a class="chip-link" href="#released">発売中の新作 {released.length}本</a>}
         {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約受付中 {upcomingShown}本</a>}
@@ -47,6 +51,10 @@ const rankingDay = ranking ? dateParts(ranking.date) : null;
       </nav>
     </section>
 
+    <div class="list-tools">
+      <VrToggle />
+    </div>
+
     {ranking && (
       <section id="ranking" class="section" aria-labelledby="ranking-title">
         <div class="section-head">
@@ -54,7 +62,7 @@ const rankingDay = ranking ? dateParts(ranking.date) : null;
           <p class="section-note">FANZAの人気順｜{rankingDay.m}月{rankingDay.d}日時点</p>
         </div>
         <ul class="shelf rank-podium">
-          {ranking.items.map((entry) => <li class="shelf-cell rank-cell"><RankCard entry={entry} /></li>)}
+          {ranking.items.map((entry) => <li class="shelf-cell rank-cell" {...vrAttrs(entry)}><RankCard entry={entry} /></li>)}
         </ul>
       </section>
     )}

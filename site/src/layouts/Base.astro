@@ -6,6 +6,7 @@ import { roundups } from '../lib/data.js';
 import { FAVORITES_PATH } from '../lib/favorites.js';
 import { CALENDAR_PATH } from '../lib/calendar.js';
 import { WEEKLY_INDEX_PATH } from '../lib/roundups.js';
+import { SEARCH_PATH } from '../lib/search.js';
 
 const {
   title = SITE_NAME,
@@ -42,6 +43,13 @@ const canonical = SITE_URL + path;
     <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
 
     {jsonLd.map((data) => <script is:inline type="application/ld+json" set:html={jsonLdScript(data)} />)}
+
+    <script is:inline>
+      // 「VR作品を隠す」を選んでいる端末では、ページを開いた瞬間から隠す（チラつかないよう、ここで先に印を付ける）。スイッチの動きは /vr-filter.js
+      try {
+        if (localStorage.getItem('hide-vr') === '1') document.documentElement.classList.add('hide-vr');
+      } catch (e) {}
+    </script>
 
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
@@ -129,6 +137,7 @@ const canonical = SITE_URL + path;
         <a class="site-nav-link" href="/#released">発売中</a>
         <a class="site-nav-link" href="/#upcoming">予約</a>
         <a class="site-nav-link" href="/archive/1/">過去の作品</a>
+        <a class="site-nav-link" href={SEARCH_PATH}>検索</a>
         <a class="site-nav-link" href={FAVORITES_PATH}>★お気に入り</a>
       </nav>
     </header>
@@ -148,6 +157,7 @@ const canonical = SITE_URL + path;
           <a class="foot-link" href="/#released">発売中</a>
           <a class="foot-link" href="/#upcoming">予約</a>
           <a class="foot-link" href="/archive/1/">過去の作品</a>
+          <a class="foot-link" href={SEARCH_PATH}>作品を探す</a>
           <a class="foot-link" href={FAVORITES_PATH}>お気に入り</a>
           <a class="foot-link" href={CALENDAR_PATH}>発売日カレンダー</a>
           <a class="foot-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a>
@@ -160,5 +170,6 @@ const canonical = SITE_URL + path;
       </div>
     </footer>
     <script is:inline src="/favorites.js" defer></script>
+    <script is:inline src="/vr-filter.js" defer></script>
   </body>
 </html>

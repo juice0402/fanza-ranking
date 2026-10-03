@@ -1,0 +1,9 @@
+---
+// 「VR作品を隠す」スイッチ。押したときの動きは site/public/vr-filter.js（JavaScriptが使えないときは出さない）。
+// 状態は、この端末のブラウザの中（localStorage）にだけ保存して、サイト全体の一覧に効く（サーバーには送らない）。
+const { off = 'VR作品を隠す', on = 'VR作品を隠しています（解除する）' } = Astro.props;
+---
+
+<button type="button" class="vr-toggle" hidden aria-pressed="false" data-vr-toggle data-off={off} data-on={on}>
+  <span class="vr-toggle-mark" aria-hidden="true"></span><span class="vr-toggle-label">{off}</span>
+</button>

@@ -578,6 +578,11 @@ check("画面に「AI」の表示・言い回しが出ていない（チップ�
 no_auto_note = [os.path.relpath(p, DIST) for p in pages if "ひとことコメントは、" not in read(p) or "自動で作成しており、内容の正確さは保証できません" not in read(p)[read(p).find("<footer") :]]
 check("フッターに、コメントが自動で作成されていて正確さは保証できない、という注記が残っている（全ページ）", not no_auto_note, no_auto_note[:3])
 
+# 運営者の希望で、ボタンの下の「広告｜リンク先はFANZAの公式ページです…」の行は出さない（文字が多くなって見づらいため）。
+# 広告であることは、ヘッダーの「広告」ラベルとフッターの文で示す（下の検査）
+per_link_ad = [os.path.relpath(p, DIST) for p in pages if "広告｜リンク先は" in read(p)]
+check("ボタンの下に「広告｜リンク先は…」の行が出ていない（広告の表記は、ヘッダーのラベルとフッターに）", not per_link_ad, per_link_ad[:3])
+
 print("\n■ 全ページの共通の部品（広告表記・年齢確認・リンクの属性・画像・アイコン・ヘッダー）")
 bad_label, bad_foot_ad, bad_gate, bad_credit, bad_head, bad_alt, bad_lang, bad_ext = [], [], [], [], [], [], [], []
 for p in pages:
@@ -644,6 +649,163 @@ hdr = os.path.join(DIST, "_headers")
 htext = read(hdr) if os.path.isfile(hdr) else ""
 check("応答ヘッダーの設定（_headers）がある: nosniff・フレームへの埋め込み禁止（frame-ancestors）", "X-Content-Type-Options: nosniff" in htext and "frame-ancestors 'self'" in htext and re.search(r"^/\*\s*$", htext, re.M) is not None)
 
+
+print("\n■ サムネの切り取り・作品検索・「VR作品を隠す」")
+
+
+def is_vr_raw(x):
+    """保存データの1件がVR作品か（site/src/lib/items.js の isVrWork と同じ決まり。突き合わせるため、別に書いてある）"""
+    title = str(x.get("title", ""))
+    tags_ = [t for t in (x.get("tags") or []) if isinstance(t, str) and re.fullmatch(r"[0-9A-Za-z]{1,6}", t)]
+    genres_ = [g for g in (x.get("genres") or []) if g]
+    return bool(re.search(r"【[^】]*VR[^】]*】", title, re.I)) or any("VR" in t.upper() for t in tags_) or any("VR" in str(g).upper() for g in genres_)
+
+
+# サムネ: パッケージ画像（800×538）の右端の表紙だけを、すべて同じ比率で切り出す（背表紙を入れない・表紙を欠かさない）
+def rule_bodies(selector):
+    return [body for sels, body in css_rules if selector in sels]
+
+
+root_vars = " ".join(rule_bodies(":root"))
+ratio_m = re.search(r"--cover-ratio\s*:\s*(\d+)\s*/\s*(\d+)", root_vars)
+cover_ratio = int(ratio_m.group(1)) / int(ratio_m.group(2)) if ratio_m else 0
+check("CSS: サムネの比率（--cover-ratio）が、表紙（379:538 ≒ 0.7045）より少し細い 0.69〜0.704（背表紙を入れず、表紙もほとんど欠けない）", 0.69 <= cover_ratio <= 0.704, cover_ratio)
+cover_boxes = [b for b in rule_bodies(".item-cover") if "aspect-ratio" in b]
+check("CSS: 作品カードのサムネの枠（.item-cover）が --cover-ratio の比率", len(cover_boxes) == 1 and re.search(r"aspect-ratio\s*:\s*var\(--cover-ratio\)", cover_boxes[0]) is not None, cover_boxes[:2])
+other_ratios = [sels for sels, body in css_rules if "aspect-ratio" in body and any(x.endswith("item-cover") and x != ".item-cover" for x in sels)]
+check("CSS: ランキング（.rank-item など）が、サムネの比率を別の値に変えていない（3:4だと背表紙が入る）", not other_ratios, other_ratios[:2])
+img_rules = rule_bodies(".item-img")
+check("CSS: サムネの画像（.item-img）は、枠いっぱいに、右端にそろえて切り出す（object-fit: cover・object-position: 100% 50%）", any(re.search(r"object-fit\s*:\s*cover", b) and re.search(r"object-position\s*:\s*100%\s*50%", b) for b in img_rules), img_rules[:1])
+thumb = " ".join(rule_bodies(".fav-thumb"))
+tw, th = re.search(r"width\s*:\s*(\d+)px", thumb), re.search(r"height\s*:\s*(\d+)px", thumb)
+check("CSS: お気に入りのサムネ（.fav-thumb）も、表紙の比率に近い（0.68〜0.72）・右端にそろえる", bool(tw and th) and 0.68 <= int(tw.group(1)) / int(th.group(1)) <= 0.72 and re.search(r"object-position\s*:\s*100%\s*50%", thumb) is not None, thumb[:120])
+
+# 「VR作品を隠す」の見た目の決まり
+hide_rule = [b for sels, b in css_rules if ".hide-vr [data-vr]" in sels]
+check("CSS: html.hide-vr のとき、VR作品の目印（data-vr）のマスと、全部がVRの日付（.day.vr-empty）を隠す", bool(hide_rule) and all(re.search(r"display\s*:\s*none", b) for b in hide_rule) and any(".day.vr-empty" in sels for sels, b in css_rules if ".hide-vr [data-vr]" in sels), hide_rule[:1])
+hidden_ok = [sels for sels, b in css_rules if ".vr-toggle[hidden]" in sels and re.search(r"display\s*:\s*none", b)]
+check("CSS: 隠れているスイッチ・検索（hidden）が、display の指定に負けずに隠れる", bool(hidden_ok) and any(".work-search[hidden]" in sels for sels in hidden_ok), hidden_ok[:1])
+
+# 全ページ: 先に印を付ける小さなスクリプト・スイッチのスクリプト・検索へのリンク
+no_head_vr, no_vr_js, no_nav_search, no_foot_search = [], [], [], []
+for p in pages:
+    html_ = read(p)
+    head_ = html_[: html_.find("</head>")] if "</head>" in html_ else ""
+    if "localStorage.getItem('hide-vr') === '1'" not in head_ or "classList.add('hide-vr')" not in head_:
+        no_head_vr.append(os.path.relpath(p, DIST))
+    if 'src="/vr-filter.js"' not in html_:
+        no_vr_js.append(os.path.relpath(p, DIST))
+    nav_ = html_[html_.find('<nav class="site-nav"') : html_.find("</nav>", html_.find('<nav class="site-nav"'))] if '<nav class="site-nav"' in html_ else ""
+    if 'href="/search/"' not in nav_:
+        no_nav_search.append(os.path.relpath(p, DIST))
+    foot_ = html_[html_.find("<footer") :] if "<footer" in html_ else ""
+    if 'href="/search/"' not in foot_:
+        no_foot_search.append(os.path.relpath(p, DIST))
+check(f"全ページの <head> に、「VR作品を隠す」の印を先に付ける小さなスクリプトがある（開いた瞬間にチラつかない。{len(pages)}ページ）", not no_head_vr, no_head_vr[:3])
+check("全ページに vr-filter.js が読み込まれている", not no_vr_js, no_vr_js[:3])
+check("全ページの上のメニュー・フッターに、検索（/search/）へのリンクがある", not no_nav_search and not no_foot_search, (no_nav_search[:2], no_foot_search[:2]))
+check("スクリプト（search.js・vr-filter.js）が公開されている", os.path.isfile(os.path.join(DIST, "search.js")) and os.path.isfile(os.path.join(DIST, "vr-filter.js")))
+check("出演者検索の「FANZAで全作品を見る」に（広告）が付いていない（広告表記は、全ページのヘッダー・フッター）", os.path.isfile(os.path.join(DIST, "actress-search.js")) and "（広告）" not in read(os.path.join(DIST, "actress-search.js")) and "FANZAで全作品を見る" in read(os.path.join(DIST, "actress-search.js")))
+
+# 一覧の1マス（li）の目印: VR作品にだけ data-vr が付く
+def shelf_cells(html_):
+    for m in re.finditer(r'<li class="shelf-cell([^"]*)"([^>]*)>(.*?)</li>', html_, re.S):
+        link = re.search(r'href="/item/([^/"]+)/"', m.group(3))
+        yield m.group(1), m.group(2), (link.group(1) if link else None), m.group(3)
+
+
+wrong_mark, marked_total, vr_total = [], 0, 0
+list_pages = [index_path] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html"))) + sorted(glob.glob(os.path.join(DIST, "actress", "*", "index.html"))) + sorted(glob.glob(os.path.join(DIST, "maker", "*", "index.html"))) + sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))
+for lp in list_pages:
+    for cls, attrs, cid, inner in shelf_cells(read(lp)):
+        if cid is None or cid not in valid or "rank-cell" in cls:
+            continue
+        marked = 'data-vr="true"' in attrs
+        marked_total += 1
+        vr_total += int(marked)
+        if marked != is_vr_raw(valid[cid]):
+            wrong_mark.append((os.path.relpath(lp, DIST), cid, marked))
+check(f"作品の一覧のマス（{marked_total}個）: VR作品（データのタイトル・形式・ジャンルから判定）にだけ data-vr が付いている", not wrong_mark, wrong_mark[:3])
+warn("VR作品のマスが、一覧のどこかにある（目印のテストが空振りしていない）", vr_total > 0)
+rank_wrong = []
+for cls, attrs, cid, inner in shelf_cells(home_html):
+    if "rank-cell" not in cls:
+        continue
+    rank_title = (re.search(r'class="item-title-link"[^>]*>([^<]*)<', inner) or [None, ""])[1]
+    rk = next((r for r in rk_items if htmllib.unescape(rank_title) == str(r.get("title", "")).strip()), None)
+    if rk is None:
+        continue
+    expect = bool(re.search(r"【[^】]*VR[^】]*】", str(rk["title"]), re.I)) or (str(rk["cid"]) in valid and is_vr_raw(valid[str(rk["cid"])]))
+    if ('data-vr="true"' in attrs) != expect:
+        rank_wrong.append((rk["cid"], 'data-vr="true"' in attrs, expect))
+check("売れ筋TOP3: VR作品（題名の【VR】か、当サイトの作品のジャンル）にだけ data-vr が付いている", not rank_wrong, rank_wrong[:3])
+
+# スイッチ（VR作品を隠す）の置き場所: 最初は隠れていて、JavaScriptが出す
+toggle_pages = [index_path, os.path.join(DIST, "search", "index.html")] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html")))[:1] + sorted(glob.glob(os.path.join(DIST, "actress", "*", "index.html")))[:1] + sorted(glob.glob(os.path.join(DIST, "maker", "*", "index.html")))[:1]
+bad_toggle = []
+for tp in toggle_pages:
+    if not os.path.isfile(tp):
+        bad_toggle.append((os.path.relpath(tp, DIST), "ページが無い"))
+        continue
+    btns = [t for t in tags(read(tp), "button") if "data-vr-toggle" in t]
+    if len(btns) != 1 or "hidden" not in btns[0] or btns[0].get("aria-pressed") != "false" or not btns[0].get("data-on") or not btns[0].get("data-off") or btns[0].get("type") != "button":
+        bad_toggle.append((os.path.relpath(tp, DIST), btns[:1]))
+check("「VR作品を隠す」スイッチが、トップ・検索・過去の作品・出演者・メーカーのページに1つずつある（最初は隠れている・押された状態ではない・文言つき）", not bad_toggle, bad_toggle[:3])
+
+# 作品ページ: ジャンルは、そのジャンルで絞り込んだ検索へのリンク
+import urllib.parse as _up
+bad_chip, chip_pages = [], 0
+for cid, x in valid.items():
+    fp = os.path.join(DIST, "item", cid, "index.html")
+    genres_ = [g for g in (x.get("genres") or []) if g]
+    if not genres_ or not os.path.isfile(fp):
+        continue
+    chip_pages += 1
+    links_ = [t.get("href") for t in tags(read(fp), "a") if has_class(t, "chip-tag")]
+    if links_ != ["/search/?tag=" + _up.quote(g, safe="") for g in genres_]:
+        bad_chip.append((cid, links_[:2]))
+check(f"作品ページのジャンル（{chip_pages}ページ）が、そのジャンルで絞り込んだ検索（/search/?tag=…）へのリンクになっている", not bad_chip, bad_chip[:2])
+warn("ジャンルのある作品が1本以上ある", chip_pages > 0)
+
+# 検索ページ
+sp = os.path.join(DIST, "search", "index.html")
+check("検索ページ（/search/）がある", os.path.isfile(sp))
+if os.path.isfile(sp):
+    stext_ = read(sp)
+    check("検索ページは noindex で、sitemap に入っていない（条件ごとに内容が変わる画面のため）", 'name="robots" content="noindex' in stext_ and "/search/" not in sm_paths)
+    section_ = next((t for t in tags(stext_, "section") if t.get("id") == "work-search"), None)
+    check("検索の部品（#work-search）: 最初は隠れている・索引は /data/items-index.json・search.js を読む", section_ is not None and "hidden" in section_ and section_.get("data-index") == "/data/items-index.json" and 'src="/search.js"' in stext_, section_)
+    names_ = {t.get("name") for tag in ("input", "select") for t in tags(stext_, tag)}
+    ids_ = {t.get("id") for tag in ("ul", "p", "button", "section") for t in tags(stext_, tag)}
+    check("検索のフォーム（q・status・sort）と、結果の表示先（#ws-tag-list・#ws-tag-more・#ws-count・#ws-list・#ws-more）がある", {"q", "status", "sort"} <= names_ and {"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} <= ids_, (sorted({"q", "status", "sort"} - names_), sorted({"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} - ids_)))
+    sel_values = [re.findall(r'<option value="([^"]*)"', blk) for blk in re.findall(r'<select name="(?:status|sort)".*?</select>', stext_, re.S)]
+    check("選択肢の値が、スクリプトの読める形（''・released・upcoming / new・old）だけ", sel_values == [["", "released", "upcoming"], ["new", "old"]], sel_values)
+    fb = next((t for t in tags(stext_, "section") if t.get("id") == "ws-fallback"), None)
+    check("JavaScriptが使えないとき用の案内（#ws-fallback）に、過去の作品・出演者・メーカーへのリンクがある", fb is not None and all(f'href="{h}"' in stext_ for h in ("/archive/1/", "/actress/", "/maker/")))
+    check("ジャンルが載っていない予約作品がある旨の注意書きが、検索ページにある", "予約中の作品は、ジャンルがまだ載っていないことがあります" in stext_)
+
+# 索引（/data/items-index.json）
+ii = os.path.join(DIST, "data", "items-index.json")
+check("検索の索引（/data/items-index.json）がある", os.path.isfile(ii))
+if os.path.isfile(ii):
+    try:
+        iidx = json.loads(read(ii))
+    except ValueError:
+        iidx = None
+    ok_shape = isinstance(iidx, dict) and DAY.match(str(iidx.get("generated", ""))) and isinstance(iidx.get("newDays"), int) and isinstance(iidx.get("genres"), list) and isinstance(iidx.get("items"), list)
+    check("索引が正しいJSONで、generated・newDays・genres・items がある", bool(ok_shape), str(iidx)[:80])
+    if ok_shape:
+        irows, igenres = iidx["items"], iidx["genres"]
+        check("索引の項目が、短い名前（c,t,d,a,m,g,i,v）だけで、データにある作品・長い文やURLは入っていない", all(isinstance(r, dict) and set(r) <= set("ctdamgiv") and {"c", "t", "d", "a", "m", "g", "i"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("ctdamgiv"))][:1])
+        check(f"索引の作品の数（{len(irows)}）= min(データの件数 {len(valid)}, 3000)", len(irows) == min(len(valid), 3000), (len(irows), len(valid)))
+        check("索引は発売日の新しい順", [r["d"] for r in irows] == sorted((r["d"] for r in irows), reverse=True))
+        check("ジャンルの番号（g）が、すべて genres の範囲内で、作品のジャンルの名前に戻る", all(all(isinstance(n, int) and 0 <= n < len(igenres) for n in r["g"]) and sorted(igenres[n] for n in r["g"]) == sorted(set(g for g in (valid[r["c"]].get("genres") or []) if g)) for r in irows), [r["c"] for r in irows if sorted(igenres[n] for n in r["g"] if isinstance(n, int) and 0 <= n < len(igenres)) != sorted(set(g for g in (valid[r["c"]].get("genres") or []) if g))][:2])
+        check("ジャンルの一覧は、重複なし・作品の多い順", len(set(igenres)) == len(igenres) and [sum(1 for r in irows if i in r["g"]) for i in range(len(igenres))] == sorted((sum(1 for r in irows if i in r["g"]) for i in range(len(igenres))), reverse=True))
+        check("VRの印（v:1）が、データから判定したVR作品と一致する（VR作品にだけ付く）", all((r.get("v") == 1) == is_vr_raw(valid[r["c"]]) and r.get("v") in (None, 1) for r in irows), [r["c"] for r in irows if (r.get("v") == 1) != is_vr_raw(valid[r["c"]])][:3])
+        warn("索引にVR作品が1本以上ある（VRの除外のテストが空振りしていない）", any(r.get("v") == 1 for r in irows))
+        bad_img = [r["c"] for r in irows if r["i"] and not fanza_https(r["i"] if r["i"].startswith("https://") else "https://pics.dmm.co.jp/" + r["i"], ["dmm.co.jp"])]
+        check("索引の画像が、FANZA(DMM)の画像に戻せる形（先頭を省いた形）", not bad_img, bad_img[:3])
+        check("索引の大きさが 1.5MB 以内（検索ページを開くたびにダウンロードされるため）", os.path.getsize(ii) <= 1500 * 1024, os.path.getsize(ii))
 
 print("\n■ 検索エンジン向けの点検（SEO）")
 # Search Console の所有権の確認コード（config.js の値）が、全ページの <head> に出ている（確認はトップページで行われる）

@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import DaySection from '../../components/DaySection.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
+import VrToggle from '../../components/VrToggle.astro';
 import { released } from '../../lib/data.js';
 import { ARCHIVE_PAGE_SIZE, breadcrumbLd, countByDate, groupByDate, archivePath, pageWindow, SITE_NAME } from '../../lib/items.js';
 
@@ -34,6 +35,10 @@ const trail = [
       <h1 class="hero-title">過去の作品一覧</h1>
       <p class="hero-lead">発売日の新しい順。{current}ページ目（全{last}ページ）</p>
     </section>
+
+    <div class="list-tools">
+      <VrToggle />
+    </div>
 
     <section class="section" aria-labelledby="archive-title">
       <h2 id="archive-title" class="visually-hidden">発売日ごとの作品</h2>

@@ -14,7 +14,9 @@ import {
   itemPageTitle,
   relatedItems,
   truncate,
+  vrAttrs,
 } from '../../lib/items.js';
+import { searchPath } from '../../lib/search.js';
 import { workFavoriteAttrs } from '../../lib/favorites.js';
 import { faceUrl } from '../../lib/profiles.js';
 
@@ -105,7 +107,7 @@ const makerPage = makerByName.get(item.maker)?.path;
               <dt class="spec-term">ジャンル</dt>
               <dd class="spec-desc">
                 <ul class="chips">
-                  {item.genres.map((g) => <li class="chip">{g}</li>)}
+                  {item.genres.map((g) => <li class="chip"><a class="chip-tag" href={searchPath(g)}>{g}</a></li>)}
                 </ul>
               </dd>
             </>
@@ -124,7 +126,6 @@ const makerPage = makerByName.get(item.maker)?.path;
         {item.url && (
           <a class="btn btn-hot btn-lg detail-cta" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>
         )}
-        <p class="fine">広告｜リンク先はFANZAの公式ページです。価格や配信状況は、リンク先で確認してください。</p>
 
         <FavButton type="work" favKey={item.cid} attrs={workFavoriteAttrs(item)} off="この作品をお気に入りに追加" on="お気に入りに追加済み" />
       </div>
@@ -179,7 +180,7 @@ const makerPage = makerByName.get(item.maker)?.path;
         <h2 id="related-title" class="subsection-title">同じ出演者・メーカーの作品</h2>
         <ul class="shelf">
           {related.map((r) => (
-            <li class="shelf-cell"><ItemCard item={r} level="h3" /></li>
+            <li class="shelf-cell" {...vrAttrs(r)}><ItemCard item={r} level="h3" /></li>
           ))}
         </ul>
       </section>

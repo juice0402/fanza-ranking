@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
+import VrToggle from '../../components/VrToggle.astro';
 import DaySection from '../../components/DaySection.astro';
 import FavButton from '../../components/FavButton.astro';
 import { makerGroups, actressByName } from '../../lib/data.js';
@@ -79,6 +80,9 @@ const trail = [
       <div class="section-head">
         <h2 id="works-title" class="section-title">作品（{group.items.length}本）</h2>
         <p class="section-note">発売日が新しい順</p>
+      </div>
+      <div class="list-tools">
+        <VrToggle />
       </div>
       <DaySection groups={groups} />
     </section>

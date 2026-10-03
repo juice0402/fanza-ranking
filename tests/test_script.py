@@ -296,7 +296,8 @@ TODAY_STR = TODAY.strftime("%Y-%m-%d")
 saved = {x["cid"]: x for x in json.load(open(SAVED_DATA, encoding="utf-8"))}
 new_items = [d for d in data if d["cid"] in set(by_cid) - set(saved)]
 check("更新日(updated): 新しく追加した作品は今日（日本時間）", len(new_items) > 0 and all(d["updated"] == TODAY_STR for d in new_items), {d["updated"] for d in new_items})
-check("更新日(updated): コメントが変わらなかった保存済みの作品は、そのまま", all(by_cid[c]["updated"] == saved[c]["updated"] for c in saved if by_cid[c]["comment"] == saved[c]["comment"]))
+check("更新日(updated): コメントも空の項目の補いも無かった保存済みの作品は、そのまま", all(by_cid[c]["updated"] == saved[c]["updated"] for c in saved if by_cid[c]["comment"] == saved[c]["comment"] and by_cid[c]["genres"] == saved[c]["genres"]))
+check("更新日(updated): ジャンルが空だったので補った保存済みの作品は、今日になる（補ったことが sitemap にも伝わる）", all(by_cid[c]["updated"] == TODAY_STR for c in saved if not saved[c]["genres"] and by_cid[c]["genres"]) and any(not saved[c]["genres"] and by_cid[c]["genres"] for c in saved))
 check("更新日(updated): 再挑戦でコメントが変わった保存済みの作品は、今日になる",
       all(by_cid[c]["updated"] == TODAY_STR for c in saved if by_cid[c]["comment"] != saved[c]["comment"]))
 check("更新日(updated): すべて YYYY-MM-DD", all(re.match(r"^\d{4}-\d{2}-\d{2}$", d["updated"]) for d in data))
@@ -481,11 +482,11 @@ path_c = os.path.join(tmp, "cast.json")
 seed = json.load(open(SAVED_DATA, encoding="utf-8"))
 
 
-def seeded(cid, days, actress, kind="ai"):
+def seeded(cid, days, actress, kind="ai", genres=("保存済みのジャンル",)):
     """保存済みの作品（APIの偽の応答にも出てくる cid を使う）。更新日は昔の日付にしておく"""
     api = make_api_item(cid, days, actress=tuple(actress))
     return {"cid": cid, "title": api["title"], "url": api["affiliateURL"], "image_url": api["imageURL"]["large"],
-            "sample_images": [], "date": api["date"], "maker": "テストメーカー", "actress": list(actress), "genres": [],
+            "sample_images": [], "date": api["date"], "maker": "テストメーカー", "actress": list(actress), "genres": list(genres),
             "tags": ["VR", "8K"], "duration_min": 120, "sample_movie": make_movie(cid)["size_476_306"], "movie_tries": 0,
             "comment": "保存済みのコメントです。" * 5, "comment_kind": kind,
             "comment_tries": 0, "updated": "2000-01-01"}
@@ -496,6 +497,7 @@ seed += [
     seeded("up000", 3, []),                   # 予約・空 → 今回の取得にテスト花子が載っている → 補う
     seeded("rel002", -0, ["既存の人"]),       # すでに出演者がある → 今回の取得が違っても書き換えない
     seeded("rel004", -1, []),                 # 空 → 今回の取得も空 → 空のまま・更新日も動かない
+    seeded("rel005", -0, ["既存の人"], genres=()),  # ジャンルだけ空 → 今回の取得にジャンルがある → ジャンルだけ補う
 ]
 json.dump(seed, open(path_c, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 e = Env()
@@ -511,6 +513,9 @@ check("補っても、コメントや種類は書き換えない", got["rel001"]
 check("すでに出演者がある作品は、書き換えない（更新日も動かない）", got["rel002"]["actress"] == ["既存の人"] and got["rel002"]["updated"] == "2000-01-01", got["rel002"])
 check("今回の取得も空の作品は、空のまま（更新日も動かない）", got["rel004"]["actress"] == [] and got["rel004"]["updated"] == "2000-01-01", got["rel004"])
 check("ログに補った件数が出る（2件）", "補いました: 2件" in out, out[-300:])
+check("ジャンルが空だった作品に、ジャンル（商品タグ）が入る・出演者は書き換えない・更新日が今日になる", got["rel005"]["genres"] == ["テストジャンル"] and got["rel005"]["actress"] == ["既存の人"] and got["rel005"]["updated"] == TODAY_STR, got["rel005"])
+check("すでにジャンルがある作品は、書き換えない", got["rel001"]["genres"] == ["保存済みのジャンル"] and got["rel002"]["genres"] == ["保存済みのジャンル"], (got["rel001"]["genres"], got["rel002"]["genres"]))
+check("ログに、ジャンルを補った件数が出る（rel005 と、取り直された保存済みの1件で、2件）", "ジャンルを補いました: 2件" in out, [l for l in out.splitlines() if "ジャンル" in l])
 
 print("\n■ サンプル動画のURLの選び方")
 tm = mod  # 1回目に読み込んだスクリプト

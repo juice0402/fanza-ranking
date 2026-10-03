@@ -22,6 +22,10 @@
 
   --gutter: 16px;
   --maxw: 1180px;
+
+  /* パッケージ画像（800×538）の「表紙」だけを切り出す比率。表紙は右端の約379px（高さ538）で、左にある背表紙の分を含めない。
+     7:10 は表紙（379:538）より少しだけ細く、背表紙を絶対に入れない。サムネはすべてこの比率にそろえる */
+  --cover-ratio: 7 / 10;
 }
 
 *,
@@ -342,7 +346,7 @@ button:focus-visible {
 .item-cover {
   position: relative;
   display: block;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: var(--cover-ratio);
   overflow: hidden;
   border-radius: 3px;
   background: var(--board);
@@ -355,7 +359,7 @@ button:focus-visible {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 100% 50%; /* パッケージ画像の右半分（表紙側）を見せる */
+  object-position: 100% 50%; /* パッケージ画像の右端にそろえる（右が表紙。左の背表紙は切る） */
 }
 
 .pop {
@@ -607,6 +611,24 @@ button:focus-visible {
   border: 1px solid var(--line);
   border-radius: 999px;
   font-size: 12px;
+}
+
+/* 作品ページのジャンル（タグ）。押すと、そのジャンルで絞り込んだ検索に飛ぶ。指で押しやすい高さにする */
+.chip:has(.chip-tag) {
+  padding: 0;
+}
+
+.chip-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
+.chip-tag:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .note-card {
@@ -1177,7 +1199,7 @@ html.lightbox-open {
 .fav-thumb {
   flex: none;
   width: 60px;
-  height: 84px;
+  height: 86px; /* 表紙の比率（--cover-ratio）に合わせる */
   border-radius: 2px;
   background: var(--ink);
   object-fit: cover;
@@ -1395,6 +1417,9 @@ html.lightbox-open {
 .btn[hidden],
 .more-btn[hidden],
 .chip-link[hidden],
+.vr-toggle[hidden],
+.work-search[hidden],
+.ws-fallback[hidden],
 .lightbox:not([open]) {
   display: none;
 }
@@ -1560,10 +1585,6 @@ html.lightbox-open {
   grid-column: 1 / -1;
 }
 
-.rank-item .item-cover {
-  aspect-ratio: 3 / 4; /* パッケージ画像の右半分（表紙）は、ほぼ3:4。2:3だと左右が削れる */
-}
-
 .rank-item .btn {
   margin-top: auto; /* タイトルの行数が違っても、ボタンは下にそろえる */
 }
@@ -1656,4 +1677,166 @@ html.lightbox-open {
   .rank-item .rank-maker {
     font-size: 13px;
   }
+}
+
+/* ---------- 一覧の道具（VR作品を隠すスイッチ） ---------- */
+
+.list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 18px;
+}
+
+.vr-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--paper);
+  font: 700 13px/1.2 var(--font-body);
+  cursor: pointer;
+}
+
+.vr-toggle:hover {
+  border-color: var(--paper);
+}
+
+.vr-toggle-mark {
+  position: relative;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--paper-dim);
+  border-radius: 4px;
+}
+
+.vr-toggle[aria-pressed='true'] {
+  border-color: var(--pop);
+}
+
+.vr-toggle[aria-pressed='true'] .vr-toggle-mark {
+  border-color: var(--pop);
+  background: var(--pop);
+}
+
+.vr-toggle[aria-pressed='true'] .vr-toggle-mark::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 5px;
+  height: 10px;
+  border: solid var(--ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* 「VR作品を隠す」: VR作品の目印（data-vr）が付いたマスを隠す。全部がVRの日付は、見出しごと隠す（vr-filter.js が印を付ける） */
+.hide-vr [data-vr],
+.day.vr-empty {
+  display: none;
+}
+
+/* トップの案内の先頭の「作品を探す」だけ、目立たせる */
+.chip-link-main {
+  border-color: var(--paper);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.chip-link-main:hover {
+  border-color: var(--pop);
+  background: var(--pop);
+}
+
+/* ---------- 作品検索（/search/） ---------- */
+
+.ws-tags {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ws-legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.ws-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--paper);
+  font: 700 13px/1.2 var(--font-body);
+  cursor: pointer;
+}
+
+.tag-btn:hover:not(:disabled) {
+  border-color: var(--paper);
+}
+
+.tag-btn[aria-pressed='true'] {
+  border-color: var(--pop);
+  background: var(--pop);
+  color: var(--ink);
+}
+
+.tag-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.tag-count {
+  color: var(--paper-dim);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.tag-btn[aria-pressed='true'] .tag-count {
+  color: var(--ink);
+}
+
+.ws-tags .more-btn {
+  margin-top: 10px;
+}
+
+.ws-list {
+  margin-top: 14px;
+}
+
+.item-meta {
+  margin: 0 0 12px;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.ws-links {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
 }

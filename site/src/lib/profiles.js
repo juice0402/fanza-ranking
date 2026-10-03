@@ -1,7 +1,7 @@
 // 出演者のプロフィール（顔写真・年齢・体型）と、売れ筋ランキングのための部品（画面に依存しない）。
 // データは get_new_releases.py が毎日取ってくる actresses.json / ranking.json（FANZA公式のAPIの値）。
 // ブラウザ側の絞り込みの動きは site/public/actress-search.js。
-import { FANZA_HOSTS, daysBetween, isDay, safeHttpsUrl } from './items.js';
+import { FANZA_HOSTS, daysBetween, isDay, isVrWork, safeHttpsUrl } from './items.js';
 
 export const ACTRESS_SEARCH_INDEX_PATH = '/data/actresses-index.json';
 export const FANZA_LIST_HOSTS = ['fanza.co.jp', 'dmm.co.jp']; // 「FANZAで全作品を見る」のリンクとして通してよいホスト
@@ -164,9 +164,11 @@ export function profileCoverage(profiles) {
 
 /**
  * 売れ筋ランキングの表示用の形。画面に出せないとき（無い・古い・壊れている）は null。
- * 出せるときは { date, items }（items は 1〜3本。順位・品番・題名・リンク・画像・メーカー・出演者）
+ * 出せるときは { date, items }（items は 1〜3本。順位・品番・題名・リンク・画像・メーカー・出演者・VRか）
+ * vrCids: 当サイトの作品のうち VR のものの品番の集まり（Set）。ランキングのデータにはジャンルが無いので、題名の【VR】のほか、
+ *   当サイトに同じ品番の作品があれば、そのジャンルからも VR かどうかを判断する
  */
-export function rankingForDisplay(raw, today) {
+export function rankingForDisplay(raw, today, vrCids = new Set()) {
   if (!raw || typeof raw !== 'object' || !isRealDay(raw.date) || !Array.isArray(raw.items)) return null;
   if (daysBetween(today, raw.date) > RANKING_STALE_DAYS) return null;
   const items = [];
@@ -185,6 +187,7 @@ export function rankingForDisplay(raw, today) {
       date: isDay(String(r.date ?? '').slice(0, 10)) ? String(r.date).slice(0, 10) : '',
       maker: String(r.maker ?? ''),
       actress: Array.isArray(r.actress) ? r.actress.filter((a) => typeof a === 'string' && a).slice(0, 6) : [],
+      vr: isVrWork({ title }) || vrCids.has(cid),
     });
     if (items.length >= 3) break;
   }
