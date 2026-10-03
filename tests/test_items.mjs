@@ -201,5 +201,18 @@ check('文字を切る: 絵文字（2つ分の文字）の途中で切らない'
 check('文字を切る: 「𠮷」の途中でも切らない・文字数は見た目の文字数で数える', L.truncate('𠮷'.repeat(10), 5) === '𠮷𠮷𠮷𠮷…' && L.truncate('𠮷𠮷', 2) === '𠮷𠮷');
 check('文字を切る: 短ければそのまま・長ければ max 文字（…を含む）', L.truncate('abc', 5) === 'abc' && L.truncate('abcdef', 4) === 'abc…' && L.truncate(null, 3) === '');
 
+console.log('\n■ VR作品の判定（「VR作品を隠す」・検索の除外に使う）');
+check('タイトルの【VR】で判定（【VR】【8K】のように複数の括弧でも）', L.isVrWork({ title: '【VR】テスト' }) && L.isVrWork({ title: '【8K】【VR】テスト' }) && L.isVrWork({ title: '【VR】【8K】テスト' }));
+check('形式タグ（VR・8KVR）で判定', L.isVrWork({ formats: ['VR'] }) && L.isVrWork({ formats: ['8K', '8KVR'] }));
+check('ジャンル（VR専用・ハイクオリティVR・8KVR）で判定。予約でタイトルが紛らわしくても、ジャンルが載れば分かる', ['VR専用', 'ハイクオリティVR', '8KVR'].every((g) => L.isVrWork({ title: 'ふつうのタイトル', genres: ['中出し', g] })));
+check('VRではない作品は false（8K・4K・NTR・タイトル本文の「VR」は、括弧書きでなければ数えない）', !L.isVrWork({ title: '【8K】テスト', formats: ['8K'], genres: ['4K', 'ハイビジョン', 'NTR'] }) && !L.isVrWork({ title: 'VRのような体験の人妻', genres: [] }) && !L.isVrWork({}) && !L.isVrWork());
+const vrItems = L.normalizeItems([
+  { cid: 'v1', title: '【VR】テスト', date: '2026-10-01', tags: ['VR'] },
+  { cid: 'v2', title: 'ふつう', date: '2026-10-01', genres: ['VR専用'] },
+  { cid: 'v3', title: 'ふつう', date: '2026-10-01', genres: ['中出し'], tags: ['8K'] },
+]);
+check('normalizeItems が vr を付ける（タイトル・ジャンル・どちらでもVR、VRでなければ false）', vrItems.map((i) => i.vr).join() === 'true,true,false', vrItems.map((i) => i.vr).join());
+check('一覧の1マスの目印（vrAttrs）: VR作品だけ data-vr が付く', L.vrAttrs(vrItems[0])['data-vr'] === 'true' && Object.keys(L.vrAttrs(vrItems[2])).length === 0);
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

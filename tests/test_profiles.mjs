@@ -112,6 +112,12 @@ const rankRaw = {
 const rk = P.rankingForDisplay(rankRaw, today);
 check('使えない行（品番が壊れている・外部リンク）は飛ばし、3本まで・順位は 1,2,3 にそろえる', rk && rk.items.map((x) => `${x.rank}:${x.cid}`).join() === '1:ipzz00977,2:mida00812,3:juvr00281', rk && rk.items.map((x) => `${x.rank}:${x.cid}`).join());
 check('日付・出演者（文字列だけ）・外部の画像は空', rk.items[0].date === '2026-10-02' && rk.items[0].actress.join() === '花子' && rk.items[1].image_url === '' && rk.date === '2026-10-03');
+const vrRank = P.rankingForDisplay({ date: '2026-10-03', items: [
+  { cid: 'a1', title: '【VR】ふつうのVR', url: 'https://al.fanza.co.jp/?x=1' },
+  { cid: 'a2', title: 'ふつうの作品', url: 'https://al.fanza.co.jp/?x=2' },
+  { cid: 'a3', title: 'タイトルにVRが無い作品', url: 'https://al.fanza.co.jp/?x=3' },
+] }, today, new Set(['a3']));
+check('売れ筋: VR作品に vr=true（題名の【VR】、または、当サイトの作品のジャンルから分かった品番）。それ以外は false。品番の集まりを渡さなくても動く', vrRank.items.map((i) => i.vr).join() === 'true,false,true' && P.rankingForDisplay({ date: '2026-10-03', items: [{ cid: 'a1', title: '【VR】x', url: 'https://al.fanza.co.jp/?x=1' }] }, today).items[0].vr === true);
 check('古いランキング: 7日前までは出し、8日前からは出さない', P.rankingForDisplay({ ...rankRaw, date: '2026-09-26' }, today) !== null && P.rankingForDisplay({ ...rankRaw, date: '2026-09-25' }, today) === null);
 check('無い・壊れている・日付が変・使える行が0本のときは null', [null, undefined, {}, [], 'x', { date: '2026-10-03' }, { date: '昨日', items: [] }, { date: '2026-10-03', items: [] }, { date: '2026-10-03', items: [{ cid: 'x', title: 't', url: 'https://evil.example/' }] }].every((v) => P.rankingForDisplay(v, today) === null));
 
@@ -156,6 +162,8 @@ check('見せかけのURL（ユーザー名の欄にFANZAのホストを入れ�
 check('ポート番号つき・?だけ・#だけ・ホストだけのFANZAのURLは通す', ['https://pics.dmm.co.jp:443/a.jpg', 'https://pics.dmm.co.jp?x=1', 'https://pics.dmm.co.jp#top', 'https://pics.dmm.co.jp'].every((u) => S.safeUrl(u, ['dmm.co.jp']) === u));
 check('出演者ページの短い名前: 10桁の英数字（小文字）だけ', S.pagePath('abcdef0123') === '/actress/abcdef0123/' && ['', 'ABCDEF0123', 'abcdef012', '../../etc/x', 'abcdef01234', null].every((s) => S.pagePath(s) === ''));
 check('1回に出す人数', S.PAGE_SIZE === 60);
+const searchSource = fs.readFileSync(new URL('../site/public/actress-search.js', import.meta.url), 'utf-8');
+check('検索結果の「FANZAで全作品を見る」に、（広告）の文字を付けない（広告であることは、全ページのヘッダー・フッターに出している）', searchSource.includes("'FANZAで全作品を見る ›'") && !searchSource.includes('（広告）'));
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

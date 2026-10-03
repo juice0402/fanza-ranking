@@ -492,16 +492,20 @@ def parse_api_item(raw):
 
 
 def apply_fresh(old, fresh, today_str):
-    """保存済みの作品 old に、取り直した fresh から、空だった項目（出演者・サンプル動画）だけを補う。
+    """保存済みの作品 old に、取り直した fresh から、空だった項目（出演者・ジャンル・サンプル動画）だけを補う。
 
     ・すでに入っている項目は書き換えない（空欄を埋めるだけ）
-    ・補ったら更新日（updated）を進める（sitemap の lastmod に使うため）
-    補った項目名のリスト（"actress" / "sample_movie"）を返す
+    ・補ったら更新日（updated）を進める（sitemap の lastmod に使う）
+    ・ジャンル（商品タグ）は、予約の作品には、発売が近づいてからFANZAに載ることが多い（作品検索のタグ・VR判定に使う）
+    補った項目名のリスト（"actress" / "genres" / "sample_movie"）を返す
     """
     changed = []
     if not old.get("actress") and fresh.get("actress"):
         old["actress"] = list(fresh["actress"])
         changed.append("actress")
+    if not old.get("genres") and fresh.get("genres"):
+        old["genres"] = list(fresh["genres"])
+        changed.append("genres")
     if not old.get("sample_movie") and fresh.get("sample_movie"):
         old["sample_movie"] = fresh["sample_movie"]
         changed.append("sample_movie")
@@ -876,6 +880,9 @@ def main():
         filled.update({cid: sorted(set(filled.get(cid, [])) | set(fields)) for cid, fields in refetched[0].items()})
     filled_cast = [c for c, f in filled.items() if "actress" in f]
     filled_movie = [c for c, f in filled.items() if "sample_movie" in f]
+    filled_genres = [c for c, f in filled.items() if "genres" in f]
+    if filled_genres:
+        print(f"🏷️ ジャンルが空だった作品に、ジャンルを補いました: {len(filled_genres)}件")
     if filled_cast:
         print(f"👤 出演者が空だった作品に、出演者を補いました: {len(filled_cast)}件")
     if filled_movie:
@@ -950,6 +957,7 @@ def main():
     summary += [
         f"- 出演者が空だった作品に補った: {len(filled_cast)}件",
         f"- サンプル動画を補った: {len(filled_movie)}件" + (f"（品番で取り直した作品 {refetched[1]}件）" if refetched else ""),
+        f"- ジャンルを補った: {len(filled_genres)}件",
         f"- 合計: {len(archive)}件（AIコメント {total_ai}件 / 代わりの文 {len(archive) - total_ai}件）",
     ]
     if maker:

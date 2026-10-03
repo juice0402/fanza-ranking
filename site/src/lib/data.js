@@ -30,4 +30,4 @@ export const profilesCoverage = profileCoverage(profiles);
 export const actressSearchIndex = buildActressSearchIndex(profiles, all, actressByName, today);
 
 // 売れ筋ランキング（FANZAの人気順の上位3本）。無い・古いときは null（画面に出さない）
-export const ranking = rankingForDisplay(optionalData('ranking'), today);
+export const ranking = rankingForDisplay(optionalData('ranking'), today, new Set(all.filter((i) => i.vr).map((i) => i.cid)));

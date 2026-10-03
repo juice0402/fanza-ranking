@@ -75,6 +75,23 @@ export const FANZA_HOSTS = ['dmm.co.jp'];
 /** 作品・出演者のリンク（アフィリエイトのURL）として使ってよいホスト（FANZA / DMM） */
 export const FANZA_LINK_HOSTS = ['fanza.co.jp', 'dmm.co.jp'];
 
+/**
+ * VR作品か。次のどれかなら VR（どれか1つでも載っていれば足りる。予約の作品はジャンルがまだ空のことがあるので、タイトルも見る）
+ *  ・タイトルの【VR】【8K】のような括弧書きに VR がある
+ *  ・形式タグ（formats）に VR を含むもの（VR・8KVR など）がある
+ *  ・ジャンルに「VR専用」「ハイクオリティVR」「8KVR」のような VR を含むものがある
+ */
+export function isVrWork({ title = '', formats = [], genres = [] } = {}) {
+  return (
+    /【[^】]*VR[^】]*】/i.test(String(title)) ||
+    formats.some((f) => /VR/i.test(f)) ||
+    genres.some((g) => /VR/i.test(g))
+  );
+}
+
+/** 一覧の1マス（li）に付ける目印。VR作品だけに data-vr が付く（「VR作品を隠す」スイッチが、これを目印に隠す） */
+export const vrAttrs = (item) => (item.vr ? { 'data-vr': 'true' } : {});
+
 /** JSONの中身を、画面で使いやすい形に揃える（足りない項目があっても落ちない） */
 export function normalizeItems(raw) {
   const list = Array.isArray(raw) ? raw : [];
@@ -87,6 +104,9 @@ export function normalizeItems(raw) {
     const date = String(r.date ?? '').trim();
     if (!cid || !title || !/^\d{4}-\d{2}-\d{2}/.test(date) || seen.has(cid)) continue;
     seen.add(cid);
+    const genres = Array.isArray(r.genres) ? r.genres.filter(Boolean) : [];
+    // 形式（VR・8K など）。英数字だけのタグに絞る（日本語のタグは作品の内容を表す言葉が混ざるため使わない）
+    const formats = Array.isArray(r.tags) ? r.tags.filter((t) => typeof t === 'string' && /^[0-9A-Za-z]{1,6}$/.test(t)) : [];
     items.push({
       cid,
       title,
@@ -98,12 +118,12 @@ export function normalizeItems(raw) {
       dateKey: date.slice(0, 10),
       maker: String(r.maker ?? '') || '不明',
       actress: Array.isArray(r.actress) ? r.actress.filter(Boolean) : [],
-      genres: Array.isArray(r.genres) ? r.genres.filter(Boolean) : [],
+      genres,
       duration_min: Number.isFinite(+r.duration_min) && +r.duration_min > 0 ? +r.duration_min : null,
       // サンプル動画のページURL（FANZAの476x306の再生ページ）。無い・怪しいURLなら ''（その作品は表紙画像のまま）
       sample_movie: safeHttpsUrl(r.sample_movie, FANZA_HOSTS),
-      // 形式（VR・8K など）。英数字だけのタグに絞る（日本語のタグは作品の内容を表す言葉が混ざるため使わない）
-      formats: Array.isArray(r.tags) ? r.tags.filter((t) => typeof t === 'string' && /^[0-9A-Za-z]{1,6}$/.test(t)) : [],
+      formats,
+      vr: isVrWork({ title, formats, genres }),
       comment: String(r.comment ?? ''),
       isAi: r.comment_kind === 'ai',
       // データ（コメント）を最後に変えた日。分からなければ ''（sitemap には載せない）

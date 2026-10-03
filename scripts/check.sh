@@ -44,6 +44,9 @@ node tests/test_profiles.mjs || failed=1
 step "サンプル動画の枠の部品 (Node.js)"
 node tests/test_movie.mjs || failed=1
 
+step "作品検索・「VR作品を隠す」の部品 (Node.js)"
+node tests/test_search.mjs || failed=1
+
 if [ "${1:-}" = "--build" ]; then
   step "サイトのビルド"
   if (cd site && npm ci --no-audit --no-fund && npm run build); then

@@ -1,0 +1,91 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import VrToggle from '../../components/VrToggle.astro';
+import { all } from '../../lib/data.js';
+import { ACTRESS_INDEX_PATH, MAKER_INDEX_PATH, SITE_NAME, archivePath, breadcrumbLd } from '../../lib/items.js';
+import { ITEMS_INDEX_PATH, SEARCH_PATH } from '../../lib/search.js';
+
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '作品を探す', path: SEARCH_PATH },
+];
+const hasWorks = all.length > 0;
+// 検索画面は、条件の組み合わせごとに内容が変わる（JavaScriptで作る）ので、検索エンジンには載せない（noindex）
+---
+
+<Base
+  title={`作品を探す｜${SITE_NAME}`}
+  description="FANZAの新作・予約作品を、タイトル・出演者・メーカー・ジャンル（タグ）で絞り込んで探せます。VR作品を隠すこともできます。"
+  path={SEARCH_PATH}
+  noindex={true}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">作品を探す</h1>
+      <p class="hero-lead">タイトル・出演者・メーカー・ジャンル（タグ）で、当サイトに載っている作品を絞り込めます。</p>
+    </section>
+
+    {hasWorks && (
+      <section id="work-search" class="work-search section" data-index={ITEMS_INDEX_PATH} aria-labelledby="ws-title" hidden>
+        <h2 id="ws-title" class="section-title">条件で探す</h2>
+        <form class="as-form" role="search" autocomplete="off">
+          <label class="as-field as-field-wide">
+            キーワード（タイトル・出演者・メーカー・品番・ジャンル）
+            <input type="search" name="q" placeholder="例: 人妻 / 出演者の名前" enterkeyhint="search" />
+          </label>
+
+          <fieldset class="ws-tags">
+            <legend class="ws-legend">ジャンル（タグ）｜選んだものを、すべて含む作品だけが出ます</legend>
+            <ul id="ws-tag-list" class="ws-tag-list"></ul>
+            <button id="ws-tag-more" type="button" class="btn btn-quiet more-btn" hidden>すべてのジャンルを見る</button>
+          </fieldset>
+
+          <div class="as-grid">
+            <label class="as-field">
+              発売
+              <select name="status">
+                <option value="">すべて</option>
+                <option value="released">発売済み</option>
+                <option value="upcoming">予約受付中</option>
+              </select>
+            </label>
+            <label class="as-field">
+              並び順（発売日）
+              <select name="sort">
+                <option value="new">新しい順</option>
+                <option value="old">古い順</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="as-actions">
+            <VrToggle />
+            <button type="reset" class="btn btn-quiet">条件をクリア</button>
+          </div>
+        </form>
+
+        <h2 class="visually-hidden">検索結果</h2>
+        <p id="ws-count" class="as-count" aria-live="polite"></p>
+        <ul id="ws-list" class="shelf ws-list"></ul>
+        <p class="more"><button id="ws-more" type="button" class="btn btn-quiet more-btn" hidden>もっと見る</button></p>
+        <p class="as-coverage">ジャンルは、FANZAに載っている情報です。予約中の作品は、ジャンルがまだ載っていないことがあります（載ると、毎日の更新で自動で入ります）。</p>
+      </section>
+    )}
+
+    <section id="ws-fallback" class="section ws-fallback" aria-labelledby="ws-fallback-title">
+      <h2 id="ws-fallback-title" class="section-title">ほかの探し方</h2>
+      <noscript><p class="empty">検索を使うには、ブラウザのJavaScriptを有効にしてください。</p></noscript>
+      <ul class="ws-links">
+        <li><a class="spec-link" href={archivePath(1)}>過去の作品を、発売日の新しい順に見る</a></li>
+        <li><a class="spec-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a></li>
+        <li><a class="spec-link" href={MAKER_INDEX_PATH}>メーカーから探す</a></li>
+      </ul>
+    </section>
+  </div>
+
+  {hasWorks && <script is:inline src="/search.js" defer></script>}
+</Base>

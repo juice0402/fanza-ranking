@@ -200,7 +200,7 @@
     text.appendChild(el('span', 'actress-row-name', row.n));
     var spec = specText(row);
     text.appendChild(el('span', 'actress-row-spec' + (spec ? '' : ' is-empty'), spec || 'プロフィールの数字は未掲載'));
-    text.appendChild(el('span', 'actress-row-meta', page ? '掲載' + row.k + '本 ›' : 'FANZAで全作品を見る（広告） ›'));
+    text.appendChild(el('span', 'actress-row-meta', page ? '掲載' + row.k + '本 ›' : 'FANZAで全作品を見る ›'));
     a.appendChild(text);
     li.appendChild(a);
     return li;

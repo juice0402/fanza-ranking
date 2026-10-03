@@ -12,8 +12,9 @@ FANZAの新作・予約作品を毎日自動で集め、AIのひとことコメ�
 GitHub Actions（毎日 0:05 JST。日付が変わった直後）
   → get_new_releases.py
       FANZA(DMM) アフィリエイトAPI から「発売済み」「予約」を別々に取得
-      保存済み作品の「空だった出演者」「未取得のサンプル動画」を補う（今回の取得に出ていれば refresh_from_fetched、
-        出ていなければ品番を指定して取り直し refetch_by_cid。1回20件まで。出演者は発売30日後まで、動画は3回まで）
+      保存済み作品の「空だった出演者」「空だったジャンル」「未取得のサンプル動画」を補う（今回の取得に出ていれば refresh_from_fetched、
+        出ていなければ品番を指定して取り直し refetch_by_cid。1回20件まで。出演者は発売30日後まで、動画は3回まで。
+        ジャンルは、予約の作品にあとから載るので、今回の取得か、出演者・動画の取り直しのついでに入る）
       Gemini でひとことコメント作成（ブロック時は代替文 → 次回再挑戦）
       → site/src/data/new_releases.json に作品IDごとにためていく
       出演者のプロフィール（顔写真・体型・生年月日・FANZAの全作品リンク）を女優検索APIで取得（1回30人まで）
@@ -43,6 +44,8 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | `site/src/lib/roundups.js` | 週のまとめ記事の部品（週の計算・集計・読み込み・Article構造化データ。画面に依存しない）。集計は `claude_roundups.py` の `week_stats` と同じ数え方（`tests/test_roundups.mjs` で突き合わせている） |
 | `site/src/lib/favorites.js` / `site/src/lib/calendar.js` | お気に入りの索引（`/data/favorites-index.json`）と、発売日カレンダー（`.ics`）の部品（画面に依存しない。`tests/test_calendar.mjs`）。カレンダーの予定の**題名に作品タイトルを入れない**（「【発売】○○の新作」。タイトル・品番・リンクは説明に入れる）。`escapeIcsText` は `;` `,` `\` 改行を書き換える |
 | `site/public/favorites.js` / `site/public/lightbox.js` | ブラウザで動く小さなスクリプト（ビルドを通さずそのまま配信）。`favorites.js` は ☆ の付け外しと「お気に入り」ページ・トップのお知らせ（**保存先は端末の localStorage だけ。サーバーには送らない**）。部品は node でテストできる（`tests/test_favorites.mjs`）。DOM は `textContent` で作り、保存データの HTML は実行しない |
+| `site/src/lib/search.js` / `site/public/search.js` | 作品検索（`/search/`）。`search.js`（lib）は索引 `/data/items-index.json`（キー: c 品番 / t タイトル / d 発売日 / a 出演者 / m メーカー / g ジャンルの番号 / v VRなら1 / i 画像。新しい順に最大3000本）を作る。`public/search.js` は、キーワード（タイトル・出演者・メーカー・品番・ジャンル）・ジャンル（タグ。複数はAND。足すと0本になるものは押せない）・発売の状態で端末の中で絞り込み、条件を URL（`?q=&tag=&st=&sort=`）にも書く。作品ページのジャンルは、この URL へのリンク。`noindex`・sitemap なし。DOM は `textContent` で作る。部品は `tests/test_search.mjs` |
+| `site/public/vr-filter.js` / `site/src/components/VrToggle.astro` | 「VR作品を隠す」スイッチ。一覧の1マス（`li.shelf-cell`）の `data-vr`（`vrAttrs(item)`）を、`html.hide-vr` のとき CSS で隠す。状態は localStorage（`hide-vr`）だけ。`Base.astro` の `<head>` で先に印を付けてチラつきを防ぐ。VR判定は `items.js` の `isVrWork`（タイトルの【VR】・形式タグ・ジャンルの「VR」のどれか）。トップ・過去の作品・出演者/メーカー・検索にスイッチがある |
 | `site/src/lib/profiles.js` | 出演者のプロフィール（顔写真・年齢・体型）・出演者検索の索引（`/data/actresses-index.json`）・売れ筋ランキングの表示用の整え方（画面に依存しない。`tests/test_profiles.mjs`）。生年月日は年齢にだけ変えて、ここから先には持ち出さない。URLは FANZA(DMM) の https だけ通す |
 | `site/public/actress-search.js` / `site/public/movie.js` | ブラウザで動く小さなスクリプト。`actress-search.js` は `/actress/` の「条件で探す」（名前・年齢・身長・スリーサイズ・カップ。索引を読んで、端末の中で絞り込む）。`movie.js` は作品ページのサンプル動画の枠の拡大・縮小。部品は node でテストできる（`tests/test_profiles.mjs` / `tests/test_movie.mjs`）。DOM は `textContent` で作る |
 | `site/public/_headers` / アイコン | Cloudflare Pages の応答ヘッダー（nosniff・フレームへの埋め込み禁止など。CSP は最小限）と、サイトのアイコン（`favicon.svg` / `favicon.ico` / `apple-touch-icon.png`）。`tests/verify_dist.py` が、全ページの `<head>`・ヘッダーの広告ラベル（`pr-chip`）とフッターの広告文・18歳確認・クレジット・FANZAへのリンクの属性と一緒に検査する |
@@ -80,6 +83,7 @@ cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
 2. **秘密情報をコードやログに書かない。** 使うのは GitHub Secrets の `API_ID` / `AFFILIATE_ID` / `GEMINI_API_KEY` のみ。リポジトリは公開なので、一度でも書くと履歴に残る。Geminiのキーは URL ではなくヘッダ（`x-goog-api-key`）で渡す。
 3. **規約の表記を消さない。** 全ページに「広告（アフィリエイト）表記」「18歳確認」「RTAラベル」「Powered by FANZA Webサービス」。AIコメントの注記も残す。`tests/verify_dist.py` が全ページを検査する。
    - 「広告」のラベルは、**最初に見える画面（ヘッダーの `pr-chip`）に残す**。くわしい文はフッター。フッターだけにしない（ASPの案内で「ファーストビューに表示」「下部やフッターだけは不適切」とされているため。ステマ規制への対応）。
+   - 個々のリンク（出演者検索の「FANZAで全作品を見る」など）に、（広告）の文字は付けない（運営者の希望。見づらくなるため）。広告であることは、全ページの**ヘッダーの `pr-chip` とフッター**で示している。これは消さない。
    - 画面に「AI」という表示・言葉は、運営者の希望で出していない（コメントの横のチップ・「AIのひとこと」・トップの「AIがひとこと添えます」など。`tests/verify_dist.py` が検査）。**ただし、コメントが自動で作成されていて正確さは保証できない、という注記は、フッターに必ず残す**（「AI」という言葉は使わず「自動で作成」と書く。読者への正直さのため。「人が書いた」と受け取れる言い方・名前・肩書きは付けない）。
 4. **データを壊さない。** 取得に失敗したら `exit 1` で止まり、既存データは上書きしない（テスト済み）。保存データの形式を変えるときは、`normalize_loaded`（Python）と `normalizeItems`（JS）の両方を直し、**データ本体も新しい形式に移行してから**（`tests/test_data.py` が通ること）、古い形式の読み込み処理は残さない。
 5. **変更にはテストを足す。** 挙動を変えたら `tests/` を更新し、`bash scripts/check.sh` を通してから PR にする。

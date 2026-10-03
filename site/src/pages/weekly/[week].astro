@@ -3,7 +3,7 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import ItemCard from '../../components/ItemCard.astro';
 import { all, roundups, actressByName, makerByName } from '../../lib/data.js';
-import { breadcrumbLd, dateParts, formatDateJp, groupByDate, itemPath } from '../../lib/items.js';
+import { breadcrumbLd, dateParts, formatDateJp, groupByDate, itemPath, vrAttrs } from '../../lib/items.js';
 import {
   WEEKLY_INDEX_PATH,
   articleLd,
@@ -109,7 +109,7 @@ const day = (dateKey) => {
           <h2 id="picks-title" class="section-title">注目の作品</h2>
           <ul class="shelf">
             {picks.map((p) => (
-              <li class="shelf-cell">
+              <li class="shelf-cell" {...vrAttrs(p.item)}>
                 <ItemCard item={p.item} level="h3" />
                 <p class="pick-note">{p.note}</p>
               </li>
