@@ -10,6 +10,7 @@ GitHub Actions から毎日自動で実行されます。
 保存先: site/src/data/new_releases.json
   - 作品ごとに1件。cid（作品ID）で重複を防ぎ、毎回「追記」します。
   - comment_kind が "ai" ならAIが書いたコメント、"template" なら作品情報から作った代わりの文。
+  - updated は、その作品のデータ（コメント）を最後に変えた日（日本時間 YYYY-MM-DD）。sitemap の lastmod に使います。
 """
 import hashlib
 import json
@@ -66,6 +67,12 @@ def format_date_jp(date_str):
     if not m:
         return ""
     return f"{int(m.group(1))}年{int(m.group(2))}月{int(m.group(3))}日"
+
+
+def day_key(value):
+    """日付の文字列から "YYYY-MM-DD" を取り出す（形が違えば空文字）"""
+    m = re.match(r"^(\d{4}-\d{2}-\d{2})(?:$|[ T])", str(value or ""))
+    return m.group(1) if m else ""
 
 
 def title_tags(title):
@@ -296,6 +303,7 @@ def normalize_loaded(item):
         "comment": item.get("comment") or "",
         "comment_kind": item.get("comment_kind") if item.get("comment_kind") in ("ai", "template") else "template",
         "comment_tries": int(item.get("comment_tries") or 0),
+        "updated": day_key(item.get("updated")),
     }
     if out["comment_kind"] == "template" and not out["comment"]:
         out["comment"] = template_comment(out)
@@ -404,6 +412,7 @@ def parse_api_item(raw):
         "comment": "",
         "comment_kind": "",
         "comment_tries": 0,
+        "updated": "",  # 保存するときに main() が今日の日付を入れる
     }
 
 
@@ -465,6 +474,7 @@ def main():
     maker = CommentMaker()
     for i, item in enumerate(newcomers, 1):
         maker.apply(item)
+        item["updated"] = today_str
         archive[item["cid"]] = item
         print(f"  [{i}/{len(newcomers)}] {item['comment_kind']:8s} {item['comment'][:24]}")
 
@@ -478,7 +488,10 @@ def main():
         for item in retry_targets:
             if not maker.ai_enabled:
                 break
+            before_comment = item.get("comment")
             maker.apply(item)
+            if item.get("comment") != before_comment:
+                item["updated"] = today_str  # コメントが変わったときだけ「更新日」を進める
             print(f"  {item['comment_kind']:8s} {item['comment'][:24]}")
 
     save_archive(archive)

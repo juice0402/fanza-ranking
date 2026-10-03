@@ -139,6 +139,8 @@ class Env:
         self.prompts.append(prompt)
         assert req.headers.get("X-goog-api-key") or req.headers.get("x-goog-api-key"), "APIキーがヘッダーに無い"
         assert "key=" not in req.full_url, "APIキーがURLに入っている"
+        if self.gemini_mode == "always_blocked":
+            return FakeResponse({"promptFeedback": {"blockReason": "PROHIBITED_CONTENT"}})
         if self.gemini_mode in QUOTA_BODIES and not (self.gemini_mode == "per_minute" and self.gemini_calls > 1):
             raise urllib.error.HTTPError(req.full_url, 429, "rate", {}, io.BytesIO(QUOTA_BODIES[self.gemini_mode]))
         if self.gemini_mode == "always_error":
@@ -222,8 +224,20 @@ check("サンプル画像・ジャンル・収録時間を保存", len(sample["s
 check("出演者なしの作品も保存できる", by_cid["rel004"]["actress"] == [])
 check("タグ抽出", sample["tags"] == ["VR", "8K"], sample["tags"])
 check("APIキーなどの秘密情報が保存データに入っていない", "fake" not in open(path, encoding="utf-8").read().lower().replace("fake_", ""))
+TODAY_STR = TODAY.strftime("%Y-%m-%d")
+saved = {x["cid"]: x for x in json.load(open(SAVED_DATA, encoding="utf-8"))}
+new_items = [d for d in data if d["cid"] in set(by_cid) - set(saved)]
+check("更新日(updated): 新しく追加した作品は今日（日本時間）", len(new_items) > 0 and all(d["updated"] == TODAY_STR for d in new_items), {d["updated"] for d in new_items})
+check("更新日(updated): コメントが変わらなかった保存済みの作品は、そのまま", all(by_cid[c]["updated"] == saved[c]["updated"] for c in saved if by_cid[c]["comment"] == saved[c]["comment"]))
+check("更新日(updated): 再挑戦でコメントが変わった保存済みの作品は、今日になる",
+      all(by_cid[c]["updated"] == TODAY_STR for c in saved if by_cid[c]["comment"] != saved[c]["comment"]))
+check("更新日(updated): すべて YYYY-MM-DD", all(re.match(r"^\d{4}-\d{2}-\d{2}$", d["updated"]) for d in data))
 
 print("\n■ 2回目: 同じ作品は増えず、ブロックされた作品は別の切り口で再挑戦")
+# 前の日に保存したことにする（今日の日付が入るのは、このあと変わった作品だけのはず）
+for d in data:
+    d["updated"] = "2000-01-01"
+json.dump(data, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 before = {d["cid"]: d for d in data}
 env2 = Env()
 env2.first_429_done = True
@@ -237,6 +251,10 @@ check("既存のAIコメントは書き換わらない", all(after[c]["comment"]
 retried = [c for c in before if before[c]["comment_kind"] == "template" and after[c]["comment_tries"] > before[c]["comment_tries"]]
 check("テンプレのままの作品に再挑戦した", len(retried) > 0)
 check("再挑戦は1回の実行で上限(6件)以内", len(retried) <= mod2.RETRY_PER_RUN, len(retried))
+check("更新日(updated): 2回目は、コメントが変わった作品だけ今日になり、変わらない作品は動かない",
+      all(after[c]["updated"] == (TODAY_STR if after[c]["comment"] != before[c]["comment"] else "2000-01-01") for c in before)
+      and any(after[c]["comment"] != before[c]["comment"] for c in before) and any(after[c]["comment"] == before[c]["comment"] for c in before))
+check("更新日(updated): 2回目に新しく入った作品は今日", all(after[c]["updated"] == TODAY_STR for c in after if c not in before))
 
 print("\n■ 3回目以降: 再挑戦の回数に上限がある")
 for _ in range(4):
@@ -246,6 +264,22 @@ for _ in range(4):
     run_main(m, e)
 data4 = json.load(open(path, encoding="utf-8"))
 check("再挑戦の上限(3回)を超えない", max(d["comment_tries"] for d in data4) <= 3, max(d["comment_tries"] for d in data4))
+
+print("\n■ 更新日: コメントが変わらなかった作品は、更新日を動かさない")
+path_u = os.path.join(tmp, "u.json")
+d0 = json.load(open(SAVED_DATA, encoding="utf-8"))
+for x in d0:
+    x["updated"] = "2000-01-01"
+json.dump(d0, open(path_u, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+tries0 = {x["cid"]: x["comment_tries"] for x in d0}
+e = Env()
+e.gemini_mode = "always_blocked"
+run_main(load_module(path_u), e)
+du = json.load(open(path_u, encoding="utf-8"))
+retried_u = [x for x in du if x["cid"] in tries0 and x["comment_tries"] > tries0[x["cid"]]]
+check("ブロックされて再挑戦したが、コメントが変わらなかった作品がある", len(retried_u) > 0, len(retried_u))
+check("そうした作品の更新日は動かない", all(x["updated"] == "2000-01-01" for x in retried_u), {x["updated"] for x in retried_u})
+check("新しく入った作品は今日の日付", all(x["updated"] == TODAY_STR for x in du if x["cid"] not in tries0))
 
 print("\n■ Geminiが使えない/APIキー無しでも止まらない")
 path_b = os.path.join(tmp, "b.json")
@@ -307,11 +341,13 @@ code, out = run_main_capture(load_module(path_h), Env())
 check("データが作品のリストでなければ、上書きせず中止(1)", code == 1 and open(path_h, encoding="utf-8").read() == '{"items": []}', code)
 
 path_i = os.path.join(tmp, "i.json")
-partial = [{k: v for k, v in good[0].items() if k not in ("comment_kind", "tags", "comment_tries", "sample_images", "genres")}]
+partial = [{k: v for k, v in good[0].items() if k not in ("comment_kind", "tags", "comment_tries", "sample_images", "genres", "updated")}]
 json.dump(partial, open(path_i, "w", encoding="utf-8"), ensure_ascii=False)
 mi = load_module(path_i)
 norm = mi.load_archive()[good[0]["cid"]]
 check("項目が足りなくても読める（既定値で補う）", norm["comment_kind"] == "template" and norm["comment_tries"] == 0 and norm["sample_images"] == [] and isinstance(norm["tags"], list), norm)
+check("更新日が無い・壊れているときは空にする（日付を作り出さない）", norm["updated"] == "" and mi.day_key("昨日") == "" and mi.day_key(None) == ""
+      and mi.day_key("2026-10-03") == "2026-10-03" and mi.day_key("2026-10-03 00:00:00") == "2026-10-03" and mi.day_key("2026-10-3") == "")
 
 m = load_module(os.path.join(tmp, "f.json"), api_id="")
 code = run_main(m, Env())

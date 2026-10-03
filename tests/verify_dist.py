@@ -70,7 +70,15 @@ print("\n■ sitemap.xml")
 sitemap_path = os.path.join(DIST, "sitemap.xml")
 check("sitemap.xml がある", os.path.isfile(sitemap_path))
 if os.path.isfile(sitemap_path):
-    locs = re.findall(r"<loc>([^<]+)</loc>", read(sitemap_path))
+    sitemap_xml = read(sitemap_path)
+    locs = re.findall(r"<loc>([^<]+)</loc>", sitemap_xml)
+    rows = re.findall(r"<url><loc>([^<]+)</loc>(?:<lastmod>([^<]*)</lastmod>)?</url>", sitemap_xml)
+    check("sitemap のすべてのURLが <url> の形で読める", len(rows) == len(locs) and len(locs) > 0, (len(rows), len(locs)))
+    no_lastmod = [u for u, m in rows if not re.match(r"^\d{4}-\d{2}-\d{2}$", m or "")]
+    check("sitemap のすべてのURLに lastmod（YYYY-MM-DD）がある", not no_lastmod, no_lastmod[:3])
+    lastmod_of = {urlparse(u).path: m for u, m in rows}
+    wrong = [c for c in valid if lastmod_of.get(f"/item/{c}/") != str(valid[c].get("updated"))]
+    check("sitemap の作品ページの lastmod が、データの updated と同じ", not wrong, wrong[:3])
     check("sitemap にトップがある", any(urlparse(u).path == "/" for u in locs))
     check("sitemap に全作品が入っている", all(any(f"/item/{c}/" in u for u in locs) for c in valid))
     missing = [u for u in locs if not os.path.isfile(page_file(urlparse(u).path))]

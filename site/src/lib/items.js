@@ -45,6 +45,9 @@ export function truncate(text, max) {
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
 
+/** "YYYY-MM-DD" の形か */
+export const isDay = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
 export const itemPath = (cid) => `/item/${cid}/`;
 export const archivePath = (n) => `/archive/${n}/`;
 
@@ -74,6 +77,8 @@ export function normalizeItems(raw) {
       duration_min: Number.isFinite(+r.duration_min) && +r.duration_min > 0 ? +r.duration_min : null,
       comment: String(r.comment ?? ''),
       isAi: r.comment_kind === 'ai',
+      // データ（コメント）を最後に変えた日。分からなければ ''（sitemap には載せない）
+      updated: isDay(r.updated) ? r.updated : '',
     });
   }
   return items;
@@ -137,8 +142,30 @@ export function pageWindow(current, last, around = 2) {
 const escapeXml = (s) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-export function buildSitemap(paths, siteUrl = SITE_URL) {
-  const rows = paths.map((p) => `  <url><loc>${escapeXml(siteUrl + p)}</loc></url>`).join('\n');
+/**
+ * 並べたページ（トップ・一覧など）が「最後に変わった日」。
+ * 作品のデータを変えた日（updated）と、発売日を迎えた日（表示が「予約」から「発売中」に変わる）のうち、一番新しいもの。
+ * 分からなければ ''。
+ */
+export function listLastmod(items, today) {
+  let latest = '';
+  for (const i of items) {
+    for (const d of [i.updated, i.dateKey <= today ? i.dateKey : '']) {
+      if (isDay(d) && d > latest) latest = d;
+    }
+  }
+  return latest;
+}
+
+/** sitemap.xml の中身。entries は '/path/' の文字列、または { path, lastmod } （lastmod は YYYY-MM-DD の形のときだけ出す） */
+export function buildSitemap(entries, siteUrl = SITE_URL) {
+  const rows = entries
+    .map((e) => {
+      const { path, lastmod } = typeof e === 'string' ? { path: e, lastmod: '' } : e;
+      const mod = isDay(lastmod) ? `<lastmod>${lastmod}</lastmod>` : '';
+      return `  <url><loc>${escapeXml(siteUrl + path)}</loc>${mod}</url>`;
+    })
+    .join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${rows}\n</urlset>\n`;
 }
 

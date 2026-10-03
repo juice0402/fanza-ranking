@@ -32,7 +32,7 @@ Claude の予約タスク（毎日 0:20 JST。手順は docs/claude-comments.md�
 | `site/src/lib/items.js` | 並べ替え・日付・sitemap/robots など、テストできる部品（画面に依存しない） |
 | `site/src/lib/data.js` | JSON読み込み。`released`/`upcoming`/`all` を各ページに渡す |
 | `site/src/pages/` | トップ、`item/[cid]`（作品）、`archive/[page]`（過去作品）、404、`sitemap.xml.js`、`robots.txt.js` |
-| `site/src/data/new_releases.json` | **自動更新のデータ。手で編集しない**（作品IDごとに蓄積） |
+| `site/src/data/new_releases.json` | **自動更新のデータ。手で編集しない**（作品IDごとに蓄積。`updated` は、その作品のコメントを最後に変えた日で、sitemap の `lastmod` に使う） |
 | `tests/` | テスト一式。`fixtures/` は固定データ（本番データには依存しない） |
 | `scripts/check.sh` | テストをまとめて実行（`--build` でビルドと点検まで） |
 | `.github/workflows/` | `update.yml`（毎日の更新）、`ci.yml`（PRごとの自動確認） |
