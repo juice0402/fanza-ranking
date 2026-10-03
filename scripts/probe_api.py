@@ -165,6 +165,43 @@ def main():
         res, err = call("ItemList", dict(base, article="actress", article_id=actress["id"], sort="date", hits=3))
         say(f"- ItemList article=actress（{actress.get('name')}）: " + (f"❌ {err}" if err else f"{len(res.get('items') or [])}件 / 全体 {res.get('total_count')}件"))
 
+    say("\n## 5) ActressSearch: 体型などが入っている出演者の値の書き方")
+    for aid in ("1017139", "1047611", "1043753", "1092663", "1056220"):
+        res, err = call("ActressSearch", {"actress_id": aid, "hits": 1})
+        rows = [] if err else (res.get("actress") or [])
+        if not rows:
+            say(f"- id={aid}: {'❌ ' + err if err else '0件'}")
+            continue
+        a = rows[0]
+        bd = str(a.get("birthday") or "")
+        lurl = urllib.parse.parse_qs(urllib.parse.urlparse(str((a.get("listURL") or {}).get("digital") or "")).query).get("lurl", [""])[0]
+        lq = urllib.parse.urlparse(lurl)
+        say(f"- id={aid} {a.get('name')}: " + json.dumps({k: a.get(k) for k in ("bust", "cup", "waist", "hip", "height")}, ensure_ascii=False)
+            + f" / birthday={re.sub(r'[0-9]', '#', bd) or 'なし'} / 型 bust={type(a.get('bust')).__name__} height={type(a.get('height')).__name__}"
+            + f" / 画像 {a.get('imageURL')} / digital の飛び先 {lq.scheme}://{lq.netloc}{lq.path}?{urllib.parse.urlencode({k: re.sub(r'[0-9]', '#', v[0]) for k, v in urllib.parse.parse_qs(lq.query).items()})}")
+
+    say("\n## 6) サンプル動画のページ（iframe で埋め込めるか）")
+    movie = None
+    for it in items:
+        m = it.get("sampleMovieURL") or {}
+        if m.get("size_720_480"):
+            movie = m["size_720_480"]
+            break
+    if not movie:
+        say("- サンプル動画のURLが無いのでスキップ")
+    else:
+        try:
+            req = urllib.request.Request(movie, headers={"User-Agent": "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1", "Referer": "https://fanza-ranking.pages.dev/"})
+            with urllib.request.urlopen(req, timeout=30) as res:
+                head = {k.lower(): v for k, v in res.headers.items()}
+                body = res.read(200000).decode("utf-8", "replace")
+                final = urllib.parse.urlparse(res.geturl())
+            say(f"- 状態 {res.status} / 最終URL {final.scheme}://{final.netloc}{re.sub(r'[0-9]+', '#', final.path)}")
+            say("- x-frame-options: " + str(head.get("x-frame-options")) + " / content-security-policy(frame-ancestors): " + str(re.findall(r"frame-ancestors[^;]*", head.get("content-security-policy", "")) or None))
+            say("- content-type: " + str(head.get("content-type")) + f" / 本文 {len(body)}文字 / 年齢確認らしい語: {bool(re.search('age_check|年齢確認|18歳', body))} / video または source タグ: {bool(re.search('<video|<source|mp4|m3u8', body))}")
+        except Exception as e:  # noqa: BLE001
+            say(f"- 取得できませんでした: {type(e).__name__}: {str(e)[:150]}")
+
     # ログの取得が制限される環境でも読めるように、見出しごとに「注釈（notice）」としても出す（GitHub の check-run の注釈として読める）
     if os.environ.get("GITHUB_ACTIONS"):
         sections = []
