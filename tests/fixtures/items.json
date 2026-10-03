@@ -1,0 +1,1815 @@
+[
+ {
+  "cid": "smp0001",
+  "title": "【VR】【8K】サンプル作品 夏の終わりの図書室 1",
+  "url": "https://example.invalid/aff/smp0001",
+  "image_url": "/dev-covers/smp0001.svg",
+  "sample_images": [
+   "/dev-covers/smp0001.svg",
+   "/dev-covers/smp0001.svg",
+   "/dev-covers/smp0001.svg",
+   "/dev-covers/smp0001.svg"
+  ],
+  "date": "2026-10-02 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [
+   "中村あおい"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0002",
+  "title": "【VR】【8K】サンプル作品 夏の終わりの図書室 2",
+  "url": "https://example.invalid/aff/smp0002",
+  "image_url": "/dev-covers/smp0002.svg",
+  "sample_images": [
+   "/dev-covers/smp0002.svg",
+   "/dev-covers/smp0002.svg",
+   "/dev-covers/smp0002.svg",
+   "/dev-covers/smp0002.svg"
+  ],
+  "date": "2026-10-02 00:00:00",
+  "maker": "ケイ・エム・サンプルプロデュース",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "ケイ・エム・サンプルプロデュースの作品です。発売日は2026年10月2日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0003",
+  "title": "【8K】テスト用タイトル 港町の夜に 3",
+  "url": "https://example.invalid/aff/smp0003",
+  "image_url": "/dev-covers/smp0003.svg",
+  "sample_images": [],
+  "date": "2026-10-02 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [
+   "佐藤みお"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0004",
+  "title": "ふたりだけの放課後サンプルストーリー 4",
+  "url": "https://example.invalid/aff/smp0004",
+  "image_url": "/dev-covers/smp0004.svg",
+  "sample_images": [
+   "/dev-covers/smp0004.svg",
+   "/dev-covers/smp0004.svg",
+   "/dev-covers/smp0004.svg",
+   "/dev-covers/smp0004.svg"
+  ],
+  "date": "2026-10-01 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [
+   "中村あおい",
+   "佐藤みお"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "ひなた企画の作品です。発売日は2026年10月1日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0005",
+  "title": "【8K】テスト用タイトル 港町の夜に 5",
+  "url": "https://example.invalid/aff/smp0005",
+  "image_url": "/dev-covers/smp0005.svg",
+  "sample_images": [
+   "/dev-covers/smp0005.svg",
+   "/dev-covers/smp0005.svg",
+   "/dev-covers/smp0005.svg",
+   "/dev-covers/smp0005.svg"
+  ],
+  "date": "2026-09-30 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0006",
+  "title": "とても長いタイトルのテスト作品 その日わたしは駅前の小さな喫茶店で偶然あの人と再会してしまった 6",
+  "url": "https://example.invalid/aff/smp0006",
+  "image_url": "/dev-covers/smp0006.svg",
+  "sample_images": [],
+  "date": "2026-09-30 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0007",
+  "title": "とても長いタイトルのテスト作品 その日わたしは駅前の小さな喫茶店で偶然あの人と再会してしまった 7",
+  "url": "https://example.invalid/aff/smp0007",
+  "image_url": "/dev-covers/smp0007.svg",
+  "sample_images": [
+   "/dev-covers/smp0007.svg",
+   "/dev-covers/smp0007.svg",
+   "/dev-covers/smp0007.svg",
+   "/dev-covers/smp0007.svg"
+  ],
+  "date": "2026-09-30 00:00:00",
+  "maker": "ケイ・エム・サンプルプロデュース",
+  "actress": [
+   "鈴木ひなた",
+   "渡辺かのん"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0008",
+  "title": "ふたりだけの放課後サンプルストーリー 8",
+  "url": "https://example.invalid/aff/smp0008",
+  "image_url": "/dev-covers/smp0008.svg",
+  "sample_images": [
+   "/dev-covers/smp0008.svg",
+   "/dev-covers/smp0008.svg",
+   "/dev-covers/smp0008.svg",
+   "/dev-covers/smp0008.svg"
+  ],
+  "date": "2026-09-30 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [
+   "山本れな"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0009",
+  "title": "【8K】テスト用タイトル 港町の夜に 9",
+  "url": "https://example.invalid/aff/smp0009",
+  "image_url": "/dev-covers/smp0009.svg",
+  "sample_images": [],
+  "date": "2026-09-30 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [
+   "小林ことね"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "夜明けスタジオの作品です。発売日は2026年9月30日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0010",
+  "title": "【VR】朝までサンプル 10",
+  "url": "https://example.invalid/aff/smp0010",
+  "image_url": "/dev-covers/smp0010.svg",
+  "sample_images": [
+   "/dev-covers/smp0010.svg",
+   "/dev-covers/smp0010.svg",
+   "/dev-covers/smp0010.svg",
+   "/dev-covers/smp0010.svg"
+  ],
+  "date": "2026-09-29 00:00:00",
+  "maker": "ケイ・エム・サンプルプロデュース",
+  "actress": [
+   "小林ことね",
+   "高橋さくら"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "ケイ・エム・サンプルプロデュースの作品です。発売日は2026年9月29日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0011",
+  "title": "サンプル作品 雨宿りの約束 11",
+  "url": "https://example.invalid/aff/smp0011",
+  "image_url": "/dev-covers/smp0011.svg",
+  "sample_images": [
+   "/dev-covers/smp0011.svg",
+   "/dev-covers/smp0011.svg",
+   "/dev-covers/smp0011.svg",
+   "/dev-covers/smp0011.svg"
+  ],
+  "date": "2026-09-29 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [
+   "鈴木ひなた"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0012",
+  "title": "ふたりだけの放課後サンプルストーリー 12",
+  "url": "https://example.invalid/aff/smp0012",
+  "image_url": "/dev-covers/smp0012.svg",
+  "sample_images": [],
+  "date": "2026-09-29 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [
+   "渡辺かのん"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0013",
+  "title": "サンプル作品 屋上のひみつ 13",
+  "url": "https://example.invalid/aff/smp0013",
+  "image_url": "/dev-covers/smp0013.svg",
+  "sample_images": [
+   "/dev-covers/smp0013.svg",
+   "/dev-covers/smp0013.svg",
+   "/dev-covers/smp0013.svg",
+   "/dev-covers/smp0013.svg"
+  ],
+  "date": "2026-09-29 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [
+   "山本れな"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0014",
+  "title": "短い題名 14",
+  "url": "https://example.invalid/aff/smp0014",
+  "image_url": "/dev-covers/smp0014.svg",
+  "sample_images": [
+   "/dev-covers/smp0014.svg",
+   "/dev-covers/smp0014.svg",
+   "/dev-covers/smp0014.svg",
+   "/dev-covers/smp0014.svg"
+  ],
+  "date": "2026-09-28 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [
+   "山本れな",
+   "高橋さくら"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0015",
+  "title": "サンプル作品 雨宿りの約束 15",
+  "url": "https://example.invalid/aff/smp0015",
+  "image_url": "/dev-covers/smp0015.svg",
+  "sample_images": [],
+  "date": "2026-09-27 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0016",
+  "title": "サンプル作品 雨宿りの約束 16",
+  "url": "https://example.invalid/aff/smp0016",
+  "image_url": "/dev-covers/smp0016.svg",
+  "sample_images": [
+   "/dev-covers/smp0016.svg",
+   "/dev-covers/smp0016.svg",
+   "/dev-covers/smp0016.svg",
+   "/dev-covers/smp0016.svg"
+  ],
+  "date": "2026-09-27 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "サンプルワークスの作品です。発売日は2026年9月27日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0017",
+  "title": "【8K】テスト用タイトル 港町の夜に 17",
+  "url": "https://example.invalid/aff/smp0017",
+  "image_url": "/dev-covers/smp0017.svg",
+  "sample_images": [
+   "/dev-covers/smp0017.svg",
+   "/dev-covers/smp0017.svg",
+   "/dev-covers/smp0017.svg",
+   "/dev-covers/smp0017.svg"
+  ],
+  "date": "2026-09-27 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [
+   "渡辺かのん"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "夜明けスタジオの作品です。発売日は2026年9月27日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0018",
+  "title": "短い題名 18",
+  "url": "https://example.invalid/aff/smp0018",
+  "image_url": "/dev-covers/smp0018.svg",
+  "sample_images": [],
+  "date": "2026-09-27 00:00:00",
+  "maker": "KMPVR-sample-",
+  "actress": [
+   "佐藤みお"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0019",
+  "title": "サンプル作品 雨宿りの約束 19",
+  "url": "https://example.invalid/aff/smp0019",
+  "image_url": "/dev-covers/smp0019.svg",
+  "sample_images": [
+   "/dev-covers/smp0019.svg",
+   "/dev-covers/smp0019.svg",
+   "/dev-covers/smp0019.svg",
+   "/dev-covers/smp0019.svg"
+  ],
+  "date": "2026-09-26 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0020",
+  "title": "ふたりだけの放課後サンプルストーリー 20",
+  "url": "https://example.invalid/aff/smp0020",
+  "image_url": "/dev-covers/smp0020.svg",
+  "sample_images": [
+   "/dev-covers/smp0020.svg",
+   "/dev-covers/smp0020.svg",
+   "/dev-covers/smp0020.svg",
+   "/dev-covers/smp0020.svg"
+  ],
+  "date": "2026-09-26 00:00:00",
+  "maker": "KMPVR-sample-",
+  "actress": [
+   "中村あおい"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0021",
+  "title": "サンプル作品 雨宿りの約束 21",
+  "url": "https://example.invalid/aff/smp0021",
+  "image_url": "/dev-covers/smp0021.svg",
+  "sample_images": [],
+  "date": "2026-09-26 00:00:00",
+  "maker": "KMPVR-sample-",
+  "actress": [
+   "渡辺かのん",
+   "鈴木ひなた"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "KMPVR-sample-の作品です。発売日は2026年9月26日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0022",
+  "title": "とても長いタイトルのテスト作品 その日わたしは駅前の小さな喫茶店で偶然あの人と再会してしまった 22",
+  "url": "https://example.invalid/aff/smp0022",
+  "image_url": "/dev-covers/smp0022.svg",
+  "sample_images": [
+   "/dev-covers/smp0022.svg",
+   "/dev-covers/smp0022.svg",
+   "/dev-covers/smp0022.svg",
+   "/dev-covers/smp0022.svg"
+  ],
+  "date": "2026-09-26 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [
+   "中村あおい"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0023",
+  "title": "とても長いタイトルのテスト作品 その日わたしは駅前の小さな喫茶店で偶然あの人と再会してしまった 23",
+  "url": "https://example.invalid/aff/smp0023",
+  "image_url": "/dev-covers/smp0023.svg",
+  "sample_images": [
+   "/dev-covers/smp0023.svg",
+   "/dev-covers/smp0023.svg",
+   "/dev-covers/smp0023.svg",
+   "/dev-covers/smp0023.svg"
+  ],
+  "date": "2026-09-25 00:00:00",
+  "maker": "KMPVR-sample-",
+  "actress": [
+   "佐藤みお"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0024",
+  "title": "短い題名 24",
+  "url": "https://example.invalid/aff/smp0024",
+  "image_url": "/dev-covers/smp0024.svg",
+  "sample_images": [],
+  "date": "2026-09-25 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [
+   "中村あおい"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "ひなた企画の作品です。発売日は2026年9月25日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0025",
+  "title": "【8K】テスト用タイトル 港町の夜に 25",
+  "url": "https://example.invalid/aff/smp0025",
+  "image_url": "/dev-covers/smp0025.svg",
+  "sample_images": [
+   "/dev-covers/smp0025.svg",
+   "/dev-covers/smp0025.svg",
+   "/dev-covers/smp0025.svg",
+   "/dev-covers/smp0025.svg"
+  ],
+  "date": "2026-09-24 00:00:00",
+  "maker": "KMPVR-sample-",
+  "actress": [
+   "佐藤みお"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0026",
+  "title": "【8K】テスト用タイトル 港町の夜に 26",
+  "url": "https://example.invalid/aff/smp0026",
+  "image_url": "/dev-covers/smp0026.svg",
+  "sample_images": [
+   "/dev-covers/smp0026.svg",
+   "/dev-covers/smp0026.svg",
+   "/dev-covers/smp0026.svg",
+   "/dev-covers/smp0026.svg"
+  ],
+  "date": "2026-09-24 00:00:00",
+  "maker": "KMPVR-sample-",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0027",
+  "title": "ふたりだけの放課後サンプルストーリー 27",
+  "url": "https://example.invalid/aff/smp0027",
+  "image_url": "/dev-covers/smp0027.svg",
+  "sample_images": [],
+  "date": "2026-09-24 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [
+   "小林ことね"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0028",
+  "title": "とても長いタイトルのテスト作品 その日わたしは駅前の小さな喫茶店で偶然あの人と再会してしまった 28",
+  "url": "https://example.invalid/aff/smp0028",
+  "image_url": "/dev-covers/smp0028.svg",
+  "sample_images": [
+   "/dev-covers/smp0028.svg",
+   "/dev-covers/smp0028.svg",
+   "/dev-covers/smp0028.svg",
+   "/dev-covers/smp0028.svg"
+  ],
+  "date": "2026-09-23 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0029",
+  "title": "【VR】朝までサンプル 29",
+  "url": "https://example.invalid/aff/smp0029",
+  "image_url": "/dev-covers/smp0029.svg",
+  "sample_images": [
+   "/dev-covers/smp0029.svg",
+   "/dev-covers/smp0029.svg",
+   "/dev-covers/smp0029.svg",
+   "/dev-covers/smp0029.svg"
+  ],
+  "date": "2026-09-22 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "サンプルワークスの作品です。発売日は2026年9月22日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0030",
+  "title": "短い題名 30",
+  "url": "https://example.invalid/aff/smp0030",
+  "image_url": "/dev-covers/smp0030.svg",
+  "sample_images": [],
+  "date": "2026-09-22 00:00:00",
+  "maker": "ケイ・エム・サンプルプロデュース",
+  "actress": [
+   "渡辺かのん"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0031",
+  "title": "サンプル作品 屋上のひみつ 31",
+  "url": "https://example.invalid/aff/smp0031",
+  "image_url": "/dev-covers/smp0031.svg",
+  "sample_images": [
+   "/dev-covers/smp0031.svg",
+   "/dev-covers/smp0031.svg",
+   "/dev-covers/smp0031.svg",
+   "/dev-covers/smp0031.svg"
+  ],
+  "date": "2026-09-22 00:00:00",
+  "maker": "KMPVR-sample-",
+  "actress": [
+   "小林ことね"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0032",
+  "title": "短い題名 32",
+  "url": "https://example.invalid/aff/smp0032",
+  "image_url": "/dev-covers/smp0032.svg",
+  "sample_images": [
+   "/dev-covers/smp0032.svg",
+   "/dev-covers/smp0032.svg",
+   "/dev-covers/smp0032.svg",
+   "/dev-covers/smp0032.svg"
+  ],
+  "date": "2026-09-22 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "夜明けスタジオの作品です。発売日は2026年9月22日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0033",
+  "title": "【VR】【8K】サンプル作品 夏の終わりの図書室 33",
+  "url": "https://example.invalid/aff/smp0033",
+  "image_url": "/dev-covers/smp0033.svg",
+  "sample_images": [],
+  "date": "2026-09-22 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [
+   "高橋さくら"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0034",
+  "title": "サンプル作品 雨宿りの約束 34",
+  "url": "https://example.invalid/aff/smp0034",
+  "image_url": "/dev-covers/smp0034.svg",
+  "sample_images": [
+   "/dev-covers/smp0034.svg",
+   "/dev-covers/smp0034.svg",
+   "/dev-covers/smp0034.svg",
+   "/dev-covers/smp0034.svg"
+  ],
+  "date": "2026-09-21 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [
+   "佐藤みお"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "ひなた企画の作品です。発売日は2026年9月21日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0035",
+  "title": "サンプル作品 雨宿りの約束 35",
+  "url": "https://example.invalid/aff/smp0035",
+  "image_url": "/dev-covers/smp0035.svg",
+  "sample_images": [
+   "/dev-covers/smp0035.svg",
+   "/dev-covers/smp0035.svg",
+   "/dev-covers/smp0035.svg",
+   "/dev-covers/smp0035.svg"
+  ],
+  "date": "2026-09-21 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0036",
+  "title": "短い題名 36",
+  "url": "https://example.invalid/aff/smp0036",
+  "image_url": "/dev-covers/smp0036.svg",
+  "sample_images": [],
+  "date": "2026-09-21 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [
+   "伊藤ゆい"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "ひなた企画の作品です。発売日は2026年9月21日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0037",
+  "title": "【VR】朝までサンプル 37",
+  "url": "https://example.invalid/aff/smp0037",
+  "image_url": "/dev-covers/smp0037.svg",
+  "sample_images": [
+   "/dev-covers/smp0037.svg",
+   "/dev-covers/smp0037.svg",
+   "/dev-covers/smp0037.svg",
+   "/dev-covers/smp0037.svg"
+  ],
+  "date": "2026-09-20 00:00:00",
+  "maker": "KMPVR-sample-",
+  "actress": [
+   "伊藤ゆい"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0038",
+  "title": "サンプル作品 雨宿りの約束 38",
+  "url": "https://example.invalid/aff/smp0038",
+  "image_url": "/dev-covers/smp0038.svg",
+  "sample_images": [
+   "/dev-covers/smp0038.svg",
+   "/dev-covers/smp0038.svg",
+   "/dev-covers/smp0038.svg",
+   "/dev-covers/smp0038.svg"
+  ],
+  "date": "2026-09-20 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [
+   "佐藤みお"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0039",
+  "title": "短い題名 39",
+  "url": "https://example.invalid/aff/smp0039",
+  "image_url": "/dev-covers/smp0039.svg",
+  "sample_images": [],
+  "date": "2026-09-20 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [
+   "山本れな",
+   "伊藤ゆい"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "夜明けスタジオの作品です。発売日は2026年9月20日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0040",
+  "title": "ふたりだけの放課後サンプルストーリー 40",
+  "url": "https://example.invalid/aff/smp0040",
+  "image_url": "/dev-covers/smp0040.svg",
+  "sample_images": [
+   "/dev-covers/smp0040.svg",
+   "/dev-covers/smp0040.svg",
+   "/dev-covers/smp0040.svg",
+   "/dev-covers/smp0040.svg"
+  ],
+  "date": "2026-09-20 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [
+   "鈴木ひなた"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0041",
+  "title": "【VR】【8K】サンプル作品 夏の終わりの図書室 41",
+  "url": "https://example.invalid/aff/smp0041",
+  "image_url": "/dev-covers/smp0041.svg",
+  "sample_images": [
+   "/dev-covers/smp0041.svg",
+   "/dev-covers/smp0041.svg",
+   "/dev-covers/smp0041.svg",
+   "/dev-covers/smp0041.svg"
+  ],
+  "date": "2026-09-20 00:00:00",
+  "maker": "KMPVR-sample-",
+  "actress": [
+   "伊藤ゆい"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0042",
+  "title": "ふたりだけの放課後サンプルストーリー 42",
+  "url": "https://example.invalid/aff/smp0042",
+  "image_url": "/dev-covers/smp0042.svg",
+  "sample_images": [],
+  "date": "2026-10-03 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "夜明けスタジオの作品です。発売日は2026年10月3日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0043",
+  "title": "【8K】テスト用タイトル 港町の夜に 43",
+  "url": "https://example.invalid/aff/smp0043",
+  "image_url": "/dev-covers/smp0043.svg",
+  "sample_images": [
+   "/dev-covers/smp0043.svg",
+   "/dev-covers/smp0043.svg",
+   "/dev-covers/smp0043.svg",
+   "/dev-covers/smp0043.svg"
+  ],
+  "date": "2026-10-03 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [
+   "小林ことね"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "ミドリ映像の作品です。発売日は2026年10月3日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0044",
+  "title": "【8K】テスト用タイトル 港町の夜に 44",
+  "url": "https://example.invalid/aff/smp0044",
+  "image_url": "/dev-covers/smp0044.svg",
+  "sample_images": [
+   "/dev-covers/smp0044.svg",
+   "/dev-covers/smp0044.svg",
+   "/dev-covers/smp0044.svg",
+   "/dev-covers/smp0044.svg"
+  ],
+  "date": "2026-10-03 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [
+   "鈴木ひなた"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0045",
+  "title": "【VR】【8K】サンプル作品 夏の終わりの図書室 45",
+  "url": "https://example.invalid/aff/smp0045",
+  "image_url": "/dev-covers/smp0045.svg",
+  "sample_images": [],
+  "date": "2026-10-04 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [
+   "高橋さくら"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0046",
+  "title": "とても長いタイトルのテスト作品 その日わたしは駅前の小さな喫茶店で偶然あの人と再会してしまった 46",
+  "url": "https://example.invalid/aff/smp0046",
+  "image_url": "/dev-covers/smp0046.svg",
+  "sample_images": [
+   "/dev-covers/smp0046.svg",
+   "/dev-covers/smp0046.svg",
+   "/dev-covers/smp0046.svg",
+   "/dev-covers/smp0046.svg"
+  ],
+  "date": "2026-10-05 00:00:00",
+  "maker": "ケイ・エム・サンプルプロデュース",
+  "actress": [
+   "小林ことね",
+   "山本れな"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0047",
+  "title": "ふたりだけの放課後サンプルストーリー 47",
+  "url": "https://example.invalid/aff/smp0047",
+  "image_url": "/dev-covers/smp0047.svg",
+  "sample_images": [
+   "/dev-covers/smp0047.svg",
+   "/dev-covers/smp0047.svg",
+   "/dev-covers/smp0047.svg",
+   "/dev-covers/smp0047.svg"
+  ],
+  "date": "2026-10-05 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0048",
+  "title": "サンプル作品 雨宿りの約束 48",
+  "url": "https://example.invalid/aff/smp0048",
+  "image_url": "/dev-covers/smp0048.svg",
+  "sample_images": [],
+  "date": "2026-10-06 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [
+   "伊藤ゆい"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0049",
+  "title": "【8K】テスト用タイトル 港町の夜に 49",
+  "url": "https://example.invalid/aff/smp0049",
+  "image_url": "/dev-covers/smp0049.svg",
+  "sample_images": [
+   "/dev-covers/smp0049.svg",
+   "/dev-covers/smp0049.svg",
+   "/dev-covers/smp0049.svg",
+   "/dev-covers/smp0049.svg"
+  ],
+  "date": "2026-10-06 00:00:00",
+  "maker": "ケイ・エム・サンプルプロデュース",
+  "actress": [
+   "山本れな"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "ケイ・エム・サンプルプロデュースの作品です。発売日は2026年10月6日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0050",
+  "title": "短い題名 50",
+  "url": "https://example.invalid/aff/smp0050",
+  "image_url": "/dev-covers/smp0050.svg",
+  "sample_images": [
+   "/dev-covers/smp0050.svg",
+   "/dev-covers/smp0050.svg",
+   "/dev-covers/smp0050.svg",
+   "/dev-covers/smp0050.svg"
+  ],
+  "date": "2026-10-06 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "夜明けスタジオの作品です。発売日は2026年10月6日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0051",
+  "title": "とても長いタイトルのテスト作品 その日わたしは駅前の小さな喫茶店で偶然あの人と再会してしまった 51",
+  "url": "https://example.invalid/aff/smp0051",
+  "image_url": "/dev-covers/smp0051.svg",
+  "sample_images": [],
+  "date": "2026-10-06 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [
+   "中村あおい",
+   "小林ことね"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0052",
+  "title": "とても長いタイトルのテスト作品 その日わたしは駅前の小さな喫茶店で偶然あの人と再会してしまった 52",
+  "url": "https://example.invalid/aff/smp0052",
+  "image_url": "/dev-covers/smp0052.svg",
+  "sample_images": [
+   "/dev-covers/smp0052.svg",
+   "/dev-covers/smp0052.svg",
+   "/dev-covers/smp0052.svg",
+   "/dev-covers/smp0052.svg"
+  ],
+  "date": "2026-10-07 00:00:00",
+  "maker": "KMPVR-sample-",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "KMPVR-sample-の作品です。発売日は2026年10月7日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0053",
+  "title": "サンプル作品 屋上のひみつ 53",
+  "url": "https://example.invalid/aff/smp0053",
+  "image_url": "/dev-covers/smp0053.svg",
+  "sample_images": [
+   "/dev-covers/smp0053.svg",
+   "/dev-covers/smp0053.svg",
+   "/dev-covers/smp0053.svg",
+   "/dev-covers/smp0053.svg"
+  ],
+  "date": "2026-10-07 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [
+   "高橋さくら"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "ミドリ映像の作品です。発売日は2026年10月7日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0054",
+  "title": "【VR】【8K】サンプル作品 夏の終わりの図書室 54",
+  "url": "https://example.invalid/aff/smp0054",
+  "image_url": "/dev-covers/smp0054.svg",
+  "sample_images": [],
+  "date": "2026-10-07 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0055",
+  "title": "【VR】【8K】サンプル作品 夏の終わりの図書室 55",
+  "url": "https://example.invalid/aff/smp0055",
+  "image_url": "/dev-covers/smp0055.svg",
+  "sample_images": [
+   "/dev-covers/smp0055.svg",
+   "/dev-covers/smp0055.svg",
+   "/dev-covers/smp0055.svg",
+   "/dev-covers/smp0055.svg"
+  ],
+  "date": "2026-10-07 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [
+   "小林ことね",
+   "中村あおい"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0056",
+  "title": "サンプル作品 屋上のひみつ 56",
+  "url": "https://example.invalid/aff/smp0056",
+  "image_url": "/dev-covers/smp0056.svg",
+  "sample_images": [
+   "/dev-covers/smp0056.svg",
+   "/dev-covers/smp0056.svg",
+   "/dev-covers/smp0056.svg",
+   "/dev-covers/smp0056.svg"
+  ],
+  "date": "2026-10-07 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0057",
+  "title": "サンプル作品 雨宿りの約束 57",
+  "url": "https://example.invalid/aff/smp0057",
+  "image_url": "/dev-covers/smp0057.svg",
+  "sample_images": [],
+  "date": "2026-10-08 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [
+   "伊藤ゆい"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0058",
+  "title": "サンプル作品 雨宿りの約束 58",
+  "url": "https://example.invalid/aff/smp0058",
+  "image_url": "/dev-covers/smp0058.svg",
+  "sample_images": [
+   "/dev-covers/smp0058.svg",
+   "/dev-covers/smp0058.svg",
+   "/dev-covers/smp0058.svg",
+   "/dev-covers/smp0058.svg"
+  ],
+  "date": "2026-10-08 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [
+   "伊藤ゆい"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "夜明けスタジオの作品です。発売日は2026年10月8日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0059",
+  "title": "【8K】テスト用タイトル 港町の夜に 59",
+  "url": "https://example.invalid/aff/smp0059",
+  "image_url": "/dev-covers/smp0059.svg",
+  "sample_images": [
+   "/dev-covers/smp0059.svg",
+   "/dev-covers/smp0059.svg",
+   "/dev-covers/smp0059.svg",
+   "/dev-covers/smp0059.svg"
+  ],
+  "date": "2026-10-08 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [
+   "小林ことね"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0060",
+  "title": "【VR】朝までサンプル 60",
+  "url": "https://example.invalid/aff/smp0060",
+  "image_url": "/dev-covers/smp0060.svg",
+  "sample_images": [],
+  "date": "2026-10-08 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [
+   "鈴木ひなた"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0061",
+  "title": "短い題名 61",
+  "url": "https://example.invalid/aff/smp0061",
+  "image_url": "/dev-covers/smp0061.svg",
+  "sample_images": [
+   "/dev-covers/smp0061.svg",
+   "/dev-covers/smp0061.svg",
+   "/dev-covers/smp0061.svg",
+   "/dev-covers/smp0061.svg"
+  ],
+  "date": "2026-10-09 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0062",
+  "title": "ふたりだけの放課後サンプルストーリー 62",
+  "url": "https://example.invalid/aff/smp0062",
+  "image_url": "/dev-covers/smp0062.svg",
+  "sample_images": [
+   "/dev-covers/smp0062.svg",
+   "/dev-covers/smp0062.svg",
+   "/dev-covers/smp0062.svg",
+   "/dev-covers/smp0062.svg"
+  ],
+  "date": "2026-10-09 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [
+   "伊藤ゆい"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0063",
+  "title": "【8K】テスト用タイトル 港町の夜に 63",
+  "url": "https://example.invalid/aff/smp0063",
+  "image_url": "/dev-covers/smp0063.svg",
+  "sample_images": [],
+  "date": "2026-10-09 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [
+   "伊藤ゆい"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "ミドリ映像の作品です。発売日は2026年10月9日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0064",
+  "title": "短い題名 64",
+  "url": "https://example.invalid/aff/smp0064",
+  "image_url": "/dev-covers/smp0064.svg",
+  "sample_images": [
+   "/dev-covers/smp0064.svg",
+   "/dev-covers/smp0064.svg",
+   "/dev-covers/smp0064.svg",
+   "/dev-covers/smp0064.svg"
+  ],
+  "date": "2026-10-10 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [
+   "中村あおい"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0065",
+  "title": "サンプル作品 屋上のひみつ 65",
+  "url": "https://example.invalid/aff/smp0065",
+  "image_url": "/dev-covers/smp0065.svg",
+  "sample_images": [
+   "/dev-covers/smp0065.svg",
+   "/dev-covers/smp0065.svg",
+   "/dev-covers/smp0065.svg",
+   "/dev-covers/smp0065.svg"
+  ],
+  "date": "2026-10-10 00:00:00",
+  "maker": "ケイ・エム・サンプルプロデュース",
+  "actress": [
+   "佐藤みお"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0066",
+  "title": "サンプル作品 雨宿りの約束 66",
+  "url": "https://example.invalid/aff/smp0066",
+  "image_url": "/dev-covers/smp0066.svg",
+  "sample_images": [],
+  "date": "2026-10-10 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [
+   "山本れな"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0067",
+  "title": "ふたりだけの放課後サンプルストーリー 67",
+  "url": "https://example.invalid/aff/smp0067",
+  "image_url": "/dev-covers/smp0067.svg",
+  "sample_images": [
+   "/dev-covers/smp0067.svg",
+   "/dev-covers/smp0067.svg",
+   "/dev-covers/smp0067.svg",
+   "/dev-covers/smp0067.svg"
+  ],
+  "date": "2026-10-10 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0068",
+  "title": "【8K】テスト用タイトル 港町の夜に 68",
+  "url": "https://example.invalid/aff/smp0068",
+  "image_url": "/dev-covers/smp0068.svg",
+  "sample_images": [
+   "/dev-covers/smp0068.svg",
+   "/dev-covers/smp0068.svg",
+   "/dev-covers/smp0068.svg",
+   "/dev-covers/smp0068.svg"
+  ],
+  "date": "2026-10-11 00:00:00",
+  "maker": "ミドリ映像",
+  "actress": [
+   "渡辺かのん"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "ミドリ映像の作品です。発売日は2026年10月11日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0069",
+  "title": "サンプル作品 屋上のひみつ 69",
+  "url": "https://example.invalid/aff/smp0069",
+  "image_url": "/dev-covers/smp0069.svg",
+  "sample_images": [],
+  "date": "2026-10-12 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [
+   "高橋さくら"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "ひなた企画の作品です。発売日は2026年10月12日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0070",
+  "title": "【VR】【8K】サンプル作品 夏の終わりの図書室 70",
+  "url": "https://example.invalid/aff/smp0070",
+  "image_url": "/dev-covers/smp0070.svg",
+  "sample_images": [
+   "/dev-covers/smp0070.svg",
+   "/dev-covers/smp0070.svg",
+   "/dev-covers/smp0070.svg",
+   "/dev-covers/smp0070.svg"
+  ],
+  "date": "2026-10-12 00:00:00",
+  "maker": "ケイ・エム・サンプルプロデュース",
+  "actress": [],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "ケイ・エム・サンプルプロデュースの作品です。発売日は2026年10月12日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0071",
+  "title": "サンプル作品 雨宿りの約束 71",
+  "url": "https://example.invalid/aff/smp0071",
+  "image_url": "/dev-covers/smp0071.svg",
+  "sample_images": [
+   "/dev-covers/smp0071.svg",
+   "/dev-covers/smp0071.svg",
+   "/dev-covers/smp0071.svg",
+   "/dev-covers/smp0071.svg"
+  ],
+  "date": "2026-10-12 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [
+   "中村あおい"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "サンプルワークスの作品です。発売日は2026年10月12日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0072",
+  "title": "【VR】朝までサンプル 72",
+  "url": "https://example.invalid/aff/smp0072",
+  "image_url": "/dev-covers/smp0072.svg",
+  "sample_images": [],
+  "date": "2026-10-13 00:00:00",
+  "maker": "ひなた企画",
+  "actress": [
+   "鈴木ひなた"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0073",
+  "title": "【8K】テスト用タイトル 港町の夜に 73",
+  "url": "https://example.invalid/aff/smp0073",
+  "image_url": "/dev-covers/smp0073.svg",
+  "sample_images": [
+   "/dev-covers/smp0073.svg",
+   "/dev-covers/smp0073.svg",
+   "/dev-covers/smp0073.svg",
+   "/dev-covers/smp0073.svg"
+  ],
+  "date": "2026-10-14 00:00:00",
+  "maker": "ケイ・エム・サンプルプロデュース",
+  "actress": [],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "ケイ・エム・サンプルプロデュースの作品です。発売日は2026年10月14日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0074",
+  "title": "【VR】朝までサンプル 74",
+  "url": "https://example.invalid/aff/smp0074",
+  "image_url": "/dev-covers/smp0074.svg",
+  "sample_images": [
+   "/dev-covers/smp0074.svg",
+   "/dev-covers/smp0074.svg",
+   "/dev-covers/smp0074.svg",
+   "/dev-covers/smp0074.svg"
+  ],
+  "date": "2026-10-14 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [
+   "高橋さくら"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "サンプルワークスの作品です。発売日は2026年10月14日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0075",
+  "title": "とても長いタイトルのテスト作品 その日わたしは駅前の小さな喫茶店で偶然あの人と再会してしまった 75",
+  "url": "https://example.invalid/aff/smp0075",
+  "image_url": "/dev-covers/smp0075.svg",
+  "sample_images": [],
+  "date": "2026-10-14 00:00:00",
+  "maker": "サンプルワークス",
+  "actress": [
+   "渡辺かのん"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "新作として注目を集めるタイトル。出演者の表情の変化に目が向きます。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0076",
+  "title": "サンプル作品 屋上のひみつ 76",
+  "url": "https://example.invalid/aff/smp0076",
+  "image_url": "/dev-covers/smp0076.svg",
+  "sample_images": [
+   "/dev-covers/smp0076.svg",
+   "/dev-covers/smp0076.svg",
+   "/dev-covers/smp0076.svg",
+   "/dev-covers/smp0076.svg"
+  ],
+  "date": "2026-10-14 00:00:00",
+  "maker": "ケイ・エム・サンプルプロデュース",
+  "actress": [
+   "伊藤ゆい"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "透明感のある佐藤みおが、やわらかな空気をまとって登場。静かな時間の流れを楽しめる一本です。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0077",
+  "title": "【VR】【8K】サンプル作品 夏の終わりの図書室 77",
+  "url": "https://example.invalid/aff/smp0077",
+  "image_url": "/dev-covers/smp0077.svg",
+  "sample_images": [
+   "/dev-covers/smp0077.svg",
+   "/dev-covers/smp0077.svg",
+   "/dev-covers/smp0077.svg",
+   "/dev-covers/smp0077.svg"
+  ],
+  "date": "2026-10-15 00:00:00",
+  "maker": "ケイ・エム・サンプルプロデュース",
+  "actress": [
+   "佐藤みお"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0078",
+  "title": "【VR】朝までサンプル 78",
+  "url": "https://example.invalid/aff/smp0078",
+  "image_url": "/dev-covers/smp0078.svg",
+  "sample_images": [],
+  "date": "2026-10-15 00:00:00",
+  "maker": "KMPVR-sample-",
+  "actress": [
+   "伊藤ゆい",
+   "渡辺かのん"
+  ],
+  "genres": [],
+  "tags": [],
+  "duration_min": null,
+  "comment": "KMPVR-sample-の作品です。発売日は2026年10月15日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "cid": "smp0079",
+  "title": "【8K】テスト用タイトル 港町の夜に 79",
+  "url": "https://example.invalid/aff/smp0079",
+  "image_url": "/dev-covers/smp0079.svg",
+  "sample_images": [
+   "/dev-covers/smp0079.svg",
+   "/dev-covers/smp0079.svg",
+   "/dev-covers/smp0079.svg",
+   "/dev-covers/smp0079.svg"
+  ],
+  "date": "2026-10-15 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "夜明けスタジオの作品です。発売日は2026年10月15日。",
+  "comment_kind": "template",
+  "comment_tries": 0
+ },
+ {
+  "title": "cidなし",
+  "date": "2026-10-01 00:00:00"
+ },
+ {
+  "cid": "bad1",
+  "title": "日付不正",
+  "date": "unknown"
+ },
+ {
+  "cid": "bad2",
+  "title": "",
+  "date": "2026-10-01 00:00:00"
+ },
+ {
+  "cid": "smp0001",
+  "title": "【VR】【8K】サンプル作品 夏の終わりの図書室 1",
+  "url": "https://example.invalid/aff/smp0001",
+  "image_url": "/dev-covers/smp0001.svg",
+  "sample_images": [
+   "/dev-covers/smp0001.svg",
+   "/dev-covers/smp0001.svg",
+   "/dev-covers/smp0001.svg",
+   "/dev-covers/smp0001.svg"
+  ],
+  "date": "2026-10-02 00:00:00",
+  "maker": "夜明けスタジオ",
+  "actress": [
+   "中村あおい"
+  ],
+  "genres": [
+   "サンプルジャンル",
+   "テスト"
+  ],
+  "tags": [],
+  "duration_min": 120,
+  "comment": "VRならではの距離感で、作品の世界に入り込めそうです。発売日をチェックしておきたい一本。",
+  "comment_kind": "ai",
+  "comment_tries": 0
+ }
+]

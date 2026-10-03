@@ -1,0 +1,34 @@
+---
+import { itemPath, statusOf } from '../lib/items.js';
+import { today } from '../lib/data.js';
+
+// level: 見出しの階層（ページの構造に合わせて h3 / h4 を指定）
+const { item, level = 'h4' } = Astro.props;
+const Heading = level;
+const status = statusOf(item, today);
+const href = itemPath(item.cid);
+---
+
+<article class="item">
+  <a class="item-cover" href={href} tabindex="-1" aria-hidden="true">
+    <span class="spine">{item.maker}</span>
+    {item.image_url && (
+      <img
+        class="item-img"
+        src={item.image_url}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onerror="this.style.visibility='hidden'"
+      />
+    )}
+    {status === 'new' && <span class="pop pop-new">新作</span>}
+    {status === 'wait' && <span class="pop pop-wait">予約</span>}
+  </a>
+  <Heading class="item-title"><a class="item-title-link" href={href}>{item.title}</a></Heading>
+  <p class="item-cast">{item.actress.length ? item.actress.join('、') : '出演者の記載なし'}</p>
+  <p class="item-comment">{item.isAi && <span class="ai-chip">AI</span>}{item.comment}</p>
+  {item.url && (
+    <a class="btn btn-hot btn-block" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで見る</a>
+  )}
+</article>

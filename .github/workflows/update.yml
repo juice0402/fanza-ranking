@@ -2,12 +2,22 @@ name: Daily FANZA Update
 
 on:
   schedule:
-    - cron: '0 16 * * *'
-  workflow_dispatch:
+    - cron: '0 16 * * *' # 毎日 日本時間の午前1時（UTC 16:00）
+  workflow_dispatch: # GitHubの Actions 画面から「Run workflow」で手動実行もできる
+
+# 更新したデータをリポジトリに保存（commit）するために必要な権限
+permissions:
+  contents: write
+
+# 手動実行と自動実行が重なっても、順番に1つずつ動かす（データが混ざらないように）
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -15,7 +25,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
 
       - name: Run update script
         env:
@@ -26,7 +36,15 @@ jobs:
 
       - name: Commit and push if changed
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git diff --staged --quiet || (git commit -m "Add AI generated comments to new releases" && git push)
+          # 保存するのはデータファイルだけ（他のファイルが紛れ込まないように）
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add site/src/data/new_releases.json
+          if git diff --staged --quiet; then
+            echo "データに変更なし。保存しません。"
+            exit 0
+          fi
+          git commit -m "データ更新: $(TZ=Asia/Tokyo date +%Y-%m-%d)"
+          # 更新中に誰かが main を更新していても、取り込んでから保存する
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

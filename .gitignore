@@ -5,3 +5,16 @@ site/node_modules/
 site/.astro/
 site/dist/
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# スクリプトが書き込み途中に作る一時ファイル
+*.json.tmp
+
+# 環境変数・個人設定（秘密情報を入れたファイルは絶対にコミットしない）
+.env
+.env.*
+.claude/settings.local.json

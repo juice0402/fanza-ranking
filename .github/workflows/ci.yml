@@ -1,0 +1,38 @@
+name: CI
+
+# プルリクエストを作る/更新するたびに、テストとサイトのビルドを自動で確認します。
+# ここが緑(✓)なら、マージしても安全です。赤(×)ならマージしないで、内容を確認してください。
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      # テスト → サイトのビルド → ビルド結果の点検（18歳確認・広告表記などが全ページにあるか）
+      - name: Tests, build and verify
+        run: bash scripts/check.sh --build

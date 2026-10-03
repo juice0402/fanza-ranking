@@ -1,0 +1,129 @@
+---
+import Base from '../../layouts/Base.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import { all } from '../../lib/data.js';
+import {
+  formatDateJp,
+  itemPath,
+  itemPageDescription,
+  itemPageTitle,
+  relatedItems,
+  truncate,
+} from '../../lib/items.js';
+
+// 作品ごとに1ページ作る
+export function getStaticPaths() {
+  return all.map((item) => ({ params: { cid: item.cid }, props: { item } }));
+}
+
+const { item } = Astro.props;
+const related = relatedItems(item, all, 8);
+const samples = item.sample_images.slice(0, 8);
+---
+
+<Base
+  title={itemPageTitle(item)}
+  description={itemPageDescription(item)}
+  path={itemPath(item.cid)}
+  image={item.image_url}
+  stickyCta={Boolean(item.url)}
+>
+  <div class="wrap">
+    <nav aria-label="パンくずリスト">
+      <ol class="crumbs">
+        <li class="crumbs-item"><a class="crumbs-link" href="/">トップ</a></li>
+        <li class="crumbs-item" aria-current="page">{truncate(item.title, 30)}</li>
+      </ol>
+    </nav>
+
+    <article class="detail-grid">
+      <div class="detail-media">
+        {item.image_url && (
+          <img
+            class="detail-cover"
+            src={item.image_url}
+            alt={`${truncate(item.title, 60)} のパッケージ画像`}
+            width="800"
+            height="538"
+            decoding="async"
+          />
+        )}
+      </div>
+
+      <div class="detail-body">
+        <h1 class="detail-title">{item.title}</h1>
+
+        <dl class="spec">
+          <dt class="spec-term">発売日</dt>
+          <dd class="spec-desc">{formatDateJp(item.dateKey)}</dd>
+          <dt class="spec-term">メーカー</dt>
+          <dd class="spec-desc">{item.maker}</dd>
+          {item.actress.length > 0 && (
+            <>
+              <dt class="spec-term">出演</dt>
+              <dd class="spec-desc">{item.actress.join('、')}</dd>
+            </>
+          )}
+          {item.duration_min && (
+            <>
+              <dt class="spec-term">収録時間</dt>
+              <dd class="spec-desc">{item.duration_min}分</dd>
+            </>
+          )}
+          {item.genres.length > 0 && (
+            <>
+              <dt class="spec-term">ジャンル</dt>
+              <dd class="spec-desc">
+                <ul class="chips">
+                  {item.genres.map((g) => <li class="chip">{g}</li>)}
+                </ul>
+              </dd>
+            </>
+          )}
+        </dl>
+
+        {item.isAi
+          ? (
+            <div class="note-card">
+              <p class="note-card-label">AIのひとこと</p>
+              <p class="note-card-text">{item.comment}</p>
+            </div>
+          )
+          : item.comment && <p class="plain-comment">{item.comment}</p>}
+
+        {item.url && (
+          <a class="btn btn-hot btn-lg detail-cta" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>
+        )}
+        <p class="fine">広告｜リンク先はFANZAの公式ページです。価格や配信状況は、リンク先で確認してください。</p>
+      </div>
+    </article>
+
+    {samples.length > 0 && (
+      <section class="subsection" aria-labelledby="samples-title">
+        <h2 id="samples-title" class="subsection-title">サンプル画像</h2>
+        <ul class="samples">
+          {samples.map((src, i) => (
+            <li><img class="sample-img" src={src} alt={`サンプル画像 ${i + 1}`} loading="lazy" decoding="async" /></li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {related.length > 0 && (
+      <section class="subsection" aria-labelledby="related-title">
+        <h2 id="related-title" class="subsection-title">同じ出演者・メーカーの作品</h2>
+        <ul class="shelf">
+          {related.map((r) => (
+            <li class="shelf-cell"><ItemCard item={r} level="h3" /></li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </div>
+
+  {item.url && (
+    <div class="sticky-cta">
+      <a class="btn btn-hot btn-block" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>
+    </div>
+  )}
+</Base>

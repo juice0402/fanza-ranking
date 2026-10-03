@@ -1,0 +1,30 @@
+---
+import ItemCard from './ItemCard.astro';
+import { dateParts } from '../lib/items.js';
+
+// groups: groupByDate() の結果（発売日ごとの作品のまとまり）
+// headingLevel: 日付タブの見出し階層。カードの見出しは、その1つ下になる
+const { groups, headingLevel = 'h3', cardLevel = 'h4' } = Astro.props;
+const DayHeading = headingLevel;
+---
+
+{groups.map((g) => {
+  const p = dateParts(g.dateKey);
+  return (
+    <section class="day" aria-labelledby={`day-${g.dateKey}`}>
+      <header class="divider">
+        <DayHeading class="divider-tab" id={`day-${g.dateKey}`}>
+          <span class="divider-year">{p.y}年</span>
+          <span>{p.m}月{p.d}日</span>
+          <span class="divider-wd">{p.wd}曜</span>
+        </DayHeading>
+        <p class="divider-count">{g.items.length}本</p>
+      </header>
+      <ul class="shelf">
+        {g.items.map((item) => (
+          <li class="shelf-cell"><ItemCard item={item} level={cardLevel} /></li>
+        ))}
+      </ul>
+    </section>
+  );
+})}
