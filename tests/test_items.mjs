@@ -176,5 +176,21 @@ const script = L.jsonLdScript(evil);
 check('JSON-LD: ページを壊す記号（</script> など）を置き換える', !script.includes('<') && !script.includes('>') && !script.includes('&') && !script.includes(' '), script);
 check('JSON-LD: 置き換えても、読み戻すと元のデータと同じ', JSON.stringify(JSON.parse(script)) === JSON.stringify(evil));
 
+console.log('\n■ URLの安全確認・文字の切り方');
+const urlItem = L.normalizeItems([{
+  cid: 'u1', title: 't', date: '2026-10-01',
+  url: 'javascript:alert(1)', image_url: 'data:text/html,<b>x</b>',
+  sample_images: ['https://pics.dmm.co.jp/a.jpg', 'http://pics.dmm.co.jp/b.jpg', 'https://evil.example/c.jpg', 'javascript:alert(2)', 'https://evil.com\\@dmm.co.jp/d.jpg', 'https://dmm.co.jp:x@evil.com/e.jpg', 42, null],
+}])[0];
+check('作品のリンク・画像: javascript: や data: は空にする', urlItem.url === '' && urlItem.image_url === '');
+check('サンプル画像: DMMのhttpsだけ残す（httpはhttpsに直す・他のサイト・javascript:・ブラウザと解釈がずれるURL・数字やnullは除く）', urlItem.sample_images.join() === 'https://pics.dmm.co.jp/a.jpg,https://pics.dmm.co.jp/b.jpg', urlItem.sample_images.join());
+const okItem = L.normalizeItems([{ cid: 'u2', title: 't', date: '2026-10-01', url: 'https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dx&af_id=a-990', image_url: 'https://pics.dmm.co.jp/digital/video/x/xpl.jpg' }])[0];
+check('本物の形のアフィリエイトURL（al.fanza.co.jp）・画像URL（pics.dmm.co.jp）は通る', okItem.url.startsWith('https://al.fanza.co.jp/?lurl=') && okItem.image_url === 'https://pics.dmm.co.jp/digital/video/x/xpl.jpg');
+check('作品のリンクに他のサイトのURLは通さない', L.normalizeItems([{ cid: 'u3', title: 't', date: '2026-10-01', url: 'https://evil.example/?x=fanza.co.jp' }])[0].url === '');
+const hasLone = (str) => /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/.test(str);
+check('文字を切る: 絵文字（2つ分の文字）の途中で切らない', !hasLone(L.truncate('あ'.repeat(42) + '😀' + 'い'.repeat(10), 44)), JSON.stringify(L.truncate('あ'.repeat(42) + '😀' + 'い'.repeat(10), 44)));
+check('文字を切る: 「𠮷」の途中でも切らない・文字数は見た目の文字数で数える', L.truncate('𠮷'.repeat(10), 5) === '𠮷𠮷𠮷𠮷…' && L.truncate('𠮷𠮷', 2) === '𠮷𠮷');
+check('文字を切る: 短ければそのまま・長ければ max 文字（…を含む）', L.truncate('abc', 5) === 'abc' && L.truncate('abcdef', 4) === 'abc…' && L.truncate(null, 3) === '');
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);
