@@ -32,14 +32,18 @@ MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
 
 # ---- 調整できる設定 ----
 DATA_PATH = os.environ.get("DATA_PATH", os.path.join("site", "src", "data", "new_releases.json"))
-NEW_ITEMS_PER_RUN = 20      # 1回の実行で新しく追加する「発売済み」作品の最大数
-UPCOMING_ITEMS = 12         # 「予約受付中」として追加する作品の最大数
+# --- 件数の目安: Geminiの無料枠は「1日20回ほど」。新規(12+4)＋再挑戦(4)＝20回に収めています。---
+# 有料枠にしたときは、この3つと GEMINI_MAX_CALLS を増やしてOK（例: 20 / 12 / 6 / 40）
+NEW_ITEMS_PER_RUN = 12      # 1回の実行で新しく追加する「発売済み」作品の最大数
+UPCOMING_ITEMS = 4          # 「予約受付中」として追加する作品の最大数
+RETRY_PER_RUN = 4           # 代わりの文のままの作品に、AIコメントを再挑戦する最大数
+GEMINI_MAX_CALLS = int(os.environ.get("GEMINI_MAX_CALLS", "20"))  # 1回の実行でGeminiに頼む最大回数
 LOOKBACK_DAYS = 14          # 何日前までの発売作品を探すか
 UPCOMING_DAYS = 14          # 何日先までの予約作品を探すか
-RETRY_PER_RUN = 6           # 代わりの文のままの作品に、AIコメントを再挑戦する最大数
 MAX_COMMENT_TRIES = 3       # 1作品あたりのAI再挑戦の上限（ブロックされ続けるのを防ぐ）
 GEMINI_INTERVAL_SEC = float(os.environ.get("GEMINI_INTERVAL_SEC", "5"))  # API制限対策の待ち時間
 MAX_AI_FAILS_IN_ROW = 3     # 連続で失敗したら、その回はAI呼び出しをやめる
+MAX_RETRY_WAIT_SEC = 60     # 「混雑中」で待つ最大秒数。これより長く待てと言われたら、その回はあきらめる
 
 # 昔のバージョンで使っていた定型文（見つけたら新しい代わりの文に置き換える）
 OLD_GENERIC_COMMENTS = {
@@ -162,8 +166,30 @@ def clean_comment(text):
     return text
 
 
+def gemini_error_info(body):
+    """Geminiのエラー本文から (理由の短い説明, 1日の上限か, 待つように言われた秒数 or None) を取り出す"""
+    text = body or ""
+    message = ""
+    try:
+        message = str((json.loads(text).get("error") or {}).get("message", ""))
+    except (ValueError, AttributeError):
+        pass
+    message = re.sub(r"\s+", " ", message).strip()[:240]
+    # 例: quotaId が "GenerateRequestsPerDayPerProjectPerModel-FreeTier" → 1日あたりの上限
+    daily = bool(re.search(r"per\s*day|daily", text, re.IGNORECASE))
+    m = re.search(r'"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"', text)
+    return message, daily, (float(m.group(1)) if m else None)
+
+
+def read_error_body(err):
+    try:
+        return err.read().decode("utf-8", "replace")[:4000]
+    except Exception:
+        return ""
+
+
 def ask_gemini(prompt):
-    """戻り値: (本文 or None, 状態)  状態は "ok" / "blocked" / "error" """
+    """戻り値: (本文 or None, 状態)  状態は "ok" / "blocked" / "error" / "quota"（利用上限）"""
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent"
     headers = {"Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY}
     body = json.dumps({
@@ -193,8 +219,18 @@ def ask_gemini(prompt):
 
         except urllib.error.HTTPError as e:
             if e.code in (429, 500, 502, 503, 504):
-                wait = 10 * (attempt + 1)
-                print(f"   ⏳ 混雑中(HTTP {e.code})。{wait}秒待ってもう一度… ({attempt + 1}/3)")
+                message, daily, retry_after = gemini_error_info(read_error_body(e))
+                reason = f" 理由: {message}" if message else ""
+                too_long = retry_after is not None and retry_after > MAX_RETRY_WAIT_SEC
+                if e.code == 429 and (daily or too_long):
+                    # 1日の上限に達している。待っても治らないので、この回はAIをお休みする
+                    print(f"   ⛔ Geminiの利用上限に達しました(HTTP 429)。{reason}")
+                    return None, "quota"
+                if attempt == 2:
+                    print(f"   ⚠️ 混雑が続くのであきらめます(HTTP {e.code}){reason}")
+                    break
+                wait = min(retry_after + 1, MAX_RETRY_WAIT_SEC) if retry_after else 10 * (attempt + 1)
+                print(f"   ⏳ 混雑中(HTTP {e.code}){reason} {wait:.0f}秒待ってもう一度… ({attempt + 1}/3)")
                 time.sleep(wait)
                 continue
             print(f"   ⚠️ Gemini APIエラー HTTP {e.code}（設定やキーを確認してね）")
@@ -211,12 +247,23 @@ class CommentMaker:
         self.fails_in_row = 0
         self.ai_ok = 0
         self.blocked = 0
+        self.calls = 0           # Geminiに頼んだ回数
+        self.stop_reason = ""    # AIをお休みした理由（なければ空）
+
+    def stop(self, reason):
+        self.ai_enabled = False
+        self.stop_reason = reason
 
     def apply(self, item):
         """item に comment / comment_kind / comment_tries を書き込む"""
         tries = int(item.get("comment_tries") or 0)
 
+        if self.ai_enabled and self.calls >= GEMINI_MAX_CALLS:
+            print(f"   ⏸ 1回の実行でAIに頼む上限({GEMINI_MAX_CALLS}回)に達したので、残りは代わりの文にします")
+            self.stop(f"1回の上限（{GEMINI_MAX_CALLS}回）に達した")
+
         if self.ai_enabled:
+            self.calls += 1
             text, status = ask_gemini(build_prompt(item, tries))
             time.sleep(GEMINI_INTERVAL_SEC)
             if status == "ok":
@@ -228,7 +275,9 @@ class CommentMaker:
                     self.fails_in_row = 0
                     self.ai_ok += 1
                     return
-            if status == "blocked":
+            if status == "quota":
+                self.stop("Geminiの利用上限（無料枠は1日20回ほど）に達した")  # 数えない（あとで再挑戦できる）
+            elif status == "blocked":
                 self.blocked += 1
                 self.fails_in_row = 0
                 item["comment_tries"] = tries + 1  # ブロックは数える（次は別の切り口で再挑戦）
@@ -236,7 +285,7 @@ class CommentMaker:
                 self.fails_in_row += 1  # 通信の失敗は数えない（あとで再挑戦できる）
                 if self.fails_in_row >= MAX_AI_FAILS_IN_ROW:
                     print("   ⚠️ 連続で失敗したので、今回はAIコメントをお休みします")
-                    self.ai_enabled = False
+                    self.stop("連続で失敗した（Geminiが混み合っている）")
 
         if item.get("comment_kind") != "ai":
             item["comment"] = template_comment(item)
@@ -377,6 +426,18 @@ def iso(dt):
     return dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def write_step_summary(lines):
+    """GitHub Actions の実行ページに出る「結果の要約」を書く（ログを開かなくても結果がわかる）"""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+    except OSError:
+        pass
+
+
 def main():
     if not API_ID:
         print("❌ API_ID が設定されていません。")
@@ -401,6 +462,8 @@ def main():
         })
     except RuntimeError as e:
         print(f"❌ {e}")
+        print(f"::error title=FANZAからの取得に失敗::{e}")
+        write_step_summary(["### ❌ FANZAからの取得に失敗しました", "", f"{e}", "", "保存済みのデータは変更していません。"])
         sys.exit(1)  # 失敗を目立たせる（GitHub Actionsに赤いバツが付く）
 
     released = [p for p in map(parse_api_item, released_raw) if p]
@@ -436,7 +499,22 @@ def main():
     save_archive(archive)
     total_ai = sum(1 for it in archive.values() if it.get("comment_kind") == "ai")
     print(f"\n✨ 保存完了！ 合計{len(archive)}件（AIコメント{total_ai}件 / 代わりの文{len(archive) - total_ai}件）")
-    print(f"   今回のAI成功 {maker.ai_ok}件 / ブロック {maker.blocked}件")
+    print(f"   今回のAI成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / Geminiに頼んだ回数 {maker.calls}回")
+    if maker.stop_reason:
+        print(f"   ⏸ AIコメントを途中でお休みした理由: {maker.stop_reason}")
+        print(f"::warning title=AIコメントを途中でお休みしました::{maker.stop_reason}")
+
+    summary = [
+        "### ✅ FANZA更新の結果",
+        "",
+        f"- 取得: 発売済み {len(released)}件 / 予約 {len(upcoming)}件",
+        f"- 新しく追加: {len(newcomers)}件",
+        f"- 合計: {len(archive)}件（AIコメント {total_ai}件 / 代わりの文 {len(archive) - total_ai}件）",
+        f"- 今回のAIコメント: 成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / Geminiに頼んだ回数 {maker.calls}回",
+    ]
+    if maker.stop_reason:
+        summary.append(f"- ⏸ AIコメントを途中でお休み: {maker.stop_reason}（代わりの文の作品は、次回以降に自動で再挑戦します）")
+    write_step_summary(summary)
 
 
 if __name__ == "__main__":

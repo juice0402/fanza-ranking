@@ -2,6 +2,7 @@
 
 実行: python3 tests/test_script.py   （どこから実行してもOK）
 """
+import contextlib
 import importlib.util
 import io
 import json
@@ -62,6 +63,35 @@ def make_api_item(cid, days_from_today, actress=("テスト花子",), maker="テ
     }
 
 
+# 本物のGeminiが返す形に似せた、利用上限(429)の応答
+BODY_QUOTA_DAILY = json.dumps({"error": {
+    "code": 429, "status": "RESOURCE_EXHAUSTED",
+    "message": "You exceeded your current quota, please check your plan and billing details. "
+               "* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash",
+    "details": [
+        {"@type": "type.googleapis.com/google.rpc.QuotaFailure",
+         "violations": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]},
+        {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "27s"},
+    ]}}).encode("utf-8")
+
+
+def _per_minute_body(delay):
+    return json.dumps({"error": {
+        "code": 429, "status": "RESOURCE_EXHAUSTED", "message": "Resource has been exhausted (e.g. check quota).",
+        "details": [
+            {"@type": "type.googleapis.com/google.rpc.QuotaFailure",
+             "violations": [{"quotaId": "GenerateRequestsPerMinutePerProjectPerModel-FreeTier"}]},
+            {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": delay},
+        ]}}).encode("utf-8")
+
+
+QUOTA_BODIES = {
+    "quota_daily": BODY_QUOTA_DAILY,
+    "per_minute": _per_minute_body("7s"),
+    "wait_too_long": _per_minute_body("3600s"),
+}
+
+
 class Env:
     """偽のネットワーク。シナリオごとに挙動を切り替える"""
 
@@ -109,6 +139,8 @@ class Env:
         self.prompts.append(prompt)
         assert req.headers.get("X-goog-api-key") or req.headers.get("x-goog-api-key"), "APIキーがヘッダーに無い"
         assert "key=" not in req.full_url, "APIキーがURLに入っている"
+        if self.gemini_mode in QUOTA_BODIES and not (self.gemini_mode == "per_minute" and self.gemini_calls > 1):
+            raise urllib.error.HTTPError(req.full_url, 429, "rate", {}, io.BytesIO(QUOTA_BODIES[self.gemini_mode]))
         if self.gemini_mode == "always_error":
             raise urllib.error.HTTPError(req.full_url, 400, "bad", {}, io.BytesIO(b"{}"))
         if self.gemini_mode == "mixed" and not self.first_429_done:
@@ -119,15 +151,20 @@ class Env:
         return FakeResponse({"candidates": [{"content": {"parts": [{"text": "「テスト用のAIコメントです。**上品**に紹介します。」\n"}]}}]})
 
 
-def load_module(data_path, api_id="fake", gemini="fake"):
+def load_module(data_path, api_id="fake", gemini="fake", max_calls=None):
     os.environ["API_ID"] = api_id
     os.environ["GEMINI_API_KEY"] = gemini
     os.environ["DATA_PATH"] = data_path
     os.environ["GEMINI_INTERVAL_SEC"] = "0"
+    if max_calls is None:
+        os.environ.pop("GEMINI_MAX_CALLS", None)  # 設定の既定値を使う
+    else:
+        os.environ["GEMINI_MAX_CALLS"] = str(max_calls)
     spec = importlib.util.spec_from_file_location("grn_test", SCRIPT)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    mod.time.sleep = lambda s: None
+    mod.sleeps = []                      # 待った秒数の記録（本当には待たない）
+    mod.time.sleep = lambda s: mod.sleeps.append(s)
     return mod
 
 
@@ -138,6 +175,14 @@ def run_main(mod, env):
         return 0
     except SystemExit as e:
         return e.code
+
+
+def run_main_capture(mod, env):
+    """run_main と同じ。画面に出た文字も一緒に返す"""
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        code = run_main(mod, env)
+    return code, buf.getvalue()
 
 
 tmp = tempfile.mkdtemp()
@@ -158,9 +203,11 @@ old_ai = by_cid["bibivr00176"]
 check("古いAIコメントはそのまま保持", old_ai["comment_kind"] == "ai" and "蓮実クレア" in old_ai["comment"], old_ai["comment"])
 old_generic = [d for d in data if d["cid"] == "vrkm01942"][0]
 check("古い定型文は新しい代わりの文に置換", "注目の新作登場" not in old_generic["comment"], old_generic["comment"])
-check("新しい発売済みが追加された(上限20)", len([d for d in data if d["cid"].startswith("rel")]) == 20,
+check("新しい発売済みが追加された(上限=NEW_ITEMS_PER_RUN)", len([d for d in data if d["cid"].startswith("rel")]) == mod.NEW_ITEMS_PER_RUN,
       len([d for d in data if d["cid"].startswith("rel")]))
-check("予約が追加された", len([d for d in data if d["cid"].startswith("up")]) == 8)
+check("予約が追加された(上限=UPCOMING_ITEMS)", len([d for d in data if d["cid"].startswith("up")]) == mod.UPCOMING_ITEMS)
+check("1回に頼むAIの回数が無料枠(1日20回)に収まる設定", mod.NEW_ITEMS_PER_RUN + mod.UPCOMING_ITEMS + mod.RETRY_PER_RUN <= mod.GEMINI_MAX_CALLS <= 20,
+      (mod.NEW_ITEMS_PER_RUN, mod.UPCOMING_ITEMS, mod.RETRY_PER_RUN, mod.GEMINI_MAX_CALLS))
 check("日付の新しい順に並ぶ", [d["date"] for d in data] == sorted([d["date"] for d in data], reverse=True))
 ai_new = [d for d in data if d["cid"].startswith(("rel", "up")) and d["comment_kind"] == "ai"]
 tp_new = [d for d in data if d["cid"].startswith(("rel", "up")) and d["comment_kind"] == "template"]
@@ -187,7 +234,7 @@ code = run_main(mod2, env2)
 data2 = json.load(open(path, encoding="utf-8"))
 after = {d["cid"]: d for d in data2}
 check("正常終了(0)", code == 0)
-check("2回目は件数が増えすぎない(残りの発売済みだけ追加)", len(data2) <= len(data) + 11, (len(data), len(data2)))
+check("2回目は件数が増えすぎない(発売済みの追加分だけ)", len(data2) <= len(data) + mod2.NEW_ITEMS_PER_RUN, (len(data), len(data2)))
 check("既存のAIコメントは書き換わらない", all(after[c]["comment"] == before[c]["comment"] for c in before if before[c]["comment_kind"] == "ai"))
 retried = [c for c in before if before[c]["comment_kind"] == "template" and after[c]["comment_tries"] > before[c]["comment_tries"]]
 check("テンプレのままの作品に再挑戦した", len(retried) > 0)
@@ -251,6 +298,84 @@ check("保存データが壊れていたら上書きせず中止", code == 1 and
 m = load_module(os.path.join(tmp, "f.json"), api_id="")
 code = run_main(m, Env())
 check("API_ID未設定: 分かりやすく中止(1)", code == 1)
+
+print("\n■ Geminiの利用上限（429）への対応")
+info_day = mod.gemini_error_info(BODY_QUOTA_DAILY.decode("utf-8"))
+check("エラー本文の読み取り: 1日の上限・理由・待ち秒数", info_day[1] is True and "limit: 20" in info_day[0] and info_day[2] == 27.0, info_day)
+info_min = mod.gemini_error_info(QUOTA_BODIES["per_minute"].decode("utf-8"))
+check("エラー本文の読み取り: 1分あたりの上限は『1日』と判定しない", info_min[1] is False and info_min[2] == 7.0, info_min)
+check("エラー本文の読み取り: 壊れた本文でも落ちない", mod.gemini_error_info("<html>oops") == ("", False, None) and mod.gemini_error_info(None) == ("", False, None))
+
+path_q = os.path.join(tmp, "q.json")
+shutil.copy(OLD_DATA, path_q)
+e = Env()
+e.gemini_mode = "quota_daily"
+m = load_module(path_q)
+code, out = run_main_capture(m, e)
+dq = json.load(open(path_q, encoding="utf-8"))
+newq = [x for x in dq if x["cid"].startswith(("rel", "up"))]
+check("1日の上限: 正常終了してデータは保存される", code == 0 and len(newq) == m.NEW_ITEMS_PER_RUN + m.UPCOMING_ITEMS, (code, len(newq)))
+check("1日の上限: 1回で見切りをつける（Geminiを呼ぶのは1回だけ）", e.gemini_calls == 1, e.gemini_calls)
+check("1日の上限: 長く待たない（待ち時間なし）", max(m.sleeps or [0]) < 10, m.sleeps)
+check("1日の上限: 新しい作品も代わりの文で載る", all(x["comment_kind"] == "template" and x["comment"] for x in newq))
+check("1日の上限: 再挑戦の回数に数えない", all(x["comment_tries"] == 0 for x in newq))
+check("1日の上限: ログに理由が出る", "利用上限" in out and "limit: 20" in out)
+check("1日の上限: Actionsの警告表示(::warning)を出す", "::warning title=" in out)
+
+path_m = os.path.join(tmp, "m.json")
+shutil.copy(OLD_DATA, path_m)
+e = Env()
+e.gemini_mode = "per_minute"
+m = load_module(path_m)
+code, out = run_main_capture(m, e)
+dm = json.load(open(path_m, encoding="utf-8"))
+check("1分あたりの上限: 言われた秒数(7秒)+1秒だけ待つ", 8.0 in m.sleeps, m.sleeps)
+check("1分あたりの上限: 待ったあとは成功してAIコメントが付く", code == 0 and any(x["comment_kind"] == "ai" for x in dm if x["cid"].startswith(("rel", "up"))))
+check("1分あたりの上限: そのあとは止まらずに続ける", e.gemini_calls > 3, e.gemini_calls)
+
+path_w = os.path.join(tmp, "w.json")
+shutil.copy(OLD_DATA, path_w)
+e = Env()
+e.gemini_mode = "wait_too_long"
+m = load_module(path_w)
+code, out = run_main_capture(m, e)
+check("待ち時間が長すぎる(3600秒): すぐあきらめて、長く待たない", code == 0 and e.gemini_calls == 1 and max(m.sleeps or [0]) < 10, (code, e.gemini_calls, m.sleeps))
+
+print("\n■ 1回の実行でGeminiに頼む回数の上限")
+path_c5 = os.path.join(tmp, "c5.json")
+shutil.copy(OLD_DATA, path_c5)
+e = Env()
+e.first_429_done = True  # このテストでは429は出さない
+m = load_module(path_c5, max_calls=5)
+code, out = run_main_capture(m, e)
+d5 = json.load(open(path_c5, encoding="utf-8"))
+ai5 = [x for x in d5 if x["cid"].startswith(("rel", "up")) and x["comment_kind"] == "ai"]
+check("回数上限(GEMINI_MAX_CALLS=5): Geminiに頼むのは5回まで", e.gemini_calls <= 5, e.gemini_calls)
+check("回数上限: 残りは代わりの文で載る（作品は減らない）", code == 0 and len([x for x in d5 if x["cid"].startswith(("rel", "up"))]) == m.NEW_ITEMS_PER_RUN + m.UPCOMING_ITEMS)
+check("回数上限: ログに理由が出る", "上限(5回)" in out)
+
+print("\n■ 実行結果の要約（GitHub Actionsの画面に出る）")
+summary_path = os.path.join(tmp, "summary.md")
+os.environ["GITHUB_STEP_SUMMARY"] = summary_path
+path_s = os.path.join(tmp, "s.json")
+shutil.copy(OLD_DATA, path_s)
+e = Env()
+e.first_429_done = True
+m = load_module(path_s)
+run_main(m, e)
+sm = open(summary_path, encoding="utf-8").read() if os.path.exists(summary_path) else ""
+check("要約: 取得件数・追加件数・AIの成功数が書かれる", "FANZA更新の結果" in sm and "新しく追加" in sm and "成功" in sm, sm[:200])
+os.remove(summary_path)
+e = Env()
+e.dmm_mode = "fail"
+m = load_module(path_s)
+run_main(m, e)
+sm = open(summary_path, encoding="utf-8").read() if os.path.exists(summary_path) else ""
+check("要約: 取得に失敗したときも理由が書かれる", "取得に失敗" in sm, sm[:200])
+del os.environ["GITHUB_STEP_SUMMARY"]
+m = load_module(path_s)
+code = run_main(m, Env())
+check("要約: GITHUB_STEP_SUMMARY が無くても落ちない（手元の実行）", code == 0)
 
 print("\n■ ソースの安全チェック")
 src = open(SCRIPT, encoding="utf-8").read()
