@@ -1,0 +1,86 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import DaySection from '../../components/DaySection.astro';
+import FavButton from '../../components/FavButton.astro';
+import { makerGroups, actressByName } from '../../lib/data.js';
+import {
+  MAKER_INDEX_PATH,
+  breadcrumbLd,
+  formatsOf,
+  groupByDate,
+  makerPageTitle,
+  makerSummary,
+  summaryDescription,
+} from '../../lib/items.js';
+import { CALENDAR_PATH, makerIcsPath, webcalUrl } from '../../lib/calendar.js';
+
+// 作品が2本以上あるメーカーごとに1ページ作る
+export function getStaticPaths() {
+  return makerGroups.map((group) => ({ params: { slug: group.slug }, props: { group } }));
+}
+
+const { group } = Astro.props;
+const summary = makerSummary(group);
+const groups = groupByDate(group.items);
+const cast = [...new Set(group.items.flatMap((i) => i.actress))];
+const formats = formatsOf(group.items);
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: 'メーカー一覧', path: MAKER_INDEX_PATH },
+  { name: group.name, path: group.path },
+];
+---
+
+<Base
+  title={makerPageTitle(group)}
+  description={summaryDescription(summary)}
+  path={group.path}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{group.name}の新作・作品一覧</h1>
+      <p class="summary">{summary}</p>
+      <div class="hero-actions">
+        <FavButton type="maker" favKey={group.name} slug={group.slug} off="このメーカーをお気に入りに追加" on="お気に入り済み（新作が「お気に入り」に出ます）" />
+        <a class="cal-link" href={webcalUrl(makerIcsPath(group.slug))}>発売日をカレンダーで受け取る</a>
+        <a class="cal-help" href={CALENDAR_PATH}>使い方</a>
+      </div>
+    </section>
+
+    <dl class="spec section">
+      <dt class="spec-term">掲載作品</dt>
+      <dd class="spec-desc">{group.items.length}本</dd>
+      {cast.length > 0 && (
+        <>
+          <dt class="spec-term">出演</dt>
+          <dd class="spec-desc">
+            {cast.map((name, i) => (
+              <>
+                {i > 0 && '、'}
+                {actressByName.get(name) ? <a class="spec-link" href={actressByName.get(name).path}>{name}</a> : name}
+              </>
+            ))}
+          </dd>
+        </>
+      )}
+      {formats.length > 0 && (
+        <>
+          <dt class="spec-term">形式</dt>
+          <dd class="spec-desc">{formats.join('・')}</dd>
+        </>
+      )}
+    </dl>
+
+    <section class="section" aria-labelledby="works-title">
+      <div class="section-head">
+        <h2 id="works-title" class="section-title">作品（{group.items.length}本）</h2>
+        <p class="section-note">発売日が新しい順</p>
+      </div>
+      <DaySection groups={groups} />
+    </section>
+  </div>
+</Base>

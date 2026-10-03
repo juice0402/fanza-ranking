@@ -34,5 +34,28 @@ jobs:
           cache-dependency-path: site/package-lock.json
 
       # テスト → サイトのビルド → ビルド結果の点検（18歳確認・広告表記などが全ページにあるか）
+      # ログは画面にも出しつつ、ファイルにも残す（失敗したとき、理由を注釈に出すため）
       - name: Tests, build and verify
-        run: bash scripts/check.sh --build
+        shell: bash
+        run: bash scripts/check.sh --build 2>&1 | tee "$RUNNER_TEMP/check.log"
+
+      # 失敗したときだけ、ログの大事なところ（❌の行と、最後の部分）を「注釈」に出す。
+      # ログ全体を開かなくても、PRの画面やAPIから理由が読める
+      - name: Show why it failed
+        if: failure()
+        shell: bash
+        run: |
+          python3 - "$RUNNER_TEMP/check.log" <<'PY'
+          import re, sys
+          try:
+              lines = open(sys.argv[1], encoding="utf-8", errors="replace").read().splitlines()
+          except OSError:
+              lines = ["（ログファイルがありません。ビルドの前に失敗した可能性があります）"]
+          lines = [re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", l).rstrip() for l in lines]
+          marks = [l for l in lines if "❌" in l or re.search(r"\berror\b|Error:|failed", l, re.I)][:20]
+          tail = lines[-25:]
+          text = "\n".join(marks + ["--- ログの終わり ---"] + tail)
+          text = text[-3500:]  # 注釈は長すぎると切られるので、後ろ（原因が出やすい側）を残す
+          text = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print("::error title=CIが失敗した理由（ログの抜粋）::" + text)
+          PY

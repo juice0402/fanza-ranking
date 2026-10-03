@@ -17,11 +17,32 @@ python3 tests/test_script.py || failed=1
 step "Claudeのコメント差し替えの道具 (Python)"
 python3 tests/test_claude_comments.py || failed=1
 
+step "Claudeの週のまとめ記事の道具 (Python)"
+python3 tests/test_claude_roundups.py || failed=1
+
 step "保存データの形式"
 python3 tests/test_data.py || failed=1
 
 step "サイトの部品 (Node.js)"
 node tests/test_items.mjs || failed=1
+
+step "週のまとめ記事の部品 (Node.js + Pythonとの突き合わせ)"
+node tests/test_roundups.mjs || failed=1
+
+step "サンプル画像の拡大表示 (Node.js)"
+node tests/test_lightbox.mjs || failed=1
+
+step "発売日カレンダー (.ics) の部品 (Node.js)"
+node tests/test_calendar.mjs || failed=1
+
+step "お気に入りの部品 (Node.js)"
+node tests/test_favorites.mjs || failed=1
+
+step "出演者プロフィール・売れ筋・出演者検索の部品 (Node.js)"
+node tests/test_profiles.mjs || failed=1
+
+step "サンプル動画の枠の部品 (Node.js)"
+node tests/test_movie.mjs || failed=1
 
 if [ "${1:-}" = "--build" ]; then
   step "サイトのビルド"

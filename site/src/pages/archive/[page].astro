@@ -1,8 +1,9 @@
 ---
 import Base from '../../layouts/Base.astro';
 import DaySection from '../../components/DaySection.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
 import { released } from '../../lib/data.js';
-import { ARCHIVE_PAGE_SIZE, groupByDate, archivePath, pageWindow, SITE_NAME } from '../../lib/items.js';
+import { ARCHIVE_PAGE_SIZE, breadcrumbLd, countByDate, groupByDate, archivePath, pageWindow, SITE_NAME } from '../../lib/items.js';
 
 // 発売済みの作品を、新しい順に ARCHIVE_PAGE_SIZE 件ずつのページに分ける
 export function getStaticPaths({ paginate }) {
@@ -12,16 +13,23 @@ export function getStaticPaths({ paginate }) {
 const { page } = Astro.props;
 const current = page.currentPage;
 const last = page.lastPage;
-const groups = groupByDate(page.data);
+const groups = groupByDate(page.data, countByDate(released)); // 日の途中でページが分かれても、その日の全部の本数を出す
 const pages = pageWindow(current, last);
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: current === 1 ? '過去の作品' : `過去の作品（${current}ページ目）`, path: archivePath(current) },
+];
 ---
 
 <Base
   title={`過去の作品一覧（${current}ページ目）｜${SITE_NAME}`}
   description={`FANZAの発売済み作品を発売日の新しい順に一覧できます。${current}ページ目（全${last}ページ）。`}
   path={archivePath(current)}
+  jsonLd={[breadcrumbLd(trail)]}
 >
   <div class="wrap">
+    <Breadcrumb trail={trail} />
+
     <section class="hero">
       <h1 class="hero-title">過去の作品一覧</h1>
       <p class="hero-lead">発売日の新しい順。{current}ページ目（全{last}ページ）</p>

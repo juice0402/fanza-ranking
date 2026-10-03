@@ -1,0 +1,149 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import { all, roundups, actressByName, makerByName } from '../../lib/data.js';
+import { breadcrumbLd, dateParts, formatDateJp, groupByDate, itemPath } from '../../lib/items.js';
+import {
+  WEEKLY_INDEX_PATH,
+  articleLd,
+  itemsInWeek,
+  neighbours,
+  roundupDescription,
+  roundupPageTitle,
+  roundupTitle,
+  weekStats,
+  weeklyPath,
+} from '../../lib/roundups.js';
+
+// 記事（roundups.json）ごとに1ページ作る
+export function getStaticPaths() {
+  return roundups.map((roundup) => ({ params: { week: roundup.week_start }, props: { roundup } }));
+}
+
+const { roundup } = Astro.props;
+const title = roundupTitle(roundup);
+const week = itemsInWeek(all, roundup.week_start);
+const stats = weekStats(all, roundup.week_start);
+const byCid = new Map(all.map((i) => [i.cid, i]));
+const picks = roundup.picks.map((p) => ({ note: p.note, item: byCid.get(p.cid) })).filter((p) => p.item);
+const { prev, next } = neighbours(roundups, roundup.week_start);
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '週のまとめ', path: WEEKLY_INDEX_PATH },
+  { name: title, path: weeklyPath(roundup.week_start) },
+];
+const day = (dateKey) => {
+  const p = dateParts(dateKey);
+  return `${p.m}月${p.d}日（${p.wd}）`;
+};
+---
+
+<Base
+  title={roundupPageTitle(roundup)}
+  description={roundupDescription(roundup)}
+  path={weeklyPath(roundup.week_start)}
+  jsonLd={[breadcrumbLd(trail), articleLd(roundup)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <article>
+      <header class="hero">
+        <h1 class="hero-title">{title}</h1>
+        <p class="meta"><time datetime={roundup.written}>{formatDateJp(roundup.written)}</time>に公開</p>
+      </header>
+
+      <p class="summary">{roundup.lead}</p>
+      <p class="fine">この導入文とひとことは、AIが作品情報（出演者・メーカー・発売日・形式など）をもとに作成しています。内容の正確さは保証できません。作品の詳細は、必ずFANZAの公式ページで確認してください。</p>
+
+      <section class="section" aria-labelledby="stats-title">
+        <h2 id="stats-title" class="section-title">この週のデータ</h2>
+        <dl class="spec">
+          <dt class="spec-term">当サイトで紹介した作品</dt>
+          <dd class="spec-desc">{stats.total}本</dd>
+          <dt class="spec-term">発売日別</dt>
+          <dd class="spec-desc">
+            <ul class="chips">
+              {stats.per_day.map((d) => <li class="chip">{day(d.date)} {d.count}本</li>)}
+            </ul>
+          </dd>
+          {stats.makers.length > 0 && (
+            <>
+              <dt class="spec-term">メーカー別</dt>
+              <dd class="spec-desc">
+                {stats.makers.map((m, i) => (
+                  <>
+                    {i > 0 && '、'}
+                    {makerByName.get(m.name) ? <a class="spec-link" href={makerByName.get(m.name).path}>{m.name}</a> : m.name}（{m.count}本）
+                  </>
+                ))}
+              </dd>
+            </>
+          )}
+          {stats.actresses.length > 0 && (
+            <>
+              <dt class="spec-term">出演が多かった人</dt>
+              <dd class="spec-desc">
+                {stats.actresses.map((a, i) => (
+                  <>
+                    {i > 0 && '、'}
+                    {actressByName.get(a.name) ? <a class="spec-link" href={actressByName.get(a.name).path}>{a.name}</a> : a.name}（{a.count}本）
+                  </>
+                ))}
+              </dd>
+            </>
+          )}
+          {stats.formats.length > 0 && (
+            <>
+              <dt class="spec-term">形式</dt>
+              <dd class="spec-desc">{stats.formats.map((f) => `${f.name} ${f.count}本`).join('、')}</dd>
+            </>
+          )}
+        </dl>
+        <p class="fine">数字は、当サイトで紹介した作品の数え方です。当サイトは、FANZAの新作の一部を毎日紹介しているため、FANZA全体の発売本数ではありません。</p>
+      </section>
+
+      {picks.length > 0 && (
+        <section class="section" aria-labelledby="picks-title">
+          <h2 id="picks-title" class="section-title">注目の作品</h2>
+          <ul class="shelf">
+            {picks.map((p) => (
+              <li class="shelf-cell">
+                <ItemCard item={p.item} level="h3" />
+                <p class="pick-note">{p.note}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section class="section" aria-labelledby="week-list-title">
+        <h2 id="week-list-title" class="section-title">この週に発売された作品のうち、当サイトで紹介したもの（{week.length}本）</h2>
+        {groupByDate(week).map((g) => (
+          <div class="week-day">
+            <h3 class="week-day-title">{day(g.dateKey)}</h3>
+            <ul class="week-list">
+              {g.items.map((i) => (
+                <li>
+                  <a class="week-list-link" href={itemPath(i.cid)}>{i.title}</a>
+                  {i.actress.length > 0 && <span class="week-list-cast">{i.actress.join('、')}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </section>
+    </article>
+
+    {(prev || next) && (
+      <nav aria-label="前後の週のまとめ">
+        <ul class="pager">
+          {prev && <li><a class="pager-link" href={weeklyPath(prev.week_start)} rel="prev">前の週</a></li>}
+          <li><a class="pager-link" href={WEEKLY_INDEX_PATH}>一覧</a></li>
+          {next && <li><a class="pager-link" href={weeklyPath(next.week_start)} rel="next">次の週</a></li>}
+        </ul>
+      </nav>
+    )}
+  </div>
+</Base>

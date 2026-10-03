@@ -1,6 +1,11 @@
 ---
 import '../styles/site.css';
-import { SITE_NAME, SITE_URL } from '../lib/items.js';
+import { SITE_NAME, SITE_URL, jsonLdScript, ACTRESS_INDEX_PATH, MAKER_INDEX_PATH } from '../lib/items.js';
+import { GOOGLE_SITE_VERIFICATION } from '../config.js';
+import { roundups } from '../lib/data.js';
+import { FAVORITES_PATH } from '../lib/favorites.js';
+import { CALENDAR_PATH } from '../lib/calendar.js';
+import { WEEKLY_INDEX_PATH } from '../lib/roundups.js';
 
 const {
   title = SITE_NAME,
@@ -9,6 +14,7 @@ const {
   image = '',
   noindex = false,
   stickyCta = false,
+  jsonLd = [], // 検索エンジン向けの構造化データ（オブジェクトの配列）
 } = Astro.props;
 
 const canonical = SITE_URL + path;
@@ -24,6 +30,7 @@ const canonical = SITE_URL + path;
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex,follow" />}
     <meta name="rating" content="adult" />
+    {GOOGLE_SITE_VERIFICATION && <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />}
     <meta name="rating" content="RTA-5042-1996-1400-1577-RTA" />
 
     <meta property="og:type" content="website" />
@@ -34,7 +41,11 @@ const canonical = SITE_URL + path;
     {image && <meta property="og:image" content={image} />}
     <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
 
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {jsonLd.map((data) => <script is:inline type="application/ld+json" set:html={jsonLdScript(data)} />)}
+
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="sitemap" href="/sitemap.xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -63,19 +74,51 @@ const canonical = SITE_URL + path;
           ok = localStorage.getItem('age-ok') === '1';
         } catch (e) {}
         if (ok || !gate) return;
+        var yes = document.getElementById('gate-yes');
+        var no = gate.querySelector('a');
+        // 確認画面が出ているあいだ、後ろの本文は、キーボード・読み上げで触れないようにする（inert）。
+        // このスクリプトは本文の途中で動くので、後ろの部品は、読み込みが終わってから探す
+        function setInert(on) {
+          for (var el = document.body.firstElementChild; el; el = el.nextElementSibling) {
+            if (el === gate || el.tagName === 'SCRIPT') continue;
+            if (on) el.setAttribute('inert', '');
+            else el.removeAttribute('inert');
+          }
+        }
         gate.hidden = false;
         document.documentElement.classList.add('gate-open');
-        document.getElementById('gate-yes').addEventListener('click', function () {
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            if (!gate.hidden) setInert(true);
+          });
+        } else {
+          setInert(true);
+        }
+        yes.focus();
+        // Tab キーで、確認画面の外に出ない（「はい」と「いいえ」の2つを行き来する）
+        gate.addEventListener('keydown', function (e) {
+          if (e.key !== 'Tab') return;
+          if (e.shiftKey && document.activeElement === yes) {
+            e.preventDefault();
+            no.focus();
+          } else if (!e.shiftKey && document.activeElement === no) {
+            e.preventDefault();
+            yes.focus();
+          }
+        });
+        yes.addEventListener('click', function () {
           try {
             localStorage.setItem('age-ok', '1');
           } catch (e) {}
           gate.hidden = true;
           document.documentElement.classList.remove('gate-open');
+          setInert(false);
         });
       })();
     </script>
 
     <a class="skip" href="#main">本文へ移動</a>
+    <noscript><p class="noscript-note">このサイトにはアダルト作品の紹介が含まれます。18歳未満の方はご利用いただけません。（JavaScriptが無効のため、年齢の確認画面を出せません）</p></noscript>
 
     <header class="site-head wrap">
       <div class="brand-row">
@@ -86,6 +129,7 @@ const canonical = SITE_URL + path;
         <a class="site-nav-link" href="/#released">発売中</a>
         <a class="site-nav-link" href="/#upcoming">予約</a>
         <a class="site-nav-link" href="/archive/1/">過去の作品</a>
+        <a class="site-nav-link" href={FAVORITES_PATH}>★お気に入り</a>
       </nav>
     </header>
 
@@ -100,10 +144,21 @@ const canonical = SITE_URL + path;
           <li>広告｜当サイトはアフィリエイト広告（FANZA）を利用しており、リンクにはアフィリエイト広告が含まれます。</li>
           <li>ひとことコメントは、AIが出演者・メーカー・発売日などの作品情報をもとに自動で作成しており、内容の正確さは保証できません。作品の詳細は必ずFANZAの公式ページで確認してください。</li>
         </ul>
+        <nav class="foot-nav" aria-label="サイト内の案内">
+          <a class="foot-link" href="/#released">発売中</a>
+          <a class="foot-link" href="/#upcoming">予約</a>
+          <a class="foot-link" href="/archive/1/">過去の作品</a>
+          <a class="foot-link" href={FAVORITES_PATH}>お気に入り</a>
+          <a class="foot-link" href={CALENDAR_PATH}>発売日カレンダー</a>
+          <a class="foot-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a>
+          <a class="foot-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
+          {roundups.length > 0 && <a class="foot-link" href={WEEKLY_INDEX_PATH}>週ごとのまとめ</a>}
+        </nav>
         <p class="foot-credit">
           <a class="foot-link" href="https://affiliate.dmm.com/api/" target="_blank" rel="noopener noreferrer">Powered by FANZA Webサービス</a>
         </p>
       </div>
     </footer>
+    <script is:inline src="/favorites.js" defer></script>
   </body>
 </html>

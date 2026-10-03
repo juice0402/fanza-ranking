@@ -1,0 +1,121 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import Face from '../../components/Face.astro';
+import { actressGroups, actressSearchIndex, profilesByName, profilesCoverage } from '../../lib/data.js';
+import { ACTRESS_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
+import { ACTRESS_SEARCH_INDEX_PATH, compactSpec, faceUrl } from '../../lib/profiles.js';
+
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '出演者一覧', path: ACTRESS_INDEX_PATH },
+];
+const hasSearch = actressSearchIndex.actresses.length > 0;
+const cov = profilesCoverage;
+
+// 絞り込みの選択肢（値は「最小-最大」。-19 は19まで、40- は40から）
+const RANGES = {
+  age: { label: '年齢', options: [['-19', '〜19歳'], ['20-24', '20〜24歳'], ['25-29', '25〜29歳'], ['30-34', '30〜34歳'], ['35-39', '35〜39歳'], ['40-', '40歳〜']] },
+  height: { label: '身長', options: [['-149', '〜149cm'], ['150-154', '150〜154cm'], ['155-159', '155〜159cm'], ['160-164', '160〜164cm'], ['165-169', '165〜169cm'], ['170-', '170cm〜']] },
+  bust: { label: 'バスト', options: [['-79', '〜79cm'], ['80-84', '80〜84cm'], ['85-89', '85〜89cm'], ['90-94', '90〜94cm'], ['95-99', '95〜99cm'], ['100-', '100cm〜']] },
+  waist: { label: 'ウエスト', options: [['-54', '〜54cm'], ['55-57', '55〜57cm'], ['58-60', '58〜60cm'], ['61-64', '61〜64cm'], ['65-', '65cm〜']] },
+  hip: { label: 'ヒップ', options: [['-79', '〜79cm'], ['80-84', '80〜84cm'], ['85-89', '85〜89cm'], ['90-94', '90〜94cm'], ['95-', '95cm〜']] },
+};
+const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+---
+
+<Base
+  title={`出演者別の新作・出演作品一覧｜${SITE_NAME}`}
+  description="FANZAの新作・予約作品を出演者ごとにまとめた一覧です。名前・年齢・身長・スリーサイズ・カップで出演者を探せます。"
+  path={ACTRESS_INDEX_PATH}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">出演者から探す</h1>
+      <p class="hero-lead">
+        {hasSearch
+          ? <>名前・年齢・身長・スリーサイズ・カップで、出演者を探せます。掲載作品が{ENTITY_MIN_ITEMS}本以上の人は専用ページがあり、それ以外の人はFANZAの作品一覧にリンクします。</>
+          : <>掲載している作品が{ENTITY_MIN_ITEMS}本以上ある出演者の一覧です。作品数の多い順に並べています。</>}
+      </p>
+    </section>
+
+    {hasSearch && (
+      <section id="actress-search" class="actress-search section" data-index={ACTRESS_SEARCH_INDEX_PATH} aria-labelledby="as-title" hidden>
+        <h2 id="as-title" class="section-title">条件で探す</h2>
+        <form class="as-form" role="search" autocomplete="off">
+          <label class="as-field as-field-wide">
+            名前（ひらがな・カタカナでもOK）
+            <input type="search" name="text" placeholder="例: さくら" enterkeyhint="search" />
+          </label>
+          <div class="as-grid">
+            {Object.entries(RANGES).map(([name, def]) => (
+              <label class="as-field">
+                {def.label}
+                <select name={name}>
+                  <option value="">指定なし</option>
+                  {def.options.map(([value, label]) => <option value={value}>{label}</option>)}
+                </select>
+              </label>
+            ))}
+            <label class="as-field">
+              カップ
+              <select name="cup">
+                <option value="">指定なし</option>
+                {CUPS.map((c) => <option value={c}>{c}カップ</option>)}
+                <option value="K+">Kカップ以上</option>
+              </select>
+            </label>
+            <label class="as-field">
+              並び順
+              <select name="sort">
+                <option value="works">作品の多い順</option>
+                <option value="name">名前（五十音）順</option>
+              </select>
+            </label>
+          </div>
+          <div class="as-actions">
+            <button type="reset" class="btn btn-quiet">条件をクリア</button>
+          </div>
+        </form>
+        <p id="as-count" class="as-count" aria-live="polite"></p>
+        <p id="as-note" class="as-note" hidden>年齢・身長・サイズで絞り込むと、FANZAにその情報が載っていない人は結果に出ません。</p>
+        <ul id="as-list" class="actress-list"></ul>
+        <p class="more"><button id="as-more" type="button" class="btn btn-quiet more-btn" hidden>もっと見る</button></p>
+        <p class="as-coverage">
+          FANZAに載っている情報は、人によって違います。いま調べ済みの{cov.total}人のうち、年齢が載っているのは{cov.withAge}人、身長は{cov.withHeight}人、スリーサイズは{cov.withSize}人です（毎日、少しずつ増えます）。
+        </p>
+      </section>
+    )}
+
+    <section id="actress-static" class="actress-static section" aria-labelledby="actress-list-title">
+      <h2 id="actress-list-title" class="visually-hidden">出演者の一覧</h2>
+      {actressGroups.length > 0
+        ? (
+          <ul class="actress-list">
+            {actressGroups.map((g) => {
+              const profile = profilesByName.get(g.name);
+              const spec = compactSpec(profile);
+              return (
+                <li class="actress-row">
+                  <a class="actress-row-link" href={g.path}>
+                    <Face name={g.name} src={faceUrl(profile)} size="md" />
+                    <span class="actress-row-text">
+                      <span class="actress-row-name">{g.name}</span>
+                      <span class={`actress-row-spec${spec ? '' : ' is-empty'}`}>{spec || 'プロフィールの数字は未掲載'}</span>
+                      <span class="actress-row-meta">掲載{g.items.length}本 ›</span>
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        )
+        : <p class="empty">まだ一覧に載せられる出演者がいません。毎日の更新をお待ちください。</p>}
+    </section>
+  </div>
+
+  {hasSearch && <script is:inline src="/actress-search.js" defer></script>}
+</Base>

@@ -1,0 +1,26 @@
+---
+// FANZAのサンプル動画（公式の埋め込み。476x306の再生ページ）。
+// 画面の幅に合わせて小さく（大きく）見せる処理は site/public/movie.js（枠の幅 ÷ 476 の倍率で、枠の中のiframeを拡大・縮小する）。
+// 見られない環境（国の制限・読み込み失敗）のために、FANZAで見るリンクを添える。
+const { src, title = '', fallbackUrl = '' } = Astro.props;
+---
+
+<div class="movie" data-movie>
+  <div class="movie-box">
+    <iframe
+      class="movie-frame"
+      src={src}
+      width="476"
+      height="306"
+      title={`${title} のサンプル動画`}
+      loading="lazy"
+      scrolling="no"
+      frameborder="0"
+      allowfullscreen
+    ></iframe>
+  </div>
+  <p class="movie-note">
+    サンプル動画（FANZA提供）
+    {fallbackUrl && <>｜見られないときは <a class="movie-link" href={fallbackUrl} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで見る</a></>}
+  </p>
+</div>
