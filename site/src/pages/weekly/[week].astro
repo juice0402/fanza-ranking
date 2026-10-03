@@ -60,7 +60,7 @@ const day = (dateKey) => {
       <section class="section" aria-labelledby="stats-title">
         <h2 id="stats-title" class="section-title">この週のデータ</h2>
         <dl class="spec">
-          <dt class="spec-term">発売作品</dt>
+          <dt class="spec-term">当サイトで紹介した作品</dt>
           <dd class="spec-desc">{stats.total}本</dd>
           <dt class="spec-term">発売日別</dt>
           <dd class="spec-desc">
@@ -101,6 +101,7 @@ const day = (dateKey) => {
             </>
           )}
         </dl>
+        <p class="fine">数字は、当サイトで紹介した作品の数え方です。当サイトは、FANZAの新作の一部を毎日紹介しているため、FANZA全体の発売本数ではありません。</p>
       </section>
 
       {picks.length > 0 && (
@@ -118,7 +119,7 @@ const day = (dateKey) => {
       )}
 
       <section class="section" aria-labelledby="week-list-title">
-        <h2 id="week-list-title" class="section-title">この週に発売された作品（{week.length}本）</h2>
+        <h2 id="week-list-title" class="section-title">この週に発売された作品のうち、当サイトで紹介したもの（{week.length}本）</h2>
         {groupByDate(week).map((g) => (
           <div class="week-day">
             <h3 class="week-day-title">{day(g.dateKey)}</h3>
