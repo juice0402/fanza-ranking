@@ -26,15 +26,13 @@ export function getStaticPaths() {
 const { item } = Astro.props;
 const related = relatedItems(item, all, 8);
 const samples = item.sample_images.slice(0, 8);
-// サンプル動画がある作品は、動画を表紙の場所に出し、パッケージ画像は下の画像の並びの先頭（左上）に移す。
-// 動画が無い作品は、これまでどおり表紙を上に出す（画像の並びはサンプル画像だけ）
+// サンプル動画がある作品は、動画を表紙の場所に出し、パッケージ写真は、サンプル画像の下に別の欄で大きく出す
+// （サンプル画像の並びに混ぜると、枚数が増えて並びが崩れやすいため）。
+// 動画が無い作品は、これまでどおり表紙を上に出す
 const hasMovie = Boolean(item.sample_movie);
-const coverInGallery = hasMovie && Boolean(item.image_url);
-const gallery = [
-  ...(coverInGallery ? [{ src: item.image_url, label: 'パッケージ画像' }] : []),
-  ...samples.map((src, i) => ({ src, label: `サンプル画像 ${i + 1}` })),
-];
-const galleryTitle = coverInGallery ? 'パッケージ・サンプル画像' : 'サンプル画像';
+const coverBelow = hasMovie && Boolean(item.image_url);
+const gallery = samples.map((src, i) => ({ src, label: `サンプル画像 ${i + 1}` }));
+const zoomable = gallery.length > 0 || coverBelow; // 拡大表示（lightbox）を使う画像がある
 const trail = [
   { name: 'トップ', path: '/' },
   { name: truncate(item.title, 30), path: itemPath(item.cid) },
@@ -134,7 +132,7 @@ const makerPage = makerByName.get(item.maker)?.path;
 
     {gallery.length > 0 && (
       <section class="subsection" aria-labelledby="samples-title">
-        <h2 id="samples-title" class="subsection-title">{galleryTitle}</h2>
+        <h2 id="samples-title" class="subsection-title">サンプル画像</h2>
         <ul class="samples">
           {gallery.map((g) => (
             <li>
@@ -147,8 +145,25 @@ const makerPage = makerByName.get(item.maker)?.path;
       </section>
     )}
 
-    {gallery.length > 0 && (
-      <dialog id="lightbox" class="lightbox" aria-label="サンプル画像の拡大表示">
+    {coverBelow && (
+      <section class="subsection package" aria-labelledby="package-title">
+        <h2 id="package-title" class="subsection-title">パッケージ写真</h2>
+        <a class="sample-link" href={item.image_url} data-label="パッケージ画像" target="_blank" rel="noopener noreferrer" aria-label="パッケージ写真を拡大して見る">
+          <img
+            class="package-img"
+            src={item.image_url}
+            alt={`${truncate(item.title, 60)} のパッケージ画像`}
+            width="800"
+            height="538"
+            loading="lazy"
+            decoding="async"
+          />
+        </a>
+      </section>
+    )}
+
+    {zoomable && (
+      <dialog id="lightbox" class="lightbox" aria-label="画像の拡大表示">
         <div class="lightbox-stage">
           <img class="lightbox-img" alt="" />
           <button type="button" class="lightbox-btn lightbox-prev" data-lightbox="prev" aria-label="前の画像">‹</button>
@@ -171,7 +186,7 @@ const makerPage = makerByName.get(item.maker)?.path;
     )}
   </div>
 
-  {gallery.length > 0 && <script is:inline src="/lightbox.js" defer></script>}
+  {zoomable && <script is:inline src="/lightbox.js" defer></script>}
   {hasMovie && <script is:inline src="/movie.js" defer></script>}
 
   {item.url && (

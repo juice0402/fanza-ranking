@@ -56,7 +56,6 @@ const rankingDay = ranking ? dateParts(ranking.date) : null;
         <ul class="shelf rank-podium">
           {ranking.items.map((entry) => <li class="shelf-cell rank-cell"><RankCard entry={entry} /></li>)}
         </ul>
-        <p class="rank-note">FANZAの公式APIが返す「人気順」の上位3本です。FANZAのサイトにあるランキングとは、順位が違うことがあります。</p>
       </section>
     )}
 

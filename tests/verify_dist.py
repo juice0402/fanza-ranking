@@ -189,7 +189,7 @@ for cid, x in valid.items():
     html = read(page)
     shown = min(len([u for u in (x.get("sample_images") or []) if u]), 8)  # 画面に出すのは最大8枚
     if fanza_https(x.get("sample_movie"), ["dmm.co.jp"]) and str(x.get("image_url") or "").strip():
-        shown += 1  # サンプル動画がある作品は、パッケージ画像が画像の並びの先頭に入る
+        shown += 1  # サンプル動画がある作品は、サンプル画像の下に、パッケージ写真の欄が別にある（拡大表示のリンクはその1つぶん増える）
     links = len(re.findall(r'class="sample-link"', html))
     has_dialog = 'id="lightbox"' in html
     has_script = 'src="/lightbox.js"' in html
@@ -254,8 +254,16 @@ for cid, x in valid.items():
             problems_here.append("movie.js を読み込んでいない")
         if any(has_class(t, "detail-cover") for t in tags(text, "img")):
             problems_here.append("動画があるのに、表紙が上に出ている")
-        if cover and not (cover_links and sample_links[0] is cover_links[0] and cover_links[0].get("href") == cover):
-            problems_here.append("パッケージ画像が、画像の並びの先頭(左上)にない")
+        # パッケージ写真は、サンプル画像の並びには混ぜず、その下の別の欄に、大きく出す（拡大表示では最後に送られる）
+        has_pkg_section = 'id="package-title"' in text and ">パッケージ写真</h2>" in text
+        after_samples = 'id="samples-title"' not in text or text.find('id="samples-title"') < text.find('id="package-title"')
+        pkg_link_ok = len(cover_links) == 1 and sample_links[-1] is cover_links[0] and cover_links[0].get("href") == cover
+        if cover and not (has_pkg_section and after_samples and pkg_link_ok and any(has_class(t, "package-img") for t in tags(text, "img"))):
+            problems_here.append("パッケージ写真の欄（サンプル画像の下・大きな画像）がない")
+        if cover and len(sample_links) - len(cover_links) != min(len([u for u in (x.get("sample_images") or []) if u]), 8):
+            problems_here.append("サンプル画像の並びに、パッケージ画像が混ざっている（サンプル画像の枚数と合わない）")
+        if not cover and "パッケージ写真" in text:
+            problems_here.append("パッケージ画像が無いのに、パッケージ写真の欄がある")
         if x.get("url") and not any(has_class(t, "movie-link") and fanza_https(t.get("href"), FANZA_LINK) for t in tags(text, "a")):
             problems_here.append("「FANZAで見る」の代わりのリンクがない")
         if problems_here:
@@ -266,13 +274,13 @@ for cid, x in valid.items():
             problems_here.append("動画が無いのに iframe がある")
         if cover and not any(has_class(t, "detail-cover") for t in tags(text, "img")):
             problems_here.append("動画が無いのに、表紙が上に出ていない")
-        if cover_links:
-            problems_here.append("動画が無いのに、パッケージ画像が画像の並びに入っている")
+        if cover_links or "パッケージ写真" in text:
+            problems_here.append("動画が無いのに、パッケージ写真の欄がある（表紙が上にあるので、欄は作らない）")
         if 'src="/movie.js"' in text:
             problems_here.append("動画が無いのに movie.js を読み込んでいる")
         if problems_here:
             bad_movie.append((cid, problems_here))
-check(f"動画がある作品（{movie_count}件）は動画を表紙の場所に出し、パッケージ画像を画像の並びの先頭に移している／動画が無い作品は、これまでどおり表紙", not bad_movie, bad_movie[:3])
+check(f"動画がある作品（{movie_count}件）は動画を表紙の場所に出し、パッケージ写真をサンプル画像の下の別の欄に大きく出している／動画が無い作品は、これまでどおり表紙", not bad_movie, bad_movie[:3])
 foreign_frames = []
 for pth in all_html:
     for t in tags(read(pth), "iframe"):
@@ -604,6 +612,15 @@ check(f"全ページの画像に alt がある", not bad_alt, bad_alt[:3])
 check("FANZA/DMM への外部リンク（サンプル画像を拡大するリンクを除く）は、すべて広告の属性（sponsored nofollow noopener noreferrer）つき", not bad_ext, bad_ext[:3])
 ico = os.path.join(DIST, "favicon.ico")
 check("アイコン（favicon.ico・favicon.svg・apple-touch-icon.png）が公開されていて、中身が画像の形式", os.path.isfile(ico) and open(ico, "rb").read(4) == b"\x00\x00\x01\x00" and os.path.isfile(os.path.join(DIST, "favicon.svg")) and open(os.path.join(DIST, "apple-touch-icon.png"), "rb").read(8) == b"\x89PNG\r\n\x1a\n" if os.path.isfile(os.path.join(DIST, "apple-touch-icon.png")) else False)
+# スマホで、画面を横に動かせてしまう（グラグラする）のを防ぐ設定が、ビルド後のCSSに残っている
+css_rules = []
+for css_path in glob.glob(os.path.join(DIST, "**", "*.css"), recursive=True):
+    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", read(css_path), flags=re.S)):
+        css_rules.append(([x.strip() for x in m.group(1).split(",")], m.group(2)))
+root_clip = any("html" in sels and re.search(r"overflow-x\s*:\s*(hidden|clip)", body) for sels, body in css_rules)
+movie_clip = any(".movie-box" in sels and re.search(r"contain\s*:\s*paint", body) and re.search(r"isolation\s*:\s*isolate", body) for sels, body in css_rules)
+check("CSS: html に overflow-x（hidden か clip）がある（スマホで横に動かせない）", root_clip)
+check("CSS: 動画の枠（.movie-box）に contain: paint と isolation: isolate がある（枠の外に出ない）", movie_clip)
 hdr = os.path.join(DIST, "_headers")
 htext = read(hdr) if os.path.isfile(hdr) else ""
 check("応答ヘッダーの設定（_headers）がある: nosniff・フレームへの埋め込み禁止（frame-ancestors）", "X-Content-Type-Options: nosniff" in htext and "frame-ancestors 'self'" in htext and re.search(r"^/\*\s*$", htext, re.M) is not None)

@@ -35,8 +35,17 @@ html {
   scroll-behavior: smooth;
 }
 
+/* 横に動かせてしまう（画面がグラグラする）のを防ぐ。はみ出す部品があっても、横にはスクロールさせない。
+   clip を知らない古いブラウザは hidden を使う（あとの指定が使えるときは clip が勝つ） */
+html {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
+  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--ink);
   color: var(--paper);
   font: 400 15px/1.75 var(--font-body);
@@ -927,6 +936,21 @@ button:focus-visible {
   font-size: 13px;
 }
 
+/* ---------- パッケージ写真（動画がある作品の、サンプル画像の下） ---------- */
+
+.package .sample-link {
+  max-width: 800px;
+}
+
+.package-img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 800 / 538;
+  border-radius: 3px;
+  background: var(--board);
+  object-fit: contain;
+}
+
 /* ---------- サンプル画像の拡大表示 ---------- */
 
 .sample-link {
@@ -1325,6 +1349,8 @@ html.lightbox-open {
 /* FANZAの再生ページは 476x306 の固定サイズ。枠の幅に合わせて、中のiframeを拡大・縮小する（倍率は site/public/movie.js が決める） */
 .movie-box {
   position: relative;
+  isolation: isolate; /* iPhone・iPadのSafariは、角丸＋overflow:hidden だと、拡大・縮小（transform）した中身を枠で切らないことがある。それで横にはみ出すのを防ぐ */
+  contain: paint;
   width: 100%;
   max-width: 640px;
   aspect-ratio: 476 / 306;
@@ -1623,11 +1649,4 @@ html.lightbox-open {
   .rank-item .rank-maker {
     font-size: 13px;
   }
-}
-
-.rank-note {
-  margin: 10px 0 0;
-  color: var(--paper-dim);
-  font-size: 11px;
-  line-height: 1.7;
 }
