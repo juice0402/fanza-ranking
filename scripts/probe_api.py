@@ -165,6 +165,19 @@ def main():
         res, err = call("ItemList", dict(base, article="actress", article_id=actress["id"], sort="date", hits=3))
         say(f"- ItemList article=actress（{actress.get('name')}）: " + (f"❌ {err}" if err else f"{len(res.get('items') or [])}件 / 全体 {res.get('total_count')}件"))
 
+    # ログの取得が制限される環境でも読めるように、見出しごとに「注釈（notice）」としても出す（GitHub の check-run の注釈として読める）
+    if os.environ.get("GITHUB_ACTIONS"):
+        sections = []
+        for text in lines:
+            if text.startswith("## ") or not sections:
+                sections.append([text])
+            else:
+                sections[-1].append(text)
+        for block in sections[:10]:
+            title = block[0].lstrip("# ").strip()[:100]
+            body = "\n".join(block[1:]).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+            print(f"::notice title={title}::{body}")
+
     path = os.environ.get("GITHUB_STEP_SUMMARY")
     if path:
         with open(path, "a", encoding="utf-8") as f:
