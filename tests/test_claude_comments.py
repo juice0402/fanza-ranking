@@ -166,6 +166,7 @@ rejected("飾りの記号（★）が入っている", {t0["cid"]: good_comment(
 rejected("マークダウンの記号が入っている", {t0["cid"]: "**" + good_comment(t0)}, "使えない記号")
 rejected("直接的な言葉が入っている", {t0["cid"]: good_comment(t0) + "中出し"}, "使えない言葉")
 rejected("未成年をにおわせる言葉が入っている", {t0["cid"]: good_comment(t0) + "少女のような"}, "使えない言葉")
+rejected("「今日」など、日がたつと古くなる言い方が入っている", {t0["cid"]: good_comment(t0) + "今日の新着です"}, "古くなる")
 rejected("出演者名が2回入っている", {t0["cid"]: good_comment(t0) + t0["actress"][0]}, "2回以上")
 rejected("同じ文章を複数の作品に使い回している", {t0["cid"]: ok_text, t1["cid"]: ok_text}, "同じ文章")
 rejected("保存データにない cid", {"no-such-cid": ok_text}, "ない cid")

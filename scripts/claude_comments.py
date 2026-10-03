@@ -36,6 +36,8 @@ EXPLICIT_WORDS = ["中出", "射精", "精液", "挿入", "フェラ", "レイ�
 MINOR_WORDS = ["未成年", "少女", "ロリ", "児童", "幼", "女子高生", "女子校生", "女子中", "中学生", "高校生", "小学生",
                "JK", "JC", "JS", "制服"]
 FORBIDDEN_CHARS = "<>*#"
+# コメントは保存したままずっと表示されるので、日がたつと古くなる言い方は使わない（日付で書く）
+RELATIVE_TIME_WORDS = ["今日", "本日", "明日", "昨日", "今週", "来週", "先週", "今夜", "今朝", "今月", "来月"]
 
 # list に出す形式タグは、VR / 8K のような英数字だけのものに絞る。
 # タグは作品タイトルの【…】から取っているため、日本語のタグには作品の内容を表す言葉が混ざることがある。
@@ -124,6 +126,9 @@ def comment_problems(comment, item):
         problems.append("使えない記号があります: " + " ".join(bad_chars))
     if any(unicodedata.category(c) in ("So", "Cc", "Cf", "Cs", "Co") for c in text):
         problems.append("絵文字や飾りの記号が入っています")
+    stale = [w for w in RELATIVE_TIME_WORDS if w in text]
+    if stale:
+        problems.append("日がたつと古くなる言い方があります（日付で書いてください）: " + "、".join(stale))
     hit = [w for w in EXPLICIT_WORDS + MINOR_WORDS if w.lower() in text.lower()]
     if hit:
         problems.append("使えない言葉があります: " + "、".join(hit))
