@@ -9,14 +9,14 @@ FANZAの新作・予約作品を毎日自動で集め、AIのひとことコメ�
 ## 仕組み（データの流れ）
 
 ```
-GitHub Actions（毎日 01:00 JST）
+GitHub Actions（毎日 22:40 JST）
   → get_new_releases.py
       FANZA(DMM) アフィリエイトAPI から「発売済み」「予約」を別々に取得
       Gemini でひとことコメント作成（ブロック時は代替文 → 次回再挑戦）
       → site/src/data/new_releases.json に作品IDごとにためていく
   → main に commit → Cloudflare Pages が自動ビルド（Astro, 静的サイト）→ 公開
 
-Claude の予約タスク（毎日 02:20 JST。手順は docs/claude-comments.md）
+Claude の予約タスク（毎日 23:20 JST。手順は docs/claude-comments.md）
   → Gemini が書けず定型文のままの作品に、Claude がコメントを書く（scripts/claude_comments.py）
   → ブランチ+PR → CIが緑ならMerge → 公開
 ```
