@@ -1,0 +1,54 @@
+name: Refresh FANZA Data
+
+# 「新しい作品の追加」と「AIコメント」はせずに、保存済みデータの取り直しだけを手動で動かす（Geminiは使わない）。
+#   ・保存済みの作品の出演者・サンプル動画を、品番で取り直す
+#   ・出演者のプロフィール（顔写真・体型・年齢・FANZAの全作品リンク）を取りに行く
+#   ・売れ筋ランキングを取り直す
+# 新しい機能のブランチで、本物のAPIを使った確認をするときにも使う（Run workflow で、ブランチを選んで実行）。
+# 結果のデータは、実行したブランチに commit する。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# 毎日の更新と重ならないように、順番に1つずつ動かす
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check the script supports refresh-only
+        run: |
+          # --refresh-only に未対応の古いスクリプトで動かすと、AIコメントまで動いてしまうので、先に確かめて止める
+          grep -q -- '--refresh-only' get_new_releases.py || { echo "このブランチの get_new_releases.py は --refresh-only に未対応です。"; exit 1; }
+
+      - name: Refresh data
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python get_new_releases.py --refresh-only
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 保存するのはデータファイルだけ（他のファイルが紛れ込まないように）
+          git add -A -- site/src/data
+          if git diff --staged --quiet; then
+            echo "データに変更なし。保存しません。"
+            exit 0
+          fi
+          git commit -m "データの取り直し: $(TZ=Asia/Tokyo date +%Y-%m-%d)"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
