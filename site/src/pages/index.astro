@@ -1,7 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
 import DaySection from '../components/DaySection.astro';
-import { released, upcoming } from '../lib/data.js';
+import { released, upcoming, roundups } from '../lib/data.js';
+import { weeklyPath } from '../lib/roundups.js';
 import {
   groupByDate,
   archivePath,
@@ -16,6 +17,7 @@ import {
 const releasedGroups = groupByDate(released.slice(0, HOME_RELEASED_LIMIT));
 const upcomingGroups = groupByDate(upcoming.slice(0, HOME_UPCOMING_LIMIT));
 const hasMore = released.length > HOME_RELEASED_LIMIT;
+const latestRoundup = roundups[0]; // いちばん新しい週のまとめ（無ければ undefined）
 ---
 
 <Base
@@ -33,6 +35,7 @@ const hasMore = released.length > HOME_RELEASED_LIMIT;
         {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約受付中 {upcoming.length}本</a>}
         <a class="chip-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a>
         <a class="chip-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
+        {latestRoundup && <a class="chip-link" href={weeklyPath(latestRoundup.week_start)}>最新の週のまとめ</a>}
       </nav>
     </section>
 

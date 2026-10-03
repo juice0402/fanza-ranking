@@ -1,6 +1,8 @@
 // JSON（Pythonが毎日貯めているデータ）を読み込んで、画面で使う形にします。
 import raw from '../data/new_releases.json';
+import rawRoundups from '../data/roundups.json';
 import { normalizeItems, splitByRelease, jstToday, groupByActress, groupByMaker, indexByName } from './items.js';
+import { normalizeRoundups } from './roundups.js';
 
 export const today = jstToday();
 export const all = normalizeItems(raw);
@@ -11,3 +13,6 @@ export const actressGroups = groupByActress(all);
 export const makerGroups = groupByMaker(all);
 export const actressByName = indexByName(actressGroups);
 export const makerByName = indexByName(makerGroups);
+
+// 週のまとめ記事（Claudeが毎週月曜に書く。まだ1本も無いときは空）
+export const roundups = normalizeRoundups(rawRoundups, all);

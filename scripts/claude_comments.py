@@ -112,16 +112,14 @@ def cmd_list(args):
 # ------------------------------------------------------------------
 # apply: コメントを点検して書き込む
 # ------------------------------------------------------------------
-def comment_problems(comment, item):
-    """コメント1件の問題点（なければ空のリスト）"""
-    if not isinstance(comment, str):
-        return ["文字列ではありません"]
-    text = comment.strip()
+def text_problems(text, min_len, max_len, allow_newlines=False):
+    """文章の共通の点検（文字数・URL・記号・絵文字・古くなる言い方・使えない言葉）。問題点のリスト（なければ空）。
+    週のまとめ記事の道具（claude_roundups.py）でも同じ点検を使う"""
     problems = []
-    if "\n" in text or "\r" in text:
+    if not allow_newlines and ("\n" in text or "\r" in text):
         problems.append("改行が入っています")
-    if not (MIN_LEN <= len(text) <= MAX_LEN):
-        problems.append(f"文字数が {len(text)} 文字です（{MIN_LEN}〜{MAX_LEN}文字にしてください）")
+    if not (min_len <= len(text) <= max_len):
+        problems.append(f"文字数が {len(text)} 文字です（{min_len}〜{max_len}文字にしてください）")
     if "http" in text.lower():
         problems.append("URLが入っています")
     bad_chars = sorted({c for c in text if c in FORBIDDEN_CHARS})
@@ -135,6 +133,15 @@ def comment_problems(comment, item):
     hit = [w for w in EXPLICIT_WORDS + MINOR_WORDS if w.lower() in text.lower()]
     if hit:
         problems.append("使えない言葉があります: " + "、".join(hit))
+    return problems
+
+
+def comment_problems(comment, item):
+    """コメント1件の問題点（なければ空のリスト）"""
+    if not isinstance(comment, str):
+        return ["文字列ではありません"]
+    text = comment.strip()
+    problems = text_problems(text, MIN_LEN, MAX_LEN)
     for name in item.get("actress") or []:
         if name and text.count(name) > 1:
             problems.append(f"出演者名「{name}」が2回以上入っています（1回まで）")

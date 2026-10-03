@@ -862,3 +862,78 @@ button:focus-visible {
 .spec-link {
   text-underline-offset: 3px;
 }
+
+/* ---------- 週のまとめ記事 ---------- */
+
+.meta {
+  margin: 0;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.pick-note {
+  margin: 8px 0 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--pop);
+  color: var(--paper-dim);
+  font-size: 13px;
+}
+
+.week-day {
+  margin-top: 18px;
+}
+
+.week-day-title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.week-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.week-list-link {
+  text-underline-offset: 3px;
+}
+
+.week-list-cast {
+  margin-left: 8px;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.week-cards {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.week-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  background: var(--board);
+  text-decoration: none;
+}
+
+.week-card:hover {
+  border-color: var(--paper);
+}
+
+.week-card-title {
+  font-weight: 700;
+}
+
+.week-card-lead {
+  color: var(--paper-dim);
+  font-size: 13px;
+}
