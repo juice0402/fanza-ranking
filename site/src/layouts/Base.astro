@@ -1,6 +1,8 @@
 ---
 import '../styles/site.css';
 import { SITE_NAME, SITE_URL, jsonLdScript, ACTRESS_INDEX_PATH, MAKER_INDEX_PATH } from '../lib/items.js';
+import { roundups } from '../lib/data.js';
+import { WEEKLY_INDEX_PATH } from '../lib/roundups.js';
 
 const {
   title = SITE_NAME,
@@ -107,6 +109,7 @@ const canonical = SITE_URL + path;
           <a class="foot-link" href="/archive/1/">過去の作品</a>
           <a class="foot-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a>
           <a class="foot-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
+          {roundups.length > 0 && <a class="foot-link" href={WEEKLY_INDEX_PATH}>週ごとのまとめ</a>}
         </nav>
         <p class="foot-credit">
           <a class="foot-link" href="https://affiliate.dmm.com/api/" target="_blank" rel="noopener noreferrer">Powered by FANZA Webサービス</a>

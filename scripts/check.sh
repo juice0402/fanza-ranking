@@ -17,11 +17,17 @@ python3 tests/test_script.py || failed=1
 step "Claudeのコメント差し替えの道具 (Python)"
 python3 tests/test_claude_comments.py || failed=1
 
+step "Claudeの週のまとめ記事の道具 (Python)"
+python3 tests/test_claude_roundups.py || failed=1
+
 step "保存データの形式"
 python3 tests/test_data.py || failed=1
 
 step "サイトの部品 (Node.js)"
 node tests/test_items.mjs || failed=1
+
+step "週のまとめ記事の部品 (Node.js + Pythonとの突き合わせ)"
+node tests/test_roundups.mjs || failed=1
 
 if [ "${1:-}" = "--build" ]; then
   step "サイトのビルド"

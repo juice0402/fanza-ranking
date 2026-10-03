@@ -1,0 +1,48 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { roundups } from '../../lib/data.js';
+import { SITE_NAME, breadcrumbLd, truncate } from '../../lib/items.js';
+import { WEEKLY_INDEX_PATH, roundupTitle, weeklyPath } from '../../lib/roundups.js';
+
+// まとめ記事がまだ1本も無いあいだは、検索に載せない（noindex・sitemapにも入れない。中身が空のため）
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '週のまとめ', path: WEEKLY_INDEX_PATH },
+];
+---
+
+<Base
+  title={`週ごとのFANZA新作まとめ｜${SITE_NAME}`}
+  description="FANZAの新作を、1週間ごとにまとめた記事の一覧です。毎週月曜に、先週（月曜〜日曜）の分を公開します。"
+  path={WEEKLY_INDEX_PATH}
+  noindex={roundups.length === 0}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">週ごとの新作まとめ</h1>
+      <p class="hero-lead">FANZAの新作を、月曜〜日曜の1週間ごとにまとめています。毎週月曜に、前の週の分を公開します。</p>
+    </section>
+
+    <section class="section" aria-labelledby="weekly-list-title">
+      <h2 id="weekly-list-title" class="visually-hidden">まとめ記事の一覧</h2>
+      {roundups.length > 0
+        ? (
+          <ul class="week-cards">
+            {roundups.map((r) => (
+              <li>
+                <a class="week-card" href={weeklyPath(r.week_start)}>
+                  <span class="week-card-title">{roundupTitle(r)}</span>
+                  <span class="week-card-lead">{truncate(r.lead, 90)}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+        : <p class="empty">まとめ記事は、準備ができしだい公開します。毎週月曜をお待ちください。</p>}
+    </section>
+  </div>
+</Base>
