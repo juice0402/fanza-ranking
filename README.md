@@ -8,7 +8,7 @@ FANZAの新作・予約作品を毎日自動で集めて、AIのひとことコ�
 1. 毎日 午前1時（日本時間）に GitHub Actions が `get_new_releases.py` を実行
 2. FANZAの新作・予約を取得 → Geminiでコメントを作成 → `site/src/data/new_releases.json` にためていく
 3. データが更新されると Cloudflare Pages が自動でサイトを作り直して公開
-4. AIコメントが付かなかった作品には、毎日 午前2時17分ごろ（日本時間）に Claude の予約タスクがコメントを書き足します（手順は [docs/claude-comments.md](docs/claude-comments.md)）
+4. AIコメントが付かなかった作品には、毎日 午前2時20分ごろ（日本時間）に Claude の予約タスクがコメントを書き足します（手順は [docs/claude-comments.md](docs/claude-comments.md)）
 
 ## 運営の手引き（iPad・スマホでOK／ターミナルは不要）
 
