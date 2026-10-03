@@ -22,7 +22,6 @@
 
   --gutter: 16px;
   --maxw: 1180px;
-  --spine: 22px;         /* 背ラベルの幅 */
 }
 
 *,
@@ -317,31 +316,11 @@ button:focus-visible {
   background: var(--board);
 }
 
-.spine {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 1;
-  width: var(--spine);
-  padding: 8px 0;
-  overflow: hidden;
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: var(--spine);
-  letter-spacing: 0.08em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  writing-mode: vertical-rl;
-}
-
 .item-img {
   position: absolute;
   top: 0;
-  left: var(--spine);
-  width: calc(100% - var(--spine));
+  left: 0;
+  width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: 100% 50%; /* パッケージ画像の右半分（表紙側）を見せる */
@@ -936,4 +915,97 @@ button:focus-visible {
 .week-card-lead {
   color: var(--paper-dim);
   font-size: 13px;
+}
+
+/* ---------- サンプル画像の拡大表示 ---------- */
+
+.sample-link {
+  display: block;
+  cursor: zoom-in;
+}
+
+html.lightbox-open {
+  overflow: hidden;
+}
+
+.lightbox {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--ink-deep);
+  color: var(--paper);
+  overscroll-behavior: contain;
+  touch-action: pan-y pinch-zoom; /* 横のスワイプは、画像を送るために使う（ブラウザの「戻る」操作にならないように） */
+}
+
+.lightbox::backdrop {
+  background: var(--ink-deep);
+}
+
+.lightbox-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.lightbox-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.lightbox-btn {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(36, 27, 48, 0.85);
+  color: var(--paper);
+  font: 400 30px/1 var(--font-body);
+  cursor: pointer;
+}
+
+.lightbox-btn:hover {
+  border-color: var(--paper);
+}
+
+.lightbox-prev {
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+}
+
+.lightbox-next {
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+}
+
+.lightbox-close {
+  top: 12px;
+  right: 12px;
+}
+
+.lightbox-count {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  margin: 0;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(36, 27, 48, 0.85);
+  font-size: 13px;
+  transform: translateX(-50%);
 }
