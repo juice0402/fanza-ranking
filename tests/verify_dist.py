@@ -19,7 +19,8 @@ DATA = os.path.join(ROOT, "site", "src", "data", "new_releases.json")
 REQUIRED_ON_EVERY_PAGE = {
     "RTAラベル": "RTA-5042-1996-1400-1577-RTA",
     "18歳確認": 'id="age-gate"',
-    "広告表記": "アフィリエイト広告",
+    "広告表記（フッターのくわしい文）": "アフィリエイト広告",
+    "広告ラベル（ヘッダー。最初に見える画面に出す）": 'class="pr-chip"',
     "FANZAクレジット": "Powered by FANZA Webサービス",
 }
 
@@ -83,6 +84,9 @@ for label, needle in REQUIRED_ON_EVERY_PAGE.items():
     check(f"{label}（{len(pages)}ページ）", not lacking, lacking[:3])
 no_canonical = [os.path.relpath(p, DIST) for p in pages if 'rel="canonical"' not in read(p)]
 check("canonical がある", not no_canonical, no_canonical[:3])
+# 運営者の希望で、コメントの横の「AI」表示は出さない（AIの注記はフッターにある）
+ai_chip = [os.path.relpath(p, DIST) for p in pages if "ai-chip" in read(p)]
+check("コメントの横に「AI」表示が出ていない", not ai_chip, ai_chip[:3])
 
 if problems:
     print("\n失敗:", problems)

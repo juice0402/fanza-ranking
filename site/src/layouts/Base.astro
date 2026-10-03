@@ -76,10 +76,12 @@ const canonical = SITE_URL + path;
     </script>
 
     <a class="skip" href="#main">本文へ移動</a>
-    <p class="pr-strip">広告｜当サイトはアフィリエイト広告（FANZA）を利用しています。</p>
 
     <header class="site-head wrap">
-      <a class="brand" href="/">{SITE_NAME}</a>
+      <div class="brand-row">
+        <a class="brand" href="/">{SITE_NAME}</a>
+        <span class="pr-chip">広告</span>
+      </div>
       <nav class="site-nav" aria-label="メイン">
         <a class="site-nav-link" href="/#released">発売中</a>
         <a class="site-nav-link" href="/#upcoming">予約</a>
@@ -95,8 +97,8 @@ const canonical = SITE_URL + path;
       <div class="wrap">
         <ul class="foot-list">
           <li>当サイトは18歳以上の方を対象としています。</li>
-          <li>当サイトのリンクにはアフィリエイト広告が含まれます。</li>
-          <li>コメントの一部はAIが自動で作成しており、内容の正確さは保証できません。作品の詳細は必ずFANZAの公式ページで確認してください。</li>
+          <li>広告｜当サイトはアフィリエイト広告（FANZA）を利用しており、リンクにはアフィリエイト広告が含まれます。</li>
+          <li>ひとことコメントは、AIが出演者・メーカー・発売日などの作品情報をもとに自動で作成しており、内容の正確さは保証できません。作品の詳細は必ずFANZAの公式ページで確認してください。</li>
         </ul>
         <p class="foot-credit">
           <a class="foot-link" href="https://affiliate.dmm.com/api/" target="_blank" rel="noopener noreferrer">Powered by FANZA Webサービス</a>
