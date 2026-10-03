@@ -66,9 +66,11 @@ def has_class(attrs, name):
 
 def fanza_https(url, hosts):
     """https で、ホストが hosts のどれか（またはそのサブドメイン）のURLか"""
-    m = re.match(r"^https://([A-Za-z0-9.\-]+)(?:[:/?#]|$)", str(url or ""))
+    text = str(url or "")
+    # ホストのあとは、ポート番号（数字）か、パス・?・#・終わりだけ。ユーザー名の欄に FANZA のホストを入れて見せかける形（https://dmm.co.jp:@別のサイト/）や、空白・バックスラッシュを含む形は通さない
+    m = re.match(r"^https://([A-Za-z0-9.\-]+)(?::\d{1,5})?(?:[/?#]|$)", text)
     host = m.group(1).lower() if m else ""
-    return bool(m) and any(host == h or host.endswith("." + h) for h in hosts)
+    return bool(m) and not re.search(r"[\\\s\x00-\x1f\x7f]", text) and any(host == h or host.endswith("." + h) for h in hosts)
 
 
 def page_file(url_path):
@@ -293,12 +295,15 @@ for pth in all_html:
 check("顔写真（face-img）は、すべて FANZA(DMM) の https の画像", not bad_faces, bad_faces[:3])
 
 actress_pages = glob.glob(os.path.join(DIST, "actress", "*", "index.html"))
+page_name_slug = {}  # 出演者ページの「名前 → ページの識別子」（出演者検索の索引と突き合わせる）
 bad_profile_pages = []
 for pth in actress_pages:
     text = read(pth)
     m = re.search(r'<h1 class="hero-title">(.*?)</h1>', text, re.S)
     h1_text = htmllib.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip() if m else ""  # 見出しが <span> で分かれていても読む
     name = h1_text[: -len("の新作・出演作品")] if h1_text.endswith("の新作・出演作品") else ""
+    if name:
+        page_name_slug[name] = os.path.basename(os.path.dirname(pth))
     prof = profiles.get(name)
     btn_text = f"FANZAで{name}の全作品を見る"
     btns = [t for t in tags(text, "a") if has_class(t, "btn") and has_class(t, "btn-hot")]
@@ -352,9 +357,18 @@ idx_path = os.path.join(DIST, "data", "actresses-index.json")
 act_index = load_json(idx_path) if os.path.isfile(idx_path) else None
 check("出演者検索の索引（/data/actresses-index.json）がある・形が正しい", isinstance(act_index, dict) and isinstance(act_index.get("actresses"), list) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(act_index.get("generated", ""))), str(act_index)[:80])
 rows = act_index["actresses"] if isinstance(act_index, dict) and isinstance(act_index.get("actresses"), list) else []
-check(f"索引の人数 = プロフィールを取得済みの人数（{len(profiles)}人）", len(rows) == len(profiles), (len(rows), len(profiles)))
 ALLOWED_KEYS = {"n", "r", "s", "k", "i", "a", "h", "b", "c", "wa", "hi", "l"}
 page_slugs = {os.path.basename(os.path.dirname(pth)) for pth in actress_pages}
+row_names = [str(r.get("n")) for r in rows if isinstance(r, dict)]
+row_by_name = {str(r.get("n")): r for r in rows if isinstance(r, dict)}
+# 索引に載るのは「プロフィールを取得済みの人」＋「専用ページのある人（プロフィールが無くても、名前・作品数で探せるように）」。
+# 同じ名前で別人のプロフィールが2つあるとき（同名の別人）は、取り違えを避けて、プロフィールの側を載せない
+check("索引に、名前の重複が無い", len(row_names) == len(set(row_names)), len(row_names) - len(set(row_names)))
+check(f"索引の人数が、「プロフィール取得済み（{len(profiles)}人）＋専用ページのある出演者（{len(page_name_slug)}人）」の範囲に収まる", len(page_name_slug) <= len(rows) <= len(set(profiles) | set(page_name_slug)), (len(rows), len(profiles), len(page_name_slug)))
+missing_page_rows = [n for n, slug in page_name_slug.items() if n not in row_by_name or row_by_name[n].get("s") != slug]
+check("専用ページのある出演者は、全員が索引にいて、s（ページの識別子）が実際のページと合っている", not missing_page_rows, missing_page_rows[:3])
+stray_rows = [n for n in row_names if n not in profiles and n not in page_name_slug]
+check("索引の全員が、プロフィールがあるか、専用ページがある（出どころの無い行が無い）", not stray_rows, stray_rows[:3])
 
 
 def int_in(v, lo, hi):
@@ -427,6 +441,9 @@ if rk_fresh and rk_items:
     check("各作品の「FANZAで見る」は、アフィリエイトのURLで、広告のリンクの属性（sponsored など）が付いている", not missing, missing)
     check("「人気順」と書いてある（FANZAのデイリーランキングと同じとは書かない）", "人気順" in home_html and "デイリーランキング" not in home_html)
     check("ページ内の移動に「売れ筋TOP3」がある", 'href="#ranking"' in home_html)
+    cell_places = [re.search(r"\brank-([0-3])\b", t.get("class", "")) for t in rank_cards]
+    check("1〜3位のカードに、順位ごとの大きさの目印（rank-1〜rank-3）が、順番どおりに付いている（表示の順位は、抜けがあっても1,2,3とそろえる）", [m.group(1) if m else None for m in cell_places] == ["1", "2", "3"][: len(rk_items)], [t.get("class") for t in rank_cards])
+    check("売れ筋の並びに rank-podium の目印がある（スマホで1位を大きく・広い画面で3本を横いっぱいにする見た目の足がかり）", any(has_class(t, "rank-podium") for t in tags(home_html, "ul")))
 else:
     check("ランキングが無い・古い（7日より前）・使える行が無いときは、トップに売れ筋の欄を出さない", not home_sections and not rank_cards and 'href="#ranking"' not in home_html)
 
@@ -542,6 +559,54 @@ for label, needle in REQUIRED_ON_EVERY_PAGE.items():
     check(f"{label}（{len(pages)}ページ）", not lacking, lacking[:3])
 no_canonical = [os.path.relpath(p, DIST) for p in pages if 'rel="canonical"' not in read(p)]
 check("canonical がある", not no_canonical, no_canonical[:3])
+
+print("\n■ 全ページの共通の部品（広告表記・年齢確認・リンクの属性・画像・アイコン・ヘッダー）")
+bad_strip, bad_gate, bad_credit, bad_head, bad_alt, bad_lang, bad_ext = [], [], [], [], [], [], []
+for p in pages:
+    html, name = read(p), os.path.relpath(p, DIST)
+    # 広告表記: ページの先頭（ヘッダーより前）の帯に「広告」と書いてある
+    strip = re.search(r'<p class="pr-strip">([^<]*)</p>', html)
+    if not strip or not strip.group(1).startswith("広告") or html.find('class="pr-strip"') > html.find("<header"):
+        bad_strip.append(name)
+    # 18歳確認: 最初は隠れていて（JavaScriptが開く）、ダイアログとして読み上げられ、「はい」「いいえ」がある。JavaScriptが無効のときの注意書きもある
+    gate = next((t for t in tags(html, "div") if t.get("id") == "age-gate"), None)
+    yes = [t for t in tags(html, "button") if t.get("id") == "gate-yes"]
+    if not gate or "hidden" not in gate or gate.get("role") != "dialog" or gate.get("aria-modal") != "true" or not yes or "いいえ" not in html or "<noscript>" not in html or "18歳未満の方はご利用いただけません" not in html.split("<noscript>", 1)[-1]:
+        bad_gate.append(name)
+    # FANZAクレジット: リンクになっていて、規約の指す先（affiliate.dmm.com）へ行く
+    credit = [t for t in tags(html, "a") if str(t.get("href", "")).startswith("https://affiliate.dmm.com/api")]
+    if not credit or "Powered by FANZA Webサービス" not in html or not any("noopener" in t.get("rel", "") for t in credit):
+        bad_credit.append(name)
+    # <head>: 言語・画面幅・OGP・アイコン
+    metas = {(t.get("property") or t.get("name")): t.get("content", "") for t in tags(html, "meta")}
+    links = [(t.get("rel"), t.get("href")) for t in tags(html, "link")]
+    if not all(metas.get(k) for k in ("viewport", "og:title", "og:url", "og:type", "og:site_name", "twitter:card")) or not {("icon", "/favicon.ico"), ("icon", "/favicon.svg"), ("apple-touch-icon", "/apple-touch-icon.png")} <= set(links):
+        bad_head.append(name)
+    if not re.search(r'<html[^>]*\blang="ja"', html):
+        bad_lang.append(name)
+    # 画像: alt の属性がある（飾りの画像は alt="" でよい）
+    if any("alt" not in t for t in tags(html, "img")):
+        bad_alt.append(name)
+    # FANZA / DMM への外部リンクは、すべて広告のリンクの属性（sponsored nofollow noopener noreferrer）が付いている
+    for t in tags(html, "a"):
+        href_url = urlparse(str(t.get("href", "")))
+        host = (href_url.hostname or "").lower()
+        if re.search(r"\.(jpe?g|png|gif|webp)$", href_url.path, re.I):
+            continue  # サンプル画像を拡大して見るための、画像そのものへのリンク（広告のリンクではない）
+        if host and any(host == h or host.endswith("." + h) for h in FANZA_LINK) and not SPONSORED <= set(t.get("rel", "").split()):
+            bad_ext.append((name, t.get("href")))
+check(f"全ページの先頭に「広告」の帯がある（ヘッダーより前）", not bad_strip, bad_strip[:3])
+check(f"全ページの18歳確認: 最初は隠れている・ダイアログ・「はい」「いいえ」・JavaScriptが無効のときの注意書き", not bad_gate, bad_gate[:3])
+check(f"全ページの「Powered by FANZA Webサービス」が、規約の指す先へのリンクになっている", not bad_credit, bad_credit[:3])
+check(f"全ページの <head>: 画面幅・OGP・Twitterカード・アイコン（ico / svg / apple-touch）", not bad_head, bad_head[:3])
+check(f"全ページが lang=ja", not bad_lang, bad_lang[:3])
+check(f"全ページの画像に alt がある", not bad_alt, bad_alt[:3])
+check("FANZA/DMM への外部リンク（サンプル画像を拡大するリンクを除く）は、すべて広告の属性（sponsored nofollow noopener noreferrer）つき", not bad_ext, bad_ext[:3])
+ico = os.path.join(DIST, "favicon.ico")
+check("アイコン（favicon.ico・favicon.svg・apple-touch-icon.png）が公開されていて、中身が画像の形式", os.path.isfile(ico) and open(ico, "rb").read(4) == b"\x00\x00\x01\x00" and os.path.isfile(os.path.join(DIST, "favicon.svg")) and open(os.path.join(DIST, "apple-touch-icon.png"), "rb").read(8) == b"\x89PNG\r\n\x1a\n" if os.path.isfile(os.path.join(DIST, "apple-touch-icon.png")) else False)
+hdr = os.path.join(DIST, "_headers")
+htext = read(hdr) if os.path.isfile(hdr) else ""
+check("応答ヘッダーの設定（_headers）がある: nosniff・フレームへの埋め込み禁止（frame-ancestors）", "X-Content-Type-Options: nosniff" in htext and "frame-ancestors 'self'" in htext and re.search(r"^/\*\s*$", htext, re.M) is not None)
 
 
 print("\n■ 検索エンジン向けの点検（SEO）")

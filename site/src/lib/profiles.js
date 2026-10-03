@@ -33,14 +33,25 @@ export function ageFromBirthday(birthday, today) {
  */
 export function normalizeProfiles(raw, today) {
   const rows = Array.isArray(raw?.actresses) ? raw.actresses : [];
+  // 同じ名前の人が別々の id で2人以上いるとき（作品には名前しか載らないので、どちらの人か決められない）は、どちらも使わない
+  // （推測で選ぶと、別の人の顔・年齢・体型を出してしまうため）。同じ id が重なっているだけなら、先のものを使う
+  const idsByName = new Map();
+  for (const r of rows) {
+    if (!r || typeof r !== 'object') continue;
+    const id = String(r.id ?? '').trim();
+    const name = String(r.name ?? '').trim();
+    if (!/^\d{1,12}$/.test(id) || !name) continue;
+    if (!idsByName.has(name)) idsByName.set(name, new Set());
+    idsByName.get(name).add(id);
+  }
   const seen = new Set();
   const profiles = [];
   for (const r of rows) {
     if (!r || typeof r !== 'object') continue;
     const id = String(r.id ?? '').trim();
     const name = String(r.name ?? '').trim();
-    if (!/^\d{1,12}$/.test(id) || !name || seen.has(name)) continue;
-    seen.add(name);
+    if (!/^\d{1,12}$/.test(id) || !name || seen.has(id) || idsByName.get(name).size > 1) continue;
+    seen.add(id);
     const cup = typeof r.cup === 'string' && /^[A-Z]$/.test(r.cup) ? r.cup : '';
     profiles.push({
       id,
@@ -105,7 +116,10 @@ export function countWorksByName(items) {
  * 出演者検索の索引（/data/actresses-index.json）。ブラウザが読んで、年齢・身長・サイズで絞り込む。
  * 短い名前の項目: n 名前 / r 読み / s 出演者ページの短い名前（ページが無い人は ''）/ k 掲載作品の本数 / i 顔写真 /
  *   a 年齢 / h 身長 / b バスト / c カップ / wa ウエスト / hi ヒップ / l FANZAの全作品リンク。載っていない項目は null（カップは ''）。
- * 生年月日は入れない。まだプロフィールを取りに行っていない人（fetched が空）は入れない。作品の多い順。
+ * 生年月日は入れない。作品の多い順。
+ * 入れる人: プロフィールを取得済み（fetched がある）の人 ＋ 専用ページがある人。
+ *   専用ページがある人は、プロフィールを取れていなくても入れる（検索の部品が出ると、最初から載っている一覧は隠れるため。
+ *   入れないと、新しく2本以上になった出演者が一覧から消える）。その場合、数字は null。
  */
 export function buildActressSearchIndex(profiles, items, actressByName, today) {
   const counts = countWorksByName(items);
@@ -124,8 +138,15 @@ export function buildActressSearchIndex(profiles, items, actressByName, today) {
       wa: p.waist,
       hi: p.hip,
       l: p.listUrl,
-    }))
-    .sort((a, b) => b.k - a.k || (a.n < b.n ? -1 : a.n > b.n ? 1 : 0));
+    }));
+  const have = new Set(rows.map((r) => r.n));
+  const byName = profileByName(profiles);
+  for (const [name, group] of actressByName) {
+    if (have.has(name)) continue;
+    const p = byName.get(name);
+    rows.push({ n: name, r: p?.ruby ?? '', s: group.slug, k: counts.get(name) ?? group.items?.length ?? 0, i: '', a: null, h: null, b: null, c: '', wa: null, hi: null, l: '' });
+  }
+  rows.sort((a, b) => b.k - a.k || (a.n < b.n ? -1 : a.n > b.n ? 1 : 0));
   return { generated: today, actresses: rows };
 }
 

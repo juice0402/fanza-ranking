@@ -96,8 +96,10 @@
   // 画像・リンクとして使ってよいURLか（FANZA(DMM)の https だけ）
   function safeUrl(url, hosts) {
     if (typeof url !== 'string') return '';
-    var m = /^https:\/\/([A-Za-z0-9.-]+)(?:[:/?#]|$)/.exec(url);
-    if (!m) return '';
+    // ホストのあとに来てよいのは、ポート番号（数字）と、パス・?・#・終わりだけ。
+    // 「https://dmm.co.jp:@別のサイト/」のように、ユーザー名の欄に FANZA のホストを入れて見せかける形は通さない
+    var m = /^https:\/\/([A-Za-z0-9.-]+)(?::\d{1,5})?(?:[/?#]|$)/.exec(url);
+    if (!m || /[\\\s\x00-\x1f\x7f]/.test(url)) return '';
     var host = m[1].toLowerCase();
     var ok = hosts.some(function (h) {
       return host === h || host.slice(-(h.length + 1)) === '.' + h;

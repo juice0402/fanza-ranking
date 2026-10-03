@@ -1,0 +1,6 @@
+# Cloudflare Pages が、全ページに付ける「応答ヘッダー」（ビルドの結果にそのままコピーされる）
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: frame-ancestors 'self'; base-uri 'self'; object-src 'none'
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()

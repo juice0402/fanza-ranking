@@ -176,6 +176,15 @@ const script = L.jsonLdScript(evil);
 check('JSON-LD: ページを壊す記号（</script> など）を置き換える', !script.includes('<') && !script.includes('>') && !script.includes('&') && !script.includes(' '), script);
 check('JSON-LD: 置き換えても、読み戻すと元のデータと同じ', JSON.stringify(JSON.parse(script)) === JSON.stringify(evil));
 
+console.log('\n■ 発売日ごとの本数（一覧が途中で切れても、その日の全部の本数を出す）');
+const dayItems = L.normalizeItems(Array.from({ length: 5 }, (_, i) => ({ cid: `d${i}`, title: 't', date: i < 3 ? '2026-10-03' : '2026-10-02' })));
+const totalsAll = L.countByDate(dayItems);
+check('日ごとの本数', totalsAll.get('2026-10-03') === 3 && totalsAll.get('2026-10-02') === 2 && totalsAll.size === 2);
+const cut = L.groupByDate(dayItems.slice(0, 4), totalsAll);
+check('途中で切れた日（見えているのは1本）でも、total はその日の全部の数', cut.map((g) => `${g.items.length}/${g.total}`).join() === '3/3,1/2', cut.map((g) => `${g.items.length}/${g.total}`).join());
+check('totals を渡さなければ、見えている数が total', L.groupByDate(dayItems).map((g) => g.total).join() === '3,2');
+check('totals に無い日は、見えている数', L.groupByDate(dayItems, new Map()).map((g) => g.total).join() === '3,2');
+
 console.log('\n■ URLの安全確認・文字の切り方');
 const urlItem = L.normalizeItems([{
   cid: 'u1', title: 't', date: '2026-10-01',

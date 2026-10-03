@@ -51,6 +51,13 @@ check('範囲外・数字でない値・小文字のカップは空にする', b
 check('未成年になる生年月日は年齢にしない・外部の画像/リンク・javascript: は空', bad.age === null && bad.imageSmall === '' && bad.imageLarge === '' && bad.listUrl === '');
 check('日付でない取得日は空', bad.fetched === '' && hanako.fetched === '2026-10-03');
 check('生年月日は、ここから先に持ち出さない（項目にも、JSONの文字にも無い）', !('birthday' in hanako) && !JSON.stringify(profiles).includes('1999-03-04') && !JSON.stringify(profiles).includes('2015-01-01'));
+const namesake = P.normalizeProfiles({ actresses: [
+  { id: '2001', name: 'あおい', fetched: '2026-10-03', bust: 80 },
+  { id: '2002', name: 'あおい', fetched: '', bust: 90 },
+  { id: '2003', name: 'ゆうな', fetched: '2026-10-03' },
+  { id: '2003', name: 'ゆうな', fetched: '2026-10-03' }, // 同じ id の重なり（1人）
+] }, today);
+check('同じ名前の人が別々の id で2人以上いるときは、どちらも使わない（人違いを出さない）。同じ id の重なりは1人', namesake.map((x) => x.name).join() === 'ゆうな', namesake.map((x) => x.id + x.name).join());
 check('ファイルが無い・形が違うときは空', [null, undefined, {}, [], 'x', { actresses: 'x' }].every((v) => P.normalizeProfiles(v, today).length === 0));
 check('顔写真: 小さい版→大きい版の順に代わりを探す・どちらも無ければ空', P.faceUrl(hanako) === hanako.imageSmall && P.faceUrl(hanako, true) === hanako.imageLarge && P.faceUrl({ imageSmall: '', imageLarge: 'https://pics.dmm.co.jp/l.jpg' }) === 'https://pics.dmm.co.jp/l.jpg' && P.faceUrl(by.get('数字なし子')) === '' && P.faceUrl(undefined) === '');
 
@@ -75,6 +82,18 @@ const r0 = idx.actresses[0];
 check('索引: 値が正しく入る', r0.s === 'abcdef0123' && r0.k === 3 && r0.a === 27 && r0.h === 158 && r0.b === 86 && r0.c === 'F' && r0.wa === 57 && r0.hi === 87 && r0.l.startsWith('https://al.fanza.co.jp/'));
 check('索引: ページが無い人は s が空・載っていない数字は null', idx.actresses[1].s === '' && idx.actresses[1].a === null && idx.actresses[1].h === null && idx.actresses[1].b === null && idx.actresses[1].c === '');
 check('索引: JSONに生年月日が出ない', !JSON.stringify(idx).includes('1999') && !/birthday/.test(JSON.stringify(idx)));
+// 専用ページがあるのに、プロフィールをまだ取れていない人（検索の部品が出ると、最初からある一覧は隠れるので、索引に入れないと消えてしまう）
+const items2 = normalizeItems([
+  { cid: 'b1', title: 't', date: '2026-10-01', actress: ['新人さん', 'テスト花子', 'あおい'], maker: 'M' },
+  { cid: 'b2', title: 't', date: '2026-10-02', actress: ['新人さん', 'あおい'], maker: 'M' },
+]);
+const groups2 = new Map([['テスト花子', { slug: 'abcdef0123', items: [1, 2] }], ['新人さん', { slug: '0123456789', items: [1, 2] }], ['あおい', { slug: 'fedcba9876', items: [1, 2] }]]);
+const unfetched = (id, name, ruby) => ({ id, name, ruby, imageSmall: '', imageLarge: '', bust: null, cup: '', waist: null, hip: null, height: null, age: null, listUrl: '', fetched: '' });
+const idx2 = P.buildActressSearchIndex([...profiles, unfetched('3001', '新人さん', 'しんじん'), unfetched('3002', 'ページの無い未取得の人', 'x')], items2, groups2, today);
+const rowOf = (n) => idx2.actresses.find((r) => r.n === n);
+check('索引: 専用ページがあれば、プロフィール未取得（fetched が空）・プロフィールが無い（同名で使えない）人も入る', idx2.actresses.length === 4 && rowOf('新人さん') && rowOf('あおい') && rowOf('新人さん').s === '0123456789' && rowOf('あおい').s === 'fedcba9876', idx2.actresses.map((r) => r.n).join());
+check('索引: そうした人の数字は null・読みは分かれば入る・顔写真・リンクは空・作品数は正しい', ['a', 'h', 'b', 'wa', 'hi'].every((k) => rowOf('新人さん')[k] === null) && rowOf('新人さん').c === '' && rowOf('新人さん').r === 'しんじん' && rowOf('新人さん').i === '' && rowOf('新人さん').l === '' && rowOf('新人さん').k === 2 && rowOf('あおい').r === '', JSON.stringify(rowOf('新人さん')));
+check('索引: 取得済みの人は重複して入らない・ページが無くて未取得の人は入らない', idx2.actresses.filter((r) => r.n === 'テスト花子').length === 1 && !rowOf('ページの無い未取得の人'), idx2.actresses.map((r) => r.n).join());
 const cov = P.profileCoverage(profiles);
 check('データのある人数: 取得済み2人のうち 顔1・年齢1・身長1・スリーサイズ1', cov.total === 2 && cov.withFace === 1 && cov.withAge === 1 && cov.withHeight === 1 && cov.withSize === 1, JSON.stringify(cov));
 
@@ -133,6 +152,8 @@ check('検索結果の文は、サーバー側の compactSpec と同じ', specCa
   return S.specText(row) === P.compactSpec(c);
 }));
 check('画像・リンクは FANZA(DMM) の https だけ', S.safeUrl('https://pics.dmm.co.jp/a.jpg', ['dmm.co.jp']) !== '' && S.safeUrl('https://al.fanza.co.jp/?x=1', ['fanza.co.jp', 'dmm.co.jp']) !== '' && ['http://pics.dmm.co.jp/a.jpg', 'https://evil.example/a.jpg', 'javascript:alert(1)', 'https://dmm.co.jp.evil.example/a', 'https://evildmm.co.jp/a', '', null, 5].every((u) => S.safeUrl(u, ['dmm.co.jp']) === ''));
+check('見せかけのURL（ユーザー名の欄にFANZAのホストを入れる・バックスラッシュ・空白）は通さない', ['https://dmm.co.jp:@evil.example/a.jpg', 'https://pics.dmm.co.jp:80@evil.example/a.jpg', 'https://pics.dmm.co.jp@evil.example/a.jpg', 'https://pics.dmm.co.jp\\@evil.example/a.jpg', 'https://pics.dmm.co.jp/a b.jpg', 'https://pics.dmm.co.jp/a\nb.jpg', 'https://pics.dmm.co.jp:x/a.jpg'].every((u) => S.safeUrl(u, ['dmm.co.jp']) === ''));
+check('ポート番号つき・?だけ・#だけ・ホストだけのFANZAのURLは通す', ['https://pics.dmm.co.jp:443/a.jpg', 'https://pics.dmm.co.jp?x=1', 'https://pics.dmm.co.jp#top', 'https://pics.dmm.co.jp'].every((u) => S.safeUrl(u, ['dmm.co.jp']) === u));
 check('出演者ページの短い名前: 10桁の英数字（小文字）だけ', S.pagePath('abcdef0123') === '/actress/abcdef0123/' && ['', 'ABCDEF0123', 'abcdef012', '../../etc/x', 'abcdef01234', null].every((s) => S.pagePath(s) === ''));
 check('1回に出す人数', S.PAGE_SIZE === 60);
 

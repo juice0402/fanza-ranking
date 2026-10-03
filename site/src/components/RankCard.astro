@@ -9,11 +9,12 @@ import { all } from '../lib/data.js';
 const { entry, level = 'h3' } = Astro.props;
 const Heading = level;
 const inSite = all.some((i) => i.cid === entry.cid);
+const place = [1, 2, 3].includes(entry.rank) ? entry.rank : 0; // 1〜3位だけ、大きさを変える（見た目は site.css の .rank-1〜.rank-3）
 const href = inSite ? itemPath(entry.cid) : entry.url;
 const outbound = inSite ? {} : { target: '_blank', rel: 'sponsored nofollow noopener noreferrer' };
 ---
 
-<article class="item rank-item">
+<article class={`item rank-item rank-${place}`}>
   <a class="item-cover" href={href} tabindex="-1" aria-hidden="true" {...outbound}>
     {entry.image_url && (
       <img class="item-img" src={entry.image_url} alt="" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'" />

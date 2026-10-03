@@ -7,6 +7,7 @@ import { weeklyPath } from '../lib/roundups.js';
 import {
   dateParts,
   groupByDate,
+  countByDate,
   archivePath,
   websiteLd,
   SITE_NAME,
@@ -16,8 +17,9 @@ import {
   MAKER_INDEX_PATH,
 } from '../lib/items.js';
 
-const releasedGroups = groupByDate(released.slice(0, HOME_RELEASED_LIMIT));
-const upcomingGroups = groupByDate(upcoming.slice(0, HOME_UPCOMING_LIMIT));
+const releasedGroups = groupByDate(released.slice(0, HOME_RELEASED_LIMIT), countByDate(released));
+const upcomingGroups = groupByDate(upcoming.slice(0, HOME_UPCOMING_LIMIT), countByDate(upcoming));
+const upcomingShown = Math.min(upcoming.length, HOME_UPCOMING_LIMIT); // 「予約受付中 N本」は、下に並ぶ数と同じにする
 const hasMore = released.length > HOME_RELEASED_LIMIT;
 const latestRoundup = roundups[0]; // いちばん新しい週のまとめ（無ければ undefined）
 const rankingDay = ranking ? dateParts(ranking.date) : null;
@@ -38,7 +40,7 @@ const rankingDay = ranking ? dateParts(ranking.date) : null;
       <nav class="hero-jump" aria-label="ページ内の移動">
         {ranking && <a class="chip-link" href="#ranking">売れ筋TOP3</a>}
         {released.length > 0 && <a class="chip-link" href="#released">発売中の新作 {released.length}本</a>}
-        {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約受付中 {upcoming.length}本</a>}
+        {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約受付中 {upcomingShown}本</a>}
         <a class="chip-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a>
         <a class="chip-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
         {latestRoundup && <a class="chip-link" href={weeklyPath(latestRoundup.week_start)}>最新の週のまとめ</a>}
@@ -51,8 +53,8 @@ const rankingDay = ranking ? dateParts(ranking.date) : null;
           <h2 id="ranking-title" class="section-title">売れ筋TOP3</h2>
           <p class="section-note">FANZAの人気順｜{rankingDay.m}月{rankingDay.d}日時点</p>
         </div>
-        <ul class="shelf">
-          {ranking.items.map((entry) => <li class="shelf-cell"><RankCard entry={entry} /></li>)}
+        <ul class="shelf rank-podium">
+          {ranking.items.map((entry) => <li class="shelf-cell rank-cell"><RankCard entry={entry} /></li>)}
         </ul>
         <p class="rank-note">FANZAの公式APIが返す「人気順」の上位3本です。FANZAのサイトにあるランキングとは、順位が違うことがあります。</p>
       </section>

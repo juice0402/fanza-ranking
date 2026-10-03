@@ -105,6 +105,25 @@
     return Boolean(item.m) && isOn(store, 'maker', item.m);
   }
 
+  // 専用ページ（作品が2本以上になるとできる）の短い名前を、☆を付けたあとで分かったときに補う。
+  // pages は索引の { actress: {名前: 短い名前}, maker: {...} }。{ store, changed } を返す（元の store は変えない）
+  function resolveSlugs(store, pages) {
+    var next = parseStore(JSON.stringify(store));
+    var changed = false;
+    ['actress', 'maker'].forEach(function (type) {
+      var known = pages && typeof pages[type] === 'object' && pages[type] ? pages[type] : {};
+      Object.keys(next[type]).forEach(function (name) {
+        var entry = next[type][name];
+        if (entry.slug || !Object.prototype.hasOwnProperty.call(known, name)) return;
+        if (typeof known[name] === 'string' && SLUG.test(known[name])) {
+          entry.slug = known[name];
+          changed = true;
+        }
+      });
+    });
+    return { store: next, changed: changed };
+  }
+
   // "2026-10-07" → "2026年10月7日"（日付でなければ空）
   function jpDate(day) {
     return typeof day === 'string' && DAY.test(day) ? +day.slice(0, 4) + '年' + +day.slice(5, 7) + '月' + +day.slice(8, 10) + '日' : '';
@@ -137,7 +156,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       emptyStore: emptyStore, parseStore: parseStore, isOn: isOn, toggle: toggle, remove: remove,
-      hasPeople: hasPeople, matches: matches, pickNew: pickNew, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT,
+      hasPeople: hasPeople, matches: matches, pickNew: pickNew, resolveSlugs: resolveSlugs, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT,
     };
     return;
   }
@@ -154,7 +173,18 @@
   } catch (e) {
     storage = null; // 保存できない環境（プライベートブラウズなど）
   }
-  if (!storage) return;
+  if (!storage) {
+    // 保存できない環境（プライベートブラウズなど）。「お気に入り」ページが空白にならないよう、理由を出す
+    var emptyRoot = document.getElementById('fav-root');
+    if (emptyRoot) {
+      emptyRoot.textContent = '';
+      var note = document.createElement('p');
+      note.className = 'empty';
+      note.textContent = 'このブラウザでは、お気に入りを保存できません（プライベートブラウズなど）。通常のブラウズで開くと使えます。';
+      emptyRoot.appendChild(note);
+    }
+    return;
+  }
 
   function read() {
     try {
@@ -236,7 +266,12 @@
           return res.json();
         })
         .then(function (data) {
-          return Array.isArray(data.items) ? data.items : [];
+          var d = data && typeof data === 'object' ? data : {};
+          return { items: Array.isArray(d.items) ? d.items : [], pages: d.pages && typeof d.pages === 'object' ? d.pages : {} };
+        })
+        .catch(function (error) {
+          indexPromise = null; // 失敗を覚えっぱなしにしない（つながるようになったら、次に開いたときに読み直す）
+          throw error;
         });
     }
     return indexPromise;
@@ -247,8 +282,8 @@
   if (banner) {
     var s = read();
     if (hasPeople(s)) {
-      loadIndex().then(function (items) {
-        var found = pickNew(s, items, jstToday(Date.now()), BANNER_DAYS);
+      loadIndex().then(function (index) {
+        var found = pickNew(s, index.items, jstToday(Date.now()), BANNER_DAYS);
         var count = found.upcoming.length + found.recent.length;
         if (count > 0) {
           banner.textContent = '★ お気に入りの新作・予約が ' + count + '本あります';
@@ -314,8 +349,14 @@
       holder.appendChild(el('p', 'fav-loading', '読み込み中…'));
       news.appendChild(holder);
       container.appendChild(news);
-      loadIndex().then(function (items) {
-        var found = pickNew(store, items, jstToday(Date.now()), RECENT_DAYS);
+      loadIndex().then(function (index) {
+        // ☆を付けたときは専用ページが無かった人に、あとからページができていたら、リンクを補って描き直す
+        var resolved = resolveSlugs(read(), index.pages);
+        if (resolved.changed && write(resolved.store)) {
+          renderPage(container);
+          return;
+        }
+        var found = pickNew(store, index.items, jstToday(Date.now()), RECENT_DAYS);
         holder.textContent = '';
         [['これから発売（' + found.upcoming.length + '本）', found.upcoming], ['最近発売（' + found.recent.length + '本）', found.recent]].forEach(function (pair) {
           holder.appendChild(el('h3', 'fav-sub', pair[0]));
