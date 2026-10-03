@@ -1,0 +1,14 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE_NAME } from '../lib/items.js';
+---
+
+<Base title={`ページが見つかりません｜${SITE_NAME}`} path="/404.html" noindex={true}>
+  <div class="wrap">
+    <section class="lost">
+      <h1 class="lost-title">ページが見つかりません</h1>
+      <p class="lost-text">URLが変わったか、作品の掲載が終わった可能性があります。</p>
+      <a class="btn btn-hot" href="/">トップで新作を見る</a>
+    </section>
+  </div>
+</Base>

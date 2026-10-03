@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://fanza-ranking.pages.dev/sitemap.xml

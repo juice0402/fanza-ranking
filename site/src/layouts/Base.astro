@@ -1,0 +1,107 @@
+---
+import '../styles/site.css';
+import { SITE_NAME, SITE_URL } from '../lib/items.js';
+
+const {
+  title = SITE_NAME,
+  description = '',
+  path = '/',
+  image = '',
+  noindex = false,
+  stickyCta = false,
+} = Astro.props;
+
+const canonical = SITE_URL + path;
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex,follow" />}
+    <meta name="rating" content="adult" />
+    <meta name="rating" content="RTA-5042-1996-1400-1577-RTA" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:url" content={canonical} />
+    {image && <meta property="og:image" content={image} />}
+    <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="sitemap" href="/sitemap.xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap"
+    />
+  </head>
+  <body class={stickyCta ? 'has-sticky' : ''}>
+    <div id="age-gate" class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title" hidden>
+      <div class="gate-box">
+        <p class="gate-mark">18+</p>
+        <h2 id="gate-title" class="gate-title">18歳以上ですか？</h2>
+        <p class="gate-text">このサイトにはアダルト作品の紹介が含まれます。18歳未満の方はご利用いただけません。</p>
+        <div class="gate-actions">
+          <button type="button" id="gate-yes" class="btn btn-hot">はい、18歳以上です</button>
+          <a class="btn btn-quiet" href="https://www.google.co.jp/">いいえ（退出する）</a>
+        </div>
+      </div>
+    </div>
+    <script is:inline>
+      (function () {
+        var gate = document.getElementById('age-gate');
+        var ok = false;
+        try {
+          ok = localStorage.getItem('age-ok') === '1';
+        } catch (e) {}
+        if (ok || !gate) return;
+        gate.hidden = false;
+        document.documentElement.classList.add('gate-open');
+        document.getElementById('gate-yes').addEventListener('click', function () {
+          try {
+            localStorage.setItem('age-ok', '1');
+          } catch (e) {}
+          gate.hidden = true;
+          document.documentElement.classList.remove('gate-open');
+        });
+      })();
+    </script>
+
+    <a class="skip" href="#main">本文へ移動</a>
+    <p class="pr-strip">広告｜当サイトはアフィリエイト広告（FANZA）を利用しています。</p>
+
+    <header class="site-head wrap">
+      <a class="brand" href="/">{SITE_NAME}</a>
+      <nav class="site-nav" aria-label="メイン">
+        <a class="site-nav-link" href="/#released">発売中</a>
+        <a class="site-nav-link" href="/#upcoming">予約</a>
+        <a class="site-nav-link" href="/archive/1/">過去の作品</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site-foot">
+      <div class="wrap">
+        <ul class="foot-list">
+          <li>当サイトは18歳以上の方を対象としています。</li>
+          <li>当サイトのリンクにはアフィリエイト広告が含まれます。</li>
+          <li>コメントの一部はAIが自動で作成しており、内容の正確さは保証できません。作品の詳細は必ずFANZAの公式ページで確認してください。</li>
+        </ul>
+        <p class="foot-credit">
+          <a class="foot-link" href="https://affiliate.dmm.com/api/" target="_blank" rel="noopener noreferrer">Powered by FANZA Webサービス</a>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,55 @@
+---
+import Base from '../../layouts/Base.astro';
+import DaySection from '../../components/DaySection.astro';
+import { released } from '../../lib/data.js';
+import { ARCHIVE_PAGE_SIZE, groupByDate, archivePath, pageWindow, SITE_NAME } from '../../lib/items.js';
+
+// 発売済みの作品を、新しい順に ARCHIVE_PAGE_SIZE 件ずつのページに分ける
+export function getStaticPaths({ paginate }) {
+  return paginate(released, { pageSize: ARCHIVE_PAGE_SIZE });
+}
+
+const { page } = Astro.props;
+const current = page.currentPage;
+const last = page.lastPage;
+const groups = groupByDate(page.data);
+const pages = pageWindow(current, last);
+---
+
+<Base
+  title={`過去の作品一覧（${current}ページ目）｜${SITE_NAME}`}
+  description={`FANZAの発売済み作品を発売日の新しい順に一覧できます。${current}ページ目（全${last}ページ）。`}
+  path={archivePath(current)}
+>
+  <div class="wrap">
+    <section class="hero">
+      <h1 class="hero-title">過去の作品一覧</h1>
+      <p class="hero-lead">発売日の新しい順。{current}ページ目（全{last}ページ）</p>
+    </section>
+
+    <section class="section" aria-labelledby="archive-title">
+      <h2 id="archive-title" class="visually-hidden">発売日ごとの作品</h2>
+      {groups.length > 0
+        ? <DaySection groups={groups} />
+        : <p class="empty">まだ作品がありません。毎日の更新をお待ちください。</p>}
+    </section>
+
+    {last > 1 && (
+      <nav aria-label="ページ送り">
+        <ul class="pager">
+          {current > 1 && (
+            <li><a class="pager-link" href={archivePath(current - 1)} rel="prev">前へ</a></li>
+          )}
+          {pages.map((p) =>
+            p === '…'
+              ? <li class="pager-gap" aria-hidden="true">…</li>
+              : <li><a class="pager-link" href={archivePath(p)} aria-current={p === current ? 'page' : undefined}>{p}</a></li>
+          )}
+          {current < last && (
+            <li><a class="pager-link" href={archivePath(current + 1)} rel="next">次へ</a></li>
+          )}
+        </ul>
+      </nav>
+    )}
+  </div>
+</Base>
