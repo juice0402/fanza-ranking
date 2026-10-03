@@ -18,7 +18,7 @@ Claude が書いたコメントは `comment_kind: "ai"` にします（画面の
    `git fetch origin main && git checkout -B claude/comments-YYYYMMDD origin/main`
 2. 対象を出す: `python3 scripts/claude_comments.py list --limit 40`
    - `total_pending` が 0 なら、**何も変更せず、PRも作らずに終了**（「対象なし」と報告）
-   - 出力には作品タイトルを含めません（出演者・メーカー・形式・発売日だけ）
+   - 出力には作品タイトルを含めません（出演者・メーカー・形式・発売日だけ）。形式は VR / 8K のような英数字のタグだけで、日本語のタグ（作品の内容を表す言葉が混ざることがある）は出ません
 3. 下の「書き方」に沿って、作品ごとにコメントを書き、`{"cid": "コメント", ...}` のJSONファイルにする（作業用の置き場に。リポジトリには入れない）
 4. 点検して書き込む: `python3 scripts/claude_comments.py apply ファイル.json`
    - 先に `--dry-run` で点検してもよい。問題があると**何も書き込まれず**、理由が出る。直してもう一度実行する

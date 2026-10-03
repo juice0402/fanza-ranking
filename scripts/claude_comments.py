@@ -17,6 +17,7 @@ Gemini が作ったコメント（すでに "ai"）は上書きしません。
 import argparse
 import json
 import os
+import re
 import sys
 import unicodedata
 from datetime import datetime, timedelta, timezone
@@ -35,6 +36,10 @@ EXPLICIT_WORDS = ["中出", "射精", "精液", "挿入", "フェラ", "レイ�
 MINOR_WORDS = ["未成年", "少女", "ロリ", "児童", "幼", "女子高生", "女子校生", "女子中", "中学生", "高校生", "小学生",
                "JK", "JC", "JS", "制服"]
 FORBIDDEN_CHARS = "<>*#"
+
+# list に出す形式タグは、VR / 8K のような英数字だけのものに絞る。
+# タグは作品タイトルの【…】から取っているため、日本語のタグには作品の内容を表す言葉が混ざることがある。
+FORMAT_TAG = re.compile(r"^[0-9A-Za-z]{1,6}$")
 
 
 def jst_today():
@@ -93,7 +98,7 @@ def cmd_list(args):
             "date": (x.get("date") or "")[:10],
             "actress": x.get("actress") or [],
             "maker": None if (not maker or maker == "不明") else maker,
-            "tags": x.get("tags") or [],
+            "tags": [t for t in (x.get("tags") or []) if isinstance(t, str) and FORMAT_TAG.match(t)],
         })
     print(json.dumps({"today": today, "total_pending": len(todo), "shown": len(rows), "items": rows},
                      ensure_ascii=False, indent=1))

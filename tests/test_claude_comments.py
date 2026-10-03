@@ -90,6 +90,23 @@ released_dates = [x["date"] for x in out["items"] if x["status"] == "発売済�
 upcoming_dates = [x["date"] for x in out["items"] if x["status"] == "予約"]
 check("発売済みは新しい順、予約は発売日の近い順", released_dates == sorted(released_dates, reverse=True) and upcoming_dates == sorted(upcoming_dates))
 check("日付は YYYY-MM-DD", all(len(x["date"]) == 10 for x in out["items"]))
+# 作品の内容を表す日本語のタグ（タイトルの【…】由来）は、書き手に見せない
+data = read_data()
+data[1]["tags"] = ["VR", "痴●団地", "8K", "授乳"]
+data[2]["tags"] = ["ケツずり"]
+with open(DATA, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=1)
+    f.write("\n")
+tag_out = {x["cid"]: x["tags"] for x in json.loads(run("list", "--limit", "100").stdout)["items"]}
+mixed = [c for c in (data[1]["cid"], data[2]["cid"]) if c in tag_out]
+check("list の形式タグは英数字（VR・8K など）だけ。日本語のタグは出さない",
+      "痴" not in json.dumps(tag_out, ensure_ascii=False) and "ケツ" not in json.dumps(tag_out, ensure_ascii=False)
+      and (data[1]["cid"] not in tag_out or tag_out[data[1]["cid"]] == ["VR", "8K"])
+      and (data[2]["cid"] not in tag_out or tag_out[data[2]["cid"]] == []), tag_out)
+check("確認に使った項目が、実際に list の対象に入っていた（確認が空振りでない）", len(mixed) >= 1, mixed)
+fresh_data()
+original = read_data()
+
 r2 = run("list", "--today", "2026-11-03", "--limit", "3")
 check("--limit で件数を絞れる", json.loads(r2.stdout)["shown"] == 3 and json.loads(r2.stdout)["total_pending"] == len(templates))
 
