@@ -578,6 +578,11 @@ check("画面に「AI」の表示・言い回しが出ていない（チップ�
 no_auto_note = [os.path.relpath(p, DIST) for p in pages if "ひとことコメントは、" not in read(p) or "自動で作成しており、内容の正確さは保証できません" not in read(p)[read(p).find("<footer") :]]
 check("フッターに、コメントが自動で作成されていて正確さは保証できない、という注記が残っている（全ページ）", not no_auto_note, no_auto_note[:3])
 
+# 運営者の希望で、ボタンの下の「広告｜リンク先はFANZAの公式ページです…」の行は出さない（文字が多くなって見づらいため）。
+# 広告であることは、ヘッダーの「広告」ラベルとフッターの文で示す（下の検査）
+per_link_ad = [os.path.relpath(p, DIST) for p in pages if "広告｜リンク先は" in read(p)]
+check("ボタンの下に「広告｜リンク先は…」の行が出ていない（広告の表記は、ヘッダーのラベルとフッターに）", not per_link_ad, per_link_ad[:3])
+
 print("\n■ 全ページの共通の部品（広告表記・年齢確認・リンクの属性・画像・アイコン・ヘッダー）")
 bad_label, bad_foot_ad, bad_gate, bad_credit, bad_head, bad_alt, bad_lang, bad_ext = [], [], [], [], [], [], [], []
 for p in pages:
