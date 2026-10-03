@@ -1,0 +1,61 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { SITE_NAME, SITE_URL, breadcrumbLd } from '../../lib/items.js';
+import { CALENDAR_PATH, UPCOMING_ICS_PATH, webcalUrl } from '../../lib/calendar.js';
+import { FAVORITES_PATH } from '../../lib/favorites.js';
+
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '発売日カレンダー', path: CALENDAR_PATH },
+];
+// 使い方の説明ページなので、検索には載せない（noindex）
+---
+
+<Base
+  title={`発売日カレンダー｜${SITE_NAME}`}
+  description="FANZAの新作の発売日を、iPad・iPhone・Googleカレンダーに自動で入れる方法です。"
+  path={CALENDAR_PATH}
+  noindex={true}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">発売日カレンダー</h1>
+      <p class="hero-lead">発売日を、カレンダーアプリに自動で入れられます。毎日の更新に合わせて、カレンダーが自動で読み直します。</p>
+    </section>
+
+    <section class="section" aria-labelledby="cal-all-title">
+      <h2 id="cal-all-title" class="section-title">すべての発売予定</h2>
+      <p class="summary">このサイトにある予約・新作の発売日が、まとめてカレンダーに入ります。</p>
+      <p><a class="btn btn-hot cal-btn" href={webcalUrl(UPCOMING_ICS_PATH)}>カレンダーに追加する</a></p>
+      <p class="fine">うまく開かないときは、このアドレスをカレンダーアプリの「照会カレンダーを追加」に貼り付けてください: <code class="cal-url">{SITE_URL + UPCOMING_ICS_PATH}</code></p>
+    </section>
+
+    <section class="section" aria-labelledby="cal-fav-title">
+      <h2 id="cal-fav-title" class="section-title">お気に入りの出演者・メーカーだけ</h2>
+      <p class="summary">出演者・メーカーのページにある「発売日をカレンダーで受け取る」から、その人・そのメーカーの作品だけを入れられます。<a class="spec-link" href={FAVORITES_PATH}>お気に入り</a>のページにも、同じリンクが並びます。</p>
+    </section>
+
+    <section class="section" aria-labelledby="cal-how-title">
+      <h2 id="cal-how-title" class="section-title">使い方（iPad・iPhone）</h2>
+      <ol class="steps">
+        <li>上の「カレンダーに追加する」を押します。</li>
+        <li>「カレンダーを購読しますか？」と出たら、「購読」を押します。</li>
+        <li>「追加」を押すと、カレンダーに発売日が入ります。</li>
+      </ol>
+    </section>
+
+    <section class="section" aria-labelledby="cal-note-title">
+      <h2 id="cal-note-title" class="section-title">知っておいてほしいこと</h2>
+      <ul class="notes">
+        <li>予定の題名には、作品のタイトルを入れていません（「【発売】○○の新作」と出ます）。タイトルや品番、リンクは、予定をひらいた詳細に入っています。</li>
+        <li>発売日の朝9時に通知するよう付けていますが、通知が鳴るかどうかはカレンダーアプリの設定によります。</li>
+        <li>カレンダーが読み直す間隔は、カレンダーアプリ側の設定です。新しい作品が反映されるまで、時間がかかることがあります。</li>
+        <li>購読をやめるときは、カレンダーアプリの「カレンダー」の一覧から、このカレンダーを削除してください。</li>
+      </ul>
+    </section>
+  </div>
+</Base>

@@ -112,9 +112,10 @@ button:focus-visible {
 
 .site-head {
   display: flex;
+  flex-wrap: wrap; /* 狭い画面では、メニューが2段目に回る */
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 4px 16px;
   padding-top: 14px;
   padding-bottom: 14px;
 }
@@ -127,13 +128,15 @@ button:focus-visible {
 
 .site-nav {
   display: flex;
-  gap: 18px;
+  flex-wrap: wrap;
+  gap: 0 16px;
   font-size: 13px;
   font-weight: 500;
 }
 
 .site-nav-link {
   padding: 6px 0;
+  white-space: nowrap;
   color: var(--paper-dim);
   text-decoration: none;
 }
@@ -1008,4 +1011,195 @@ html.lightbox-open {
   background: rgba(36, 27, 48, 0.85);
   font-size: 13px;
   transform: translateX(-50%);
+}
+
+/* ---------- お気に入り・発売日カレンダー ---------- */
+
+.fav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--paper);
+  font: 700 14px/1.2 var(--font-body);
+  cursor: pointer;
+}
+
+.fav-btn[hidden] {
+  display: none;
+}
+
+.fav-btn:hover {
+  border-color: var(--paper);
+}
+
+.fav-btn[aria-pressed='true'] {
+  border-color: var(--pop);
+}
+
+.fav-btn[aria-pressed='true'] .fav-star {
+  color: var(--pop);
+}
+
+.fav-star {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* 名前の横の小さな☆（押しやすいよう、見た目より広くタップできる） */
+.fav-btn-mini {
+  min-width: 40px;
+  min-height: 40px;
+  margin: -8px 0 -8px 2px;
+  padding: 0 8px;
+  border-color: transparent;
+  vertical-align: middle;
+}
+
+.fav-btn-mini[aria-pressed='true'] {
+  border-color: transparent;
+}
+
+.detail-body > .fav-btn {
+  margin-top: 14px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin-top: 16px;
+}
+
+.cal-link {
+  font-size: 13px;
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+.cal-help {
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.fav-banner {
+  display: block;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--pop);
+  border-radius: 4px;
+  background: var(--board);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.fav-banner[hidden] {
+  display: none;
+}
+
+.fav-list {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fav-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: var(--board);
+}
+
+.fav-row-link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.fav-thumb {
+  flex: none;
+  width: 60px;
+  height: 84px;
+  border-radius: 2px;
+  background: var(--ink);
+  object-fit: cover;
+  object-position: 100% 50%;
+}
+
+.fav-row-body {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fav-row-title {
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.fav-row-title-link {
+  text-underline-offset: 3px;
+}
+
+.fav-row-meta {
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.fav-remove {
+  flex: none;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--paper-dim);
+  font: 500 12px/1 var(--font-body);
+  cursor: pointer;
+}
+
+.fav-remove:hover {
+  border-color: var(--paper);
+  color: var(--paper);
+}
+
+.fav-sub {
+  margin: 18px 0 0;
+  font-size: 14px;
+}
+
+.fav-none,
+.fav-loading {
+  margin: 8px 0 0;
+  color: var(--paper-dim);
+  font-size: 13px;
+}
+
+.steps,
+.notes {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-left: 1.4em;
+  font-size: 14px;
+}
+
+.cal-url {
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }

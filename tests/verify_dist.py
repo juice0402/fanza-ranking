@@ -172,6 +172,108 @@ check("サンプル画像のある作品ページに、拡大表示の部品（�
 with_spine = [os.path.relpath(p, DIST) for p in glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True) if 'class="spine"' in read(p)]
 check("カードに、画像をさえぎるメーカーの縦帯（spine）が出ていない", not with_spine, with_spine[:3])
 
+print("\n■ お気に入り・発売日カレンダー")
+all_pages = sorted(glob.glob(os.path.join(DIST, "**", "index.html"), recursive=True))
+if os.path.isfile(os.path.join(DIST, "404.html")):
+    all_pages.append(os.path.join(DIST, "404.html"))
+check("お気に入りのスクリプト（favorites.js）が公開されている", os.path.isfile(os.path.join(DIST, "favorites.js")))
+no_fav_parts = [os.path.relpath(p, DIST) for p in all_pages if 'src="/favorites.js"' not in read(p) or 'href="/favorites/"' not in read(p)]
+check(f"全ページに、お気に入りへのリンクとスクリプトがある（{len(all_pages)}ページ）", not no_fav_parts, no_fav_parts[:3])
+for label, path in (("お気に入り（/favorites/）", "/favorites/"), ("発売日カレンダーの説明（/calendar/）", "/calendar/")):
+    f = page_file(path)
+    ok = os.path.isfile(f)
+    check(f"{label}ページがある", ok)
+    if ok:
+        check(f"{label}は noindex で、sitemap に入っていない（見る人ごとの内容・使い方だけのページ）", 'name="robots" content="noindex' in read(f) and path not in sm_paths)
+fav_page = page_file("/favorites/")
+if os.path.isfile(fav_page):
+    check("お気に入りページに、表示先（#fav-root）がある", 'id="fav-root"' in read(fav_page))
+check("トップに、お気に入りのお知らせ欄（#fav-banner）がある（最初は隠れている）", bool(re.search(r'<a id="fav-banner"[^>]*\bhidden\b', home_html)))
+
+# 索引: お気に入りの出演者・メーカーの新作を、ブラウザ側で探すための小さなJSON
+fav_index_path = os.path.join(DIST, "data", "favorites-index.json")
+check("お気に入りの索引（/data/favorites-index.json）がある", os.path.isfile(fav_index_path))
+if os.path.isfile(fav_index_path):
+    try:
+        fav_index = json.loads(read(fav_index_path))
+    except ValueError:
+        fav_index = None
+    check("索引が正しいJSONで、generated（日付）と items（配列）がある", isinstance(fav_index, dict) and DAY.match(str(fav_index.get("generated", ""))) and isinstance(fav_index.get("items"), list), str(fav_index)[:80])
+    if isinstance(fav_index, dict) and isinstance(fav_index.get("items"), list):
+        rows = fav_index["items"]
+        check("索引のすべての項目が、短い名前（c,t,d,a,m,i）だけで、データにある作品", all(isinstance(r, dict) and set(r) == {"c", "t", "d", "a", "m", "i"} and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) for r in rows), [r for r in rows if not (isinstance(r, dict) and set(r) == {"c", "t", "d", "a", "m", "i"})][:1])
+        check("索引は発売日の新しい順", [r["d"] for r in rows] == sorted((r["d"] for r in rows), reverse=True))
+        warn("索引に作品が1件以上ある", bool(rows))
+        check("索引の大きさが 300KB 以内（毎回ダウンロードされるため）", os.path.getsize(fav_index_path) <= 300 * 1024, os.path.getsize(fav_index_path))
+
+# 発売日カレンダー（.ics）
+def unfold_ics(text):
+    return re.sub(r"\r\n[ \t]", "", text)
+
+
+def ics_problems(path):
+    """.ics の形（行の長さ・予定の対応・題名にタイトルが入っていない・予定の日付）の問題を、文章で返す"""
+    raw_bytes = open(path, "rb").read()
+    text = raw_bytes.decode("utf-8")
+    found = []
+    if not (text.startswith("BEGIN:VCALENDAR\r\n") and text.endswith("END:VCALENDAR\r\n")):
+        found.append("先頭・末尾の形")
+    if "\n" in text.replace("\r\n", ""):
+        found.append("改行が CRLF でない")
+    if [l for l in text.split("\r\n") if len(l.encode("utf-8")) > 75]:
+        found.append("75バイトを超える行")
+    body = unfold_ics(text).replace("\r\n", "\n")  # 行の終わりの CR を除いて、正規表現で読みやすくする
+    if body.count("BEGIN:VEVENT") != body.count("END:VEVENT") or body.count("BEGIN:VALARM") != body.count("END:VALARM"):
+        found.append("BEGIN と END の数が合わない")
+    uids = re.findall(r"^UID:(.+)$", body, re.M)
+    if len(uids) != len(set(uids)):
+        found.append("UID の重複")
+    summaries = re.findall(r"^SUMMARY:(.*)$", body, re.M)
+    if len(summaries) != body.count("BEGIN:VEVENT") or not all(re.match(r"^【発売】.+の新作$", t) for t in summaries):
+        found.append("題名が「【発売】○○の新作」の形でない")
+    cids = [u.split("@")[0] for u in uids]
+    if not all(c in valid for c in cids):
+        found.append("データに無い品番の予定")
+    titles_in_summary = [t for t in summaries if any(x["title"].strip() and x["title"].strip() in t for x in valid.values())]
+    if titles_in_summary:
+        found.append("題名に作品タイトルが入っている")
+    starts = re.findall(r"^DTSTART;VALUE=DATE:(\d{8})$", body, re.M)
+    if len(starts) != len(uids):
+        found.append("日付のない予定")
+    return found
+
+
+upcoming_ics = os.path.join(DIST, "calendar", "upcoming.ics")
+check("すべての発売予定のカレンダー（/calendar/upcoming.ics）がある", os.path.isfile(upcoming_ics))
+if os.path.isfile(upcoming_ics):
+    probs = ics_problems(upcoming_ics)
+    check("upcoming.ics の形が正しい（行の長さ・題名にタイトルが入らない・予定の数・日付）", not probs, probs)
+    warn("upcoming.ics に予定が1件以上ある", "BEGIN:VEVENT" in read(upcoming_ics))
+page_host = None
+m = re.search(r'<link rel="canonical" href="https?://([^/"]+)', home_html)
+if m:
+    page_host = m.group(1)
+for kind, label in (("actress", "出演者"), ("maker", "メーカー")):
+    entity_pages = glob.glob(os.path.join(DIST, kind, "*", "index.html"))
+    slugs = {os.path.basename(os.path.dirname(p)) for p in entity_pages}
+    ics_files = {os.path.basename(p)[:-4] for p in glob.glob(os.path.join(DIST, "calendar", kind, "*.ics"))}
+    check(f"{label}ページ（{len(slugs)}）と、{label}ごとのカレンダー（{len(ics_files)}）が1対1", slugs == ics_files, (sorted(slugs - ics_files)[:2], sorted(ics_files - slugs)[:2]))
+    bad_ics = [slug for slug in sorted(ics_files) if ics_problems(os.path.join(DIST, "calendar", kind, slug + ".ics"))]
+    check(f"{label}ごとのカレンダーの形が正しい", not bad_ics, bad_ics[:3])
+    no_btn = []
+    for p in entity_pages:
+        html = read(p)
+        slug = os.path.basename(os.path.dirname(p))
+        link = f'href="webcal://{page_host}/calendar/{kind}/{slug}.ics"'
+        if 'data-fav-type="%s"' % kind not in html or link not in html:
+            no_btn.append(slug)
+    check(f"{label}ページに、☆ボタンと、そのページ専用のカレンダーのリンクがある", not no_btn, no_btn[:3])
+no_work_btn = [cid for cid in valid if os.path.isfile(os.path.join(DIST, "item", cid, "index.html")) and 'data-fav-type="work"' not in read(os.path.join(DIST, "item", cid, "index.html"))]
+check("すべての作品ページに、作品の☆ボタンがある", not no_work_btn, no_work_btn[:3])
+cal_page = page_file("/calendar/")
+if os.path.isfile(cal_page):
+    check("カレンダーの説明ページに、購読リンク（webcal）と、アドレスがある", f'href="webcal://{page_host}/calendar/upcoming.ics"' in read(cal_page) and f"https://{page_host}/calendar/upcoming.ics" in read(cal_page))
+
 print("\n■ 必須の表記が全ページにある")
 # 404 を含む、すべてのページ（どのページも共通レイアウトを使うので、必須の表記は全部にあるはず）
 pages = sorted(glob.glob(os.path.join(DIST, "**", "index.html"), recursive=True))
