@@ -14,6 +14,9 @@ step() { echo; echo "━━ $1"; }
 step "毎日の更新スクリプト (Python)"
 python3 tests/test_script.py || failed=1
 
+step "Claudeのコメント差し替えの道具 (Python)"
+python3 tests/test_claude_comments.py || failed=1
+
 step "保存データの形式"
 python3 tests/test_data.py || failed=1
 
