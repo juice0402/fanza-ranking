@@ -32,6 +32,11 @@ def check(name, cond, detail=""):
         problems.append(name)
 
 
+def warn(name, ok, detail=""):
+    """データしだいで起きうる注意点。失敗にはせず、見つけやすいように表示だけする"""
+    print(("  ✅ " if ok else "  ⚠️ ") + name + (f"  → {detail}" if (detail and not ok) else ""))
+
+
 def read(path):
     with open(path, encoding="utf-8") as f:
         return f.read()
@@ -84,13 +89,88 @@ if os.path.isfile(sitemap_path):
     missing = [u for u in locs if not os.path.isfile(page_file(urlparse(u).path))]
     check("sitemap のURLがすべて実在するページ", not missing, missing[:3])
 
+print("\n■ 出演者・メーカーのページ")
+check("出演者一覧ページ（/actress/）", os.path.isfile(os.path.join(DIST, "actress", "index.html")))
+check("メーカー一覧ページ（/maker/）", os.path.isfile(os.path.join(DIST, "maker", "index.html")))
+if os.path.isfile(sitemap_path):
+    sm_paths = [urlparse(u).path for u in re.findall(r"<loc>([^<]+)</loc>", read(sitemap_path))]
+    check("sitemap に出演者一覧・メーカー一覧がある", "/actress/" in sm_paths and "/maker/" in sm_paths)
+    for kind in ("actress", "maker"):
+        entity_pages = glob.glob(os.path.join(DIST, kind, "*", "index.html"))
+        in_sitemap = [p for p in sm_paths if p.startswith(f"/{kind}/") and p != f"/{kind}/"]
+        check(f"{kind} ページがすべて sitemap に入っている（{len(entity_pages)}ページ）", len(entity_pages) == len(in_sitemap), (len(entity_pages), len(in_sitemap)))
+
 print("\n■ 必須の表記が全ページにある")
-pages = ([index_path] if os.path.isfile(index_path) else []) + item_pages + glob.glob(os.path.join(DIST, "archive", "*", "index.html"))
+# 404 を含む、すべてのページ（どのページも共通レイアウトを使うので、必須の表記は全部にあるはず）
+pages = sorted(glob.glob(os.path.join(DIST, "**", "index.html"), recursive=True))
+if os.path.isfile(os.path.join(DIST, "404.html")):
+    pages.append(os.path.join(DIST, "404.html"))
 for label, needle in REQUIRED_ON_EVERY_PAGE.items():
     lacking = [os.path.relpath(p, DIST) for p in pages if needle not in read(p)]
     check(f"{label}（{len(pages)}ページ）", not lacking, lacking[:3])
 no_canonical = [os.path.relpath(p, DIST) for p in pages if 'rel="canonical"' not in read(p)]
 check("canonical がある", not no_canonical, no_canonical[:3])
+
+
+print("\n■ 検索エンジン向けの点検（SEO）")
+LD = re.compile(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', re.S)
+CANON = re.compile(r'<link rel="canonical" href="([^"]+)"')
+indexable = [p for p in pages if not p.endswith("404.html")]
+rel = lambda p: os.path.relpath(p, DIST)
+
+bad_ld, no_crumb, wrong_crumb = [], [], []
+for p in indexable:
+    html = read(p)
+    try:
+        blocks = [json.loads(b) for b in LD.findall(html)]
+    except ValueError:
+        bad_ld.append(rel(p))
+        continue
+    if not all(isinstance(b, dict) and b.get("@context") == "https://schema.org" and b.get("@type") for b in blocks):
+        bad_ld.append(rel(p))
+        continue
+    is_home = os.path.abspath(p) == os.path.abspath(index_path)
+    crumbs = [b for b in blocks if b.get("@type") == "BreadcrumbList"]
+    if is_home:
+        if not any(b.get("@type") == "WebSite" for b in blocks):
+            bad_ld.append(rel(p) + "（WebSite がない）")
+        continue
+    if not crumbs:
+        no_crumb.append(rel(p))
+        continue
+    canon = CANON.search(html)
+    items = crumbs[0].get("itemListElement") or []
+    if not canon or not items or items[-1].get("item") != canon.group(1) or [i.get("position") for i in items] != list(range(1, len(items) + 1)):
+        wrong_crumb.append(rel(p))
+check(f"構造化データ（JSON-LD）が正しいJSON（{len(indexable)}ページ）", not bad_ld, bad_ld[:3])
+check("トップ以外の全ページにパンくずの構造化データがある", not no_crumb, no_crumb[:3])
+check("パンくずの最後のURLが、そのページの canonical と同じ・順番が正しい", not wrong_crumb, wrong_crumb[:3])
+
+no_h1 = [rel(p) for p in pages if len(re.findall(r"<h1[\s>]", read(p))) != 1]
+check("すべてのページに h1 がちょうど1つ", not no_h1, no_h1[:3])
+noindex = [rel(p) for p in indexable if 'name="robots" content="noindex' in read(p)]
+check("検索に載せるページが noindex になっていない", not noindex, noindex[:3])
+
+broken = {}
+for p in pages:
+    for h in set(re.findall(r'href="(/[^"#?]*)', read(p))):
+        if h.startswith("//"):
+            continue
+        if not os.path.isfile(page_file(h)):
+            broken.setdefault(h, rel(p))
+check("サイト内のリンク先がすべて実在する（リンク切れなし）", not broken, list(broken.items())[:3])
+
+titles, descs = {}, {}
+for p in indexable:
+    html = read(p)
+    t = re.search(r"<title>(.*?)</title>", html, re.S)
+    d = re.search(r'<meta name="description" content="([^"]*)"', html)
+    titles.setdefault(t.group(1) if t else "", []).append(rel(p))
+    descs.setdefault(d.group(1) if d else "", []).append(rel(p))
+dup_titles = {t: ps for t, ps in titles.items() if len(ps) > 1}
+no_desc = descs.get("", [])
+warn("タイトルがページごとに違う（重複があっても失敗にはしない）", not dup_titles, list(dup_titles.items())[:2])
+warn("説明文（description）がすべてのページにある", not no_desc, no_desc[:3])
 
 if problems:
     print("\n失敗:", problems)

@@ -1,6 +1,6 @@
 ---
 import '../styles/site.css';
-import { SITE_NAME, SITE_URL } from '../lib/items.js';
+import { SITE_NAME, SITE_URL, jsonLdScript, ACTRESS_INDEX_PATH, MAKER_INDEX_PATH } from '../lib/items.js';
 
 const {
   title = SITE_NAME,
@@ -9,6 +9,7 @@ const {
   image = '',
   noindex = false,
   stickyCta = false,
+  jsonLd = [], // 検索エンジン向けの構造化データ（オブジェクトの配列）
 } = Astro.props;
 
 const canonical = SITE_URL + path;
@@ -33,6 +34,8 @@ const canonical = SITE_URL + path;
     <meta property="og:url" content={canonical} />
     {image && <meta property="og:image" content={image} />}
     <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+
+    {jsonLd.map((data) => <script is:inline type="application/ld+json" set:html={jsonLdScript(data)} />)}
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="sitemap" href="/sitemap.xml" />
@@ -98,6 +101,13 @@ const canonical = SITE_URL + path;
           <li>当サイトのリンクにはアフィリエイト広告が含まれます。</li>
           <li>コメントの一部はAIが自動で作成しており、内容の正確さは保証できません。作品の詳細は必ずFANZAの公式ページで確認してください。</li>
         </ul>
+        <nav class="foot-nav" aria-label="サイト内の案内">
+          <a class="foot-link" href="/#released">発売中</a>
+          <a class="foot-link" href="/#upcoming">予約</a>
+          <a class="foot-link" href="/archive/1/">過去の作品</a>
+          <a class="foot-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a>
+          <a class="foot-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
+        </nav>
         <p class="foot-credit">
           <a class="foot-link" href="https://affiliate.dmm.com/api/" target="_blank" rel="noopener noreferrer">Powered by FANZA Webサービス</a>
         </p>

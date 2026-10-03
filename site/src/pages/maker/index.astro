@@ -1,0 +1,45 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { makerGroups } from '../../lib/data.js';
+import { MAKER_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
+
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: 'メーカー一覧', path: MAKER_INDEX_PATH },
+];
+---
+
+<Base
+  title={`メーカー別の新作・作品一覧｜${SITE_NAME}`}
+  description="FANZAの新作・予約作品を、メーカーごとにまとめた一覧です。作品数の多い順に並べています。"
+  path={MAKER_INDEX_PATH}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">メーカーから探す</h1>
+      <p class="hero-lead">掲載している作品が{ENTITY_MIN_ITEMS}本以上あるメーカーの一覧です。作品数の多い順に並べています。</p>
+    </section>
+
+    <section class="section" aria-labelledby="maker-list-title">
+      <h2 id="maker-list-title" class="visually-hidden">メーカーの一覧</h2>
+      {makerGroups.length > 0
+        ? (
+          <ul class="name-grid">
+            {makerGroups.map((g) => (
+              <li>
+                <a class="name-link" href={g.path}>
+                  <span class="name-link-name">{g.name}</span>
+                  <span class="name-link-count">{g.items.length}本</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+        : <p class="empty">まだ一覧に載せられるメーカーがありません。毎日の更新をお待ちください。</p>}
+    </section>
+  </div>
+</Base>

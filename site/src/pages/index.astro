@@ -5,9 +5,12 @@ import { released, upcoming } from '../lib/data.js';
 import {
   groupByDate,
   archivePath,
+  websiteLd,
   SITE_NAME,
   HOME_RELEASED_LIMIT,
   HOME_UPCOMING_LIMIT,
+  ACTRESS_INDEX_PATH,
+  MAKER_INDEX_PATH,
 } from '../lib/items.js';
 
 const releasedGroups = groupByDate(released.slice(0, HOME_RELEASED_LIMIT));
@@ -19,6 +22,7 @@ const hasMore = released.length > HOME_RELEASED_LIMIT;
   title={`${SITE_NAME}｜毎日更新のFANZA新作・予約作品まとめ`}
   description="FANZAの新作・新着と予約中の作品を、発売日ごとにまとめて毎日更新。AIがひとこと添えます。"
   path="/"
+  jsonLd={[websiteLd()]}
 >
   <div class="wrap">
     <section class="hero">
@@ -27,6 +31,8 @@ const hasMore = released.length > HOME_RELEASED_LIMIT;
       <nav class="hero-jump" aria-label="ページ内の移動">
         {released.length > 0 && <a class="chip-link" href="#released">発売中の新作 {released.length}本</a>}
         {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約受付中 {upcoming.length}本</a>}
+        <a class="chip-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a>
+        <a class="chip-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
       </nav>
     </section>
 

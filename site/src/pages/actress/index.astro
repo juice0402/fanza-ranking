@@ -1,0 +1,45 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { actressGroups } from '../../lib/data.js';
+import { ACTRESS_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
+
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '出演者一覧', path: ACTRESS_INDEX_PATH },
+];
+---
+
+<Base
+  title={`出演者別の新作・出演作品一覧｜${SITE_NAME}`}
+  description="FANZAの新作・予約作品を、出演者ごとにまとめた一覧です。作品数の多い順に並べています。"
+  path={ACTRESS_INDEX_PATH}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">出演者から探す</h1>
+      <p class="hero-lead">掲載している作品が{ENTITY_MIN_ITEMS}本以上ある出演者の一覧です。作品数の多い順に並べています。</p>
+    </section>
+
+    <section class="section" aria-labelledby="actress-list-title">
+      <h2 id="actress-list-title" class="visually-hidden">出演者の一覧</h2>
+      {actressGroups.length > 0
+        ? (
+          <ul class="name-grid">
+            {actressGroups.map((g) => (
+              <li>
+                <a class="name-link" href={g.path}>
+                  <span class="name-link-name">{g.name}</span>
+                  <span class="name-link-count">{g.items.length}本</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+        : <p class="empty">まだ一覧に載せられる出演者がいません。毎日の更新をお待ちください。</p>}
+    </section>
+  </div>
+</Base>

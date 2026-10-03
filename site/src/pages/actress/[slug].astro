@@ -1,0 +1,79 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import DaySection from '../../components/DaySection.astro';
+import { actressGroups, makerByName } from '../../lib/data.js';
+import {
+  ACTRESS_INDEX_PATH,
+  actressPageTitle,
+  actressSummary,
+  breadcrumbLd,
+  formatsOf,
+  groupByDate,
+  summaryDescription,
+} from '../../lib/items.js';
+
+// 作品が2本以上ある出演者ごとに1ページ作る
+export function getStaticPaths() {
+  return actressGroups.map((group) => ({ params: { slug: group.slug }, props: { group } }));
+}
+
+const { group } = Astro.props;
+const summary = actressSummary(group);
+const groups = groupByDate(group.items);
+const makers = [...new Set(group.items.map((i) => i.maker).filter((m) => m !== '不明'))];
+const formats = formatsOf(group.items);
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '出演者一覧', path: ACTRESS_INDEX_PATH },
+  { name: group.name, path: group.path },
+];
+---
+
+<Base
+  title={actressPageTitle(group)}
+  description={summaryDescription(summary)}
+  path={group.path}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{group.name}の新作・出演作品</h1>
+      <p class="summary">{summary}</p>
+    </section>
+
+    <dl class="spec section">
+      <dt class="spec-term">掲載作品</dt>
+      <dd class="spec-desc">{group.items.length}本</dd>
+      {makers.length > 0 && (
+        <>
+          <dt class="spec-term">メーカー</dt>
+          <dd class="spec-desc">
+            {makers.map((m, i) => (
+              <>
+                {i > 0 && '、'}
+                {makerByName.get(m) ? <a class="spec-link" href={makerByName.get(m).path}>{m}</a> : m}
+              </>
+            ))}
+          </dd>
+        </>
+      )}
+      {formats.length > 0 && (
+        <>
+          <dt class="spec-term">形式</dt>
+          <dd class="spec-desc">{formats.join('・')}</dd>
+        </>
+      )}
+    </dl>
+
+    <section class="section" aria-labelledby="works-title">
+      <div class="section-head">
+        <h2 id="works-title" class="section-title">出演作品（{group.items.length}本）</h2>
+        <p class="section-note">発売日が新しい順</p>
+      </div>
+      <DaySection groups={groups} />
+    </section>
+  </div>
+</Base>
