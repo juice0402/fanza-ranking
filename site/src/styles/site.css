@@ -106,17 +106,25 @@ button:focus-visible {
   top: 8px;
 }
 
-/* ---------- 広告表記バー・ヘッダー ---------- */
+/* ---------- 広告ラベル・ヘッダー ---------- */
 
-.pr-strip {
-  margin: 0;
-  padding: 6px var(--gutter);
-  background: var(--ink-deep);
-  border-bottom: 1px solid var(--line);
-  color: var(--paper-dim);
-  font-size: 11px;
+/* 広告であることは、最初に見える画面（ヘッダー）に小さく出す。くわしい文はフッターにある */
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pr-chip {
+  flex: none;
+  padding: 1px 7px;
+  border: 1px solid var(--paper);
+  border-radius: 3px;
+  color: var(--paper);
+  font-size: 12px;
+  font-weight: 700;
   line-height: 1.5;
-  text-align: center;
+  letter-spacing: 0.04em;
 }
 
 .site-head {
@@ -127,6 +135,18 @@ button:focus-visible {
   gap: 0 16px;
   padding-top: 12px;
   padding-bottom: 4px; /* メニューの文字リンクが上下に11pxずつ広い（押しやすさのため）ので、そのぶん詰める */
+}
+
+/* JavaScriptが無効のときだけ出る、18歳未満はご利用いただけないという注意書き（確認画面を出せないため） */
+.noscript-note {
+  margin: 0;
+  padding: 6px var(--gutter);
+  background: var(--ink-deep);
+  border-bottom: 1px solid var(--line);
+  color: var(--paper-dim);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .brand {
@@ -400,19 +420,6 @@ button:focus-visible {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
   line-clamp: 4;
-}
-
-.ai-chip {
-  display: inline-block;
-  margin-right: 6px;
-  padding: 0 5px;
-  border: 1px solid var(--paper-dim);
-  border-radius: 3px;
-  color: var(--paper-dim);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.5;
-  vertical-align: 1px;
 }
 
 /* ---------- ボタン ---------- */

@@ -27,7 +27,7 @@ const rankingDay = ranking ? dateParts(ranking.date) : null;
 
 <Base
   title={`${SITE_NAME}｜毎日更新のFANZA新作・予約作品まとめ`}
-  description="FANZAの新作・新着と予約中の作品を、発売日ごとにまとめて毎日更新。AIがひとこと添えます。"
+  description="FANZAの新作・新着と予約中の作品を、発売日ごとにまとめて毎日更新。作品ごとにひとこと添えています。"
   path="/"
   jsonLd={[websiteLd()]}
 >
@@ -36,7 +36,7 @@ const rankingDay = ranking ? dateParts(ranking.date) : null;
 
     <section class="hero">
       <h1 class="hero-title"><span class="phrase">FANZAの新作を、</span><span class="phrase">発売日ごとに。</span></h1>
-      <p class="hero-lead"><span class="phrase">発売日ごとに新作をまとめて、</span><span class="phrase">AIがひとこと添えます。</span><span class="phrase">毎日更新。</span></p>
+      <p class="hero-lead"><span class="phrase">発売日ごとに新作をまとめて、</span><span class="phrase">作品ごとにひとこと添えています。</span><span class="phrase">毎日更新。</span></p>
       <nav class="hero-jump" aria-label="ページ内の移動">
         {ranking && <a class="chip-link" href="#ranking">売れ筋TOP3</a>}
         {released.length > 0 && <a class="chip-link" href="#released">発売中の新作 {released.length}本</a>}
