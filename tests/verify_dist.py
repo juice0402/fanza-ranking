@@ -569,9 +569,14 @@ for label, needle in REQUIRED_ON_EVERY_PAGE.items():
     check(f"{label}（{len(pages)}ページ）", not lacking, lacking[:3])
 no_canonical = [os.path.relpath(p, DIST) for p in pages if 'rel="canonical"' not in read(p)]
 check("canonical がある", not no_canonical, no_canonical[:3])
-# 運営者の希望で、コメントの横の「AI」表示は出さない（AIの注記はフッターにある）
-ai_chip = [os.path.relpath(p, DIST) for p in pages if "ai-chip" in read(p)]
-check("コメントの横に「AI」表示が出ていない", not ai_chip, ai_chip[:3])
+# 運営者の希望で、画面に「AI」という表示・言葉は出さない（コメントの横のチップ・「AIのひとこと」・「AIが…」の文）。
+# ただし、コメントが自動で作られていること・正確さを保証できないことの注記は、フッターに必ず残す（読者への正直さのため。消さない）。
+# 作品のタイトルや出演者名に「AI」が入ることはあるので、画面に出る文の言い回しだけを調べる
+AI_PHRASES = ("ai-chip", "AIのひとこと", "AIがひとこと", "AIが出演者", "AIが作品情報", "AIが自動", "AIが書", "AIによる")
+ai_shown = [(os.path.relpath(p, DIST), ph) for p in pages for ph in AI_PHRASES if ph in read(p)]
+check("画面に「AI」の表示・言い回しが出ていない（チップ・「AIのひとこと」・「AIが…」）", not ai_shown, ai_shown[:3])
+no_auto_note = [os.path.relpath(p, DIST) for p in pages if "ひとことコメントは、" not in read(p) or "自動で作成しており、内容の正確さは保証できません" not in read(p)[read(p).find("<footer") :]]
+check("フッターに、コメントが自動で作成されていて正確さは保証できない、という注記が残っている（全ページ）", not no_auto_note, no_auto_note[:3])
 
 print("\n■ 全ページの共通の部品（広告表記・年齢確認・リンクの属性・画像・アイコン・ヘッダー）")
 bad_label, bad_foot_ad, bad_gate, bad_credit, bad_head, bad_alt, bad_lang, bad_ext = [], [], [], [], [], [], [], []
