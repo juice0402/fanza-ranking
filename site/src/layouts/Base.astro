@@ -1,6 +1,7 @@
 ---
 import '../styles/site.css';
 import { SITE_NAME, SITE_URL, jsonLdScript, ACTRESS_INDEX_PATH, MAKER_INDEX_PATH } from '../lib/items.js';
+import { GOOGLE_SITE_VERIFICATION } from '../config.js';
 import { roundups } from '../lib/data.js';
 import { WEEKLY_INDEX_PATH } from '../lib/roundups.js';
 
@@ -27,6 +28,7 @@ const canonical = SITE_URL + path;
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex,follow" />}
     <meta name="rating" content="adult" />
+    {GOOGLE_SITE_VERIFICATION && <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />}
     <meta name="rating" content="RTA-5042-1996-1400-1577-RTA" />
 
     <meta property="og:type" content="website" />
