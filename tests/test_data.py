@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "site", "src", "data", "new_releases.json")
@@ -39,6 +40,11 @@ check("発売日が YYYY-MM-DD で始まる", all(re.match(r"^\d{4}-\d{2}-\d{2}"
 check("コメントがすべてある", all(str(x.get("comment", "")).strip() for x in items))
 check("comment_kind は ai か template", all(x.get("comment_kind") in ("ai", "template") for x in items),
       {x.get("comment_kind") for x in items})
+jst_tomorrow = (datetime.now(timezone(timedelta(hours=9))) + timedelta(days=1)).strftime("%Y-%m-%d")
+check("更新日(updated)がすべてある（YYYY-MM-DD）", all(re.match(r"^\d{4}-\d{2}-\d{2}$", str(x.get("updated", ""))) for x in items),
+      [x.get("cid") for x in items if not re.match(r"^\d{4}-\d{2}-\d{2}$", str(x.get("updated", "")))][:5])
+check("更新日が未来の日付になっていない（sitemapのlastmodに使うため）", all(str(x.get("updated", "")) <= jst_tomorrow for x in items),
+      [x.get("cid") for x in items if str(x.get("updated", "")) > jst_tomorrow][:5])
 check("アフィリエイトのURLは https", all(str(x.get("url", "")).startswith("https://") for x in items if x.get("url")))
 check("cid はURLに使える文字だけ", all(re.match(r"^[A-Za-z0-9_\-]+$", c) for c in cids), [c for c in cids if not re.match(r"^[A-Za-z0-9_\-]+$", c)][:5])
 

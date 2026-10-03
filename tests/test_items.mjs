@@ -26,6 +26,11 @@ check('壊れたデータ(cid無し/日付不正/タイトル無し/重複)を�
 check('配列でない入力でも落ちない', L.normalizeItems(null).length === 0 && L.normalizeItems({}).length === 0);
 check('足りない項目に既定値', items.every((i) => Array.isArray(i.actress) && Array.isArray(i.sample_images) && typeof i.comment === 'string'));
 check('AI判定(comment_kind)', items.some((i) => i.isAi) && items.some((i) => !i.isAi));
+const byCid = Object.fromEntries(items.map((i) => [i.cid, i]));
+check('更新日(updated): 正しい日付はそのまま', /^\d{4}-\d{2}-\d{2}$/.test(byCid.smp0001.updated) && byCid.smp0001.updated === raw[0].updated, byCid.smp0001.updated);
+check('更新日(updated): 無い作品は空（sitemapに載せない）', byCid.smp0003.updated === '' && byCid.smp0004.updated === '');
+check('更新日(updated): 壊れた値（「昨日」）も空', byCid.smp0005.updated === '', byCid.smp0005.updated);
+check('更新日(updated): すべて文字列（空か日付）', items.every((i) => i.updated === '' || /^\d{4}-\d{2}-\d{2}$/.test(i.updated)));
 
 const today = '2026-10-02';
 const { released, upcoming } = L.splitByRelease(items, today);
@@ -60,6 +65,24 @@ check('ページ番号: 全部表示できる少なさ', JSON.stringify(L.pageWi
 
 console.log('\n■ sitemap / メタ情報');
 const xml = L.buildSitemap(['/', '/item/a&b/']);
+check('sitemap: 文字列だけでも作れる（lastmodなし）', !xml.includes('<lastmod>'));
+const xml2 = L.buildSitemap([
+  { path: '/', lastmod: '2026-10-03' },
+  { path: '/item/x/', lastmod: '' },
+  { path: '/item/y/', lastmod: '昨日' },
+  { path: '/item/z/', lastmod: '2026-10-3' },
+  { path: '/item/w/' },
+]);
+check('sitemap: 正しい日付だけ lastmod を出す', (xml2.match(/<lastmod>/g) || []).length === 1 && xml2.includes('<loc>https://fanza-ranking.pages.dev/</loc><lastmod>2026-10-03</lastmod></url>'), xml2);
+check('sitemap: 日付が空・壊れていても、そのページ自体は載せる', ['/item/x/', '/item/y/', '/item/z/', '/item/w/'].every((p) => xml2.includes(`<loc>https://fanza-ranking.pages.dev${p}</loc></url>`)), xml2);
+check('isDay: 形の判定', L.isDay('2026-10-03') && !L.isDay('2026-10-3') && !L.isDay('') && !L.isDay(undefined) && !L.isDay('2026-10-03 00:00:00'));
+const lm = (list, t) => L.listLastmod(list.map((x) => ({ dateKey: '2000-01-01', updated: '', ...x })), t);
+check('一覧の更新日: updated の一番新しい日', lm([{ updated: '2026-10-01' }, { updated: '2026-10-03' }, { updated: '2026-10-02' }], '2026-10-05') === '2026-10-03');
+check('一覧の更新日: 発売日を迎えた日も数える（予約→発売中の切り替わり）', lm([{ updated: '2026-10-01', dateKey: '2026-10-04' }], '2026-10-05') === '2026-10-04');
+check('一覧の更新日: まだ先の発売日は数えない', lm([{ updated: '2026-10-01', dateKey: '2026-10-09' }], '2026-10-05') === '2026-10-01');
+check('一覧の更新日: 発売日当日は数える', lm([{ updated: '', dateKey: '2026-10-05' }], '2026-10-05') === '2026-10-05');
+check('一覧の更新日: 分からないとき・空のときは空', lm([], '2026-10-05') === '' && L.listLastmod([{ dateKey: '2026-10-09', updated: '' }], '2026-10-05') === '');
+check('一覧の更新日: 壊れた日付は無視', lm([{ updated: '昨日' }, { updated: '2026-10-02' }], '2026-10-05') === '2026-10-02');
 check('sitemap: XMLの記号をエスケープ', xml.includes('/item/a&amp;b/') && !xml.includes('a&b'));
 check('sitemap: 絶対URL', xml.includes('<loc>https://fanza-ranking.pages.dev/</loc>'));
 check('sitemap: 宣言とurlset', xml.startsWith('<?xml version="1.0"') && xml.includes('<urlset'));

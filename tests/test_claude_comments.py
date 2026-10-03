@@ -5,6 +5,7 @@
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -80,7 +81,10 @@ cids = [x["cid"] for x in out["items"]]
 check("対象は定型文の作品だけ（AIコメントの作品は出ない）", set(cids) == {x["cid"] for x in templates}, cids)
 check("total_pending が定型文の件数と同じ", out["total_pending"] == len(templates) == out["shown"])
 check("作品タイトルは出力しない", "title" not in r.stdout and not any(x["title"] in r.stdout for x in original))
-check("画像やURLなど、不要な項目も出さない", all(set(x) == {"cid", "status", "date", "actress", "maker", "tags"} for x in out["items"]))
+check("画像やURLなど、不要な項目も出さない", all(set(x) == {"cid", "status", "date", "actress", "maker", "tags", "duration_min"} for x in out["items"]))
+check("収録時間（分）を出す。無いものは null", all((x["duration_min"] is None) or (isinstance(x["duration_min"], int) and x["duration_min"] > 0) for x in out["items"])
+      and any(x["duration_min"] for x in out["items"]) and {x["cid"]: x["duration_min"] for x in out["items"]} == {t["cid"]: (t.get("duration_min") or None) for t in templates},
+      {x["cid"]: x["duration_min"] for x in out["items"]})
 statuses = [x["status"] for x in out["items"]]
 check("発売済みが先、予約があと", statuses == sorted(statuses, key=lambda s: 0 if s == "発売済み" else 1), statuses)
 check("--today を基準に 発売済み/予約 を分ける",
@@ -104,6 +108,17 @@ check("list の形式タグは英数字（VR・8K など）だけ。日本語の
       and (data[1]["cid"] not in tag_out or tag_out[data[1]["cid"]] == ["VR", "8K"])
       and (data[2]["cid"] not in tag_out or tag_out[data[2]["cid"]] == []), tag_out)
 check("確認に使った項目が、実際に list の対象に入っていた（確認が空振りでない）", len(mixed) >= 1, mixed)
+data = read_data()
+weird = [(data[1], 0), (data[1], -5), (data[1], "90"), (data[1], True), (data[1], 87)]
+got = []
+for x, v in weird:
+    x["duration_min"] = v
+    with open(DATA, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    row = [y for y in json.loads(run("list", "--limit", "100").stdout)["items"] if y["cid"] == x["cid"]]
+    got.append(row[0]["duration_min"] if row else "対象外")
+check("収録時間が 0・負の数・文字列・true のときは null、正の整数ならそのまま出す", got == [None, None, None, None, 87], got)
 fresh_data()
 original = read_data()
 
@@ -118,7 +133,7 @@ path = write_comments("good.json", good)
 r = run("apply", path, "--dry-run")
 check("--dry-run は成功して、ファイルを変えない", r.returncode == 0 and read_data() == original, r.stdout + r.stderr)
 
-r = run("apply", path)
+r = run("apply", path, "--today", "2026-11-03")
 check("正しいコメントは書き込める", r.returncode == 0, r.stdout + r.stderr)
 after = read_data()
 by_cid = {x["cid"]: x for x in after}
@@ -130,10 +145,13 @@ for old, new in zip(original, after):
     diff = {k for k in set(old) | set(new) if old.get(k) != new.get(k)}
     if diff:
         changed[old["cid"]] = diff
-check("変わったのは、書いた作品の comment と comment_kind だけ",
-      set(changed) == set(good) and all(d <= {"comment", "comment_kind"} for d in changed.values()), changed)
+check("変わったのは、書いた作品の comment と comment_kind と updated（更新日）だけ",
+      set(changed) == set(good) and all(d <= {"comment", "comment_kind", "updated"} for d in changed.values()), changed)
+check("書いた作品の更新日は --today の日付になる。書いていない作品の更新日は動かない",
+      all(by_cid[c]["updated"] == "2026-11-03" for c in good)
+      and all(n["updated"] == o["updated"] for o, n in zip(original, after) if o["cid"] not in good), {c: by_cid[c]["updated"] for c in good})
 check("タイトル・URL・画像などは1つも変わらない",
-      all({k: v for k, v in o.items() if k not in ("comment", "comment_kind")} == {k: v for k, v in n.items() if k not in ("comment", "comment_kind")}
+      all({k: v for k, v in o.items() if k not in ("comment", "comment_kind", "updated")} == {k: v for k, v in n.items() if k not in ("comment", "comment_kind", "updated")}
           for o, n in zip(original, after)))
 check("書き込み後も list の対象が減っている",
       json.loads(run("list", "--limit", "100").stdout)["total_pending"] == len(templates) - len(sample))
@@ -181,6 +199,12 @@ r = run("apply", path)
 check("いまのコメントと同じ文は断る", r.returncode == 1 and "いまのコメントと同じ" in r.stdout and read_text() == base, r.stdout)
 
 print("\n■ apply の入力の形・特別な場合")
+fresh_data()
+r = run("apply", write_comments("today_bad.json", {t0["cid"]: good_comment(t0)}), "--today", "昨日")
+check("--today の形が違えば断る（更新日に変な値を入れない）", r.returncode == 1 and read_text() == base, r.stdout + r.stderr)
+r = run("apply", write_comments("today_ok.json", {t0["cid"]: good_comment(t0)}))
+today_real = [x for x in read_data() if x["cid"] == t0["cid"]][0]["updated"]
+check("--today を省略すると、日本時間の今日が更新日になる", r.returncode == 0 and re.match(r"^\d{4}-\d{2}-\d{2}$", today_real) and today_real >= "2026-10-03", today_real)
 fresh_data()
 path = write_comments("list_form.json", [{"cid": t0["cid"], "comment": good_comment(t0)}, {"cid": t1["cid"], "comment": good_comment(t1, 1)}])
 r = run("apply", path)

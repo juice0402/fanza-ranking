@@ -11,7 +11,8 @@
       {"cid": "コメント", ...} を点検して、問題が無ければ new_releases.json に書き込む
       （1件でも問題があれば何も書き込まない）
 
-書き込んだコメントは comment_kind を "ai" にします（画面の「AIが作成」の注記の対象）。
+書き込んだコメントは comment_kind を "ai" にし、その作品の updated（更新日）を今日（日本時間）にします
+（サイトの注記「AIが自動で作成」の対象。sitemap の lastmod にも使われます）。
 Gemini が作ったコメント（すでに "ai"）は上書きしません。
 """
 import argparse
@@ -94,6 +95,7 @@ def cmd_list(args):
     rows = []
     for x in shown:
         maker = x.get("maker")
+        minutes = x.get("duration_min")
         rows.append({
             "cid": x["cid"],
             "status": "発売済み" if (x.get("date") or "")[:10] <= today else "予約",
@@ -101,6 +103,7 @@ def cmd_list(args):
             "actress": x.get("actress") or [],
             "maker": None if (not maker or maker == "不明") else maker,
             "tags": [t for t in (x.get("tags") or []) if isinstance(t, str) and FORMAT_TAG.match(t)],
+            "duration_min": minutes if isinstance(minutes, int) and not isinstance(minutes, bool) and minutes > 0 else None,
         })
     print(json.dumps({"today": today, "total_pending": len(todo), "shown": len(rows), "items": rows},
                      ensure_ascii=False, indent=1))
@@ -162,6 +165,9 @@ def read_comments_file(path):
 
 
 def cmd_apply(args):
+    stamp = args.today or jst_today()  # 更新日に入れる日付
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", stamp):
+        sys.exit("❌ --today は YYYY-MM-DD の形で指定してください")
     mapping = read_comments_file(args.file)
     if not mapping:
         print("書き換えるコメントがありません。何も変更しませんでした")
@@ -216,6 +222,7 @@ def cmd_apply(args):
     for cid, text in texts.items():
         by_cid[cid]["comment"] = text
         by_cid[cid]["comment_kind"] = "ai"
+        by_cid[cid]["updated"] = stamp  # コメントを変えた日（sitemap の lastmod に使う）
     save_raw(items)
     # 書いたものを読み直して確かめる
     check = load_raw()
@@ -238,6 +245,7 @@ def main():
     p_apply = sub.add_parser("apply", help="コメントを点検して書き込む")
     p_apply.add_argument("file", help='{"cid": "コメント"} の形のJSONファイル')
     p_apply.add_argument("--dry-run", action="store_true", help="点検だけして書き込まない")
+    p_apply.add_argument("--today", help="更新日に入れる日付 YYYY-MM-DD（テスト用。省略すると日本時間の今日）")
     p_apply.set_defaults(func=cmd_apply)
 
     args = parser.parse_args()
