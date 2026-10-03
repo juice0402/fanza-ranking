@@ -36,10 +36,11 @@ jobs:
 
       - name: Commit and push if changed
         run: |
-          # 保存するのはデータファイルだけ（他のファイルが紛れ込まないように）
+          # 保存するのはデータの置き場所（site/src/data）だけ（他のファイルが紛れ込まないように）。
+          # 出演者データ・ランキングは最初の実行で新しくできる（まだ無いファイルを名前で指定すると git add が失敗するので、フォルダで指定する）
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add site/src/data/new_releases.json
+          git add -A -- site/src/data
           if git diff --staged --quiet; then
             echo "データに変更なし。保存しません。"
             exit 0

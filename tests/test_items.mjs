@@ -32,6 +32,23 @@ check('更新日(updated): 無い作品は空（sitemapに載せない）', byCi
 check('更新日(updated): 壊れた値（「昨日」）も空', byCid.smp0005.updated === '', byCid.smp0005.updated);
 check('更新日(updated): すべて文字列（空か日付）', items.every((i) => i.updated === '' || /^\d{4}-\d{2}-\d{2}$/.test(i.updated)));
 
+console.log('\n■ サンプル動画のURL・URLの安全確認');
+const mv = L.normalizeItems([
+  { cid: 'mv1', title: 't', date: '2026-10-01', sample_movie: 'https://www.dmm.co.jp/litevideo/-/part/=/cid=mv1/size=476_306/' },
+  { cid: 'mv2', title: 't', date: '2026-10-01', sample_movie: 'http://www.dmm.co.jp/litevideo/x/' },
+  { cid: 'mv3', title: 't', date: '2026-10-01', sample_movie: 'https://evil.example/x' },
+  { cid: 'mv4', title: 't', date: '2026-10-01', sample_movie: 'javascript:alert(1)' },
+  { cid: 'mv5', title: 't', date: '2026-10-01', sample_movie: 'https://dmm.co.jp.evil.example/x' },
+  { cid: 'mv6', title: 't', date: '2026-10-01' },
+  { cid: 'mv7', title: 't', date: '2026-10-01', sample_movie: 123 },
+]);
+const mvBy = Object.fromEntries(mv.map((i) => [i.cid, i.sample_movie]));
+check('動画のURL: FANZA(DMM)の https はそのまま', mvBy.mv1 === 'https://www.dmm.co.jp/litevideo/-/part/=/cid=mv1/size=476_306/', mvBy.mv1);
+check('動画のURL: http は https に直す', mvBy.mv2 === 'https://www.dmm.co.jp/litevideo/x/', mvBy.mv2);
+check('動画のURL: 他のサイト・javascript:・似せたホスト名は空', mvBy.mv3 === '' && mvBy.mv4 === '' && mvBy.mv5 === '', JSON.stringify(mvBy));
+check('動画のURL: 無い・文字列でない値でも落ちず、空', mvBy.mv6 === '' && mvBy.mv7 === '');
+check('safeHttpsUrl: 複数のホストを指定でき、サブドメインも通る', L.safeHttpsUrl('https://al.fanza.co.jp/?x=1', ['fanza.co.jp', 'dmm.co.jp']) === 'https://al.fanza.co.jp/?x=1' && L.safeHttpsUrl('https://notfanza.co.jp/', ['fanza.co.jp']) === '');
+
 const today = '2026-10-02';
 const { released, upcoming } = L.splitByRelease(items, today);
 check('発売済み: 新しい順', released.every((x, i, a) => i === 0 || a[i - 1].dateKey >= x.dateKey));

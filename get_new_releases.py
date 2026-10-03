@@ -11,6 +11,12 @@ GitHub Actions から毎日自動で実行されます。
   - 作品ごとに1件。cid（作品ID）で重複を防ぎ、毎回「追記」します。
   - comment_kind が "ai" ならAIが書いたコメント、"template" なら作品情報から作った代わりの文。
   - updated は、その作品のデータ（コメント）を最後に変えた日（日本時間 YYYY-MM-DD）。sitemap の lastmod に使います。
+  - sample_movie は、FANZAのサンプル動画のURL（無ければ空）。movie_tries は、品番で取り直しても見つからなかった回数。
+保存先（出演者）: site/src/data/actresses.json … 出演者ごとの顔写真・体型・年齢の元データ・FANZAの全作品リンク（FANZA公式のデータ）
+保存先（売れ筋）: site/src/data/ranking.json … FANZAの人気順（売れ筋）の上位3本
+
+  python3 get_new_releases.py --refresh-only
+      新しい作品の追加とAIコメントはせず、保存済みデータの取り直し（出演者・サンプル動画・プロフィール・ランキング）だけをする（Geminiは使わない）
 """
 import hashlib
 import json
@@ -45,6 +51,18 @@ MAX_COMMENT_TRIES = 3       # 1作品あたりのAI再挑戦の上限（ブロ�
 GEMINI_INTERVAL_SEC = float(os.environ.get("GEMINI_INTERVAL_SEC", "5"))  # API制限対策の待ち時間
 MAX_AI_FAILS_IN_ROW = 3     # 連続で失敗したら、その回はAI呼び出しをやめる
 MAX_RETRY_WAIT_SEC = 60     # 「混雑中」で待つ最大秒数。これより長く待てと言われたら、その回はあきらめる
+
+# --- FANZAのAPI（Geminiとは別。回数の上限は気にしなくてよいが、続けて呼ぶときは少し待つ）---
+DMM_INTERVAL_SEC = float(os.environ.get("DMM_INTERVAL_SEC", "0.5"))  # APIを続けて呼ぶときの待ち時間
+REFRESH_PER_RUN = 20        # 保存済みの作品を品番で取り直す最大数（出演者が空・サンプル動画が未取得）
+REFRESH_WINDOW_DAYS = 30    # 出演者が空の作品を取り直す期間（発売日の何日後まで。それ以降は、載らないものとしてあきらめる）
+MAX_MOVIE_TRIES = 3         # サンプル動画を品番で取り直す回数の上限（動画が無い作品を毎日探し続けないため）
+PROFILE_PER_RUN = 30        # 出演者のプロフィールを取りに行く最大数
+PROFILE_RECHECK_DAYS = 30   # 取得済みのプロフィールを、取り直すまでの日数（体型などはあとから載ることがある）
+MAX_API_FAILS_IN_ROW = 3    # 取り直し・プロフィールの取得で、連続で失敗したら、その回はやめる
+RANKING_ITEMS = 3           # 売れ筋ランキングの本数
+ACTRESSES_PATH = os.environ.get("ACTRESSES_PATH", os.path.join(os.path.dirname(DATA_PATH), "actresses.json"))
+RANKING_PATH = os.environ.get("RANKING_PATH", os.path.join(os.path.dirname(DATA_PATH), "ranking.json"))
 
 ANGLES = [
     "出演者の魅力",
@@ -300,6 +318,8 @@ def normalize_loaded(item):
         "genres": item.get("genres") or [],
         "tags": item.get("tags") or title_tags(title),
         "duration_min": item.get("duration_min"),
+        "sample_movie": safe_https_url(item.get("sample_movie"), MOVIE_HOSTS),
+        "movie_tries": int(item.get("movie_tries") or 0),
         "comment": item.get("comment") or "",
         "comment_kind": item.get("comment_kind") if item.get("comment_kind") in ("ai", "template") else "template",
         "comment_tries": int(item.get("comment_tries") or 0),
@@ -352,18 +372,11 @@ def save_archive(archive):
 # ------------------------------------------------------------------
 # FANZA（DMM）APIから取得
 # ------------------------------------------------------------------
-def call_item_list(extra_params):
-    params = {
-        "api_id": API_ID,
-        "affiliate_id": AFFILIATE_ID,
-        "site": "FANZA",
-        "service": "digital",
-        "floor": "videoa",
-        "sort": "date",
-        "output": "json",
-    }
-    params.update(extra_params)
-    url = "https://api.dmm.com/affiliate/v3/ItemList?" + urllib.parse.urlencode(params)
+def call_api(endpoint, params):
+    """FANZA(DMM)アフィリエイトAPIを呼んで、応答の result（辞書）を返す。失敗したら RuntimeError"""
+    query = {"api_id": API_ID, "affiliate_id": AFFILIATE_ID, "output": "json"}
+    query.update(params)
+    url = f"https://api.dmm.com/affiliate/v3/{endpoint}?" + urllib.parse.urlencode(query)
 
     last_error = None
     for attempt in range(3):
@@ -375,11 +388,50 @@ def call_item_list(extra_params):
             status = result.get("status")
             if status is not None and str(status) != "200":
                 raise RuntimeError(f"APIがエラーを返しました: status={status} message={result.get('message')}")
-            return result.get("items") or []
+            return result
         except Exception as e:
             last_error = e
             time.sleep(3 * (attempt + 1))
     raise RuntimeError(f"FANZA APIから取得できませんでした: {last_error}")
+
+
+def call_item_list(extra_params):
+    params = {"site": "FANZA", "service": "digital", "floor": "videoa", "sort": "date"}
+    params.update(extra_params)
+    return call_api("ItemList", params).get("items") or []
+
+
+def call_actress_search(params):
+    return call_api("ActressSearch", params).get("actress") or []
+
+
+def safe_https_url(url, host_suffixes):
+    """https のURLだけを通す（http は https に直す）。ホストが host_suffixes のどれかでなければ空文字"""
+    if not isinstance(url, str):
+        return ""
+    url = url.strip()
+    if url.startswith("http://"):
+        url = "https://" + url[len("http://"):]
+    parsed = urllib.parse.urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or not any(host == suffix or host.endswith("." + suffix) for suffix in host_suffixes):
+        return ""
+    return url
+
+
+MOVIE_HOSTS = ("dmm.co.jp",)
+IMAGE_HOSTS = ("dmm.co.jp",)
+LIST_HOSTS = ("fanza.co.jp", "dmm.co.jp")
+
+
+def pick_sample_movie(raw):
+    """サンプル動画のURL（476x306）。パソコンとスマホの両方で見られるものだけ。無ければ空文字"""
+    movie = raw.get("sampleMovieURL")
+    if not isinstance(movie, dict):
+        return ""
+    if str(movie.get("pc_flag")) != "1" or str(movie.get("sp_flag")) != "1":
+        return ""
+    return safe_https_url(movie.get("size_476_306"), MOVIE_HOSTS)
 
 
 def parse_api_item(raw):
@@ -409,6 +461,8 @@ def parse_api_item(raw):
         "genres": [g.get("name") for g in (info.get("genre") or []) if g.get("name")],
         "tags": title_tags(title),
         "duration_min": int(volume.group(0)) if volume else None,
+        "sample_movie": pick_sample_movie(raw),
+        "movie_tries": 0,
         "comment": "",
         "comment_kind": "",
         "comment_tries": 0,
@@ -416,24 +470,297 @@ def parse_api_item(raw):
     }
 
 
-def refresh_blank_cast(archive, fetched, today_str):
-    """保存済みで出演者が空の作品に、今回取得したデータに載っていた出演者を入れる。補った作品の cid のリストを返す。
+def apply_fresh(old, fresh, today_str):
+    """保存済みの作品 old に、取り直した fresh から、空だった項目（出演者・サンプル動画）だけを補う。
 
-    FANZAは、予約の作品に出演者をあとから載せることがある。保存済みの作品は取り直さないので、
-    今回の取得（発売済み・予約）にもう一度出てきたときに、空だった出演者だけを補う。
-    ・API の追加の呼び出しはしない（今回取得した分だけを使う）
-    ・出演者がすでにある作品は書き換えない（空欄を埋めるだけ）
+    ・すでに入っている項目は書き換えない（空欄を埋めるだけ）
     ・補ったら更新日（updated）を進める（sitemap の lastmod に使うため）
+    補った項目名のリスト（"actress" / "sample_movie"）を返す
     """
-    filled = []
+    changed = []
+    if not old.get("actress") and fresh.get("actress"):
+        old["actress"] = list(fresh["actress"])
+        changed.append("actress")
+    if not old.get("sample_movie") and fresh.get("sample_movie"):
+        old["sample_movie"] = fresh["sample_movie"]
+        changed.append("sample_movie")
+    if changed:
+        old["updated"] = today_str
+    return changed
+
+
+def refresh_from_fetched(archive, fetched, today_str):
+    """今回の取得（発売済み・予約）にもう一度出てきた保存済みの作品に、空だった項目を補う（APIの追加呼び出しなし）。
+    FANZAは、予約の作品に出演者・サンプル動画をあとから載せることがある。{cid: [補った項目名]} を返す"""
+    filled = {}
     for fresh in fetched:
         old = archive.get(fresh["cid"])
-        if old is None or old.get("actress") or not fresh.get("actress"):
+        if old is None:
             continue
-        old["actress"] = list(fresh["actress"])
-        old["updated"] = today_str
-        filled.append(old["cid"])
+        changed = apply_fresh(old, fresh, today_str)
+        if changed:
+            filled[old["cid"]] = changed
     return filled
+
+
+def refetch_targets(archive, today_str, skip):
+    """品番で取り直す保存済みの作品（最大 REFRESH_PER_RUN 件）。
+    ・出演者が空の作品（発売日の REFRESH_WINDOW_DAYS 日後まで。予約も含む）を先に
+    ・次に、発売済みでサンプル動画がまだ無い作品（取り直しは MAX_MOVIE_TRIES 回まで）
+    skip は、今回すでに取得できた作品の cid"""
+    window_start = (datetime.strptime(today_str, "%Y-%m-%d") - timedelta(days=REFRESH_WINDOW_DAYS)).strftime("%Y-%m-%d")
+    cast, movie = [], []
+    for item in archive.values():
+        if item["cid"] in skip:
+            continue
+        day = day_key(item.get("date"))
+        if not item.get("actress") and day >= window_start:
+            cast.append(item)
+        elif not item.get("sample_movie") and day and day <= today_str and int(item.get("movie_tries") or 0) < MAX_MOVIE_TRIES:
+            movie.append(item)
+    newest_first = lambda x: (x.get("date") or "", x["cid"])
+    return (sorted(cast, key=newest_first, reverse=True) + sorted(movie, key=newest_first, reverse=True))[:REFRESH_PER_RUN]
+
+
+def refetch_by_cid(archive, today_str, skip):
+    """出演者が空・サンプル動画が未取得の保存済みの作品を、品番（cid）を指定して取り直す。
+    {cid: [補った項目名]} と、取り直した件数を返す。APIが続けて失敗したら、その回はやめる"""
+    filled = {}
+    done = 0
+    fails = 0
+    for item in refetch_targets(archive, today_str, skip):
+        try:
+            rows = call_item_list({"cid": item["cid"], "hits": 1})
+            fails = 0
+        except RuntimeError as e:
+            fails += 1
+            print(f"  ⚠️ {item['cid']} を取り直せませんでした: {e}")
+            if fails >= MAX_API_FAILS_IN_ROW:
+                print("  ⏸ 続けて失敗したので、今回の取り直しはやめます")
+                break
+            continue
+        time.sleep(DMM_INTERVAL_SEC)
+        done += 1
+        fresh = next((p for p in map(parse_api_item, rows) if p and p["cid"] == item["cid"]), None)
+        if fresh is not None:
+            changed = apply_fresh(item, fresh, today_str)
+            if changed:
+                filled[item["cid"]] = changed
+        if not item.get("sample_movie") and day_key(item.get("date")) <= today_str:
+            item["movie_tries"] = int(item.get("movie_tries") or 0) + 1  # 発売後なのに動画が無い（あきらめるまでの回数）
+    return filled, done
+
+
+# ------------------------------------------------------------------
+# 出演者のプロフィール（FANZA公式の出演者データ。顔写真・体型・FANZAの全作品リンク）
+# ------------------------------------------------------------------
+def parse_measure(value, low, high):
+    """体型の数字（"86" のような文字列でも、86 でもよい）。範囲外・数字でなければ None"""
+    m = re.fullmatch(r"\s*(\d{1,3})\s*", str(value if value is not None else ""))
+    n = int(m.group(1)) if m else None
+    return n if n is not None and low <= n <= high else None
+
+
+def valid_birthday(value, today_str):
+    """生年月日（YYYY-MM-DD）。年齢が 18〜80 歳の範囲でなければ空文字（あり得ない値は使わない）"""
+    day = day_key(value)
+    if not day:
+        return ""
+    y, m, d = int(day[:4]), int(day[5:7]), int(day[8:10])
+    ty, tm, td = int(today_str[:4]), int(today_str[5:7]), int(today_str[8:10])
+    age = ty - y - ((tm, td) < (m, d))
+    return day if 18 <= age <= 80 else ""
+
+
+def clean_actress_entry(raw, today_str):
+    """出演者データ（APIの応答 または 保存済みの1件）を、保存する形に整える。使えなければ None"""
+    if not isinstance(raw, dict):
+        return None
+    aid = str(raw.get("id") or "").strip()
+    name = str(raw.get("name") or "").strip()
+    if not re.fullmatch(r"\d{1,12}", aid) or not name:
+        return None
+    images = raw.get("imageURL") if isinstance(raw.get("imageURL"), dict) else {}
+    small = raw.get("image_small") or images.get("small")
+    large = raw.get("image_large") or images.get("large")
+    cup = str(raw.get("cup") or "").strip().upper()
+    list_url = raw.get("list_url")
+    if list_url is None and isinstance(raw.get("listURL"), dict):
+        list_url = raw["listURL"].get("digital")
+    return {
+        "id": aid,
+        "name": name[:100],
+        "ruby": str(raw.get("ruby") or "").strip()[:100],
+        "image_small": safe_https_url(small, IMAGE_HOSTS),
+        "image_large": safe_https_url(large, IMAGE_HOSTS),
+        "bust": parse_measure(raw.get("bust"), 50, 160),
+        "cup": cup if re.fullmatch(r"[A-Z]", cup) else "",
+        "waist": parse_measure(raw.get("waist"), 40, 130),
+        "hip": parse_measure(raw.get("hip"), 50, 160),
+        "height": parse_measure(raw.get("height"), 120, 210),
+        "birthday": valid_birthday(raw.get("birthday"), today_str),
+        "list_url": safe_https_url(list_url, LIST_HOSTS),
+        "fetched": day_key(raw.get("fetched")),
+    }
+
+
+def load_actress_state(today_str):
+    """保存済みの出演者データ {"actresses": {id: 1件}, "unmatched": {名前: 探した日}} を読む（壊れていたら止める）"""
+    state = {"actresses": {}, "unmatched": {}}
+    if not os.path.exists(ACTRESSES_PATH):
+        return state
+    try:
+        with open(ACTRESSES_PATH, encoding="utf-8") as f:
+            raw = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"❌ 出演者データを読めませんでした（{e}）。上書きを防ぐため中止します")
+        sys.exit(1)
+    if not isinstance(raw, dict) or not isinstance(raw.get("actresses"), list):
+        print("❌ 出演者データの形が違います。上書きを防ぐため中止します")
+        sys.exit(1)
+    for row in raw["actresses"]:
+        entry = clean_actress_entry(row, today_str)
+        if entry:
+            state["actresses"].setdefault(entry["id"], entry)
+    if isinstance(raw.get("unmatched"), dict):
+        state["unmatched"] = {str(k): day_key(v) for k, v in raw["unmatched"].items() if k and day_key(v)}
+    return state
+
+
+def save_actress_state(state):
+    rows = sorted(state["actresses"].values(), key=lambda e: int(e["id"]))
+    folder = os.path.dirname(ACTRESSES_PATH)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    tmp_path = ACTRESSES_PATH + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump({"actresses": rows, "unmatched": dict(sorted(state["unmatched"].items()))}, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    os.replace(tmp_path, ACTRESSES_PATH)
+
+
+def collect_actresses(raw_items):
+    """作品の生データから、出演者（id・名前・ふりがな）を集める"""
+    found = {}
+    for raw in raw_items:
+        for a in ((raw.get("iteminfo") or {}).get("actress") or []):
+            aid = str(a.get("id") or "").strip()
+            name = str(a.get("name") or "").strip()
+            if re.fullmatch(r"\d{1,12}", aid) and name:
+                found.setdefault(aid, {"id": aid, "name": name, "ruby": str(a.get("ruby") or "").strip()})
+    return list(found.values())
+
+
+def upsert_actresses(state, found, today_str):
+    """見つけた出演者を、保存データに足す（すでにあれば、名前とふりがなだけを更新）。新しく足した件数を返す"""
+    added = 0
+    for a in found:
+        entry = state["actresses"].get(a["id"])
+        if entry is None:
+            state["actresses"][a["id"]] = clean_actress_entry(a, today_str)
+            added += 1
+        else:
+            entry["name"] = a["name"][:100]
+            if a["ruby"]:
+                entry["ruby"] = a["ruby"][:100]
+    return added
+
+
+def update_profiles(state, archive, today_str):
+    """出演者のプロフィールを、FANZAの出演者検索（ActressSearch）で取る（最大 PROFILE_PER_RUN 回）。
+    ① まだ取っていない出演者 → ② 保存済みの作品にいるのに id が分からない名前（名前の完全一致が1人だけのときだけ採用）
+    → ③ 取ってから PROFILE_RECHECK_DAYS 日たった出演者（体型などは、あとから載ることがある）の順。
+    取れた件数と、名前で見つからなかった件数を返す"""
+    entries = state["actresses"]
+    recheck_before = (datetime.strptime(today_str, "%Y-%m-%d") - timedelta(days=PROFILE_RECHECK_DAYS)).strftime("%Y-%m-%d")
+    new_ids = sorted((e["id"] for e in entries.values() if not e["fetched"]), key=int, reverse=True)
+    known_names = {e["name"] for e in entries.values()}
+    archive_names = sorted({n for it in archive.values() for n in it.get("actress") or []})
+    unknown_names = [n for n in archive_names if n not in known_names and not (state["unmatched"].get(n, "") > recheck_before)]
+    stale_ids = sorted((e["id"] for e in entries.values() if e["fetched"] and e["fetched"] <= recheck_before), key=lambda i: (entries[i]["fetched"], int(i)))
+    jobs = [("id", i) for i in new_ids] + [("name", n) for n in unknown_names] + [("id", i) for i in stale_ids]
+
+    fetched = unmatched = fails = 0
+    for kind, key in jobs[:PROFILE_PER_RUN]:
+        try:
+            if kind == "id":
+                rows = call_actress_search({"actress_id": key, "hits": 1})
+            else:
+                rows = call_actress_search({"keyword": key, "hits": 10})
+            fails = 0
+        except RuntimeError as e:
+            fails += 1
+            print(f"  ⚠️ 出演者（{key}）を取れませんでした: {e}")
+            if fails >= MAX_API_FAILS_IN_ROW:
+                print("  ⏸ 続けて失敗したので、今回のプロフィール取得はやめます")
+                break
+            continue
+        time.sleep(DMM_INTERVAL_SEC)
+        if kind == "id":
+            row = next((r for r in rows if str(r.get("id")) == key), None)
+            entry = clean_actress_entry(row, today_str) if row else None
+            old = entries[key]
+            if entry:
+                entry["fetched"] = today_str
+                entries[key] = entry
+                fetched += 1
+            else:
+                old["fetched"] = today_str  # 見つからなかった。毎日探し続けないよう、取り直しの日まで待つ
+        else:
+            exact = [r for r in rows if str(r.get("name") or "").strip() == key]
+            entry = clean_actress_entry(exact[0], today_str) if len(exact) == 1 else None
+            if entry and entry["id"] not in entries:
+                entry["fetched"] = today_str
+                entries[entry["id"]] = entry
+                fetched += 1
+            elif entry:
+                entries[entry["id"]]["fetched"] = entries[entry["id"]]["fetched"] or today_str
+            else:
+                state["unmatched"][key] = today_str  # 0人 または 同じ名前が2人以上。推測では選ばない
+                unmatched += 1
+    return fetched, unmatched
+
+
+# ------------------------------------------------------------------
+# 売れ筋ランキング（FANZAの人気順の上位）
+# ------------------------------------------------------------------
+def fetch_ranking_from(raw_items):
+    """FANZAの人気順（sort=rank）の応答から、上位 RANKING_ITEMS 本の表示用データを作る。1本も無ければ RuntimeError"""
+    rows = [p for p in map(parse_api_item, raw_items) if p][:RANKING_ITEMS]
+    if not rows:
+        raise RuntimeError("ランキングが空でした")
+    return [
+        {"rank": i, "cid": p["cid"], "title": p["title"], "url": p["url"], "image_url": p["image_url"], "date": day_key(p["date"]),
+         "maker": p["maker"], "actress": p["actress"]}
+        for i, p in enumerate(rows, 1)
+    ]
+
+
+def fetch_ranking_with_raw():
+    """(ランキング, 生データ) を返す。生データは、出演者の id を集めるために使う"""
+    raw = call_item_list({"hits": RANKING_ITEMS, "sort": "rank"})
+    return fetch_ranking_from(raw), raw
+
+
+def save_ranking(items, today_str):
+    folder = os.path.dirname(RANKING_PATH)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    tmp_path = RANKING_PATH + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump({"date": today_str, "items": items}, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    os.replace(tmp_path, RANKING_PATH)
+
+
+def run_stage(name, func):
+    """追加の取得（出演者・ランキングなど）が失敗しても、毎日の更新全体は止めない"""
+    try:
+        return func()
+    except Exception as e:  # noqa: BLE001
+        print(f"⚠️ {name}に失敗しました（ほかの更新は続けます）: {type(e).__name__}: {e}")
+        print(f"::warning title={name}に失敗::{type(e).__name__}: {e}")
+        return None
 
 
 def iso(dt):
@@ -459,9 +786,14 @@ def main():
         print("   手元で試すときは  API_ID=xxxx python3 get_new_releases.py  のように実行してね。")
         sys.exit(1)
 
+    refresh_only = "--refresh-only" in sys.argv[1:]  # 新しい作品の追加とAIコメントはせず、取り直しだけをする
     today = datetime.now(JST).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_str = today.strftime("%Y-%m-%d")
     archive = load_archive()
-    print(f"📚 保存済みの作品: {len(archive)}件")
+    actress_state = load_actress_state(today_str)  # 壊れていたら、ここで（何も始める前に）止める
+    print(f"📚 保存済みの作品: {len(archive)}件 / 出演者: {len(actress_state['actresses'])}人")
+    if refresh_only:
+        print("🔄 取り直しだけを行います（新しい作品の追加・AIコメントはしません）")
 
     try:
         released_raw = call_item_list({
@@ -483,60 +815,102 @@ def main():
     released = [p for p in map(parse_api_item, released_raw) if p]
     upcoming = [p for p in map(parse_api_item, upcoming_raw) if p]
     print(f"🔎 取得: 発売済み{len(released)}件 / 予約{len(upcoming)}件")
-    today_str = today.strftime("%Y-%m-%d")
     if released and all(p["date"][:10] > today_str for p in released):
         print("⚠️ 発売済みのはずの取得結果が、すべて未来の日付でした。日付の絞り込みが効いていないかも。")
 
-    filled = refresh_blank_cast(archive, released + upcoming, today_str)
-    if filled:
-        print(f"👤 出演者が空だった作品に、出演者を補いました: {len(filled)}件")
+    # 保存済みで、出演者・サンプル動画が空の作品を補う。まず今回の取得に載っていた分（APIの追加呼び出しなし）、
+    # 次に、取得に出てこなかった分を品番で取り直す
+    filled = refresh_from_fetched(archive, released + upcoming, today_str)
+    refetched = run_stage("保存済み作品の取り直し", lambda: refetch_by_cid(archive, today_str, {p["cid"] for p in released + upcoming}))
+    if refetched:
+        filled.update({cid: sorted(set(filled.get(cid, [])) | set(fields)) for cid, fields in refetched[0].items()})
+    filled_cast = [c for c, f in filled.items() if "actress" in f]
+    filled_movie = [c for c, f in filled.items() if "sample_movie" in f]
+    if filled_cast:
+        print(f"👤 出演者が空だった作品に、出演者を補いました: {len(filled_cast)}件")
+    if filled_movie:
+        print(f"🎬 サンプル動画が無かった作品に、動画を補いました: {len(filled_movie)}件")
+    if refetched:
+        print(f"🔁 品番で取り直した作品: {refetched[1]}件")
 
-    newcomers = [p for p in released if p["cid"] not in archive][:NEW_ITEMS_PER_RUN]
-    newcomers += [p for p in upcoming if p["cid"] not in archive and p["cid"] not in {n["cid"] for n in newcomers}]
-    print(f"🆕 新しく追加: {len(newcomers)}件")
+    newcomers = []
+    maker = None
+    if not refresh_only:
+        newcomers = [p for p in released if p["cid"] not in archive][:NEW_ITEMS_PER_RUN]
+        newcomers += [p for p in upcoming if p["cid"] not in archive and p["cid"] not in {n["cid"] for n in newcomers}]
+        print(f"🆕 新しく追加: {len(newcomers)}件")
 
-    maker = CommentMaker()
-    for i, item in enumerate(newcomers, 1):
-        maker.apply(item)
-        item["updated"] = today_str
-        archive[item["cid"]] = item
-        print(f"  [{i}/{len(newcomers)}] {item['comment_kind']:8s} {item['comment'][:24]}")
-
-    retry_targets = [
-        it for it in sorted(archive.values(), key=lambda x: x.get("date") or "", reverse=True)
-        if it.get("comment_kind") == "template" and int(it.get("comment_tries") or 0) < MAX_COMMENT_TRIES
-        and it["cid"] not in {n["cid"] for n in newcomers}
-    ][:RETRY_PER_RUN]
-    if retry_targets and maker.ai_enabled:
-        print(f"🔁 AIコメントに再挑戦: {len(retry_targets)}件")
-        for item in retry_targets:
-            if not maker.ai_enabled:
-                break
-            before_comment = item.get("comment")
+        maker = CommentMaker()
+        for i, item in enumerate(newcomers, 1):
             maker.apply(item)
-            if item.get("comment") != before_comment:
-                item["updated"] = today_str  # コメントが変わったときだけ「更新日」を進める
-            print(f"  {item['comment_kind']:8s} {item['comment'][:24]}")
+            item["updated"] = today_str
+            archive[item["cid"]] = item
+            print(f"  [{i}/{len(newcomers)}] {item['comment_kind']:8s} {item['comment'][:24]}")
+
+        retry_targets = [
+            it for it in sorted(archive.values(), key=lambda x: x.get("date") or "", reverse=True)
+            if it.get("comment_kind") == "template" and int(it.get("comment_tries") or 0) < MAX_COMMENT_TRIES
+            and it["cid"] not in {n["cid"] for n in newcomers}
+        ][:RETRY_PER_RUN]
+        if retry_targets and maker.ai_enabled:
+            print(f"🔁 AIコメントに再挑戦: {len(retry_targets)}件")
+            for item in retry_targets:
+                if not maker.ai_enabled:
+                    break
+                before_comment = item.get("comment")
+                maker.apply(item)
+                if item.get("comment") != before_comment:
+                    item["updated"] = today_str  # コメントが変わったときだけ「更新日」を進める
+                print(f"  {item['comment_kind']:8s} {item['comment'][:24]}")
 
     save_archive(archive)
     total_ai = sum(1 for it in archive.values() if it.get("comment_kind") == "ai")
     print(f"\n✨ 保存完了！ 合計{len(archive)}件（AIコメント{total_ai}件 / 代わりの文{len(archive) - total_ai}件）")
-    print(f"   今回のAI成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / Geminiに頼んだ回数 {maker.calls}回")
-    if maker.stop_reason:
-        print(f"   ⏸ AIコメントを途中でお休みした理由: {maker.stop_reason}")
-        print(f"::warning title=AIコメントを途中でお休みしました::{maker.stop_reason}")
+    if maker:
+        print(f"   今回のAI成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / Geminiに頼んだ回数 {maker.calls}回")
+        if maker.stop_reason:
+            print(f"   ⏸ AIコメントを途中でお休みした理由: {maker.stop_reason}")
+            print(f"::warning title=AIコメントを途中でお休みしました::{maker.stop_reason}")
+
+    # ---- 出演者のプロフィール・売れ筋ランキング（作品の保存のあと。失敗しても、ほかの更新は止めない）----
+    def profiles_stage():
+        raw_all = released_raw + upcoming_raw + (ranking_raw or [])
+        added = upsert_actresses(actress_state, collect_actresses(raw_all), today_str)
+        fetched_n, unmatched_n = update_profiles(actress_state, archive, today_str)
+        save_actress_state(actress_state)
+        return added, fetched_n, unmatched_n
+
+    ranking_raw = []
+    ranking = run_stage("売れ筋ランキングの取得", fetch_ranking_with_raw)
+    if ranking:
+        ranking_raw = ranking[1]
+        run_stage("売れ筋ランキングの保存", lambda: save_ranking(ranking[0], today_str))
+        print(f"🏆 売れ筋ランキング: {len(ranking[0])}本（1位 {ranking[0][0]['cid']}）")
+    profile_result = run_stage("出演者プロフィールの取得", profiles_stage)
+    if profile_result:
+        print(f"👤 出演者プロフィール: 新しく見つけた {profile_result[0]}人 / 取得 {profile_result[1]}人 / 名前で見つからなかった {profile_result[2]}人（保存中 {len(actress_state['actresses'])}人）")
 
     summary = [
-        "### ✅ FANZA更新の結果",
+        "### ✅ FANZAデータの取り直しの結果" if refresh_only else "### ✅ FANZA更新の結果",
         "",
         f"- 取得: 発売済み {len(released)}件 / 予約 {len(upcoming)}件",
-        f"- 新しく追加: {len(newcomers)}件",
-        f"- 出演者が空だった作品に補った: {len(filled)}件",
-        f"- 合計: {len(archive)}件（AIコメント {total_ai}件 / 代わりの文 {len(archive) - total_ai}件）",
-        f"- 今回のAIコメント: 成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / Geminiに頼んだ回数 {maker.calls}回",
     ]
-    if maker.stop_reason:
-        summary.append(f"- ⏸ AIコメントを途中でお休み: {maker.stop_reason}（代わりの文の作品は、次回以降に自動で再挑戦します）")
+    if not refresh_only:
+        summary.append(f"- 新しく追加: {len(newcomers)}件")
+    summary += [
+        f"- 出演者が空だった作品に補った: {len(filled_cast)}件",
+        f"- サンプル動画を補った: {len(filled_movie)}件" + (f"（品番で取り直した作品 {refetched[1]}件）" if refetched else ""),
+        f"- 合計: {len(archive)}件（AIコメント {total_ai}件 / 代わりの文 {len(archive) - total_ai}件）",
+    ]
+    if maker:
+        summary.append(f"- 今回のAIコメント: 成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / Geminiに頼んだ回数 {maker.calls}回")
+        if maker.stop_reason:
+            summary.append(f"- ⏸ AIコメントを途中でお休み: {maker.stop_reason}（代わりの文の作品は、次回以降に自動で再挑戦します）")
+    summary.append(f"- 売れ筋ランキング: {str(len(ranking[0])) + '本' if ranking else '取得できず（前回のまま）'}")
+    if profile_result:
+        summary.append(f"- 出演者プロフィール: 取得 {profile_result[1]}人 / 名前で見つからなかった {profile_result[2]}人（保存中 {len(actress_state['actresses'])}人）")
+    else:
+        summary.append("- 出演者プロフィール: 取得できず（前回のまま）")
     write_step_summary(summary)
 
 
