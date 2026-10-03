@@ -1,13 +1,18 @@
 // サイト全体で使う「データの整形・日付・URL」の部品です。
 // （JSONを読み込む処理は data.js に分けてあります）
 
-export const SITE_NAME = 'FANZA新作情報';
-export const SITE_URL = 'https://fanza-ranking.pages.dev'; // 独自ドメインにしたらここを書き換える
+// 設定値（サイト名・URL・表示件数）は ../config.js にまとめてあります。
+import {
+  SITE_NAME,
+  SITE_URL,
+  HOME_RELEASED_LIMIT,
+  HOME_UPCOMING_LIMIT,
+  ARCHIVE_PAGE_SIZE,
+  NEW_BADGE_DAYS,
+} from '../config.js';
 
-export const HOME_RELEASED_LIMIT = 36; // トップに並べる「発売中」の最大数
-export const HOME_UPCOMING_LIMIT = 24; // トップに並べる「予約」の最大数
-export const ARCHIVE_PAGE_SIZE = 30;   // 過去の作品の1ページあたりの件数
-export const NEW_BADGE_DAYS = 6;       // 発売から何日間「新作」シールを付けるか
+// ページ側が items.js からまとめて読めるように、そのまま出し直しています
+export { SITE_NAME, SITE_URL, HOME_RELEASED_LIMIT, HOME_UPCOMING_LIMIT, ARCHIVE_PAGE_SIZE, NEW_BADGE_DAYS };
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -135,6 +140,11 @@ const escapeXml = (s) =>
 export function buildSitemap(paths, siteUrl = SITE_URL) {
   const rows = paths.map((p) => `  <url><loc>${escapeXml(siteUrl + p)}</loc></url>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${rows}\n</urlset>\n`;
+}
+
+/** robots.txt の中身（検索エンジン向け。sitemap の場所を教える） */
+export function buildRobots(siteUrl = SITE_URL) {
+  return `User-agent: *\nAllow: /\n\nSitemap: ${siteUrl}/sitemap.xml\n`;
 }
 
 /** 作品ページのタイトル（検索結果に出る部分） */

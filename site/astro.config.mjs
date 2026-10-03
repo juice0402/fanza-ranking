@@ -1,8 +1,9 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import { SITE_URL } from './src/config.js';
 
 // https://astro.build/config
 export default defineConfig({
-  // 独自ドメインにしたら、ここと src/lib/items.js の SITE_URL、public/robots.txt を書き換えてね
-  site: 'https://fanza-ranking.pages.dev',
+  // 独自ドメインにしたら、src/config.js の SITE_URL を書き換えるだけでOK
+  site: SITE_URL,
 });
