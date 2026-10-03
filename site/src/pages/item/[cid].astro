@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import ItemCard from '../../components/ItemCard.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
+import FavButton from '../../components/FavButton.astro';
 import { all, actressByName, makerByName } from '../../lib/data.js';
 import {
   breadcrumbLd,
@@ -12,6 +13,7 @@ import {
   relatedItems,
   truncate,
 } from '../../lib/items.js';
+import { workFavoriteAttrs } from '../../lib/favorites.js';
 
 // 作品ごとに1ページ作る
 export function getStaticPaths() {
@@ -60,7 +62,10 @@ const makerPage = makerByName.get(item.maker)?.path;
           <dt class="spec-term">発売日</dt>
           <dd class="spec-desc">{formatDateJp(item.dateKey)}</dd>
           <dt class="spec-term">メーカー</dt>
-          <dd class="spec-desc">{makerPage ? <a class="spec-link" href={makerPage}>{item.maker}</a> : item.maker}</dd>
+          <dd class="spec-desc">
+            {makerPage ? <a class="spec-link" href={makerPage}>{item.maker}</a> : item.maker}
+            {item.maker !== '不明' && <FavButton type="maker" favKey={item.maker} slug={makerByName.get(item.maker)?.slug ?? ''} size="mini" />}
+          </dd>
           {item.actress.length > 0 && (
             <>
               <dt class="spec-term">出演</dt>
@@ -69,6 +74,7 @@ const makerPage = makerByName.get(item.maker)?.path;
                   <>
                     {i > 0 && '、'}
                     {actressByName.get(name) ? <a class="spec-link" href={actressByName.get(name).path}>{name}</a> : name}
+                    <FavButton type="actress" favKey={name} slug={actressByName.get(name)?.slug ?? ''} size="mini" />
                   </>
                 ))}
               </dd>
@@ -105,6 +111,8 @@ const makerPage = makerByName.get(item.maker)?.path;
           <a class="btn btn-hot btn-lg detail-cta" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>
         )}
         <p class="fine">広告｜リンク先はFANZAの公式ページです。価格や配信状況は、リンク先で確認してください。</p>
+
+        <FavButton type="work" favKey={item.cid} attrs={workFavoriteAttrs(item)} off="この作品をお気に入りに追加" on="お気に入りに追加済み" />
       </div>
     </article>
 

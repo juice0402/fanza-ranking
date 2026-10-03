@@ -32,6 +32,12 @@ node tests/test_roundups.mjs || failed=1
 step "サンプル画像の拡大表示 (Node.js)"
 node tests/test_lightbox.mjs || failed=1
 
+step "発売日カレンダー (.ics) の部品 (Node.js)"
+node tests/test_calendar.mjs || failed=1
+
+step "お気に入りの部品 (Node.js)"
+node tests/test_favorites.mjs || failed=1
+
 if [ "${1:-}" = "--build" ]; then
   step "サイトのビルド"
   if (cd site && npm ci --no-audit --no-fund && npm run build); then
