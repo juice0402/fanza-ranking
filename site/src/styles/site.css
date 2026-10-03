@@ -357,6 +357,7 @@ button:focus-visible {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.55;
+  min-height: 4.65em; /* 3行ぶん（line-height 1.55 × 3）。タイトルが2行でも3行でも、下の出演者・コメントの位置を横並びのカードでそろえる */
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   line-clamp: 3;

@@ -1,0 +1,24 @@
+name: Probe FANZA API
+
+# FANZA(DMM) アフィリエイトAPI の「本物の応答の形」を調べるだけの手動実行用（データは保存しない・Geminiは使わない）。
+# 新しい機能を作る前の下調べに使う。結果は実行ページの「結果の要約」に出る。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python scripts/probe_api.py
