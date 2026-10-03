@@ -164,6 +164,15 @@ check("canonical がある", not no_canonical, no_canonical[:3])
 
 
 print("\n■ 検索エンジン向けの点検（SEO）")
+# Search Console の所有権の確認コード（config.js の値）が、全ページの <head> に出ている（確認はトップページで行われる）
+cfg = read(os.path.join(ROOT, "site", "src", "config.js"))
+m = re.search(r"GOOGLE_SITE_VERIFICATION\s*=\s*'([^']*)'", cfg)
+if m and m.group(1):
+    meta = f'<meta name="google-site-verification" content="{m.group(1)}"'
+    lacking = [os.path.relpath(p, DIST) for p in pages if not p.endswith("404.html") and meta not in read(p)]
+    check("Search Console の所有権の確認コードが、全ページにある", not lacking, lacking[:3])
+else:
+    warn("Search Console の所有権の確認コードが設定されている（config.js の GOOGLE_SITE_VERIFICATION）", False)
 LD = LD_BLOCK
 CANON = re.compile(r'<link rel="canonical" href="([^"]+)"')
 indexable = [p for p in pages if not p.endswith("404.html")]

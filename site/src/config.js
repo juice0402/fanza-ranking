@@ -4,6 +4,9 @@
 export const SITE_NAME = 'FANZA新作情報';
 export const SITE_URL = 'https://fanza-ranking.pages.dev'; // 末尾にスラッシュは付けない
 
+// Google Search Console の所有権の確認用コード（<meta> の content の値）。公開されても問題のないコードです。空にすると出力しません
+export const GOOGLE_SITE_VERIFICATION = 'Sr-kZdXB7gQmvK32Zc6vaSY6Gqdn0m_BI2pCHN3RMPk';
+
 export const HOME_RELEASED_LIMIT = 36; // トップに並べる「発売中」の最大数
 export const HOME_UPCOMING_LIMIT = 24; // トップに並べる「予約」の最大数
 export const ARCHIVE_PAGE_SIZE = 30;   // 過去の作品の1ページあたりの件数

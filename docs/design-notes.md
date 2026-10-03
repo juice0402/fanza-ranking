@@ -50,6 +50,7 @@
   - 文章に使えるのは作品データの事実だけ（出演者・メーカー・形式・日付・収録時間）。タイトルは見せない（コメントと同じ理由）。文章中の数字は、一覧にある数字しか使えない（`apply` が検査）
   - 1本も無いあいだは、一覧ページ（`/weekly/`）を noindex にして sitemap にも入れず、トップ・フッターからのリンクも出さない（空のページを検索に出さないため）。記事ができると、自動で sitemap・フッター・トップに現れる
   - 構造化データは `Article`（著者・発行元はサイト自身。人の名前は入れない）と `BreadcrumbList`
+- Google Search Console の所有権の確認コードは `site/src/config.js` の `GOOGLE_SITE_VERIFICATION` に入れてあり、全ページの `<head>` に `<meta name="google-site-verification">` として出る（公開されても問題のないコード。消すと Search Console が「所有権を確認できない」になるので、消さない）
 - 作らないもの: 作品ごとの `Product` 構造化データ（価格・在庫など確かめられない項目が多く、誤った表示のもとになるため）
 - 点検（`tests/verify_dist.py`）: lastmod、構造化データ、h1が1つ、リンク切れなし、sitemapに載るページがnoindexでないこと（noindexのページはsitemapに入れない）、まとめ記事のページ数・`Article`・注目の作品へのリンク、タイトル重複（警告のみ）
 
