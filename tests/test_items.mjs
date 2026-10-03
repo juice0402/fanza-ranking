@@ -32,6 +32,23 @@ check('更新日(updated): 無い作品は空（sitemapに載せない）', byCi
 check('更新日(updated): 壊れた値（「昨日」）も空', byCid.smp0005.updated === '', byCid.smp0005.updated);
 check('更新日(updated): すべて文字列（空か日付）', items.every((i) => i.updated === '' || /^\d{4}-\d{2}-\d{2}$/.test(i.updated)));
 
+console.log('\n■ サンプル動画のURL・URLの安全確認');
+const mv = L.normalizeItems([
+  { cid: 'mv1', title: 't', date: '2026-10-01', sample_movie: 'https://www.dmm.co.jp/litevideo/-/part/=/cid=mv1/size=476_306/' },
+  { cid: 'mv2', title: 't', date: '2026-10-01', sample_movie: 'http://www.dmm.co.jp/litevideo/x/' },
+  { cid: 'mv3', title: 't', date: '2026-10-01', sample_movie: 'https://evil.example/x' },
+  { cid: 'mv4', title: 't', date: '2026-10-01', sample_movie: 'javascript:alert(1)' },
+  { cid: 'mv5', title: 't', date: '2026-10-01', sample_movie: 'https://dmm.co.jp.evil.example/x' },
+  { cid: 'mv6', title: 't', date: '2026-10-01' },
+  { cid: 'mv7', title: 't', date: '2026-10-01', sample_movie: 123 },
+]);
+const mvBy = Object.fromEntries(mv.map((i) => [i.cid, i.sample_movie]));
+check('動画のURL: FANZA(DMM)の https はそのまま', mvBy.mv1 === 'https://www.dmm.co.jp/litevideo/-/part/=/cid=mv1/size=476_306/', mvBy.mv1);
+check('動画のURL: http は https に直す', mvBy.mv2 === 'https://www.dmm.co.jp/litevideo/x/', mvBy.mv2);
+check('動画のURL: 他のサイト・javascript:・似せたホスト名は空', mvBy.mv3 === '' && mvBy.mv4 === '' && mvBy.mv5 === '', JSON.stringify(mvBy));
+check('動画のURL: 無い・文字列でない値でも落ちず、空', mvBy.mv6 === '' && mvBy.mv7 === '');
+check('safeHttpsUrl: 複数のホストを指定でき、サブドメインも通る', L.safeHttpsUrl('https://al.fanza.co.jp/?x=1', ['fanza.co.jp', 'dmm.co.jp']) === 'https://al.fanza.co.jp/?x=1' && L.safeHttpsUrl('https://notfanza.co.jp/', ['fanza.co.jp']) === '');
+
 const today = '2026-10-02';
 const { released, upcoming } = L.splitByRelease(items, today);
 check('発売済み: 新しい順', released.every((x, i, a) => i === 0 || a[i - 1].dateKey >= x.dateKey));
@@ -158,6 +175,22 @@ const evil = { name: '</script><script>alert(1)</script>& ' };
 const script = L.jsonLdScript(evil);
 check('JSON-LD: ページを壊す記号（</script> など）を置き換える', !script.includes('<') && !script.includes('>') && !script.includes('&') && !script.includes(' '), script);
 check('JSON-LD: 置き換えても、読み戻すと元のデータと同じ', JSON.stringify(JSON.parse(script)) === JSON.stringify(evil));
+
+console.log('\n■ URLの安全確認・文字の切り方');
+const urlItem = L.normalizeItems([{
+  cid: 'u1', title: 't', date: '2026-10-01',
+  url: 'javascript:alert(1)', image_url: 'data:text/html,<b>x</b>',
+  sample_images: ['https://pics.dmm.co.jp/a.jpg', 'http://pics.dmm.co.jp/b.jpg', 'https://evil.example/c.jpg', 'javascript:alert(2)', 'https://evil.com\\@dmm.co.jp/d.jpg', 'https://dmm.co.jp:x@evil.com/e.jpg', 42, null],
+}])[0];
+check('作品のリンク・画像: javascript: や data: は空にする', urlItem.url === '' && urlItem.image_url === '');
+check('サンプル画像: DMMのhttpsだけ残す（httpはhttpsに直す・他のサイト・javascript:・ブラウザと解釈がずれるURL・数字やnullは除く）', urlItem.sample_images.join() === 'https://pics.dmm.co.jp/a.jpg,https://pics.dmm.co.jp/b.jpg', urlItem.sample_images.join());
+const okItem = L.normalizeItems([{ cid: 'u2', title: 't', date: '2026-10-01', url: 'https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dx&af_id=a-990', image_url: 'https://pics.dmm.co.jp/digital/video/x/xpl.jpg' }])[0];
+check('本物の形のアフィリエイトURL（al.fanza.co.jp）・画像URL（pics.dmm.co.jp）は通る', okItem.url.startsWith('https://al.fanza.co.jp/?lurl=') && okItem.image_url === 'https://pics.dmm.co.jp/digital/video/x/xpl.jpg');
+check('作品のリンクに他のサイトのURLは通さない', L.normalizeItems([{ cid: 'u3', title: 't', date: '2026-10-01', url: 'https://evil.example/?x=fanza.co.jp' }])[0].url === '');
+const hasLone = (str) => /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/.test(str);
+check('文字を切る: 絵文字（2つ分の文字）の途中で切らない', !hasLone(L.truncate('あ'.repeat(42) + '😀' + 'い'.repeat(10), 44)), JSON.stringify(L.truncate('あ'.repeat(42) + '😀' + 'い'.repeat(10), 44)));
+check('文字を切る: 「𠮷」の途中でも切らない・文字数は見た目の文字数で数える', L.truncate('𠮷'.repeat(10), 5) === '𠮷𠮷𠮷𠮷…' && L.truncate('𠮷𠮷', 2) === '𠮷𠮷');
+check('文字を切る: 短ければそのまま・長ければ max 文字（…を含む）', L.truncate('abc', 5) === 'abc' && L.truncate('abcdef', 4) === 'abc…' && L.truncate(null, 3) === '');
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

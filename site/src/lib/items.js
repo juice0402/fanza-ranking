@@ -43,9 +43,10 @@ export function formatDateJp(dateKey) {
   return `${y}年${m}月${d}日`;
 }
 
+/** 長い文字列を max 文字までに切る。絵文字や旧字体の「𠮷」のような2つ分の文字（サロゲートペア）の途中では切らない */
 export function truncate(text, max) {
-  const s = String(text ?? '');
-  return s.length > max ? s.slice(0, max - 1) + '…' : s;
+  const chars = Array.from(String(text ?? ''));
+  return chars.length > max ? chars.slice(0, max - 1).join('') + '…' : chars.join('');
 }
 
 /** "YYYY-MM-DD" の形か */
@@ -53,6 +54,26 @@ export const isDay = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(
 
 export const itemPath = (cid) => `/item/${cid}/`;
 export const archivePath = (n) => `/archive/${n}/`;
+
+/**
+ * https のURLだけを通す（http は https に直す）。ホストが hostSuffixes のどれかでなければ ''。
+ * 取得スクリプト（get_new_releases.py の safe_https_url）と同じ決まり。データに変なURLが紛れても、画面に出さないための二重の備え
+ */
+export function safeHttpsUrl(url, hostSuffixes) {
+  if (typeof url !== 'string') return '';
+  let text = url.trim();
+  if (text.startsWith('http://')) text = 'https://' + text.slice('http://'.length);
+  let parsed;
+  try { parsed = new URL(text); } catch { return ''; }
+  const host = parsed.hostname.toLowerCase();
+  if (parsed.protocol !== 'https:' || !hostSuffixes.some((h) => host === h || host.endsWith('.' + h))) return '';
+  return text;
+}
+
+/** サンプル動画・画像（顔写真・パッケージ・サンプル画像）として使ってよいホスト（DMM） */
+export const FANZA_HOSTS = ['dmm.co.jp'];
+/** 作品・出演者のリンク（アフィリエイトのURL）として使ってよいホスト（FANZA / DMM） */
+export const FANZA_LINK_HOSTS = ['fanza.co.jp', 'dmm.co.jp'];
 
 /** JSONの中身を、画面で使いやすい形に揃える（足りない項目があっても落ちない） */
 export function normalizeItems(raw) {
@@ -69,15 +90,18 @@ export function normalizeItems(raw) {
     items.push({
       cid,
       title,
-      url: String(r.url ?? ''),
-      image_url: String(r.image_url ?? ''),
-      sample_images: Array.isArray(r.sample_images) ? r.sample_images.filter(Boolean) : [],
+      // URLは、FANZA(DMM)のhttpsだけ通す（javascript: や他のサイトのURLがデータに紛れても、画面に出さない）
+      url: safeHttpsUrl(r.url, FANZA_LINK_HOSTS),
+      image_url: safeHttpsUrl(r.image_url, FANZA_HOSTS),
+      sample_images: Array.isArray(r.sample_images) ? r.sample_images.map((u) => safeHttpsUrl(u, FANZA_HOSTS)).filter(Boolean) : [],
       date,
       dateKey: date.slice(0, 10),
       maker: String(r.maker ?? '') || '不明',
       actress: Array.isArray(r.actress) ? r.actress.filter(Boolean) : [],
       genres: Array.isArray(r.genres) ? r.genres.filter(Boolean) : [],
       duration_min: Number.isFinite(+r.duration_min) && +r.duration_min > 0 ? +r.duration_min : null,
+      // サンプル動画のページURL（FANZAの476x306の再生ページ）。無い・怪しいURLなら ''（その作品は表紙画像のまま）
+      sample_movie: safeHttpsUrl(r.sample_movie, FANZA_HOSTS),
       // 形式（VR・8K など）。英数字だけのタグに絞る（日本語のタグは作品の内容を表す言葉が混ざるため使わない）
       formats: Array.isArray(r.tags) ? r.tags.filter((t) => typeof t === 'string' && /^[0-9A-Za-z]{1,6}$/.test(t)) : [],
       comment: String(r.comment ?? ''),
