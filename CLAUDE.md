@@ -19,7 +19,7 @@ GitHub Actions（毎日 0:05 JST。日付が変わった直後）
       → site/src/data/new_releases.json に作品IDごとにためていく
       出演者のプロフィール（顔写真・体型・生年月日・FANZAの全作品リンク）を女優検索APIで取得（1回30人まで）
       → site/src/data/actresses.json（Geminiは使わない）
-      売れ筋ランキング（FANZAの人気順の上位3本）→ site/src/data/ranking.json
+      売れ筋ランキング（FANZAの人気順の上位6本。画面に出すのは先頭3本で、VR作品を隠すとき、次の順位から差し替える）→ site/src/data/ranking.json
   → main に commit → Cloudflare Pages が自動ビルド（Astro, 静的サイト）→ 公開
 
 Claude の予約タスク（毎日 0:20 JST。手順は docs/claude-comments.md）
@@ -45,7 +45,7 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | `site/src/lib/favorites.js` / `site/src/lib/calendar.js` | お気に入りの索引（`/data/favorites-index.json`）と、発売日カレンダー（`.ics`）の部品（画面に依存しない。`tests/test_calendar.mjs`）。カレンダーの予定の**題名に作品タイトルを入れない**（「【発売】○○の新作」。タイトル・品番・リンクは説明に入れる）。`escapeIcsText` は `;` `,` `\` 改行を書き換える |
 | `site/public/favorites.js` / `site/public/lightbox.js` | ブラウザで動く小さなスクリプト（ビルドを通さずそのまま配信）。`favorites.js` は ☆ の付け外しと「お気に入り」ページ・トップのお知らせ（**保存先は端末の localStorage だけ。サーバーには送らない**）。部品は node でテストできる（`tests/test_favorites.mjs`）。DOM は `textContent` で作り、保存データの HTML は実行しない |
 | `site/src/lib/search.js` / `site/public/search.js` | 作品検索（`/search/`）。`search.js`（lib）は索引 `/data/items-index.json`（キー: c 品番 / t タイトル / d 発売日 / a 出演者 / m メーカー / g ジャンルの番号 / v VRなら1 / i 画像。新しい順に最大3000本）を作る。`public/search.js` は、キーワード（タイトル・出演者・メーカー・品番・ジャンル）・ジャンル（タグ。複数はAND。足すと0本になるものは押せない）・発売の状態で端末の中で絞り込み、条件を URL（`?q=&tag=&st=&sort=`）にも書く。作品ページのジャンルは、この URL へのリンク。`noindex`・sitemap なし。DOM は `textContent` で作る。部品は `tests/test_search.mjs` |
-| `site/public/vr-filter.js` / `site/src/components/VrToggle.astro` | 「VR作品を隠す」スイッチ。一覧の1マス（`li.shelf-cell`）の `data-vr`（`vrAttrs(item)`）を、`html.hide-vr` のとき CSS で隠す。状態は localStorage（`hide-vr`）だけ。`Base.astro` の `<head>` で先に印を付けてチラつきを防ぐ。VR判定は `items.js` の `isVrWork`（タイトルの【VR】・形式タグ・ジャンルの「VR」のどれか）。トップ・過去の作品・出演者/メーカー・検索にスイッチがある。売れ筋TOP3は、隠して本数が減ると `rankLayout` が `.rank-podium` の `data-visible` と `.is-hero` を付け替えて、残りでちょうど埋まるように並べ直す（`items.js` の `rankHasHero` と同じ決め方。`tests/test_search.mjs`） |
+| `site/public/vr-filter.js` / `site/src/components/VrToggle.astro` | 「VR作品を隠す」スイッチ。一覧の1マス（`li.shelf-cell`）の `data-vr`（`vrAttrs(item)`）を、`html.hide-vr` のとき CSS で隠す。状態は localStorage（`hide-vr`）だけ。`Base.astro` の `<head>` で先に印を付けてチラつきを防ぐ。VR判定は `items.js` の `isVrWork`（タイトルの【VR】・形式タグ・ジャンルの「VR」のどれか）。トップ・過去の作品・出演者/メーカー・検索にスイッチがある。売れ筋は、データに6本あり、画面に出すのは先頭の3本（`config.js` の `RANKING_SHOWN`。残りは `rank-off` で隠してある）。隠すときは `rankLayout` が、VRを除いた先頭3本に差し替える（順位の数字も1・2・3にふり直し、見出しに「VRを除く」と出す）。出す本数に合わせて `.rank-podium` の `data-visible` と `.is-hero` も付け替えて、残りでちょうど埋まるように並べ直す（`items.js` の `rankHasHero` と同じ決め方。`tests/test_search.mjs`） |
 | `site/src/lib/profiles.js` | 出演者のプロフィール（顔写真・年齢・体型）・出演者検索の索引（`/data/actresses-index.json`）・売れ筋ランキングの表示用の整え方（画面に依存しない。`tests/test_profiles.mjs`）。生年月日は年齢にだけ変えて、ここから先には持ち出さない。URLは FANZA(DMM) の https だけ通す |
 | `site/public/actress-search.js` / `site/public/movie.js` | ブラウザで動く小さなスクリプト。`actress-search.js` は `/actress/` の「条件で探す」（名前・年齢・身長・スリーサイズ・カップ。索引を読んで、端末の中で絞り込む）。`movie.js` は作品ページのサンプル動画の枠の拡大・縮小。部品は node でテストできる（`tests/test_profiles.mjs` / `tests/test_movie.mjs`）。DOM は `textContent` で作る |
 | `site/public/_headers` / アイコン | Cloudflare Pages の応答ヘッダー（nosniff・フレームへの埋め込み禁止など。CSP は最小限）と、サイトのアイコン（`favicon.svg` / `favicon.ico` / `apple-touch-icon.png`）。`tests/verify_dist.py` が、全ページの `<head>`・ヘッダーの広告ラベル（`pr-chip`）とフッターの広告文・18歳確認・クレジット・FANZAへのリンクの属性と一緒に検査する |
@@ -54,7 +54,7 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | `site/src/pages/` | トップ、`item/[cid]`（作品）、`archive/[page]`（過去作品）、`actress/`（出演者別。2本以上の人だけ）、`maker/`（メーカー別。2本以上だけ）、`weekly/`（週のまとめ記事。1本も無いあいだは一覧が noindex・sitemap にも入らず、リンクも出さない）、`favorites`（お気に入り。noindex）、`calendar/`（使い方のページ＋購読用の `.ics`。使い方は noindex）、`data/favorites-index.json.js`、`data/actresses-index.json.js`（出演者検索の索引）、404、`sitemap.xml.js`、`robots.txt.js` |
 | `site/src/data/new_releases.json` | **自動更新のデータ。手で編集しない**（作品IDごとに蓄積。`updated` は、その作品のコメントを最後に変えた日で、sitemap の `lastmod` に使う） |
 | `site/src/data/actresses.json` | **自動更新のデータ。手で編集しない**（出演者のプロフィール。`{actresses:[…], unmatched:{名前:探した日}}`。体型は数字・生年月日は年齢の計算用で、画面に出すのは**年齢だけ**。血液型・趣味・出身地は**保存しない**。名前の完全一致が1人だけのときだけ採用し、推測で選ばない） |
-| `site/src/data/ranking.json` | **自動更新のデータ。手で編集しない**（売れ筋ランキング上位3本。取得に失敗したら前回のものを残す） |
+| `site/src/data/ranking.json` | **自動更新のデータ。手で編集しない**（売れ筋ランキング上位6本。各行の `vr` は、取得のときにジャンルなどから判定した「VR作品か」。取得に失敗したら前回のものを残す） |
 | `site/src/data/roundups.json` | **Claude が毎週書き足す記事のデータ。手で編集しない**（`claude_roundups.py apply` だけが書く。新しい週が先頭） |
 | `tests/` | テスト一式。`fixtures/` は固定データ（本番データには依存しない） |
 | `scripts/check.sh` | テストをまとめて実行（`--build` でビルドと点検まで） |

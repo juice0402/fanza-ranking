@@ -1757,7 +1757,8 @@ html.lightbox-open {
 /* 「VR作品を隠す」: VR作品の目印（data-vr）が付いたマスを隠す。全部がVRの日付は、見出しごと隠す（vr-filter.js が印を付ける） */
 .hide-vr [data-vr],
 .day.vr-empty,
-#ranking.vr-empty {
+#ranking.vr-empty,
+.rank-podium .rank-cell.rank-off {
   display: none;
 }
 

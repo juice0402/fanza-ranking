@@ -441,7 +441,7 @@ if isinstance(rk_raw, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(rk_raw.ge
     for r in rk_raw["items"]:
         if isinstance(r, dict) and re.fullmatch(r"[A-Za-z0-9_\-]+", str(r.get("cid", ""))) and str(r.get("title", "")).strip() and fanza_https(r.get("url"), FANZA_LINK):
             rk_items.append(r)
-    rk_items = rk_items[:3]
+    rk_items = rk_items[:6]  # 売れ筋は、VR作品を隠したときの差し替え用に、6本まで持つ（画面に出すのは先頭の3本）
 home_sections = [t for t in tags(home_html, "section") if t.get("id") == "ranking"]
 rank_cards = [t for t in tags(home_html, "article") if has_class(t, "rank-item")]
 if rk_fresh and rk_items:
@@ -452,13 +452,16 @@ if rk_fresh and rk_items:
     check("「人気順」と書いてある（FANZAのデイリーランキングと同じとは書かない）", "人気順" in home_html and "デイリーランキング" not in home_html)
     check("ページ内の移動に「売れ筋TOP3」がある", 'href="#ranking"' in home_html)
     cell_places = [re.search(r"\brank-([0-3])\b", t.get("class", "")) for t in rank_cards]
-    check("1〜3位のカードに、順位ごとの大きさの目印（rank-1〜rank-3）が、順番どおりに付いている（表示の順位は、抜けがあっても1,2,3とそろえる）", [m.group(1) if m else None for m in cell_places] == ["1", "2", "3"][: len(rk_items)], [t.get("class") for t in rank_cards])
+    check("1〜3位のカードに、順位ごとの大きさの目印（rank-1〜rank-3。4位以降は rank-0）が、順番どおりに付いている（表示の順位は、抜けがあっても1,2,3…とそろえる）", [m.group(1) if m else None for m in cell_places] == [str(i) if i <= 3 else "0" for i in range(1, len(rk_items) + 1)], [t.get("class") for t in rank_cards])
     check("売れ筋の並びに rank-podium の目印がある（スマホで1位を大きく・広い画面で3本を横いっぱいにする見た目の足がかり）", any(has_class(t, "rank-podium") for t in tags(home_html, "ul")))
     # 「VR作品を隠す」で本数が減っても空白ができないよう、並べ方の印（data-visible・先頭の .is-hero）を付けている（隠す前は、全部が見えている状態）
     podium = next((t for t in tags(home_html, "ul") if has_class(t, "rank-podium")), None)
     podium_cells = [t for t in tags(home_html, "li") if has_class(t, "rank-cell")]
-    hero_expected = [i == 0 and (len(podium_cells) == 1 or len(podium_cells) >= 3) for i in range(len(podium_cells))]
-    check("売れ筋の並びに、見えている本数（data-visible）と、大きく出す1本（先頭の is-hero。3本以上か1本のとき）の印がある", bool(podium) and podium.get("data-visible") == str(len(podium_cells)) and [has_class(t, "is-hero") for t in podium_cells] == hero_expected, (podium.get("data-visible") if podium else None, [t.get("class") for t in podium_cells]))
+    shown_n = min(len(podium_cells), 3)
+    hero_expected = [i == 0 and (shown_n == 1 or shown_n >= 3) for i in range(len(podium_cells))]
+    check("売れ筋の並びに、出す本数（data-show=3）・見えている本数（data-visible）・大きく出す1本（先頭の is-hero。3本以上か1本のとき）の印がある", bool(podium) and podium.get("data-show") == "3" and podium.get("data-visible") == str(shown_n) and [has_class(t, "is-hero") for t in podium_cells] == hero_expected, (podium.get("data-show") if podium else None, podium.get("data-visible") if podium else None, [t.get("class") for t in podium_cells]))
+    check("売れ筋: 先頭の3本だけが見えていて、4位以降は rank-off（VR作品を隠したとき、差し替えに使う）。各マスに元の順位（data-rank）が入っている", [has_class(t, "rank-off") for t in podium_cells] == [i >= 3 for i in range(len(podium_cells))] and [t.get("data-rank") for t in podium_cells] == [str(i) for i in range(1, len(podium_cells) + 1)], [(t.get("class"), t.get("data-rank")) for t in podium_cells])
+    check("売れ筋の見出しの横に、「VRを除く」の注記（最初は隠れている。VR作品を隠したとき、JavaScriptが出す）がある", re.search(r'<span class="rank-vr-note" hidden>｜VRを除く</span>', home_html) is not None)
 else:
     check("ランキングが無い・古い（7日より前）・使える行が無いときは、トップに売れ筋の欄を出さない", not home_sections and not rank_cards and 'href="#ranking"' not in home_html)
 
@@ -742,10 +745,10 @@ for cls, attrs, cid, inner in shelf_cells(home_html):
     rk = next((r for r in rk_items if htmllib.unescape(rank_title) == str(r.get("title", "")).strip()), None)
     if rk is None:
         continue
-    expect = bool(re.search(r"【[^】]*VR[^】]*】", str(rk["title"]), re.I)) or (str(rk["cid"]) in valid and is_vr_raw(valid[str(rk["cid"])]))
+    expect = rk.get("vr") is True or bool(re.search(r"【[^】]*VR[^】]*】", str(rk["title"]), re.I)) or (str(rk["cid"]) in valid and is_vr_raw(valid[str(rk["cid"])]))
     if ('data-vr="true"' in attrs) != expect:
         rank_wrong.append((rk["cid"], 'data-vr="true"' in attrs, expect))
-check("売れ筋TOP3: VR作品（題名の【VR】か、当サイトの作品のジャンル）にだけ data-vr が付いている", not rank_wrong, rank_wrong[:3])
+check("売れ筋: VR作品（データの vr・題名の【VR】・当サイトの作品のジャンル）にだけ data-vr が付いている", not rank_wrong, rank_wrong[:3])
 
 # スイッチ（VR作品を隠す）の置き場所: 最初は隠れていて、JavaScriptが出す
 toggle_pages = [index_path, os.path.join(DIST, "search", "index.html")] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html")))[:1] + sorted(glob.glob(os.path.join(DIST, "actress", "*", "index.html")))[:1] + sorted(glob.glob(os.path.join(DIST, "maker", "*", "index.html")))[:1]
