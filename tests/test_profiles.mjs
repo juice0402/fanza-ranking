@@ -176,6 +176,12 @@ check('名前: ひらがなでもカタカナでも・読みでも一致', names
 check('年齢: 20〜24（載っていない人は、絞り込むと外れる）', names({ age: '20-24' }) === '桜ゆの,名簿だけの人');
 check('年齢: 30以上・29まで', names({ age: '30-' }) === 'あいう,大人の人' && names({ age: '-29' }) === 'テスト花子,桜ゆの,名簿だけの人');
 check('身長・バスト・ウエスト・ヒップを、1cm単位で', names({ height: '158-162' }) === 'テスト花子,名簿だけの人' && names({ bust: '92-95' }) === '大人の人,名簿だけの人' && names({ waist: '-57' }) === 'テスト花子,桜ゆの' && names({ hip: '90-92' }) === '大人の人,名簿だけの人');
+check('スリーサイズの幅: いくつでも（どれかに入る人）・以上・まで', names({ bust: '85-89,100-' }) === 'あいう,テスト花子' && names({ waist: '56-58,65-' }) === 'あいう,テスト花子,桜ゆの,名簿だけの人' && names({ hip: '95-' }) === 'あいう' && names({ bust: 'xx,' }) === names({}), [names({ bust: '85-89,100-' }), names({ waist: '56-58,65-' })].join(' / '));
+check('幅のならびの読み取り（読めない幅は捨てる）・決まった幅だけ残す', plain(S.parseRanges('80-84,x,100-')).length === 2 && plain(S.parseRanges('')).length === 0 && S.parseBuckets('85-89,-79,xx,85-89', 'bust').join() === '-79,85-89' && S.parseBuckets('80-84', 'nothing').length === 0);
+check('スリーサイズの幅は、ページの部品（profiles.js の SIZE_BUCKETS）とスクリプトで同じ', JSON.stringify(plain(S.BUCKETS)) === JSON.stringify(P.SIZE_BUCKETS));
+check('幅の表示・人数・いちばん多い幅', P.sizeBucketLabel('-79') === '〜79' && P.sizeBucketLabel('80-84') === '80〜84' && P.sizeBucketLabel('100-') === '100〜'
+  && JSON.stringify(P.sizeBucketCounts(rows, 'b', P.SIZE_BUCKETS.bust).map((c) => c.count)) === '[0,1,1,1,1,1]' && P.commonSizeBucket(rows, 'b', P.SIZE_BUCKETS.bust) === '80-84' && P.commonSizeBucket(rows, 'hi', P.SIZE_BUCKETS.hip) === '90-94' && P.commonSizeBucket([], 'b', P.SIZE_BUCKETS.bust) === '',
+  JSON.stringify(P.sizeBucketCounts(rows, 'b', P.SIZE_BUCKETS.bust)));
 check('カップ: いくつでも（どれかに合う人）・L以上', names({ cup: 'F,H' }) === 'テスト花子,大人の人' && names({ cup: 'L+' }) === '名簿だけの人' && names({ cup: 'K,L+' }) === 'あいう,名簿だけの人');
 check('このサイトに作品がある人だけ・顔写真がある人だけ', names({ site: '1', age: '20-29' }) === 'テスト花子,桜ゆの' && names({ face: '1' }) === 'あいう,テスト花子');
 check('条件を組み合わせる（すべてに合う人だけ）', names({ age: '20-29', cup: 'C', waist: '-57' }) === '桜ゆの' && names({ age: '20-29', cup: 'H' }) === '');
@@ -184,9 +190,9 @@ check('並び順: カップ・若い順・身長・ウエストの細い順・�
 check('並び順: 名前順は「読み」の順（読みが無い人は名前で）・知らない並び順は作品の多い順', names({ sort: 'name' }).startsWith('あいう,大人の人,桜ゆの') && names({ sort: 'xxx' }) === names({}), names({ sort: 'name' }));
 check('元の配列は並べ替えない・条件が無い値（undefined）でも落ちない', rows[0].n === 'テスト花子' && S.filterRows(rows, undefined).length === 6 && S.filterRows([], {}).length === 0);
 check('数字・カップの条件を指定しているかの判定', S.hasNumericFilter({ age: '20-24' }) && S.hasNumericFilter({ cup: 'D' }) && !S.hasNumericFilter({ q: 'x', sort: 'name' }) && !S.hasNumericFilter({ age: '' }) && !S.hasNumericFilter(undefined));
-const pq = plain(S.parseQuery('?q=%E3%81%95%E3%81%8F%E3%82%89&age=20-25&bust=90-&cup=E,F,Z&site=1&sort=bust&evil=1'));
-check('URL の読み取り: 知らない項目・知らないカップは捨てる', pq.q === 'さくら' && pq.age === '20-25' && pq.bust === '90-' && pq.cup === 'E,F' && pq.site === '1' && pq.face === '' && pq.sort === 'bust' && !('evil' in pq), JSON.stringify(pq));
-check('URL の書き出し: 空の条件は書かない・読み取ると同じ条件に戻る', S.buildQuery(pq) === '?q=%E3%81%95%E3%81%8F%E3%82%89&age=20-25&bust=90-&cup=E%2CF&site=1&sort=bust' && JSON.stringify(plain(S.parseQuery(S.buildQuery(pq)))) === JSON.stringify(pq) && S.buildQuery(plain(S.parseQuery(''))) === '', S.buildQuery(pq));
+const pq = plain(S.parseQuery('?q=%E3%81%95%E3%81%8F%E3%82%89&age=20-25&bust=100-,90-94,77-88&waist=-55&cup=E,F,Z&site=1&sort=bust&evil=1'));
+check('URL の読み取り: 知らない項目・知らないカップ・決まっていないスリーサイズの幅は捨てる（幅は決まった順に）', pq.q === 'さくら' && pq.age === '20-25' && pq.bust === '90-94,100-' && pq.waist === '-55' && pq.hip === '' && pq.cup === 'E,F' && pq.site === '1' && pq.face === '' && pq.sort === 'bust' && !('evil' in pq), JSON.stringify(pq));
+check('URL の書き出し: 空の条件は書かない・読み取ると同じ条件に戻る', S.buildQuery(pq) === '?q=%E3%81%95%E3%81%8F%E3%82%89&age=20-25&bust=90-94%2C100-&waist=-55&cup=E%2CF&site=1&sort=bust' && JSON.stringify(plain(S.parseQuery(S.buildQuery(pq)))) === JSON.stringify(pq) && S.buildQuery(plain(S.parseQuery(''))) === '', S.buildQuery(pq));
 check('URL の読み取り: 変な並び順・範囲外の値は、指定なしに', plain(S.parseQuery('?sort=evil&age=5-9')).sort === 'works' && plain(S.parseQuery('?sort=evil&age=5-9')).age === '');
 check('顔写真のURL: ファイル名なら置き場所とつなぐ・FANZAの https のURLはそのまま・それ以外は空', S.imageUrl('test_hanako', 'https://pics.dmm.co.jp/mono/actjpgs/thumbnail/') === 'https://pics.dmm.co.jp/mono/actjpgs/thumbnail/test_hanako.jpg' && S.imageUrl('https://pics.dmm.co.jp/a.jpg', '') === 'https://pics.dmm.co.jp/a.jpg' && ['../x', 'https://evil.example/a.jpg', '', null].every((i) => S.imageUrl(i, 'https://pics.dmm.co.jp/x/') === '') && S.imageUrl('abc', 'https://evil.example/') === '');
 check('全作品のURL: 行の l か、形の {ID} に id を入れる（FANZAの https だけ）', S.listUrl({ id: '1017139' }, 'https://al.fanza.co.jp/?lurl=x%3D{ID}%2F&af_id=a') === 'https://al.fanza.co.jp/?lurl=x%3D1017139%2F&af_id=a' && S.listUrl({ id: '1', l: 'https://al.fanza.co.jp/?x=1' }, '') === 'https://al.fanza.co.jp/?x=1' && S.listUrl({ id: 'x' }, 'https://al.fanza.co.jp/{ID}') === '' && S.listUrl({ id: '1' }, 'https://evil.example/{ID}') === '' && S.listUrl({ id: '1' }, '') === '');

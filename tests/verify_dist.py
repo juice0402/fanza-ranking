@@ -80,6 +80,9 @@ def tags(text, name):
     return out
 
 
+strip_tags = lambda h: htmllib.unescape(re.sub(r"<[^>]+>", "", h))  # タグを外した文字だけ
+
+
 def has_class(attrs, name):
     return name in attrs.get("class", "").split()
 
@@ -585,8 +588,29 @@ if os.path.isfile(search_page):
         section = [t for t in tags(stext, "section") if t.get("id") == "actress-search"]
         check("検索の部品がある（最初は隠れていて、索引のURLを持つ）", bool(section) and "hidden" in section[0] and section[0].get("data-index") == "/data/actresses-index.json" and 'src="/actress-search.js"' in stext, section[:1])
         names = {t.get("name") for tag in ("input", "select") for t in tags(stext, tag)}
-        need = {"q", "cup", "site", "face", "sort"} | {f"{k}_{e}" for k in ("age", "height", "bust", "waist", "hip") for e in ("min", "max")}
-        check("検索の入力欄が揃っている（名前・年齢/身長/バスト/ウエスト/ヒップの下限と上限・カップ・このサイトの作品・顔写真・並び順）", need <= names, sorted(need - names))
+        need = {"q", "cup", "site", "face", "sort", "bust", "waist", "hip"} | {f"{k}_{e}" for k in ("age", "height") for e in ("min", "max")}
+        check("検索の入力欄が揃っている（名前・年齢/身長の下限と上限・バスト/ウエスト/ヒップの幅・カップ・このサイトの作品・顔写真・並び順）", need <= names, sorted(need - names))
+        # スリーサイズは、数字を入れる欄ではなく、幅をタップで選ぶ（運営者の希望。2026-10-05）。幅は site/src/lib/profiles.js の SIZE_BUCKETS
+        _buckets_src = read(os.path.join(ROOT, "site", "src", "lib", "profiles.js"))
+        size_buckets = {k: re.findall(r"'([^']*)'", v) for k, v in re.findall(r"(bust|waist|hip): \[([^\]]*)\]", re.search(r"export const SIZE_BUCKETS = \{(.*?)\};", _buckets_src, re.S).group(1))}
+        bad_size = []
+        for key_, idx_key in (("bust", "b"), ("waist", "wa"), ("hip", "hi")):
+            got_ = [t.get("value") for t in tags(stext, "input") if t.get("name") == key_]
+            if got_ != size_buckets.get(key_) or any(t.get("type") != "checkbox" for t in tags(stext, "input") if t.get("name") == key_):
+                bad_size.append((key_, got_))
+            counts_ = []
+            for b_ in size_buckets.get(key_, []):
+                lo_, hi_ = (None if v == "" else int(v) for v in b_.split("-"))
+                counts_.append(sum(1 for r in rows if isinstance(r, dict) and isinstance(r.get(idx_key), int) and (lo_ is None or r[idx_key] >= lo_) and (hi_ is None or r[idx_key] <= hi_)))
+            common_ = size_buckets[key_][counts_.index(max(counts_))] if counts_ and max(counts_) > 0 else ""
+            label_ = {"bust": "バスト", "waist": "ウエスト", "hip": "ヒップ"}[key_]
+            want_hint = f"いちばん多いのは{common_.replace('-', '〜')}cm" if common_ else ""
+            legend_ = re.search(r'<fieldset class="as-cups as-sizes">\s*<legend class="as-range-label">\s*%s（cm・いくつでも選べます）(.*?)</legend>' % label_, stext, re.S)
+            if not legend_ or strip_tags(legend_.group(1)).strip() != want_hint:
+                bad_size.append((key_, "目安", strip_tags(legend_.group(1)).strip() if legend_ else None, want_hint))
+            if any(t.get("name") in (f"{key_}_min", f"{key_}_max") for t in tags(stext, "input")):
+                bad_size.append((key_, "数字の欄が残っている"))
+        check("スリーサイズは、幅（〜79・80〜84 など）をタップで選ぶ（数字を入れる欄は無い）。いちばん人数の多い幅を、目安として添える", not bad_size, bad_size[:3])
         values = [t.get("value", "") for t in tags(stext, "option")]
         bad_values = [v for v in values if v not in ("works", "bust", "cup", "young", "old", "tall", "short", "waist", "hip", "newest", "name")]
         check("並び順の値が、スクリプトの読める形だけ", not bad_values and len(values) == 11, bad_values[:5])
@@ -1439,7 +1463,6 @@ def soon_tag(end):
     return "きょうまで" if end[:10] == JST_DAY else "あすまで" if end[:10] == tomorrow else ""
 
 
-strip_tags = lambda h: htmllib.unescape(re.sub(r"<[^>]+>", "", h))
 sale_page = os.path.join(DIST, "sale", "index.html")
 check("セール・キャンペーンのページ（/sale/）と、終わったものを隠すスクリプト（sale.js）がある", os.path.isfile(sale_page) and os.path.isfile(os.path.join(DIST, "sale.js")))
 if os.path.isfile(sale_page):
