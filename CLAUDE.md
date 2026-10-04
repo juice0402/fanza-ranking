@@ -23,7 +23,7 @@ GitHub Actions（毎日 0:05 JST。日付が変わった直後）
   → main に commit → Cloudflare Pages が自動ビルド（Astro, 静的サイト）→ 公開
 
 Claude の予約タスク（毎日 0:20 JST。手順は docs/claude-comments.md）
-  → Gemini が書けず定型文のままの作品に、Claude がコメントを書く（scripts/claude_comments.py）
+  → Gemini が書けず定型文のままの作品と、発売日をすぎたのに「予約」の言い方が残る作品に、Claude がコメントを書く（scripts/claude_comments.py）
   → ブランチ+PR → CIが緑ならMerge → 公開
 
 Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundups.md）
@@ -36,7 +36,7 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | 場所 | 役割 |
 |---|---|
 | `get_new_releases.py` | 毎日の更新スクリプト。Python標準ライブラリだけ（pip不要） |
-| `scripts/claude_comments.py` | Claude がコメントを書くための道具（`list` で対象を出し、`apply` で点検して書き込む）。標準ライブラリだけ |
+| `scripts/claude_comments.py` | Claude がコメントを書くための道具（`list` で対象を出し、`apply` で点検して書き込む。確かめられない評価・古くなる言い方は断る）。標準ライブラリだけ |
 | `scripts/claude_roundups.py` | Claude が週のまとめ記事を書くための道具（`list` で週の作品データを出し、`apply` で点検して `roundups.json` に書き込む）。標準ライブラリだけ |
 | `site/` | サイト本体（Astro 7 / 静的出力）。Cloudflare Pages のビルド対象 |
 | `site/src/config.js` | **サイト名・URL・表示件数の設定はここだけ**（独自ドメイン化もここ） |
@@ -97,7 +97,7 @@ cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
 
 - 表示件数・サイト名・URL → `site/src/config.js`
 - デザイン → `site/src/styles/site.css`、部品は `site/src/components/`、全ページ共通部分は `site/src/layouts/Base.astro`
-- コメントの文体・代替文 → `get_new_releases.py`（`ANGLES`、`template_comment`、`build_prompt`）。Claude が書くコメントの書き方・手順 → `docs/claude-comments.md`。週のまとめ記事の書き方・手順 → `docs/claude-roundups.md`
+- コメントの文体・代替文 → `get_new_releases.py`（`ANGLES`/`OPENINGS`/`CLOSINGS`、`HYPE_WORDS`、`template_comment`、`build_prompt`。**切り口・書き出し・結びを作品ごとに変えて、似た文章の量産にならないようにしている**。確かめられない評価が入った答えは採用しない）。Claude が書くコメントの書き方・手順 → `docs/claude-comments.md`。週のまとめ記事の書き方・手順 → `docs/claude-roundups.md`
 - 取得する件数・日数 → `get_new_releases.py` 冒頭の定数（`NEW_ITEMS_PER_RUN` など。Geminiの回数上限とセットで考える → 守ること8）
 
 背景や今後の予定は `docs/design-notes.md` を見ること。

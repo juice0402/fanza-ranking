@@ -64,11 +64,40 @@ RANKING_ITEMS = 3           # 売れ筋ランキングの本数
 ACTRESSES_PATH = os.environ.get("ACTRESSES_PATH", os.path.join(os.path.dirname(DATA_PATH), "actresses.json"))
 RANKING_PATH = os.environ.get("RANKING_PATH", os.path.join(os.path.dirname(DATA_PATH), "ranking.json"))
 
+# --- コメントの書き分け ---
+# 作品ごとに「切り口」「書き出し」「結び」の組み合わせを決めてAIに頼む（同じ作品・同じ回数なら、いつも同じ組み合わせ）。
+# 全部のコメントが「出演者＋メーカー＋日付＋『ぜひチェック』」の同じ型にならないようにするため（検索エンジンに、似た文章の量産と見られないように）。
+# どれも「作品情報にある事実」だけを材料にする（雰囲気・人気・期待度など、確かめられないことは書かせない）。
 ANGLES = [
-    "出演者の魅力",
-    "新作として発売されるタイミングの注目度",
-    "作品の形式や雰囲気（わかる範囲で）",
+    "出演者の名前を主役にして、メーカーと発売日を添える（出演者が記載なしなら、メーカーを主役にする）",
+    "メーカーのラインナップの一本として、メーカー名を主役にする",
+    "発売日（何月何日か）を主役にする",
+    "形式（VR・8Kなど）を主役にする（形式が記載なしなら、メーカーを主役にする）",
+    "収録時間を主役にして、事実だけを淡々と伝える（収録時間が記載なしなら、発売日を主役にする）",
+    "出演者の顔ぶれを主役にする（複数人なら人数や「ほか○名」。記載なしなら、メーカーを主役にする）",
 ]
+OPENINGS = [
+    "出演者名から書き出す（記載なしのときは、メーカー名から）",
+    "メーカー名から書き出す",
+    "発売日（○月○日）から書き出す",
+    "「新作」「新着」「一本」などの言葉から書き出す",
+]
+CLOSINGS = [
+    "呼びかけは入れず、事実を言い切って終える",
+    "最後に、くわしい情報はFANZAのページで確認できる、と添える",
+    "最後に、発売日をもう一度、さらりと添える",
+    "最後に、収録時間（記載なしなら、メーカー名）を添える",
+]
+# 使いすぎて、どのコメントも同じ結びになってしまう言い回し（AIへの依頼で、使わないよう頼む。採用の可否には使わない）
+AVOID_PHRASES = ["気になる方は", "チェック", "ぜひ", "いまのうちに", "お早めに", "お見逃しなく", "おすすめ"]
+# 確かめられない評価（人気・期待度・評判）や、大げさな言い方。入っていたら採用せず、定型文にして、Claude の書き直しに回す
+# （docs/claude-comments.md の「人気・知名度の評価は書かない」と同じ考え方。scripts/claude_comments.py にも同じ一覧がある。tests/test_script.py が、2つが同じかを調べる）
+HYPE_WORDS = ["待望", "話題", "熱い視線", "高い関心", "期待が高まる", "期待が膨らむ", "期待作", "期待の", "大人気", "人気の", "ファンの", "ファンから",
+              "おなじみ", "必見", "間違いなし", "至高", "極上", "圧倒的", "注目の", "見逃せない", "目が離せない", "心を奪", "豪華な"]
+# 出してはいけない言葉（過激な表現・未成年を連想させる言葉）。scripts/claude_comments.py と同じ一覧
+EXPLICIT_WORDS = ["中出", "射精", "精液", "挿入", "フェラ", "レイプ", "強姦", "凌辱", "陵辱", "輪姦", "痴漢", "盗撮", "調教"]
+MINOR_WORDS = ["未成年", "少女", "ロリ", "児童", "幼", "女子高生", "女子校生", "女子中", "中学生", "高校生", "小学生",
+               "JK", "JC", "JS", "制服"]
 
 
 # ------------------------------------------------------------------
@@ -151,24 +180,48 @@ def template_comment(item):
     return text
 
 
-def build_prompt(item, tries):
+def rejected_words(text):
+    """AIコメントに入っていたら採用しない言葉（確かめられない評価・過激な言葉・未成年を連想させる言葉）のリスト（なければ空）"""
+    low = (text or "").lower()
+    return [w for w in HYPE_WORDS + EXPLICIT_WORDS + MINOR_WORDS if w.lower() in low]
+
+
+def build_prompt(item, tries, today=None):
     """AIに渡す文章。タイトルは渡しません（過激な言葉でブロックされやすいため）"""
     actress = item.get("actress") or []
     tags = item.get("tags") or []
-    angle = ANGLES[stable_number(item.get("cid"), tries) % len(ANGLES)]
+    cid = item.get("cid")
+    # 切り口・書き出し・結びは、それぞれ別の数から選ぶ（組み合わせがかたよらないように）。再挑戦（tries が増える）のときは、別の組み合わせになる
+    angle = ANGLES[stable_number(cid, "angle", tries) % len(ANGLES)]
+    opening = OPENINGS[stable_number(cid, "opening", tries) % len(OPENINGS)]
+    closing = CLOSINGS[stable_number(cid, "closing", tries) % len(CLOSINGS)]
+    minutes = item.get("duration_min")
+    minutes_text = f"約{minutes}分" if isinstance(minutes, int) and not isinstance(minutes, bool) and minutes > 0 else "記載なし"
+    today = today or datetime.now(JST).strftime("%Y-%m-%d")
+    if day_key(item.get("date")) and day_key(item.get("date")) > today:
+        status_rule = ("この作品はまだ発売前。ただし「予約受付中」「発売予定」「発売される」「まもなく」「〜を前に」「待ちきれない」のような、"
+                       "発売日をすぎると古くなる言い方は使わず、「○月○日発売」と日付だけで伝える")
+    else:
+        status_rule = "この作品は発売済み。「発売されました」「発売中」などと書いてよい"
     return (
         "映像作品の紹介サイトに載せる、60〜90文字の短い紹介コメントを日本語で1つだけ書いてください。\n\n"
         "【書き方のルール】\n"
-        "- 上品で、読んだ人が気になる前向きなトーンにする\n"
+        "- 落ち着いた、上品なトーンで、「です・ます」調にする\n"
+        "- 使ってよい情報は、下の【作品情報】にあることだけ。作品の中身（ストーリー・雰囲気・演出）、出演者の容姿・経歴・人気、"
+        "作品の評判や期待度は書かない。分からないことは書かない\n"
         "- 過激・直接的な表現や、性的な描写は使わない\n"
-        "- 作品の中身（ストーリーなど）を断定しない。分からないことは書かない\n"
-        "- 出演者名は入れてよい（1回まで）\n"
+        "- 出演者名は入れてよい（1回まで。複数人のときは「○○さんほか○名」でもよい）\n"
+        f"- 次の言い回しは使わない: {'、'.join(AVOID_PHRASES)}\n"
+        f"- {status_rule}\n"
         "- 挨拶・前置き・絵文字・飾りの記号は入れず、コメント本文だけを出力する\n"
-        f"- 今回は「{angle}」を中心に書く\n\n"
+        f"- 切り口: {angle}\n"
+        f"- 書き出し: {opening}\n"
+        f"- 結び: {closing}\n\n"
         "【作品情報】\n"
         f"出演: {', '.join(actress) if actress else '記載なし'}\n"
         f"メーカー: {item.get('maker') or '記載なし'}\n"
         f"形式: {' / '.join(tags) if tags else '記載なし'}\n"
+        f"収録時間: {minutes_text}\n"
         f"発売日: {format_date_jp(item.get('date'))}"
     )
 
@@ -263,6 +316,7 @@ class CommentMaker:
         self.fails_in_row = 0
         self.ai_ok = 0
         self.blocked = 0
+        self.rejected = 0        # 使わない言い回しが入っていて、採用しなかった数
         self.calls = 0           # Geminiに頼んだ回数
         self.stop_reason = ""    # AIをお休みした理由（なければ空）
 
@@ -282,16 +336,24 @@ class CommentMaker:
             self.calls += 1
             text, status = ask_gemini(build_prompt(item, tries))
             time.sleep(GEMINI_INTERVAL_SEC)
+            bad = []
             if status == "ok":
                 comment = clean_comment(text)
-                if comment:
+                bad = rejected_words(comment)
+                if comment and not bad:
                     item["comment"] = comment
                     item["comment_kind"] = "ai"
                     item["comment_tries"] = tries + 1
                     self.fails_in_row = 0
                     self.ai_ok += 1
                     return
-            if status == "quota":
+            if bad:
+                # 確かめられない評価などが入っていた → 採用しない。定型文にして、次は別の切り口で再挑戦（上限まで続けば、Claude が書き直す）
+                self.rejected += 1
+                self.fails_in_row = 0
+                item["comment_tries"] = tries + 1
+                print(f"   ⚠️ 使わない言い回し（{'、'.join(bad[:3])}）が入っていたので、採用しませんでした")
+            elif status == "quota":
                 self.stop("Geminiの利用上限（無料枠は1日20回ほど）に達した")  # 数えない（あとで再挑戦できる）
             elif status == "blocked":
                 self.blocked += 1
@@ -924,7 +986,7 @@ def main():
     total_ai = sum(1 for it in archive.values() if it.get("comment_kind") == "ai")
     print(f"\n✨ 保存完了！ 合計{len(archive)}件（AIコメント{total_ai}件 / 代わりの文{len(archive) - total_ai}件）")
     if maker:
-        print(f"   今回のAI成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / Geminiに頼んだ回数 {maker.calls}回")
+        print(f"   今回のAI成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / 採用せず {maker.rejected}件 / Geminiに頼んだ回数 {maker.calls}回")
         if maker.stop_reason:
             print(f"   ⏸ AIコメントを途中でお休みした理由: {maker.stop_reason}")
             print(f"::warning title=AIコメントを途中でお休みしました::{maker.stop_reason}")
@@ -961,7 +1023,7 @@ def main():
         f"- 合計: {len(archive)}件（AIコメント {total_ai}件 / 代わりの文 {len(archive) - total_ai}件）",
     ]
     if maker:
-        summary.append(f"- 今回のAIコメント: 成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / Geminiに頼んだ回数 {maker.calls}回")
+        summary.append(f"- 今回のAIコメント: 成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / 採用せず（確かめられない言い回しが入っていた）{maker.rejected}件 / Geminiに頼んだ回数 {maker.calls}回")
         if maker.stop_reason:
             summary.append(f"- ⏸ AIコメントを途中でお休み: {maker.stop_reason}（代わりの文の作品は、次回以降に自動で再挑戦します）")
     summary.append(f"- 売れ筋ランキング: {str(len(ranking[0])) + '本' if ranking else '取得できず（前回のまま）'}")
