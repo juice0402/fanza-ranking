@@ -19,14 +19,15 @@ import {
   paged,
   popularity,
   todayData,
-  profilesByName,
+  faceOfName,
+  birthOfName,
 } from '../lib/data.js';
 import { itemHref } from '../lib/plan.js';
-import { faceUrl } from '../lib/profiles.js';
 import { RANKING_ALL_PATH, RANKING_PATH } from '../lib/popularity.js';
 import { SALE_PATH, endIso, saleBadge, saleCount, saleHighlights, salePriceNote } from '../lib/sale.js';
-import { TOP_SHOWN, buildTopics, hotActresses, topEntries } from '../lib/topics.js';
-import { gachaJson, gachaPool } from '../lib/gacha.js';
+import { TOP_SHOWN, birthdaySoon, buildTopics, hotActresses, topEntries, weekDebuts } from '../lib/topics.js';
+import { gachaPool } from '../lib/gacha.js';
+import PickCorner from '../components/PickCorner.astro';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import { weeklyPath } from '../lib/roundups.js';
 import { SEARCH_PATH } from '../lib/search.js';
@@ -34,7 +35,7 @@ import {
   dateParts,
   groupByDate,
   countByDate,
-  vrAttrs,
+  filterAttrs,
   archivePath,
   websiteLd,
   SITE_NAME,
@@ -68,17 +69,22 @@ const topics = buildTopics({
   sale,
   roundup: latestRoundup ?? null,
   linkOf: (item) => itemHref(item, paged),
-  faceOf: (name) => faceUrl(profilesByName.get(name)),
+  faceOf: (name) => faceOfName(name),
   skip: new Set([...top.slice(0, TOP_SHOWN).map((i) => i.cid), ...topVrOff]),
   skipVrOff: new Set(topVrOff),
 });
 
 // いま人気の女優（新着の人気TOP100によく出ている3人。VR作品を隠すときは、VR作品を数えない並び）
-const hot = hotActresses(all, today);
-const hotNoVr = hotActresses(all, today, { excludeVr: true });
+// （顔写真がある人だけ。運営者の希望。2026-10-05）
+const hasFace = (name) => Boolean(faceOfName(name));
+const hot = hotActresses(all, today, { hasFace });
+const hotNoVr = hotActresses(all, today, { excludeVr: true, hasFace });
 
-// 運命の1本（発売中の新作の下。ひとことコメントのある人気の作品から、ボタンで1本ひく。public/gacha.js）
+// 発売中の新作の、きょうの日付のすぐ下のコーナー（運営者の希望。2026-10-05）: 運命の作品（スロットで3本。public/gacha.js）・今週のデビュー作・誕生日の近い女優
 const gacha = gachaPool(all, paged, today);
+const debuts = weekDebuts(all, today);
+const birthdays = birthdaySoon(all, today, { birthOf: birthOfName, hasFace });
+const hasCorner = gacha.length >= 3 || debuts.length > 0 || birthdays.length > 0;
 
 // セール中（FANZAのキャンペーン。人気の高い作品から数本。終わった時刻をすぎたものは、ブラウザで隠す /sale.js）
 const saleShown = saleHighlights(all, sale, today);
@@ -124,7 +130,6 @@ const saleTotal = saleCount(all, sale, today);
         <section id="hot" class="today-hot" aria-labelledby="hot-title">
           <div class="today-sec-head">
             <h2 id="hot-title" class="today-sec-title">いま人気の女優</h2>
-            <p class="section-note">この1週間に発売された人気作に、よく出ている3人</p>
           </div>
           <HotActresses list={hot} listNoVr={hotNoVr} />
         </section>
@@ -166,7 +171,7 @@ const saleTotal = saleCount(all, sale, today);
         </div>
         <ul class="shelf">
           {saleShown.map((item) => (
-            <li class="shelf-cell" data-sale-end={endIso(sale.campaigns[item.sale.k].end)} {...vrAttrs(item)}>
+            <li class="shelf-cell" data-sale-end={endIso(sale.campaigns[item.sale.k].end)} {...filterAttrs(item)}>
               <ItemCard item={item} level="h3" badge={saleBadge(item.sale)} note={salePriceNote(item.sale)} />
             </li>
           ))}
@@ -181,28 +186,16 @@ const saleTotal = saleCount(all, sale, today);
         <p class="section-note">発売日が新しい順{released.length > 0 && `・全${released.length}本`}</p>
       </div>
       {releasedGroups.length > 0
-        ? <DaySection groups={releasedGroups} />
+        ? <>
+            <DaySection groups={releasedGroups.slice(0, 1)} />
+            {hasCorner && <PickCorner gacha={gacha} debuts={debuts} birthdays={birthdays} />}
+            <DaySection groups={releasedGroups.slice(1)} />
+          </>
         : <p class="empty">発売中の作品を準備しています。毎日の更新をお待ちください。</p>}
       {hasMore && (
         <p class="more"><a class="btn btn-quiet" href={archivePath(1)}>過去の作品をすべて見る</a></p>
       )}
     </section>
-
-    {gacha.length > 0 && (
-      <section id="gacha" class="section gacha" aria-labelledby="gacha-title" hidden>
-        <div class="section-head">
-          <h2 id="gacha-title" class="section-title">運命の1本</h2>
-          <p class="section-note">まだ決まらない人へ。人気の作品から1本えらびます</p>
-        </div>
-        <div class="gacha-box">
-          <div class="gacha-stage" aria-live="polite">
-            <span class="gacha-back" aria-hidden="true">?</span>
-          </div>
-          <button type="button" class="btn btn-hot gacha-btn" data-gacha-draw>1本ひく</button>
-        </div>
-        <script is:inline type="application/json" id="gacha-data" set:html={gachaJson(gacha)} />
-      </section>
-    )}
 
     {upcomingGroups.length > 0 && (
       <section id="upcoming" class="section" aria-labelledby="upcoming-title">
@@ -215,5 +208,5 @@ const saleTotal = saleCount(all, sale, today);
     )}
   </div>
   {saleShown.length > 0 && <script is:inline src="/sale.js" defer></script>}
-  {gacha.length > 0 && <script is:inline src="/gacha.js" defer></script>}
+  {gacha.length >= 3 && releasedGroups.length > 0 && <script is:inline src="/gacha.js" defer></script>}
 </Base>

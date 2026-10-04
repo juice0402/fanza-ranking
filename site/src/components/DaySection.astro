@@ -1,6 +1,6 @@
 ---
 import ItemCard from './ItemCard.astro';
-import { dateParts, vrAttrs } from '../lib/items.js';
+import { dateParts, filterAttrs } from '../lib/items.js';
 
 // groups: groupByDate() の結果（発売日ごとの作品のまとまり）
 // headingLevel: 日付タブの見出し階層。カードの見出しは、その1つ下になる
@@ -24,7 +24,7 @@ const DayHeading = headingLevel;
       </header>
       <ul class="shelf">
         {g.items.map((item, ii) => (
-          <li class="shelf-cell" {...(keepVr ? {} : vrAttrs(item))}><ItemCard item={item} level={cardLevel} eager={gi === 0 && ii < eagerFirst} /></li>
+          <li class="shelf-cell" {...filterAttrs(item, { vr: !keepVr })}><ItemCard item={item} level={cardLevel} eager={gi === 0 && ii < eagerFirst} /></li>
         ))}
       </ul>
     </section>

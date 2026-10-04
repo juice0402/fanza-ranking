@@ -5,7 +5,7 @@ import { normalizeItems, splitByRelease, jstToday, groupByActress, groupByMaker,
 import { normalizeRoundups } from './roundups.js';
 import { groupByMonth, groupByTag, monthPathByKey } from './collections.js';
 import { buildFactsContext } from './facts.js';
-import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay } from './profiles.js';
+import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay, ACTRESS_IMAGE_BASE, faceUrl } from './profiles.js';
 import { hasCalendar, planPages } from './plan.js';
 import { bestRank, catalogAllRank, normalizePopularity } from './popularity.js';
 import { normalizeSale } from './sale.js';
@@ -83,6 +83,15 @@ export const profilesByName = profileByName(profiles);
 export const profilesCoverage = profileCoverage(profiles);
 // 女優検索の名簿（FANZA公式の出演者検索の一覧。体型・身長・生年月日が載っている人）。まだ無ければ空
 export const directory = normalizeDirectory(optionalData('actress_directory'), today);
+// 女優の顔写真と誕生日の月日（トップの「いま人気の女優」「誕生日の近い女優」）。プロフィール（actresses.json）を先に、無ければ女優検索の名簿の値。
+// 名簿に同じ名前の人が2人以上いるときは、どちらの人か決められないので使わない
+const directoryByName = (() => {
+  const count = new Map();
+  for (const d of directory) count.set(d.name, (count.get(d.name) ?? 0) + 1);
+  return new Map(directory.filter((d) => count.get(d.name) === 1).map((d) => [d.name, d]));
+})();
+export const faceOfName = (name, large = false) => faceUrl(profilesByName.get(name), large) || (directoryByName.get(name)?.img ? `${ACTRESS_IMAGE_BASE}${directoryByName.get(name).img}.jpg` : '');
+export const birthOfName = (name) => profilesByName.get(name)?.birthMD || directoryByName.get(name)?.birthMD || '';
 export const actressSearchIndex = buildActressSearchIndex(profiles, all, actressByName, today, directory);
 export const actressIndexCoverage = indexCoverage(actressSearchIndex);
 

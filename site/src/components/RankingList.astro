@@ -4,7 +4,7 @@
 import Breadcrumb from './Breadcrumb.astro';
 import VrToggle from './VrToggle.astro';
 import ItemCard from './ItemCard.astro';
-import { formatDateJp, vrAttrs } from '../lib/items.js';
+import { formatDateJp, filterAttrs } from '../lib/items.js';
 import { NEW_RANK_DAYS, RANKING_ALL_PATH, RANKING_PATH } from '../lib/popularity.js';
 
 // kind: 'new'（新着の人気順）/ 'all'（全体の人気順）。list: 並べる作品（順位の順）。date: 順位を取った日
@@ -41,7 +41,7 @@ const isNew = kind === 'new';
           </div>
           <ul class="shelf">
             {list.map((item, i) => (
-              <li class="shelf-cell" {...vrAttrs(item)}><ItemCard item={item} level="h3" badge={`${i + 1}位`} eager={i < 4} /></li>
+              <li class="shelf-cell" {...filterAttrs(item)}><ItemCard item={item} level="h3" badge={`${i + 1}位`} eager={i < 4} /></li>
             ))}
           </ul>
         </>

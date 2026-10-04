@@ -96,9 +96,10 @@
   }
 
   // 条件: { terms: [語], tags: [ジャンルの番号], status: ''|'released'|'upcoming', sort: 'new'|'old'|'popnew'|'pop' }
-  // opts: { today, hideVr }
+  // opts: { today, hideVr, onlySolo }（onlySolo: 単体作品（索引の o:1）だけ）
   function matches(row, state, opts, ignoreTags) {
     if (opts.hideVr && row.v === 1) return false;
+    if (opts.onlySolo && row.o !== 1) return false;
     if (state.status === 'released' && row.d > opts.today) return false;
     if (state.status === 'upcoming' && row.d <= opts.today) return false;
     var h = row._h || '';
@@ -270,7 +271,7 @@
   }
 
   function opts() {
-    return { today: jstToday(Date.now()), hideVr: document.documentElement.classList.contains('hide-vr') };
+    return { today: jstToday(Date.now()), hideVr: document.documentElement.classList.contains('hide-vr'), onlySolo: document.documentElement.classList.contains('only-solo') };
   }
 
   function readState() {
@@ -379,8 +380,9 @@
     visible.forEach(function (row) {
       list.appendChild(card(row, o.today));
     });
-    var vrNote = o.hideVr ? '（VR作品を除く）' : '';
-    count.textContent = found.length ? found.length + '本が見つかりました' + vrNote : '条件に合う作品がありません。条件をゆるめてみてね。' + (o.hideVr ? 'VR作品は隠しています。' : '');
+    var vrNote = o.hideVr && o.onlySolo ? '（単体作品・VR作品を除く）' : o.onlySolo ? '（単体作品のみ）' : o.hideVr ? '（VR作品を除く）' : '';
+    var offNote = (o.onlySolo ? '単体作品だけ表示しています。' : '') + (o.hideVr ? 'VR作品は隠しています。' : '');
+    count.textContent = found.length ? found.length + '本が見つかりました' + vrNote : '条件に合う作品がありません。条件をゆるめてみてね。' + offNote;
     more.hidden = found.length <= visible.length;
     if (filterNote) {
       var active = selected.length + (state.status ? 1 : 0) + (state.sort !== 'new' ? 1 : 0);

@@ -4,7 +4,7 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import ItemCard from '../../components/ItemCard.astro';
 import { curated, paged, roundups, actressByName, makerByName } from '../../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../../lib/plan.js';
-import { breadcrumbLd, dateParts, formatDateJp, groupByDate, vrAttrs, castLine, CAST_LIMIT } from '../../lib/items.js';
+import { breadcrumbLd, dateParts, formatDateJp, groupByDate, filterAttrs, castLine, CAST_LIMIT } from '../../lib/items.js';
 import {
   WEEKLY_INDEX_PATH,
   articleLd,
@@ -110,7 +110,7 @@ const day = (dateKey) => {
           <h2 id="picks-title" class="section-title">注目の作品</h2>
           <ul class="shelf">
             {picks.map((p) => (
-              <li class="shelf-cell" {...vrAttrs(p.item)}>
+              <li class="shelf-cell" {...filterAttrs(p.item)}>
                 <ItemCard item={p.item} level="h3" />
                 <p class="pick-note">{p.note}</p>
               </li>

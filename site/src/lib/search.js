@@ -17,7 +17,7 @@ export const searchPath = (tag = '') => (tag ? `${SEARCH_PATH}?tag=${encodeURICo
  * 作品検索のための索引（/data/items-index.json）。
  *   generated: 作った日 / newDays: 「新作」シールを付ける日数 / genres: ジャンル名の一覧（作品の多い順）
  *   items: 発売日の新しい順に、{ c 作品ID, p 品番（例 DLDSS-566。作れないときは無い）, t タイトル, d 発売日, a 出演者, m メーカー,
- *           g ジャンルの番号（genres の何番目か）, v VRなら 1（VRでなければ無い）, i 画像,
+ *           g ジャンルの番号（genres の何番目か）, v VRなら 1（VRでなければ無い）, o 単体作品なら 1（そうでなければ無い）, i 画像,
  *           r 全体の人気順の順位・n 新着の人気順の順位（分からなければ無い。lib/popularity.js） }
  * 入れる作品: 全体の人気順の上位 ITEMS_INDEX_POPULAR 本と、残りは新しい順に、合わせて limit 本まで（並びは発売日の新しい順）
  * タイトルには、文節の区切りに幅のない空白（U+200B）が入っている（ブラウザで、語の途中で改行しないため。site/src/lib/phrase.js の phraseZwsp）。
@@ -51,6 +51,7 @@ export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT, popular
         i: item.image_url.startsWith(DMM_IMAGE_PREFIX) ? item.image_url.slice(DMM_IMAGE_PREFIX.length) : item.image_url,
       };
       if (item.vr) row.v = 1;
+      if (item.solo) row.o = 1; // 単体作品（「単体作品のみ表示」スイッチ）
       if (item.popAll) row.r = item.popAll;
       if (item.popNew) row.n = item.popNew;
       const code = productCode(item.cid);

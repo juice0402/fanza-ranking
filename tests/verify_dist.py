@@ -154,6 +154,12 @@ all_rank_of = lambda c: catalog_rank.get(c) if c in catalog else pop_all.get(c) 
 has_comment = lambda x: bool(str(x.get("comment") or "").strip())
 
 
+def is_solo_raw(x):
+    """保存データの1件が単体作品か（site/src/lib/items.js の isSoloWork と同じ決まり）"""
+    genres_ = [g for g in (x.get("genres") or []) if g]
+    return "単体作品" in genres_ if genres_ else len([a for a in (x.get("actress") or []) if a]) == 1
+
+
 def is_vr_raw(x):
     """保存データの1件がVR作品か（site/src/lib/items.js の isVrWork と同じ決まり。突き合わせるため、別に書いてある）"""
     title = str(x.get("title", ""))
@@ -691,8 +697,53 @@ if any(k == "sale" for k, _, _ in topic_cells):
     check("きょうの話題に、もうすぐ終わるセールがあるときは、終わったら隠すスクリプト（sale.js）がある", 'src="/sale.js"' in home_html)
 warn("きょうの話題が、トップにある（データがそろっていれば出る）", bool(topic_cells) or not pop_new)
 
+# 女優の顔写真と誕生日の月日（site/src/lib/data.js の faceOfName・birthOfName と同じ決まり）: プロフィール（同じ名前で id が1つの人）を先に、
+# 無ければ名簿（同じ名前の人が1人だけ）。誕生日は、年齢が18〜80歳になるときだけ
+def _age_ok(b):
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(b or "")):
+        return False
+    try:
+        bd = datetime.date.fromisoformat(b)
+    except ValueError:
+        return False
+    t = datetime.date.fromisoformat(JST_TODAY)
+    age = t.year - bd.year - ((t.month, t.day) < (bd.month, bd.day))
+    return 18 <= age <= 80
+
+
+_prof_rows = [r for r in (act_raw.get("actresses", []) if isinstance(act_raw, dict) else []) if isinstance(r, dict) and re.fullmatch(r"\d{1,12}", str(r.get("id", "")).strip()) and str(r.get("name", "")).strip()]
+_prof_ids = {}
+for r in _prof_rows:
+    _prof_ids.setdefault(str(r["name"]).strip(), set()).add(str(r["id"]).strip())
+_prof_by = {}
+for r in _prof_rows:
+    n_ = str(r["name"]).strip()
+    if len(_prof_ids[n_]) == 1 and n_ not in _prof_by:
+        _prof_by[n_] = r
+_dir_rows = [r for r in (dir_raw.get("rows") if isinstance(dir_raw, dict) and isinstance(dir_raw.get("rows"), list) else []) if isinstance(r, dict) and str(r.get("name", "")).strip() and re.fullmatch(r"\d{1,12}", str(r.get("id", "")).strip())]
+_dir_count = {}
+for r in _dir_rows:
+    _dir_count[str(r["name"]).strip()] = _dir_count.get(str(r["name"]).strip(), 0) + 1
+_dir_by = {str(r["name"]).strip(): r for r in _dir_rows if _dir_count[str(r["name"]).strip()] == 1}
+
+
+def has_face_name(n):
+    p_ = _prof_by.get(n)
+    if p_ and (fanza_https(p_.get("image_large"), DMM + ["fanza.co.jp"]) or fanza_https(p_.get("image_small"), DMM + ["fanza.co.jp"])):
+        return True
+    d_ = _dir_by.get(n)
+    return bool(d_ and re.fullmatch(r"[a-z0-9_]{1,60}", str(d_.get("img") or "")))
+
+
+def birth_md(n):
+    for src in (_prof_by.get(n), _dir_by.get(n)):
+        if src and _age_ok(src.get("birthday")):
+            return src["birthday"][5:10]
+    return ""
+
+
 # いま人気の女優（site/src/lib/topics.js の hotActresses と同じ数え方）: この1週間の発売で、新着の人気順が100位までの作品
-# （出演者が1〜4人の作品だけ）に、101−順位の点を足す。上から3人
+# （出演者が1〜4人の作品だけ）に、101−順位の点を足す。顔写真がある人だけ、上から3人
 def hot_names(exclude_vr):
     board = {}
     for c in sorted((c for c in everything if c in pop_new and pop_new[c] <= 100 and _top_from <= str(everything[c]["date"])[:10] <= JST_TODAY),
@@ -706,7 +757,7 @@ def hot_names(exclude_vr):
         for n in cast:
             sc, best = board.get(n, (0, pop_new[c]))
             board[n] = (sc + 101 - pop_new[c], min(best, pop_new[c]))
-    return [n for n, _ in sorted(board.items(), key=lambda kv: (-kv[1][0], kv[1][1], kv[0]))[:3]]
+    return [n for n, _ in sorted(((n, v) for n, v in board.items() if has_face_name(n)), key=lambda kv: (-kv[1][0], kv[1][1], kv[0]))[:3]]
 
 
 def hot_list(cls):
@@ -721,24 +772,78 @@ if want_hot:
     check(f"いま人気の女優: {len(want_hot)}人が、新着の人気順の点の順に並ぶ（オムニバスの作品は数えない）", 'id="hot"' in home_html and got == want_hot, (got, want_hot))
     check("いま人気の女優: VR作品を隠すときの並び（VR作品を数えない）は、ちがうときだけ、もう1つ用意する", (got_novr is None and want_hot == want_hot_novr) or got_novr == want_hot_novr, (got_novr, want_hot_novr))
     check("いま人気の女優: 「顔」という言葉は使わず「いま人気の女優」（運営者の希望）", 'id="hot-title" class="today-sec-title">いま人気の女優</h2>' in home_html)
+    hot_block = re.search(r'<section id="hot".*?</section>', home_html, re.S)
+    check("いま人気の女優: 全員に顔写真がある・選んだ理由（人気作○本・最高○位）は書かない（運営者の希望）", bool(hot_block) and hot_block.group(0).count('class="face-img"') == hot_block.group(0).count('class="hot-cell"') and "人気作" not in hot_block.group(0) and "section-note" not in hot_block.group(0))
 else:
     check("人気の作品が無いときは、いま人気の女優の欄を出さない", 'id="hot"' not in home_html)
 
-# 運命の1本（発売中の新作の下。ひとことコメントのある・作品ページのある・発売済みの人気作。未成年を連想させるタイトルは入れない）
+# 発売中の新作の、きょうの日付のすぐ下のコーナー（運命の作品・今週のデビュー作・誕生日の近い女優。運営者の希望。2026-10-05）
+rel_start = home_html.find('id="released"')
+days_in_rel = [m.start() for m in re.finditer(r'<section class="day"', home_html) if m.start() > rel_start and (home_html.find('id="upcoming"') < 0 or m.start() < home_html.find('id="upcoming"'))]
+corner_at = home_html.find('<div class="corner"')
+if corner_at >= 0:
+    check("おすすめのコーナーは、発売中の新作の、いちばん新しい日付のすぐ下（次の日付の上）", len(days_in_rel) >= 1 and days_in_rel[0] < corner_at and (len(days_in_rel) < 2 or corner_at < days_in_rel[1]), (days_in_rel[:2], corner_at))
+
+# 運命の作品（スロットで3本。ひとことコメントのある・作品ページのある・発売済みの人気作。未成年を連想させるタイトルは入れない）
 gacha_m = re.search(r'<script type="application/json" id="gacha-data">(.*?)</script>', read_raw(index_path), re.S)
 if gacha_m:
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
     import claude_comments as _cc
     gacha_rows = json.loads(gacha_m.group(1))
     bad_gacha = [r.get("c") for r in gacha_rows if r.get("c") not in paged or not has_comment(everything.get(r.get("c"), {})) or str(everything[r["c"]]["date"])[:10] > JST_TODAY
-                 or _cc.title_block_reason(everything[r["c"]]) == "minor" or bool(r.get("v")) != is_vr_raw(everything[r["c"]]) or not fanza_https(r.get("i"), DMM)]
-    check(f"運命の1本: 候補（{len(gacha_rows)}本。80本まで）は、ひとことコメントと作品ページのある発売済みの作品だけ・未成年を連想させるタイトルは入れない・VRの印が合う", 0 < len(gacha_rows) <= 80 and not bad_gacha, bad_gacha[:3])
-    check("運命の1本: 欄は、発売中の新作の下（予約の上）にあり、最初は隠れている（JavaScript が出す）・スクリプト（gacha.js）がある",
-          home_html.find('id="released"') < home_html.find('id="gacha"') and (home_html.find('id="upcoming"') < 0 or home_html.find('id="gacha"') < home_html.find('id="upcoming"'))
-          and re.search(r'<section id="gacha"[^>]*\bhidden\b', home_html) is not None and 'src="/gacha.js"' in home_html and os.path.isfile(os.path.join(DIST, "gacha.js")))
-    check("運命の1本: ページに入れたデータの中に、タグの始まり（<）が無い", "<" not in gacha_m.group(1))
+                 or _cc.title_block_reason(everything[r["c"]]) == "minor" or bool(r.get("v")) != is_vr_raw(everything[r["c"]]) or bool(r.get("o")) != is_solo_raw(everything[r["c"]]) or not fanza_https(r.get("i"), DMM)]
+    check(f"運命の作品: 候補（{len(gacha_rows)}本。80本まで）は、ひとことコメントと作品ページのある発売済みの作品だけ・未成年を連想させるタイトルは入れない・VR・単体作品の印が合う", 3 <= len(gacha_rows) <= 80 and not bad_gacha, bad_gacha[:3])
+    gacha_sec = re.search(r'<section id="gacha".*?</section>', home_html, re.S)
+    check("運命の作品: 見出し「運命の作品」・窓が3つ・「まわす」ボタン・最初は隠れている（JavaScript が出す）・スクリプト（gacha.js）がある",
+          bool(gacha_sec) and 'id="gacha-title" class="corner-title">運命の作品</h3>' in gacha_sec.group(0) and gacha_sec.group(0).count('class="reel"') == 3 and ">まわす</button>" in gacha_sec.group(0)
+          and re.search(r'<section id="gacha"[^>]*\bhidden\b', home_html) is not None and 'src="/gacha.js"' in home_html and os.path.isfile(os.path.join(DIST, "gacha.js")) and corner_at < home_html.find('id="gacha"'))
+    check("運命の作品: ページに入れたデータの中に、タグの始まり（<）が無い", "<" not in gacha_m.group(1))
 else:
-    check("運命の1本の候補が無いときは、欄もスクリプトも出さない", 'id="gacha"' not in home_html and 'src="/gacha.js"' not in home_html)
+    check("運命の作品の候補が無いときは、欄もスクリプトも出さない", 'id="gacha"' not in home_html and 'src="/gacha.js"' not in home_html)
+
+# 今週のデビュー作: きょうまでの7日間に発売された「デビュー作品」を、新着の人気順に6本（出すのは3本。残りは差し替え用）
+_wk_from = (datetime.date.fromisoformat(JST_TODAY) - datetime.timedelta(days=6)).isoformat()
+want_debut = sorted((c for c in everything if "デビュー作品" in (everything[c].get("genres") or []) and _wk_from <= str(everything[c]["date"])[:10] <= JST_TODAY),
+                    key=lambda c: (pop_new.get(c, float("inf")), -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:6]
+debut_cells = [(m.group(1), m.group(2), m.group(3)) for m in re.finditer(r'<li class="debut-cell([^"]*)"([^>]*)>(.*?)</li>', home_html, re.S)]
+if want_debut:
+    got_debut = []
+    for cls, attrs, inner in debut_cells:
+        a_ = next((t for t in tags(inner, "a") if has_class(t, "debut-card")), {})
+        h = a_.get("href", "")
+        m_ = re.match(r"/item/([^/]+)/$", h)
+        got_debut.append(m_.group(1) if m_ else next((c for c in want_debut if everything[c].get("url") == h), h))
+    check(f"今週のデビュー作: {len(want_debut)}本が人気順に並び、出すのは3本（残りは rank-off）・VR・単体作品の印が合う", got_debut == want_debut and [" rank-off" in cls for cls, _, _ in debut_cells] == [i >= 3 for i in range(len(debut_cells))]
+          and all(('data-vr="true"' in attrs) == is_vr_raw(everything[c]) and ('data-solo="true"' in attrs) == is_solo_raw(everything[c]) for (cls, attrs, _), c in zip(debut_cells, want_debut)), (got_debut, want_debut))
+else:
+    check("今週のデビュー作が無いときは、欄を出さない", 'id="debuts"' not in home_html)
+
+# 誕生日の近い女優: このサイトに作品があり、顔写真と誕生日（FANZA公式）が分かる人で、きょうから14日のうちに誕生日が来る人を、近い順に3人
+_works = {}
+for x in everything.values():
+    for n in dict.fromkeys(a for a in (x.get("actress") or []) if a):
+        _works[n] = _works.get(n, 0) + 1
+
+
+def _days_until(md):
+    t = datetime.date.fromisoformat(JST_TODAY)
+    for y in (t.year, t.year + 1):
+        leap = (y % 4 == 0 and y % 100 != 0) or y % 400 == 0
+        d = datetime.date.fromisoformat(f"{y}-{'02-28' if md == '02-29' and not leap else md}")
+        if d >= t:
+            return (d - t).days
+    return None
+
+
+want_bday = sorted(((n, _days_until(birth_md(n)), w) for n, w in _works.items() if birth_md(n) and has_face_name(n)), key=lambda r: (r[1], -r[2], r[0]))
+want_bday = [r for r in want_bday if r[1] is not None and r[1] < 14][:3]
+bday_m = re.search(r'<ol class="hot bday">(.*?)</ol>', home_html, re.S)
+got_bday = [htmllib.unescape(re.sub(r"<[^>]+>", "", n)) for n in re.findall(r'<span class="hot-name">(.*?)</span>', bday_m.group(1), re.S)] if bday_m else []
+if want_bday:
+    check(f"誕生日の近い女優: {len(want_bday)}人（このサイトに作品がある・顔写真がある人）が、誕生日の近い順", got_bday == [r[0] for r in want_bday] and bday_m.group(1).count('class="face-img"') == len(want_bday), (got_bday, want_bday))
+    check("誕生日の近い女優: 出すのは月日だけ（生まれた年は出さない）", not re.search(r"(19|20)\d\d年", bday_m.group(1)))
+else:
+    check("誕生日の近い女優がいないときは、欄を出さない", 'id="birthdays"' not in home_html)
 
 # 一覧のカードの出演者は3名まで（オムニバスなど、出演者が多い作品で、カードが長くならないように。運営者の希望。2026-10-05）
 bad_cast = []
@@ -1051,7 +1156,7 @@ no_head_vr, no_vr_js, no_nav_search, no_foot_search = [], [], [], []
 for p in pages:
     html_ = read(p)
     head_ = html_[: html_.find("</head>")] if "</head>" in html_ else ""
-    if not re.search(r"localStorage\.getItem\('hide-vr'\)\s*===\s*'1'", head_) or "classList.add('hide-vr')" not in head_:
+    if not re.search(r"localStorage\.getItem\('hide-vr'\)\s*===\s*'1'", head_) or "classList.add('hide-vr')" not in head_ or "classList.add('only-solo')" not in head_:
         no_head_vr.append(os.path.relpath(p, DIST))
     if 'src="/vr-filter.js"' not in html_:
         no_vr_js.append(os.path.relpath(p, DIST))
@@ -1061,7 +1166,7 @@ for p in pages:
     foot_ = html_[html_.find("<footer") :] if "<footer" in html_ else ""
     if 'href="/search/"' not in foot_:
         no_foot_search.append(os.path.relpath(p, DIST))
-check(f"全ページの <head> に、「VR作品を隠す」の印を先に付ける小さなスクリプトがある（開いた瞬間にチラつかない。{len(pages)}ページ）", not no_head_vr, no_head_vr[:3])
+check(f"全ページの <head> に、「VR作品を隠す」「単体作品のみ表示」の印を先に付ける小さなスクリプトがある（開いた瞬間にチラつかない。{len(pages)}ページ）", not no_head_vr, no_head_vr[:3])
 check("全ページに vr-filter.js が読み込まれている", not no_vr_js, no_vr_js[:3])
 check("全ページの上のメニュー・フッターに、検索（/search/）へのリンクがある", not no_nav_search and not no_foot_search, (no_nav_search[:2], no_foot_search[:2]))
 check("スクリプト（search.js・vr-filter.js）が公開されている", os.path.isfile(os.path.join(DIST, "search.js")) and os.path.isfile(os.path.join(DIST, "vr-filter.js")))
@@ -1085,7 +1190,9 @@ for lp in list_pages:
         vr_total += int(marked)
         if marked != is_vr_raw(valid[cid]):
             wrong_mark.append((os.path.relpath(lp, DIST), cid, marked))
-check(f"作品の一覧のマス（{marked_total}個）: VR作品（データのタイトル・形式・ジャンルから判定）にだけ data-vr が付いている", not wrong_mark, wrong_mark[:3])
+        if ('data-solo="true"' in attrs) != is_solo_raw(valid[cid]):
+            wrong_mark.append((os.path.relpath(lp, DIST), cid, "単体作品の印"))
+check(f"作品の一覧のマス（{marked_total}個）: VR作品（データのタイトル・形式・ジャンルから判定）にだけ data-vr、単体作品にだけ data-solo が付いている", not wrong_mark, wrong_mark[:3])
 warn("VR作品のマスが、一覧のどこかにある（目印のテストが空振りしていない）", vr_total > 0)
 
 # スイッチ（VR作品を隠す）の置き場所: 最初は隠れていて、JavaScriptが出す
@@ -1099,6 +1206,14 @@ for tp in toggle_pages:
     if len(btns) != 1 or "hidden" not in btns[0] or btns[0].get("aria-pressed") != "false" or not btns[0].get("data-on") or not btns[0].get("data-off") or btns[0].get("type") != "button":
         bad_toggle.append((os.path.relpath(tp, DIST), btns[:1]))
 check("「VR作品を隠す」スイッチが、トップ・検索・過去の作品・出演者・メーカーのページに1つずつある（最初は隠れている・押された状態ではない・文言つき）", not bad_toggle, bad_toggle[:3])
+bad_solo_toggle = []
+for tp in toggle_pages:
+    if os.path.isfile(tp):
+        btns = [t for t in tags(read(tp), "button") if "data-solo-toggle" in t]
+        if len(btns) != 1 or "hidden" not in btns[0] or btns[0].get("aria-pressed") != "false" or btns[0].get("data-off") != "単体作品のみ表示" or not btns[0].get("data-on"):
+            bad_solo_toggle.append((os.path.relpath(tp, DIST), btns[:1]))
+check("「単体作品のみ表示」スイッチが、「VR作品を隠す」の隣に1つずつある（最初は隠れている・押された状態ではない）", not bad_solo_toggle, bad_solo_toggle[:3])
+check("CSS: html.only-solo のとき、単体作品の印（data-solo）の無いマスを隠す", any(".only-solo .shelf-cell:not([data-solo])" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules))
 
 # 作品ページ: ジャンルは、ジャンルのページ（/tag/…。ページがあるジャンル）か、そのジャンルで絞り込んだ検索へのリンク
 import urllib.parse as _up
@@ -1304,7 +1419,7 @@ if os.path.isfile(ii):
     check("索引が正しいJSONで、generated・newDays・genres・items がある", bool(ok_shape), str(iidx)[:80])
     if ok_shape:
         irows, igenres = iidx["items"], iidx["genres"]
-        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v,r,n）だけで、データにある作品・長い文やURLは入っていない", all(isinstance(r, dict) and set(r) <= set("cptdamgivrn") and {"c", "t", "d", "a", "m", "g", "i"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("cptdamgivrn"))][:1])
+        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v,o,r,n）だけで、データにある作品・長い文やURLは入っていない", all(isinstance(r, dict) and set(r) <= set("cptdamgivorn") and {"c", "t", "d", "a", "m", "g", "i"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("cptdamgivorn"))][:1])
         bad_rn = [r["c"] for r in irows if r.get("r") != all_rank_of(r["c"]) or r.get("n") != pop_new.get(r["c"])]
         check("索引の人気順（r: 全体・n: 新着）が、順位のファイルと同じ（分からない作品には無い）", not bad_rn, bad_rn[:3])
         bad_p = [(r["c"], r.get("p")) for r in irows if (r.get("p") or "") != product_code(r["c"])]
@@ -1318,6 +1433,7 @@ if os.path.isfile(ii):
         check("ジャンルの一覧は、重複なし・作品の多い順", len(set(igenres)) == len(igenres) and [sum(1 for r in irows if i in r["g"]) for i in range(len(igenres))] == sorted((sum(1 for r in irows if i in r["g"]) for i in range(len(igenres))), reverse=True))
         check("VRの印（v:1）が、データから判定したVR作品と一致する（VR作品にだけ付く）", all((r.get("v") == 1) == is_vr_raw(valid[r["c"]]) and r.get("v") in (None, 1) for r in irows), [r["c"] for r in irows if (r.get("v") == 1) != is_vr_raw(valid[r["c"]])][:3])
         warn("索引にVR作品が1本以上ある（VRの除外のテストが空振りしていない）", any(r.get("v") == 1 for r in irows))
+        check("単体作品の印（o:1）が、データから判定した単体作品と一致する（ジャンル「単体作品」、ジャンルが無ければ出演者1人）", all((r.get("o") == 1) == is_solo_raw(valid[r["c"]]) and r.get("o") in (None, 1) for r in irows), [r["c"] for r in irows if (r.get("o") == 1) != is_solo_raw(valid[r["c"]])][:3])
         bad_img = [r["c"] for r in irows if r["i"] and not fanza_https(r["i"] if r["i"].startswith("https://") else "https://pics.dmm.co.jp/" + r["i"], ["dmm.co.jp"])]
         check("索引の画像が、FANZA(DMM)の画像に戻せる形（先頭を省いた形）", not bad_img, bad_img[:3])
         check("索引の大きさが 1.5MB 以内（検索ページを開くたびにダウンロードされるため）", os.path.getsize(ii) <= 1500 * 1024, os.path.getsize(ii))
