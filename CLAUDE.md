@@ -23,10 +23,11 @@ GitHub Actions（毎日 0:05 JST。日付が変わった直後）
       → site/src/data/actress_directory.json（Geminiは使わない）
       売れ筋ランキング（FANZAの人気順の上位6本。画面に出すのは先頭3本で、VR作品を隠すとき、次の順位から差し替える）→ site/src/data/ranking.json
       過去作品（FANZAの人気順の上位1.5万本の、発売済みの作品。毎日、その日の上位1,000本を取り直して順位を入れ替え、その下を30回×100本ずつ続きから（約5日で一回り）。
-        新着の人気順（最近30日の発売の、その日の上位500本）も取り、持っていない作品は過去作品に足す。
+        新着の人気順（最近1週間の発売の、その日の上位500本）も取り、持っていない作品は過去作品に足す。
         2回続けて一回りで見かけなかった作品（人気の上位から外れた作品）は外す。Claude がコメントを書いた作品は残す。new_releases.json にある作品は入れない）
       → site/src/data/catalog/YYYY-MM.json（発売月ごと・1作品1行。Geminiは使わない。コメントは無し）・順位は catalog_rank.json・続きの場所は catalog_state.json
-      → site/src/data/popularity.json（新着の人気順と、毎日の更新の作品の全体の人気順の順位）・sale.json（その日に見かけたセール・キャンペーン中の作品）
+      → site/src/data/popularity.json（新着の人気順・前の日の新着の人気順・毎日の更新の作品の全体の人気順の順位）・sale.json（その日に見かけたセール・キャンペーン中の作品）
+      きょうの数字（FANZA動画の日ごとの発売本数7日分・予約受付中の本数）と予約の人気順の上位30本 → site/src/data/today.json（Geminiは使わない）
   → main に commit → Cloudflare Pages が自動ビルド（Astro, 静的サイト）→ 公開
 
 Claude の予約タスク（毎日 0:20 JST。手順は docs/claude-comments.md）
@@ -53,7 +54,7 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | `site/` | サイト本体（Astro 7 / 静的出力）。Cloudflare Pages のビルド対象 |
 | `site/src/config.js` | **サイト名・URL・表示件数の設定はここだけ**（独自ドメイン化もここ）。月・ジャンルのページの最低本数と、ページを作るジャンルの一覧（`TAG_PAGE_GENRES`）もここ。サイト全体のファイル数の上限（`FILE_BUDGET`。Cloudflare Pages の無料プランは2万ファイルまで）と、出演者・メーカーのページ・一覧に並べる最大数（`ENTITY_LIST_LIMIT`・`INDEX_LIST_LIMIT`）もここ |
 | `site/src/lib/plan.js` | **サイトのファイル数の計画**（画面に依存しない。`tests/test_plan.mjs`）。過去作品（カタログ）が増えても2万ファイルをこえないよう、作品ページは「①毎日の更新で載せた作品 ②コメントのある過去作品 ③そのほかの過去作品、同じ中では、過去作品は人気順の順位が上の作品から（`catalog_rank.json`。順位が分からなければ新しい順）」に、残りの枠の数だけ作る（`planPages`）。**作品ページの無い作品は、一覧からFANZAへ直接リンクする**（`itemHref`）。コメントの無い作品ページ・コメントのある作品が1本も無い一覧は noindex で sitemap にも入れない（`itemIndexable`・`listIndexable`。FANZAの情報を並べただけのページを検索エンジンに出さないため）。出演者・メーカーの発売日カレンダー（.ics）は、新作・予約が載っている人だけ（`hasCalendar`） |
-| `site/src/lib/popularity.js` / `site/src/pages/ranking/` | **人気ランキング**（画面に依存しない部品は `tests/test_popularity.mjs`）。`/ranking/`＝新着の人気順（最近30日に発売された作品を、その日の人気順に100本）、`/ranking/all/`＝全体の人気順（発売済みの作品を、その日の人気順に100本）。順位は、過去作品は `catalog_rank.json`、毎日の更新の作品は `popularity.json`（`popAll`・`popNew`）。作品検索（`/search/`）でも「人気順（新着）」「人気順（全体）」で並べ替えられる（索引の `r`・`n`。索引には全体の人気順の上位1,000本を先に入れる）。FANZAの「デイリーランキング」のページそのものはAPIに無く、自動で読むのも禁止なので使わない。トップの「売れ筋TOP3」は、これまでどおり `ranking.json` |
+| `site/src/lib/popularity.js` / `site/src/pages/ranking/` | **人気ランキング**（画面に依存しない部品は `tests/test_popularity.mjs`）。`/ranking/`＝新着の人気順（最近1週間に発売された作品を、その日の人気順に100本）、`/ranking/all/`＝全体の人気順（発売済みの作品を、その日の人気順に100本）。順位は、過去作品は `catalog_rank.json`、毎日の更新の作品は `popularity.json`（`popAll`・`popNew`）。作品検索（`/search/`）でも「人気順（新着）」「人気順（全体）」で並べ替えられる（索引の `r`・`n`。索引には全体の人気順の上位1,000本を先に入れる）。FANZAの「デイリーランキング」のページそのものはAPIに無く、自動で読むのも禁止なので使わない。トップの「売れ筋TOP3」は、これまでどおり `ranking.json` |
 | `site/src/lib/sale.js` / `site/src/pages/sale/` / `site/public/sale.js` | **セール・キャンペーン**（部品は `tests/test_sale.mjs`）。`/sale/`＝キャンペーンごとに、終わりが近い順、人気の高い作品から12本（札は「○%OFF」、価格は「1,884円〜（通常2,692円〜）」）。トップの売れ筋の下に「セール中」（4本）、フッターにリンク。データは `sale.json`（その日の 0:05 ごろの情報なので、「○日の時点」「くわしくはFANZAの作品ページで」を必ず添える）。終わりの時刻（`data-sale-end`）をすぎたキャンペーンは、ブラウザで隠す（`public/sale.js`。ビルドは1日1回のため） |
 | `site/src/lib/items.js` | 並べ替え・日付・sitemap/robots・出演者/メーカーのまとめ・構造化データ（JSON-LD）など、テストできる部品（画面に依存しない） |
 | `site/src/lib/roundups.js` | 週のまとめ記事の部品（週の計算・集計・読み込み・Article構造化データ。画面に依存しない）。集計は `claude_roundups.py` の `week_stats` と同じ数え方（`tests/test_roundups.mjs` で突き合わせている） |
@@ -73,7 +74,7 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | `site/src/data/actresses.json` | **自動更新のデータ。手で編集しない**（出演者のプロフィール。`{actresses:[…], unmatched:{名前:探した日}}`。体型は数字・生年月日は年齢の計算用で、画面に出すのは**年齢だけ**。血液型・趣味・出身地は**保存しない**。名前の完全一致が1人だけのときだけ採用し、推測で選ばない） |
 | `site/src/data/actress_directory.json` | **自動更新のデータ。手で編集しない**（女優検索の名簿。FANZA公式の出演者検索の一覧から、`{cursor, cycle_done, cycle_start, prev_cycle_start, rows:[…]}`。1人1行・id の順。持つのは id・名前・読み・顔写真のファイル名・体型・身長・生年月日・最後に見かけた日（seen）だけ。約5日の一回りを2回続けて見かけなかった人（FANZAから消えた・数字が消された人）は外す。体型も身長も生年月日も無い人は入れない。18歳未満・80歳をこえる生年月日は捨てる） |
 | `site/src/data/catalog/YYYY-MM.json` | **過去作品（カタログ）。自動更新のデータ。手で編集しない**（`get_new_releases.py` の `update_catalog`。発売月ごとのファイル・1作品1行。作品の形は `new_releases.json` と同じで、コメントは無し（`comment_kind: "none"`・空）か、あとから Claude が書いたもの（`"claude"`）だけ。サンプル画像は8枚まで。まだ無くてもビルドは止まらない。同じ作品が `new_releases.json` にあれば、そちらを使う（毎日の更新が、過去作品から外す）。続きの場所は `catalog_state.json`（`{cursor, cycle, cycle_done, limit, items}`）。作品ごとの人気順の順位は `catalog_rank.json`（`{cid: [順位, 最後に見かけた一回りの番号]}`・1作品1行。毎日書きかわるのは、こちらの小さな行だけ）） |
-| `site/src/data/popularity.json` / `site/src/data/sale.json` | **自動更新のデータ。手で編集しない**。`popularity.json`＝`{date, new: {cid: 新着の人気順の順位}, all: {毎日の更新の作品の cid: 全体の人気順の順位}}`（1作品1行。取れなかった日は前の日のまま）。`sale.json`＝`{date, campaigns: [{title, begin, end}], items: [{c, k: キャンペーンの番号, p: 価格, l: 定価}]}`（FANZA公式のAPIの `campaign`・`prices` から、その日に見かけたセール中の作品。今日が期間に入っているキャンペーンだけ。値引きが確かめられないときは価格を入れない） |
+| `site/src/data/popularity.json` / `site/src/data/sale.json` | **自動更新のデータ。手で編集しない**。`popularity.json`＝`{date, new: {cid: 新着の人気順の順位}, all: {毎日の更新の作品の cid: 全体の人気順の順位}, prev_date, prev: {前の日の新着の人気順（上位200本）}}`（1作品1行。取れなかった日は前の日のまま）。`today.json`＝`{date, daily: [{d, n: その日の発売本数}×7], upcoming_total, upcoming: [{c, t, d, a, m, i, u, r, v}×30（予約の人気順）], prev_upcoming: [前の日の予約の人気順の作品ID]}`。`sale.json`＝`{date, campaigns: [{title, begin, end}], items: [{c, k: キャンペーンの番号, p: 価格, l: 定価}]}`（FANZA公式のAPIの `campaign`・`prices` から、その日に見かけたセール中の作品。今日が期間に入っているキャンペーンだけ。値引きが確かめられないときは価格を入れない） |
 | `site/src/data/ranking.json` | **自動更新のデータ。手で編集しない**（売れ筋ランキング上位6本。各行の `vr` は、取得のときにジャンルなどから判定した「VR作品か」。取得に失敗したら前回のものを残す） |
 | `site/src/data/roundups.json` | **Claude が毎週書き足す記事のデータ。手で編集しない**（`claude_roundups.py apply` だけが書く。新しい週が先頭） |
 | `tests/` | テスト一式。`fixtures/` は固定データ（本番データには依存しない） |

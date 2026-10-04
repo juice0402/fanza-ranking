@@ -249,7 +249,26 @@ else:
     if popj is not None:
         check("popularity.json: 日付（空か YYYY-MM-DD）・new と all が {cid: 順位 1〜50000} の形・日付が未来でない",
               isinstance(popj, dict) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(popj.get("date", ""))) is not None and str(popj.get("date", "")) <= jst_tomorrow
-              and all(isinstance(popj.get(k), dict) and all(_rank_ok(v) for v in popj[k].values()) for k in ("new", "all")), str(popj)[:80])
+              and all(isinstance(popj.get(k), dict) and all(_rank_ok(v) for v in popj[k].values()) for k in ("new", "all"))
+              and isinstance(popj.get("prev", {}), dict) and all(_rank_ok(v) for v in popj.get("prev", {}).values()) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(popj.get("prev_date", ""))) is not None, str(popj)[:80])
+TODAY_JSON = os.path.join(ROOT, "site", "src", "data", "today.json")
+if not os.path.exists(TODAY_JSON):
+    print("  （today.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        tdj = json.load(open(TODAY_JSON, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        tdj = None
+        check("today.json を読める", False, str(e))
+    if tdj is not None:
+        _day = lambda v: re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(v or "")) is not None
+        check("today.json: 日付・日ごとの発売本数（d・n）・予約受付中の本数・予約の人気順（c・t・d・r。リンクと画像は FANZA の https）・前の日の作品ID",
+              isinstance(tdj, dict) and _day(tdj.get("date")) and str(tdj.get("date")) <= jst_tomorrow
+              and isinstance(tdj.get("daily"), list) and all(isinstance(d, dict) and _day(d.get("d")) and isinstance(d.get("n"), int) and d["n"] >= 0 for d in tdj["daily"])
+              and isinstance(tdj.get("upcoming_total"), int) and isinstance(tdj.get("upcoming"), list)
+              and all(isinstance(r, dict) and str(r.get("c", "")).strip() and str(r.get("t", "")).strip() and _day(r.get("d")) and _rank_ok(r.get("r"))
+                      and (not r.get("u") or _fanza_https(r["u"], ["fanza.co.jp", "dmm.co.jp"])) and (not r.get("i") or _fanza_https(r["i"], ["dmm.co.jp"])) for r in tdj["upcoming"])
+              and isinstance(tdj.get("prev_upcoming", []), list), str(tdj)[:80])
 if not os.path.exists(SALE):
     print("  （sale.json はまだありません。毎日の更新で作られます）")
 else:

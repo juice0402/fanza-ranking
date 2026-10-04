@@ -1104,7 +1104,7 @@ check("ジャンルのページに、過激な行為・未成年を連想させ�
 # 人気ランキング（/ranking/ 新着の人気順・/ranking/all/ 全体の人気順）
 print("\n■ 人気ランキング")
 JST_DAY = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime("%Y-%m-%d")
-_from = (datetime.date.fromisoformat(JST_DAY) - datetime.timedelta(days=30)).isoformat()
+_from = (datetime.date.fromisoformat(JST_DAY) - datetime.timedelta(days=7)).isoformat()  # 新着は1週間（lib/popularity.js の NEW_RANK_DAYS）
 want_new = sorted((c for c in everything if c in pop_new and _from <= str(everything[c]["date"])[:10] <= JST_DAY),
                   key=lambda c: (pop_new[c], -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:100]
 want_all = sorted((c for c in everything if all_rank_of(c) and str(everything[c]["date"])[:10] <= JST_DAY),

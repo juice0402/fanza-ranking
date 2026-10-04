@@ -19,6 +19,7 @@ GitHub Actions から毎日自動で実行されます。
 保存先（過去作品）: site/src/data/catalog/YYYY-MM.json … FANZAの人気順の上位（CATALOG_LIMIT 本まで）の、発売済みの作品。
   毎日、その日の上位1,000本を取り直し、その下を続きから3,000本ずつ。順位は catalog_rank.json、続きの場所は catalog_state.json。
 保存先（人気順）: site/src/data/popularity.json … 新着の人気順（最近30日の発売の、その日の上位500本）と、毎日の更新の作品の全体の人気順の順位
+保存先（きょうの数字）: site/src/data/today.json … FANZA動画の日ごとの発売本数（7日分）・予約受付中の本数・予約の人気順の上位30本
 保存先（セール）: site/src/data/sale.json … その日に見かけた、セール・キャンペーン中の作品（キャンペーンの名前・期間・価格。FANZA公式のAPIから）
   コメントは無し（"none"）か、Claude が書いたもの（"claude"）
 
@@ -90,9 +91,15 @@ CATALOG_MAX_OFFSET = 50000  # 一覧の offset の上限（APIの決まり。人
 CATALOG_LIMIT = min(CATALOG_MAX_OFFSET, int(os.environ.get("CATALOG_LIMIT", "15000")))
 # 新着の人気順（最近 NEW_RANK_DAYS 日に発売された作品の、その日の人気順の上位 NEW_RANK_CALLS×100本）。「新着の人気順」のランキングに使う
 NEW_RANK_CALLS = int(os.environ.get("NEW_RANK_CALLS", "5"))
-NEW_RANK_DAYS = 30
+NEW_RANK_DAYS = 7  # 運営者の希望で1週間（毎日たくさん発売されるので、30日では新着らしさが薄い。2026-10-04 夜）
+POPULAR_PREV_KEEP = 200  # 前の日の新着の人気順は、上位このくらいまで残す（「急上昇」を見つける用）
 POPULARITY_PATH = os.environ.get("POPULARITY_PATH", os.path.join(os.path.dirname(DATA_PATH), "popularity.json"))  # 新着の人気順と、毎日の更新の作品の全体の順位
 SALE_PATH = os.environ.get("SALE_PATH", os.path.join(os.path.dirname(DATA_PATH), "sale.json"))  # その日に見かけたセール・キャンペーン（FANZA公式のAPIの campaign・prices）
+# きょうの数字・予約の人気（トップの「きょうの数字」「きょうの話題」に使う。Gemini は使わない）
+TODAY_PATH = os.environ.get("TODAY_PATH", os.path.join(os.path.dirname(DATA_PATH), "today.json"))
+TODAY_STATS = os.environ.get("TODAY_STATS", "1") != "0"
+DAILY_COUNT_DAYS = 7     # 発売本数を数える日数（きょうを含めて、さかのぼる）
+UPCOMING_POPULAR = 30    # 予約の人気順を、上位何本まで残すか
 CATALOG_PRUNE_MAX_SHARE = 0.2  # 一回りで外す作品が、過去作品のこの割合をこえたら、念のため外さない（APIの答えがおかしかったときに、まとめて消さないため）
 CATALOG_SAMPLE_IMAGES = 8   # 過去作品のサンプル画像は8枚まで（作品ページに出すのは8枚まで。ファイルを小さくする）
 CATALOG_FILE = re.compile(r"^\d{4}-\d{2}\.json$")
@@ -1147,8 +1154,15 @@ def load_catalog(today_str):
         popular = read_json_file(POPULARITY_PATH)
     except ValueError:
         popular = None  # 人気順のファイルは、毎日まるごと作り直すので、壊れていても読み直さずに作り直す
-    old_all = popular.get("all") if isinstance(popular, dict) and isinstance(popular.get("all"), dict) else {}
-    state["popular_all"] = {str(c): v for c, v in old_all.items() if isinstance(v, int) and not isinstance(v, bool) and 1 <= v <= CATALOG_MAX_OFFSET}
+    popular = popular if isinstance(popular, dict) else {}
+    rank_map = lambda d: {str(c): v for c, v in (d.items() if isinstance(d, dict) else []) if isinstance(v, int) and not isinstance(v, bool) and 1 <= v <= CATALOG_MAX_OFFSET}
+    state["popular_all"] = rank_map(popular.get("all"))
+    # 前の日の新着の人気順（「急上昇」を見つける用）。同じ日に2回動いたときは、前の日のものをそのまま残す
+    if day_key(popular.get("date")) == today_str:
+        state["popular_prev"], state["popular_prev_date"] = rank_map(popular.get("prev")), day_key(popular.get("prev_date"))
+    else:
+        state["popular_prev"], state["popular_prev_date"] = rank_map(popular.get("new")), day_key(popular.get("date"))
+    state["popular_prev"] = dict(sorted(state["popular_prev"].items(), key=lambda kv: kv[1])[:POPULAR_PREV_KEEP])
     head = head if isinstance(head, dict) else {}
     try:
         cur, cycle = int(head.get("cursor", 0)), int(head.get("cycle", 1))
@@ -1213,7 +1227,8 @@ def save_catalog(state):
         def lines(mapping):
             return ",\n".join(f"{json.dumps(c)}:{r}" for c, r in sorted(mapping.items(), key=lambda kv: (kv[1], kv[0])))
         text = (f'{{"date":{json.dumps(state.get("popular_date", ""))},\n"new":{{\n{lines(state["popular_new"])}\n}},\n'
-                f'"all":{{\n{lines(state["popular_all"])}\n}}}}\n')
+                f'"all":{{\n{lines(state["popular_all"])}\n}},\n'
+                f'"prev_date":{json.dumps(state.get("popular_prev_date", ""))},\n"prev":{{\n{lines(state.get("popular_prev", {}))}\n}}}}\n')
         with open(POPULARITY_PATH + ".tmp", "w", encoding="utf-8") as f:
             f.write(text)
         os.replace(POPULARITY_PATH + ".tmp", POPULARITY_PATH)
@@ -1392,6 +1407,80 @@ def update_catalog(state, archive, today, top_calls=None, calls=None, new_calls=
         state["sales_date"] = today_str
     stats["sales"] = len(state.get("sales", {}))
     return stats
+
+
+# ------------------------------------------------------------------
+# きょうの数字（FANZA全体の、日ごとの発売本数・予約受付中の本数）と、予約の人気順（トップの「きょうの数字」「きょうの話題」用）
+# ------------------------------------------------------------------
+def call_item_count(extra):
+    """ItemList の該当本数（total_count）。1本だけ取って、本数だけを見る。読めなければ RuntimeError"""
+    params = {"site": "FANZA", "service": "digital", "floor": "videoa", "hits": 1}
+    params.update(extra)
+    try:
+        return int(call_api("ItemList", params).get("total_count"))
+    except (TypeError, ValueError) as e:
+        raise RuntimeError(f"本数を読めませんでした: {e}") from e
+
+
+def compact_item(p, rank):
+    """予約の人気順の1本（画面に出す分だけ）: c 作品ID / t タイトル / d 発売日 / a 出演者 / m メーカー / i 画像 / u FANZAのリンク / r 順位 / v VRなら1"""
+    row = {"c": p["cid"], "t": p["title"], "d": day_key(p["date"]), "a": p["actress"][:4], "m": "" if p["maker"] == "不明" else p["maker"],
+           "i": safe_https_url(p["image_url"], IMAGE_HOSTS), "u": safe_https_url(p["url"], LIST_HOSTS), "r": rank}
+    if is_vr_item(p):
+        row["v"] = 1
+    return row
+
+
+def load_today():
+    """前の日の today.json（無い・読めないときは {}）"""
+    try:
+        old = read_json_file(TODAY_PATH)
+    except ValueError:
+        return {}
+    return old if isinstance(old, dict) else {}
+
+
+def update_today_stats(today, old=None):
+    """きょうの数字と、予約の人気順を取る。{"date", "daily": [{d, n}], "upcoming_total", "upcoming": [...], "prev_upcoming": [cid]} を返す。
+    ・daily: きょうを含めて DAILY_COUNT_DAYS 日の、FANZA動画の発売本数（日ごと。古い日から）
+    ・upcoming_total: あす以降に発売される（予約受付中の）本数
+    ・upcoming: 予約の人気順の上位 UPCOMING_POPULAR 本（その日の人気順）
+    ・prev_upcoming: 前の日の予約の人気順の作品ID（「予約に新しく入った人気作」を見つける用。同じ日に2回動いたときは、前の日のまま）
+    取れなかったら RuntimeError（ほかの更新は止めない。ファイルは前の日のまま）"""
+    old = old or {}
+    today_str = today.strftime("%Y-%m-%d")
+    daily = []
+    for k in range(DAILY_COUNT_DAYS - 1, -1, -1):
+        day = today - timedelta(days=k)
+        daily.append({"d": day.strftime("%Y-%m-%d"), "n": call_item_count({"gte_date": iso(day), "lte_date": iso(day.replace(hour=23, minute=59, second=59))})})
+        time.sleep(DMM_INTERVAL_SEC)
+    tomorrow = today + timedelta(days=1)
+    result = call_api("ItemList", {"site": "FANZA", "service": "digital", "floor": "videoa", "sort": "rank", "hits": 100, "gte_date": iso(tomorrow)})
+    try:
+        upcoming_total = int(result.get("total_count"))
+    except (TypeError, ValueError) as e:
+        raise RuntimeError(f"予約の本数を読めませんでした: {e}") from e
+    upcoming = []
+    for pos, p in enumerate(map(parse_api_item, result.get("items") or []), 1):
+        if p and day_key(p["date"]) > today_str:
+            upcoming.append(compact_item(p, pos))
+        if len(upcoming) >= UPCOMING_POPULAR:
+            break
+    if day_key(old.get("date")) == today_str:
+        prev = old.get("prev_upcoming") if isinstance(old.get("prev_upcoming"), list) else []
+    else:
+        prev = [r.get("c") for r in old.get("upcoming") or [] if isinstance(r, dict)]
+    return {"date": today_str, "daily": daily, "upcoming_total": upcoming_total, "upcoming": upcoming, "prev_upcoming": [c for c in prev if isinstance(c, str)]}
+
+
+def save_today(data):
+    """today.json を書く（予約の人気順は1本1行）"""
+    rows = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in data["upcoming"])
+    text = (f'{{"date":{json.dumps(data["date"])},\n"daily":{json.dumps(data["daily"], separators=(",", ":"))},\n'
+            f'"upcoming_total":{data["upcoming_total"]},\n"upcoming":[\n{rows}\n],\n"prev_upcoming":{json.dumps(data["prev_upcoming"])}}}\n')
+    with open(TODAY_PATH + ".tmp", "w", encoding="utf-8") as f:
+        f.write(text)
+    os.replace(TODAY_PATH + ".tmp", TODAY_PATH)
 
 
 # ------------------------------------------------------------------
@@ -1601,6 +1690,16 @@ def main():
         print(f"🔥 新着の人気順: {len(catalog.get('popular_new', {}))}本" + ("" if catalog.get("popular_date") == today_str else "（取れなかったので、前の日のまま）")
               + f" / セール中の作品: {catalog_result.get('sales', 0)}本")
 
+    # ---- きょうの数字・予約の人気順（トップの「きょうの数字」「きょうの話題」用。失敗しても、ほかの更新は止めない）----
+    def today_stage():
+        data = update_today_stats(today, load_today())
+        save_today(data)
+        return data
+
+    today_result = run_stage("きょうの数字の取得", today_stage) if TODAY_STATS else None
+    if today_result:
+        print(f"📊 きょうの数字: きょうの発売 {today_result['daily'][-1]['n']}本 / 予約受付中 {today_result['upcoming_total']}本 / 予約の人気順 {len(today_result['upcoming'])}本")
+
     summary = [
         "### ✅ FANZAデータの取り直しの結果" if refresh_only else "### ✅ FANZA更新の結果",
         "",
@@ -1637,6 +1736,10 @@ def main():
                        + f" / セール中の作品: {catalog_result.get('sales', 0)}本")
     elif catalog_on and catalog is None:
         summary.append("- 過去作品: ファイル（site/src/data/catalog）が壊れているため、更新をスキップ（ファイルは変更していません）")
+    if today_result:
+        summary.append(f"- きょうの数字: きょうの発売 {today_result['daily'][-1]['n']}本・この{DAILY_COUNT_DAYS}日で {sum(d['n'] for d in today_result['daily'])}本・予約受付中 {today_result['upcoming_total']}本・予約の人気順 {len(today_result['upcoming'])}本")
+    elif TODAY_STATS:
+        summary.append("- きょうの数字: 取得できず（前の日のまま）")
     write_step_summary(summary)
 
 
