@@ -59,7 +59,7 @@ def make_movie(cid, pc=1, sp=1):
     return {f"size_{w}_{h}": f"{base}/size={w}_{h}/affi_id=x-990/" for w, h in ((476, 306), (560, 360), (644, 414), (720, 480))} | {"pc_flag": pc, "sp_flag": sp}
 
 
-def make_api_item(cid, days_from_today, actress=("テスト花子",), maker="テストメーカー", title=None, movie=True):
+def make_api_item(cid, days_from_today, actress=("テスト花子",), maker="テストメーカー", title=None, movie=True, genres=("テストジャンル",)):
     d = (TODAY + timedelta(days=days_from_today)).strftime("%Y-%m-%d 00:00:00")
     for n in actress:
         ACTRESS_NAMES[str(fake_actress_id(n))] = n
@@ -75,7 +75,7 @@ def make_api_item(cid, days_from_today, actress=("テスト花子",), maker="テ
         "iteminfo": {
             "maker": [{"id": 1, "name": maker}],
             "actress": [{"id": fake_actress_id(n), "name": n, "ruby": "てすと"} for n in actress],
-            "genre": [{"id": 1, "name": "テストジャンル"}],
+            "genre": [{"id": 1, "name": g} for g in genres],
         },
     }
     if movie:
@@ -128,7 +128,7 @@ class Env:
         self.cid_mode = "ok"            # 品番指定の取り直し: ok / fail
         self.actress_mode = "ok"        # 出演者の検索: ok / fail
         self.rank_mode = "ok"           # 売れ筋ランキング: ok / fail
-        self.rank_items = None          # 売れ筋ランキングの応答（None なら標準の3本）
+        self.rank_items = None          # 売れ筋ランキングの応答（None なら標準の6本。2位はジャンルがVR・3位は題名がVR・ほかはVRでない）
         self.actress_total_extra = 0    # 名前での出演者検索に「該当は全部で、返した一覧よりこれだけ多い」と答える（一覧が途中で切れた場合）
 
     def urlopen(self, req, timeout=None):
@@ -181,7 +181,12 @@ class Env:
         if q.get("sort", [""])[0] == "rank":
             if self.rank_mode == "fail":
                 raise urllib.error.URLError("rank api down")
-            rows = self.rank_items if self.rank_items is not None else [make_api_item(f"rank{i}", -5, actress=(f"ランク花子{i}",)) for i in range(1, 4)]
+            rows = self.rank_items if self.rank_items is not None else [
+                make_api_item(f"rank{i}", -5, actress=(f"ランク花子{i}",),
+                              title=("【VR】売れ筋" if i == 3 else f"売れ筋 {i}"),
+                              genres=(("ハイクオリティVR",) if i == 2 else ("テストジャンル",)))
+                for i in range(1, 7)
+            ]
             return FakeResponse({"result": {"status": 200, "items": rows[: int(q["hits"][0])]}})
         gte = q.get("gte_date", [""])[0]
         if gte and gte[:10] > TODAY.strftime("%Y-%m-%d"):  # 予約の取得
@@ -793,7 +798,7 @@ check("URL: DMMのhttpsだけ通す（httpはhttpsに直す）", m_p.safe_https_
 check("URL: ブラウザと解釈がずれるもの（バックスラッシュ・@つき・空白）は通さない", all(m_p.safe_https_url(u, H) == "" for u in ["https://evil.com\\@dmm.co.jp/x", "https://dmm.co.jp:x@evil.com/", "https://u:p@pics.dmm.co.jp/a", "https://pics.dmm.co.jp/a b.jpg", "javascript:alert(1)"]))
 check("生年月日: 実在しない日付（2月30日・13月）は使わない", m_p.valid_birthday("1999-02-30", TODAY_STR) == "" and m_p.valid_birthday("1999-13-45", TODAY_STR) == "" and m_p.valid_birthday("1999-02-28", TODAY_STR) == "1999-02-28")
 
-print("\n■ 売れ筋ランキング（FANZAの人気順の上位3本）")
+print("\n■ 売れ筋ランキング（FANZAの人気順の上位6本。画面に出すのは先頭3本で、VR作品を隠すときの差し替え用に多めに取る）")
 folder = scenario_dir("ranking")
 path_k = write_archive(folder, [seed_item("x", -2, ["A"])])
 env_k = Env()
@@ -801,10 +806,15 @@ m_k, code_k, out_k = run_with(path_k, env_k, "--refresh-only")
 rank_path = os.path.join(folder, "ranking.json")
 rank = json.load(open(rank_path, encoding="utf-8"))
 check("正常終了(0)・ranking.json が保存される", code_k == 0 and os.path.exists(rank_path), out_k[-300:])
-check("日付と3本が入り、順位は 1・2・3", rank["date"] == TODAY_STR and [x["rank"] for x in rank["items"]] == [1, 2, 3], rank)
-check("1本ごとに、品番・題名・アフィリエイトのURL・画像・発売日・メーカー・出演者がある", all(set(x) == {"rank", "cid", "title", "url", "image_url", "date", "maker", "actress"} and x["url"].startswith("https://al.fanza.co.jp/") and re.match(r"^\d{4}-\d{2}-\d{2}$", x["date"]) for x in rank["items"]), rank["items"][0])
+check("日付と6本が入り、順位は 1〜6", rank["date"] == TODAY_STR and [x["rank"] for x in rank["items"]] == [1, 2, 3, 4, 5, 6], rank)
+check("VR作品には vr=true（2位はジャンルがVR・3位は題名がVR）、それ以外は false", [x["vr"] for x in rank["items"]] == [False, True, True, False, False, False], [x["vr"] for x in rank["items"]])
+check("VR判定（is_vr_item）: 題名の【…VR…】・形式タグ・ジャンル（VR専用・ハイクオリティVR・8KVR）のどれか1つでもあればVR。題名に VR の文字があるだけ（括弧なし）では、VRにしない",
+      m_k.is_vr_item({"title": "【VR】作品"}) and m_k.is_vr_item({"title": "【8KVR】作品"}) and m_k.is_vr_item({"title": "作品", "tags": ["VR"]})
+      and m_k.is_vr_item({"title": "作品", "genres": ["VR専用"]}) and m_k.is_vr_item({"title": "作品", "genres": ["ハイクオリティVR"]}) and m_k.is_vr_item({"title": "作品", "genres": ["8KVR"]})
+      and not m_k.is_vr_item({"title": "作品", "genres": ["巨乳"], "tags": ["8K"]}) and not m_k.is_vr_item({"title": "VRの話をする作品"}) and not m_k.is_vr_item({}))
+check("1本ごとに、品番・題名・アフィリエイトのURL・画像・発売日・メーカー・出演者がある", all(set(x) == {"rank", "cid", "title", "url", "image_url", "date", "maker", "actress", "vr"} and x["url"].startswith("https://al.fanza.co.jp/") and re.match(r"^\d{4}-\d{2}-\d{2}$", x["date"]) for x in rank["items"]), rank["items"][0])
 rank_calls = [q for ep, q in env_k.queries if ep == "ItemList" and q.get("sort") == "rank"]
-check("人気順（sort=rank）で3本だけ頼む（日付の絞り込みなし）", len(rank_calls) == 1 and rank_calls[0].get("hits") == "3" and "gte_date" not in rank_calls[0], rank_calls)
+check("人気順（sort=rank）で6本だけ頼む（日付の絞り込みなし）", len(rank_calls) == 1 and rank_calls[0].get("hits") == "6" and "gte_date" not in rank_calls[0], rank_calls)
 check("ランキングに出た出演者も、出演者データに入る", "ランク花子1" in {a["name"] for a in json.load(open(os.path.join(folder, "actresses.json"), encoding="utf-8"))["actresses"]})
 for mode, label in (("fail", "取得に失敗"), ("empty", "空の応答")):
     prev = open(rank_path, "rb").read()
