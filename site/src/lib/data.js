@@ -9,7 +9,8 @@ import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizePr
 import { hasCalendar, planPages } from './plan.js';
 import { bestRank, catalogAllRank, normalizePopularity } from './popularity.js';
 import { normalizeSale } from './sale.js';
-import { normalizeToday } from './topics.js';
+import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
+import { TAG_PAGE_GENRES } from '../config.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
@@ -60,6 +61,9 @@ export const monthGroups = groupByMonth(curated);
 export const monthByKey = monthPathByKey(monthGroups);
 export const tagGroups = groupByTag(curated);
 export const tagByName = indexByName(tagGroups);
+// 中身のジャンル（トップの「人気のジャンル」と、セールの特集の「多いジャンル」で数える）: ジャンルのページを作るジャンルから、ベスト・総集編を除いたもの。
+// ハイビジョン・単体作品のような形式のジャンルは、いつも上に来てしまうので数えない
+export const contentGenres = new Set(TAG_PAGE_GENRES.filter((g) => !HOT_GENRE_SKIP.includes(g)));
 export const factsContext = buildFactsContext(all);
 
 // 週のまとめ記事（Claudeが毎週月曜に書く。まだ1本も無いときは空）

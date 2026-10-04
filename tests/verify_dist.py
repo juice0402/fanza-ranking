@@ -105,6 +105,7 @@ def rel(p):
 
 def page_file(url_path):
     """URLのパス（/item/abc/）に対応する、dist内のファイルを返す"""
+    url_path = url_path.split("#")[0]  # ページの中の見出しへのリンク（/sale/#sale-0）は、ページのファイルで調べる
     rel = url_path.lstrip("/")
     if url_path.endswith("/") or rel == "":
         return os.path.join(DIST, rel, "index.html")
@@ -667,7 +668,7 @@ else:
 check("トップに「きょうの数字」（発売本数の欄）が無い", 'id="stats"' not in home_html and "FANZA動画（ビデオ）全体の本数" not in home_html)
 
 # きょうの話題: 種類ごとの札・リンク先（作品ページ・女優のページ・まとめ記事・セールのページ・FANZA）
-TOPIC_LABELS = {"rise": "急上昇", "today": "きょう発売", "upcoming": "予約で人気", "entry": "予約に初登場", "debut": "デビュー作", "actress": "人気の女優", "weekly": "週のまとめ", "sale": "もうすぐ終わる"}
+TOPIC_LABELS = {"rise": "急上昇", "today": "きょう発売", "upcoming": "予約で人気", "entry": "予約に初登場", "debut": "デビュー作", "actress": "人気の女優", "weekly": "週のまとめ", "salenew": "セール開始", "sale": "もうすぐ終わる"}
 # 話題の作品がVR作品のときは、すぐ後ろに、同じ種類のVRでない次の作品（.topic-alt。「VR作品を隠す」のときだけ出る）が付くことがある
 topic_all = [(m.group(1), bool(m.group(2)), m.group(3), m.group(4)) for m in re.finditer(r'<li class="topic topic-([a-z]+)( topic-alt)?"([^>]*)>(.*?)</li>', home_html, re.S)]
 topic_cells = [(k, a, inner) for k, alt, a, inner in topic_all if not alt]
@@ -681,20 +682,23 @@ for kind, attrs, inner in [(k, a, inner) for k, _, a, inner in topic_all]:
     if kind not in TOPIC_LABELS or not label or label.group(1) != TOPIC_LABELS[kind]:
         bad_topic.append((kind, "札"))
     elif href.startswith("/"):
-        if not os.path.isfile(page_file(href)) or (kind not in ("actress", "weekly", "sale") and not href.startswith("/item/")):
+        if not os.path.isfile(page_file(href)) or (kind not in ("actress", "weekly", "sale", "salenew") and not href.startswith("/item/")):
             bad_topic.append((kind, href))
-    elif not (fanza_https(href, FANZA_LINK) and SPONSORED <= set(a_.get("rel", "").split()) and a_.get("target") == "_blank") or kind in ("weekly", "sale"):
+        elif kind in ("sale", "salenew") and not re.fullmatch(r"/sale/#sale-\d+", href):  # セールの話題は、セールのページの、その特集の見出しへ
+            bad_topic.append((kind, href))
+    elif not (fanza_https(href, FANZA_LINK) and SPONSORED <= set(a_.get("rel", "").split()) and a_.get("target") == "_blank") or kind in ("weekly", "sale", "salenew"):
         bad_topic.append((kind, href))
     if href in top_hrefs[:3]:
         bad_topic.append((kind, "TOP3と同じ作品"))
-    if ("data-sale-end" in attrs) != (kind == "sale") or (kind == "sale" and not re.search(r'data-sale-end="\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:59\+09:00"', attrs)):
+    if ("data-sale-end" in attrs) != (kind in ("sale", "salenew")) or (kind in ("sale", "salenew") and not re.search(r'data-sale-end="\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:59\+09:00"', attrs)):
         bad_topic.append((kind, "セールの終わり"))
 check(f"きょうの話題（{len(topic_cells)}件。8件まで）: 種類ごとの札と、リンク先（サイトの中はあるページ・外はFANZAで広告のリンクの属性つき）。TOP3の作品は出さない",
       len(topic_cells) <= 8 and not bad_topic and (not topic_cells or 'id="topics"' in home_html), bad_topic[:3])
-topic_text = " ".join(re.sub(r"<[^>]+>", "", inner) for _, _, _, inner in topic_all)
+# セールの話題の見出しは、FANZAの特集の名前そのまま（「今月のおすすめ30％OFF」など）なので、評価の言葉の検査からは外す
+topic_text = " ".join(re.sub(r"<[^>]+>", "", re.sub(r'<span class="topic-title">.*?</span>', "", inner, flags=re.S) if k in ("sale", "salenew") else inner) for k, _, _, inner in topic_all)
 check("きょうの話題: 評価の言葉を書かない（データで決まった形の文だけ）", not re.search(r"おすすめ|話題作|必見|最高傑作|大人気|神作", topic_text))
-if any(k == "sale" for k, _, _ in topic_cells):
-    check("きょうの話題に、もうすぐ終わるセールがあるときは、終わったら隠すスクリプト（sale.js）がある", 'src="/sale.js"' in home_html)
+if any(k in ("sale", "salenew") for k, _, _ in topic_cells):
+    check("きょうの話題に、セール開始・もうすぐ終わるセールがあるときは、終わったら隠すスクリプト（sale.js）がある", 'src="/sale.js"' in home_html)
 warn("きょうの話題が、トップにある（データがそろっていれば出る）", bool(topic_cells) or not pop_new)
 
 # 女優の顔写真と誕生日の月日（site/src/lib/data.js の faceOfName・birthOfName と同じ決まり）: プロフィール（同じ名前で id が1つの人）を先に、
@@ -1395,18 +1399,120 @@ except (OSError, ValueError):
 _camps = _sale.get("campaigns") if isinstance(_sale, dict) and isinstance(_sale.get("campaigns"), list) else []
 _sale_rows = [r for r in (_sale.get("items") if isinstance(_sale, dict) and isinstance(_sale.get("items"), list) else []) if isinstance(r, dict) and isinstance(r.get("k"), int) and 0 <= r["k"] < len(_camps)]
 want_camps = sorted({r["k"] for r in _sale_rows if r.get("c") in everything and str(_camps[r["k"]].get("title", "")).strip() and str(_camps[r["k"]].get("end", ""))[:10] >= JST_DAY})
+# 特集（キャンペーン）ごとの作品（このサイトの作品だけ。作品は、いちばん早く終わるキャンペーン1つに入っている）
+_camp_works = {k: [everything[r["c"]] for r in _sale_rows if r["k"] == k and r.get("c") in everything] for k in want_camps}
+_camp_order = sorted(want_camps, key=lambda k: (str(_camps[k]["end"]), -len(_camp_works[k]), str(_camps[k]["title"])))
+_content_genres = set(_tag_genres) - {"ベスト・総集編"}
+
+
+def _top_counts(names, limit=3, minimum=1):
+    """多い順に3つ（同数なら名前の順。site/src/lib/sale.js の topCounts と同じ）"""
+    counts = {}
+    for n_ in names:
+        counts[n_] = counts.get(n_, 0) + 1
+    return [(n_, c_) for n_, c_ in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])) if c_ >= minimum][:limit]
+
+
+def _cast(x):
+    return [a for a in (x.get("actress") or []) if a]
+
+
+def camp_summary(k):
+    """特集の中身（site/src/lib/sale.js の campaignSummary と同じ数え方）"""
+    works_ = _camp_works[k]
+    makers_ = _top_counts([str(x.get("maker") or "") for x in works_ if str(x.get("maker") or "") not in ("", "不明")])
+    actresses_ = _top_counts([a for x in works_ if len(_cast(x)) <= 4 for a in dict.fromkeys(_cast(x))], minimum=2)
+    genres_ = _top_counts([g for x in works_ for g in set(x.get("genres") or []) if g in _content_genres])
+    return makers_, actresses_, genres_
+
+
+def end_iso(end):
+    return f"{end[:10]}T{end[11:16] if len(end) >= 16 else '23:59'}:59+09:00"
+
+
+def end_label(end):
+    return f"{int(end[5:7])}月{int(end[8:10])}日" + (f" {int(end[11:13])}:{end[14:16]}" if len(end) >= 16 else "")
+
+
+def soon_tag(end):
+    tomorrow = (datetime.date.fromisoformat(JST_DAY) + datetime.timedelta(days=1)).isoformat()
+    return "きょうまで" if end[:10] == JST_DAY else "あすまで" if end[:10] == tomorrow else ""
+
+
+strip_tags = lambda h: htmllib.unescape(re.sub(r"<[^>]+>", "", h))
 sale_page = os.path.join(DIST, "sale", "index.html")
 check("セール・キャンペーンのページ（/sale/）と、終わったものを隠すスクリプト（sale.js）がある", os.path.isfile(sale_page) and os.path.isfile(os.path.join(DIST, "sale.js")))
 if os.path.isfile(sale_page):
     sh = read(sale_page)
-    heads = re.findall(r'<h2 id="sale-\d+" class="section-title">(.*?)</h2>', sh)
+    head_ids = re.findall(r'<h2 id="sale-(\d+)" class="section-title">(.*?)</h2>', sh)
+    heads = [t for _, t in head_ids]
     check(f"キャンペーンのまとまりの数（{len(heads)}）が、データ（今日より前に終わったものを除く・このサイトの作品があるもの）と同じ", len(heads) == len(want_camps), (len(heads), len(want_camps)))
     if heads:
         check("セールのページに「○日の時点」「くわしくはFANZAで確かめて」の注意書き・終わりの時刻の印（data-sale-end）・sale.js がある", "時点" in sh and "FANZAの作品ページで確かめてください" in sh and "data-sale-end=" in sh and 'src="/sale.js"' in sh)
         bad_badge = [b for b in re.findall(r'<span class="rank-badge">([^<]*)</span>', sh) if not re.fullmatch(r"\d{1,2}%OFF|セール", b)]
         check("セールの札は「○%OFF」か「セール」だけ", not bad_badge, bad_badge[:3])
+        check("特集の見出しの id は、キャンペーンの番号（sale-番号。トップ・きょうの話題からのリンク先）・終わりが近い順",
+              [int(k) for k, _ in head_ids] == _camp_order and all(strip_tags(t) == str(_camps[int(k)]["title"]).strip() for k, t in head_ids), [k for k, _ in head_ids])
+        jump = re.search(r'<nav class="sale-jump" aria-label="特集">(.*?)</nav>', sh, re.S)
+        jump_links = [(a.get("href"), a.get("data-sale-end")) for a in tags(jump.group(1), "a")] if jump else []
+        check("セールのページのはじめに、特集への目次（見出しへのリンク・終わったら隠す印）がある",
+              jump_links == [(f"#sale-{k}", end_iso(str(_camps[k]["end"]))) for k in _camp_order], jump_links[:3])
+        # 特集ごとの中身（おもなメーカー・よく出ている女優・多いジャンル。このサイトの作品から数えた本数）
+        bad_facts = []
+        for k, block in zip(_camp_order, re.split(r'<section class="section sale-camp"', sh)[1:]):
+            want_rows = [(label, rows) for label, rows in zip(("おもなメーカー", "よく出ている女優", "多いジャンル"), camp_summary(k)) if rows]
+            got_rows = [(strip_tags(dt), strip_tags(dd)) for dt, dd in re.findall(r'<div class="camp-fact">\s*<dt>(.*?)</dt>\s*<dd>(.*?)</dd>', block, re.S)]
+            if got_rows != [(label, "・".join(f"{n_}（{c_}本）" for n_, c_ in rows)) for label, rows in want_rows]:
+                bad_facts.append((_camps[k]["title"], got_rows[:1], want_rows[:1]))
+            note = re.search(r'<p class="section-note">(.*?)</p>', block, re.S)
+            tag_ = soon_tag(str(_camps[k]["end"]))
+            if not note or (tag_ and f'<span class="camp-soon">{tag_}</span>' not in note.group(1)) or (not tag_ and "camp-soon" in note.group(1)) or f"{end_label(str(_camps[k]['end']))}まで・{len(_camp_works[k])}本" not in strip_tags(note.group(1)):
+                bad_facts.append((_camps[k]["title"], "終わり・本数"))
+        check("特集ごとに、おもなメーカー・よく出ている女優（2本以上・出演者4人までの作品）・多いジャンル（ジャンルのページの一覧）と本数・いつまで（きょう・あすなら札）",
+              not bad_facts, bad_facts[:2])
+        fact_links = [a.get("href", "") for blk in re.findall(r'<dl class="camp-facts">(.*?)</dl>', sh, re.S) for a in tags(blk, "a")]
+        check("特集の中身のリンクは、このサイトにあるメーカー・女優・ジャンルのページへ", all(re.fullmatch(r"/(maker|actress|tag)/[0-9a-f]{10}/", h) and os.path.isfile(page_file(h)) for h in fact_links), [h for h in fact_links if not os.path.isfile(page_file(h))][:3])
     else:
         check("セール中の作品が無いときは、その旨を出す", "セール・キャンペーン中のものはありません" in sh)
+
+# セール中の特集（トップ）: キャンペーンごとのカード（運営者の希望「何の特集で、どういう関連作品がセールなのか知りたい」。2026-10-05）
+camp_ul = re.search(r'<ul class="camps" data-sale-show="(\d+)">(.*?)</ul>', home_html, re.S)
+home_sale = re.search(r'<section id="sale"[^>]*>(.*?)</section>', home_html, re.S)
+if want_camps:
+    check("トップに「セール中の特集」があり、発売中の新作より前・作品の棚は無い（特集のカードだけ）・終わったら隠すスクリプト（sale.js）がある",
+          bool(home_sale) and "セール中の特集" in home_sale.group(1) and "shelf-cell" not in home_sale.group(1) and home_html.find('id="sale"') < home_html.find('id="released"') and 'src="/sale.js"' in home_html)
+    cards = re.findall(r'<li class="camp( sale-more)?" data-sale-end="([^"]+)">(.*?)</li>', camp_ul.group(2), re.S) if camp_ul else []
+    show_n = int(camp_ul.group(1)) if camp_ul else 0
+    bad_card = []
+    for i, (k, (more, end_, inner)) in enumerate(zip(_camp_order, cards)):
+        camp = _camps[k]
+        works_ = _camp_works[k]
+        makers_ = camp_summary(k)[0]
+        a_ = next((t for t in tags(inner, "a") if has_class(t, "camp-link")), {})
+        title_ = re.search(r'<span class="camp-title">(.*?)</span>', inner, re.S)
+        maker_line = re.search(r'<span class="camp-makers">(.*?)</span>', inner, re.S)
+        covers_ = re.findall(r'<span class="camp-cover"( data-vr="true")?>\s*<img ([^>]*)>', inner)
+        off_ = re.search(r"(\d{1,2})\s*[％%]\s*OFF", str(camp["title"]), re.I)
+        sticker = re.search(r'<span class="camp-off">([^<]*)</span>', inner)
+        want_maker = "・".join(n_ for n_, _ in makers_) + (" など" if sum(c_ for _, c_ in makers_) < len(works_) else "")
+        tag_ = soon_tag(str(camp["end"]))
+        vr_flags = [bool(v) for v, _ in covers_]
+        problems = []
+        if bool(more) != (i >= show_n): problems.append("見せる数")
+        if a_.get("href") != f"/sale/#sale-{k}": problems.append(a_.get("href"))
+        if end_ != end_iso(str(camp["end"])): problems.append("終わりの印")
+        if not title_ or strip_tags(title_.group(1)) != str(camp["title"]).strip(): problems.append("名前")
+        if f"{end_label(str(camp['end']))}まで・{len(works_):,}本" not in strip_tags(inner): problems.append("いつまで・本数")
+        if (f'<span class="camp-soon">{tag_}</span>' in inner) != bool(tag_) or (not tag_ and "camp-soon" in inner): problems.append("きょう・あすの札")
+        if (strip_tags(maker_line.group(1)) if maker_line else "") != (f"メーカー：{want_maker}" if makers_ else ""): problems.append(("メーカー", strip_tags(maker_line.group(1)) if maker_line else ""))
+        if not 1 <= len(covers_) <= 3 or vr_flags != sorted(vr_flags) or any(not fanza_https(dict(re.findall(r'(\w+)="([^"]*)"', img)).get("src", ""), ["dmm.co.jp", "fanza.co.jp"]) for _, img in covers_): problems.append("表紙")
+        if (sticker.group(1) if sticker else "") != (f"{off_.group(1)}%OFF" if off_ else ""): problems.append("値引きの札")
+        if problems:
+            bad_card.append((camp["title"], problems))
+    check(f"セール中の特集のカード（{len(cards)}枚。先頭{show_n}枚を見せる）: 終わりが近い順・その特集の見出しへのリンク・名前・いつまで・本数・おもなメーカー・表紙（VRでない作品が先）・値引きの札",
+          len(cards) == len(want_camps) and show_n >= 1 and not bad_card, bad_card[:2])
+else:
+    check("セール中の特集が無いときは、トップに欄を出さない", not home_sale and not camp_ul)
 check("フッターにセール・キャンペーンへのリンクがある", 'href="/sale/"' in home_html)
 
 # 検索ページ

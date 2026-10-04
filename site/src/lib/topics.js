@@ -6,7 +6,7 @@ import { FANZA_HOSTS, FANZA_LINK_HOSTS, RANKING_SHOWN, addDays, dateParts, daysB
 import { newRanking } from './popularity.js';
 import { RANKING_MAX } from './profiles.js';
 import { weeklyPath } from './roundups.js';
-import { SALE_PATH, endIso, endLabel, saleGroups } from './sale.js';
+import { endIso, endLabel, saleGroups, saleHref } from './sale.js';
 
 export const TOP_SHOWN = RANKING_SHOWN; // トップに出す本数（3本）
 export const TOP_DATA = RANKING_MAX; // データに持つ本数（VR作品を隠したときの差し替え用に、多めの6本）
@@ -14,6 +14,7 @@ export const TOPICS_LIMIT = 8; // 「きょうの話題」の最大数
 export const RISE_MIN = 10; // 「急上昇」: 前の日から、この順位以上あがった作品
 export const RISE_WITHIN = 50; // 「急上昇」: きょうの新着の人気順が、この順位までの作品
 export const SALE_SOON_DAYS = 2; // 「もうすぐ終わるセール」: 終わりがこの日数以内のキャンペーン
+export const SALE_NEW_MIN = 3; // 「セール開始」: このサイトの作品が、この本数以上あるキャンペーンだけ（1本だけの特集は話題にしない）
 export const HOT_LIMIT = 3; // 「いま人気の女優」に出す人数
 export const HOT_MAX_CAST = 4; // 「いま人気の女優」で数える作品の出演者の人数の上限（オムニバス・総集編の大人数の作品は数えない）
 
@@ -175,9 +176,9 @@ export function birthdaySoon(items, today, { birthOf, hasFace, days = BIRTHDAY_D
 
 /**
  * きょうの話題: [{ kind, label, title, text, image, face, href, external, vr, alt? }]（大事な順に、最大 limit 件）。
- *   kind: rise 急上昇 / today きょう発売 / upcoming 予約で人気 / entry 予約に初登場 / weekly 週のまとめ / sale もうすぐ終わるセール
+ *   kind: rise 急上昇 / today きょう発売 / upcoming 予約で人気 / entry 予約に初登場 / weekly 週のまとめ / salenew セール開始 / sale もうすぐ終わるセール
  *   image: 作品の表紙（パッケージ画像。表紙の部分を切り出して見せる）、face: 出演者の顔写真（あるときだけ。image より先に使う）
- *   end: セールの終わりの時刻（sale だけ。ブラウザが、すぎたら隠す /sale.js）
+ *   end: セールの終わりの時刻（salenew・sale だけ。ブラウザが、すぎたら隠す /sale.js）
  *   alt: 話題の作品がVR作品のとき、「VR作品を隠す」を選んだ人に代わりに出す、同じ種類のVRでない次の作品の話題（繰り上げ。運営者の希望。2026-10-05）
  * ctx: { items（このサイトの全作品）, today, popularity, todayData（normalizeToday）, sale（normalizeSale）, roundup（いちばん新しい週のまとめ）, linkOf(item) → {href, external},
  *        faceOf(name) → url | '', skip: Set（TOP3など、ほかの欄に出ている作品ID）,
@@ -255,11 +256,19 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
     });
   }
 
-  // もうすぐ終わるセール: 終わりが SALE_SOON_DAYS 日以内のキャンペーン（いちばん早く終わるもの）
-  const soon = saleGroups(items, sale, today, 12).find((g) => g.end.slice(0, 10) <= addDays(today, SALE_SOON_DAYS));
-  if (soon) {
-    topics.push({ kind: 'sale', label: 'もうすぐ終わる', title: soon.title, text: `${endLabel(soon.end)}まで｜${soon.total}本がセール中`, image: nonVrFirst(soon.items).image_url, face: '', vr: false, href: SALE_PATH, external: false, end: endIso(soon.end) });
-  }
+  // セールの話題は、セールのページの、その特集（キャンペーン）の見出しへ
+  const campaigns = saleGroups(items, sale, today, 0);
+  const saleTopic = (g, kind, label, text) => ({ kind, label, title: g.title, text, image: g.covers[0]?.image_url ?? '', face: '', vr: false, href: saleHref(g.k), external: false, end: endIso(g.end) });
+
+  // セール開始: きのう・きょう始まったキャンペーン（前の日の更新のあとに始まったもの）。このサイトの作品が SALE_NEW_MIN 本以上のうち、いちばん多いもの
+  const fresh = campaigns
+    .filter((g) => g.begin && g.begin.slice(0, 10) >= addDays(today, -1) && g.total >= SALE_NEW_MIN)
+    .sort((a, b) => b.total - a.total || a.end.localeCompare(b.end))[0];
+  if (fresh) topics.push(saleTopic(fresh, 'salenew', 'セール開始', `${mdLabel(fresh.begin.slice(0, 10))}から${endLabel(fresh.end)}まで｜${fresh.total}本がセール中`));
+
+  // もうすぐ終わるセール: 終わりが SALE_SOON_DAYS 日以内のキャンペーン（いちばん早く終わるもの。「セール開始」に出したものは除く）
+  const soon = campaigns.find((g) => g !== fresh && g.end.slice(0, 10) <= addDays(today, SALE_SOON_DAYS));
+  if (soon) topics.push(saleTopic(soon, 'sale', 'もうすぐ終わる', `${endLabel(soon.end)}まで｜${soon.total}本がセール中`));
 
   // 多すぎるときは、まず2つ目の「急上昇」を外す（いろいろな種類の話題を残すため）
   if (topics.length > limit) {
