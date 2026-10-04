@@ -65,7 +65,7 @@ text = open(DATA, encoding="utf-8").read()
 check("APIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}", text))
 
 # ---- 出演者データ（actresses.json）と売れ筋ランキング（ranking.json）。毎日の更新が作る（まだ無いあいだは点検しない） ----
-print("\n■ 出演者データ（actresses.json）・売れ筋ランキング（ranking.json）")
+print("\n■ 出演者データ（actresses.json）・女優検索の名簿（actress_directory.json）・売れ筋ランキング（ranking.json）")
 ACTRESSES = os.path.join(ROOT, "site", "src", "data", "actresses.json")
 RANKING = os.path.join(ROOT, "site", "src", "data", "ranking.json")
 FANZA_IMG = re.compile(r"^https://([A-Za-z0-9.\-]+)/")
@@ -74,6 +74,10 @@ FANZA_IMG = re.compile(r"^https://([A-Za-z0-9.\-]+)/")
 def _fanza_https(v, hosts):
     m = FANZA_IMG.match(v) if isinstance(v, str) else None
     return bool(m) and any(m.group(1) == h or m.group(1).endswith("." + h) for h in hosts)
+
+
+def _num_ok(v, lo, hi):
+    return v is None or (isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi)
 
 
 if not os.path.exists(ACTRESSES):
@@ -94,9 +98,6 @@ else:
               sorted({k for r in rows for k in r})[:20])
         check("出演者: 顔写真・全作品リンクは、空かFANZA(DMM)のhttps", all(_fanza_https(r.get("image_small"), ["dmm.co.jp"]) or r.get("image_small") == "" for r in rows) and all(_fanza_https(r.get("image_large"), ["dmm.co.jp"]) or r.get("image_large") == "" for r in rows) and all(_fanza_https(r.get("list_url"), ["fanza.co.jp", "dmm.co.jp"]) or r.get("list_url") == "" for r in rows))
 
-        def _num_ok(v, lo, hi):
-            return v is None or (isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi)
-
         check("出演者: 体型は、空か範囲内の整数（バスト50〜160・ウエスト40〜130・ヒップ50〜160・身長120〜210）・カップは英字1文字か空",
               all(_num_ok(r.get("bust"), 50, 160) and _num_ok(r.get("waist"), 40, 130) and _num_ok(r.get("hip"), 50, 160) and _num_ok(r.get("height"), 120, 210) and re.fullmatch(r"[A-Z]?", str(r.get("cup", "x"))) for r in rows))
 
@@ -114,6 +115,45 @@ else:
         check("出演者: 取得日は空か YYYY-MM-DD", all(re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(r.get("fetched", "x"))) for r in rows))
         check("見つからなかった名前: 値は YYYY-MM-DD", all(re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(v)) for v in act_raw.get("unmatched", {}).values()))
         check("出演者データに、APIのIDらしき文字列が入っていない", "api_id" not in open(ACTRESSES, encoding="utf-8").read())
+
+# ---- 女優検索の名簿（actress_directory.json）。FANZA公式の出演者検索の一覧から、毎日少しずつ作る ----
+DIRECTORY = os.path.join(ROOT, "site", "src", "data", "actress_directory.json")
+if not os.path.exists(DIRECTORY):
+    print("  （actress_directory.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        dir_raw = json.load(open(DIRECTORY, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        dir_raw = None
+        check("actress_directory.json を読める", False, str(e))
+    if dir_raw is not None:
+        check("名簿: {cursor: {filter, offset}, cycle_done, rows: [...]} の形",
+              isinstance(dir_raw, dict) and isinstance(dir_raw.get("rows"), list) and isinstance(dir_raw.get("cursor"), dict)
+              and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(dir_raw.get("cycle_done", "x"))))
+        drows = [r for r in dir_raw.get("rows", []) if isinstance(r, dict)] if isinstance(dir_raw, dict) else []
+        dids = [str(r.get("id", "")) for r in drows]
+        check("名簿: id は数字だけで重複がない・名前がある・id の順", all(re.fullmatch(r"\d{1,12}", i) for i in dids) and len(set(dids)) == len(dids)
+              and all(str(r.get("name", "")).strip() for r in drows) and dids == sorted(dids, key=int))
+        check("名簿: 使う項目だけを持つ（血液型・趣味・出身地・URLなどは持たない）",
+              all(set(r) == {"id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday"} for r in drows),
+              sorted({k for r in drows for k in r})[:20])
+        check("名簿: 顔写真は、FANZAの画像のファイル名（英小文字・数字・_）か空", all(re.fullmatch(r"[a-z0-9_]{0,60}", str(r.get("img", "x"))) for r in drows))
+        check("名簿: 体型は、空か範囲内の整数・カップは英字1文字か空",
+              all(_num_ok(r.get("bust"), 50, 160) and _num_ok(r.get("waist"), 40, 130) and _num_ok(r.get("hip"), 50, 160) and _num_ok(r.get("height"), 120, 210) and re.fullmatch(r"[A-Z]?", str(r.get("cup", "x"))) for r in drows))
+
+        def _adult_birthday(b):
+            # 18歳未満になる値は持たない（毎日の更新で、80歳をこえた人の生年月日は消える。サイトに出すのも18〜80歳だけ）
+            if b == "":
+                return True
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(b)):
+                return False
+            y, mo, d = int(b[:4]), int(b[5:7]), int(b[8:10])
+            now = datetime.now(timezone(timedelta(hours=9)))
+            return now.year - y - ((now.month, now.day) < (mo, d)) >= 18
+
+        check("名簿: 生年月日は空か、18歳以上になる日付", all(_adult_birthday(r.get("birthday", "")) for r in drows), [r.get("id") for r in drows if not _adult_birthday(r.get("birthday", ""))][:5])
+        check("名簿: どの人にも、検索に使える項目（体型・身長・生年月日）がある", all(any(r.get(k) for k in ("bust", "waist", "hip", "height", "birthday")) for r in drows))
+        check("名簿に、APIのIDらしき文字列が入っていない", "api_id" not in open(DIRECTORY, encoding="utf-8").read())
 
 if not os.path.exists(RANKING):
     print("  （ranking.json はまだありません。最初の毎日の更新で作られます）")

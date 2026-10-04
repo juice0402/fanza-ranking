@@ -1813,6 +1813,129 @@ html.lightbox-open {
   grid-column: 1 / -1;
 }
 
+/* 女優検索: 数字の条件（下限〜上限）・カップ（いくつでも）・絞り込みのチェック */
+.as-ranges {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px 14px;
+}
+
+.as-range,
+.as-cups {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.as-range-label {
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.as-range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.as-range-inputs input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--ink);
+  color: var(--paper);
+  font: 400 16px/1.2 var(--font-body); /* 16px 未満だと、iPhone で入力欄に触れたとき画面が拡大されてしまう */
+  text-align: center;
+  appearance: textfield; /* パソコンの上下の矢印で、数字や「下限」が隠れないように */
+}
+
+.as-range-inputs input::-webkit-inner-spin-button,
+.as-range-inputs input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.as-range-sep,
+.as-range-unit {
+  flex: none;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.as-cup-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.as-cup {
+  position: relative;
+}
+
+/* チェックボックスは見えないところに置いて、丸いボタンの見た目で押す（キーボード・読み上げでは、チェックボックスとして使える） */
+.as-cup input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.as-cup span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  color: var(--paper);
+  font: 700 14px/1 var(--font-body);
+}
+
+.as-cup input:checked + span {
+  border-color: var(--pop);
+  background: var(--pop);
+  color: var(--ink);
+}
+
+.as-cup input:focus-visible + span {
+  outline: 3px solid var(--pop);
+  outline-offset: 2px;
+}
+
+.as-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.as-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--paper);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.as-check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--pop);
+}
+
 /* 入力欄の文字は16px以上にする（iPhone・iPadで、入力するたびに画面が拡大されるのを防ぐ） */
 .as-field input,
 .as-field select {

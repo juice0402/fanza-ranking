@@ -130,6 +130,8 @@ class Env:
         self.rank_mode = "ok"           # 売れ筋ランキング: ok / fail
         self.rank_items = None          # 売れ筋ランキングの応答（None なら標準の6本。2位はジャンルがVR・3位は題名がVR・ほかはVRでない）
         self.actress_total_extra = 0    # 名前での出演者検索に「該当は全部で、返した一覧よりこれだけ多い」と答える（一覧が途中で切れた場合）
+        self.directory_counts = {"gte_bust": 250, "gte_height": 120, "gte_birthday": 30}  # 一覧（名簿）の、絞り込みごとの人数
+        self.directory_fail = False     # 一覧の取得を失敗させる
 
     def urlopen(self, req, timeout=None):
         url = req.full_url if hasattr(req, "full_url") else req
@@ -158,6 +160,21 @@ class Env:
         if endpoint == "ActressSearch":
             if self.actress_mode == "fail":
                 raise urllib.error.URLError("actress api down")
+            if "offset" in q:  # 女優検索の名簿のための一覧（絞り込み・id の順・100人ずつ）
+                if self.directory_fail:
+                    raise urllib.error.URLError("directory api down")
+                key = next(k for k in self.directory_counts if k in q)
+                total = self.directory_counts[key]
+                base_id = {"gte_bust": 100000, "gte_height": 100200, "gte_birthday": 100000}[key]  # 生年月日の一覧は、バストの一覧と同じ人（重なり）
+                start = int(q["offset"][0])
+                rows = []
+                for n in range(start, min(total, start + int(q["hits"][0]) - 1) + 1):
+                    aid = base_id + n
+                    row = self._actress_row(aid, f"名簿{aid}")
+                    if n % 10 == 0:  # 10人に1人は、体型・身長・生年月日が無い（名簿に入れない）
+                        row.update(bust=None, waist=None, hip=None, height=None, birthday=None, cup=None)
+                    rows.append(row)
+                return FakeResponse({"result": {"status": 200, "actress": rows, "total_count": str(total), "result_count": len(rows)}})
             if "actress_id" in q:
                 aid = q["actress_id"][0]
                 row = self.actress_rows.get(aid) or (self._actress_row(aid, ACTRESS_NAMES[aid]) if aid in ACTRESS_NAMES else None)
@@ -227,7 +244,8 @@ class Env:
         return FakeResponse({"candidates": [{"content": {"parts": [{"text": "「テスト用のAIコメントです。**上品**に紹介します。」\n"}]}}]})
 
 
-def load_module(data_path, api_id="fake", gemini="fake", max_calls=None):
+def load_module(data_path, api_id="fake", gemini="fake", max_calls=None, directory_calls=0):
+    os.environ["DIRECTORY_CALLS"] = str(directory_calls)  # 女優検索の名簿の一覧取得（ふだんのシナリオでは呼ばない。専用のシナリオで試す）
     os.environ["API_ID"] = api_id
     os.environ["GEMINI_API_KEY"] = gemini
     os.environ["DATA_PATH"] = data_path
@@ -985,6 +1003,49 @@ del os.environ["GITHUB_STEP_SUMMARY"]
 m = load_module(path_s)
 code = run_main(m, Env())
 check("要約: GITHUB_STEP_SUMMARY が無くても落ちない（手元の実行）", code == 0)
+
+print("\n■ 女優検索の名簿（FANZA公式の出演者検索の一覧から、体型・身長・生年月日がある人を集める）")
+d_dir = scenario_dir("directory")
+d_path = write_archive(d_dir, json.load(open(SAVED_DATA, encoding="utf-8")))
+dir_file = os.path.join(d_dir, "actress_directory.json")
+env_d = Env()
+m_d = load_module(d_path, directory_calls=3)
+code_d, out_d = run_main_capture(m_d, env_d)
+listing = [q for ep, q in env_d.queries if ep == "ActressSearch" and "offset" in q]
+check("正常終了(0)・一覧は、決めた回数（3回）だけ取りに行く", code_d == 0 and len(listing) == 3, (code_d, len(listing)))
+check("1回目の一覧: バストありで、id の順・100人ずつ、1人目・101人目・201人目から", [(q.get("gte_bust"), q.get("sort"), q.get("hits"), q.get("offset")) for q in listing] == [("1", "id", "100", "1"), ("1", "id", "100", "101"), ("1", "id", "100", "201")], listing)
+dj = json.load(open(dir_file, encoding="utf-8"))
+ids = [r["id"] for r in dj["rows"]]
+check("名簿に入るのは、体型・身長・生年月日のどれかがある人だけ（250人のうち225人）", len(ids) == 225 and all(r["bust"] or r["height"] or r["birthday"] for r in dj["rows"]), len(ids))
+check("名簿の1行: 決めた項目だけ（id・名前・読み・顔写真のファイル名・体型・身長・生年月日）。血液型・趣味・出身地・URLは保存しない",
+      all(set(r) == {"id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday"} for r in dj["rows"]) and "散歩" not in open(dir_file, encoding="utf-8").read()
+      and "東京都" not in open(dir_file, encoding="utf-8").read() and "http" not in open(dir_file, encoding="utf-8").read())
+check("顔写真は、FANZAの画像のファイル名だけ（a100001 など）", dj["rows"][0]["img"] == "a" + dj["rows"][0]["id"], dj["rows"][0])
+check("バストの一覧を最後まで取ったら、次の絞り込み（身長あり）の1人目へ進む", dj["cursor"] == {"filter": 1, "offset": 1} and dj["cycle_done"] == "", dj["cursor"])
+check("名簿のファイルは、1人1行（毎日の差分が、変わった人だけになるように）", open(dir_file, encoding="utf-8").read().count("\n") == len(ids) + 2)
+env_d2 = Env()
+m_d2 = load_module(d_path, directory_calls=5)
+run_main_capture(m_d2, env_d2)
+dj2 = json.load(open(dir_file, encoding="utf-8"))
+listing2 = [q for ep, q in env_d2.queries if ep == "ActressSearch" and "offset" in q]
+check("2回目は続きから（身長あり 1・101人目 → 生年月日あり 1人目 → 一回りしてバストあり 1・101人目）", [(next(k for k in ("gte_bust", "gte_height", "gte_birthday") if k in q), q["offset"]) for q in listing2] == [("gte_height", "1"), ("gte_height", "101"), ("gte_birthday", "1"), ("gte_bust", "1"), ("gte_bust", "101")], listing2)
+expect_ids = {str(b + n) for b, total in ((100000, 250), (100200, 120), (100000, 30)) for n in range(1, total + 1) if n % 10}
+check("一回りしたら、その日を cycle_done に。重なる人（バストと身長・生年月日の両方の一覧に出る人）は1人として数える", dj2["cycle_done"] == TODAY_STR and {r["id"] for r in dj2["rows"]} == expect_ids and len(dj2["rows"]) == len(expect_ids), (dj2["cycle_done"], len(dj2["rows"]), len(expect_ids)))
+open(dir_file, "w", encoding="utf-8").write("{broken")
+env_d3 = Env()
+m_d3 = load_module(d_path, directory_calls=3)
+code_d3, out_d3 = run_main_capture(m_d3, env_d3)
+check("名簿が壊れていたら、名簿の更新だけやめる（ほかの更新は続ける・ファイルは上書きしない・一覧も取りに行かない）", code_d3 == 0 and open(dir_file, encoding="utf-8").read() == "{broken" and not any(ep == "ActressSearch" and "offset" in q for ep, q in env_d3.queries), out_d3[-200:])
+os.remove(dir_file)
+env_d4 = Env()
+env_d4.directory_fail = True
+m_d4 = load_module(d_path, directory_calls=10)
+code_d4, out_d4 = run_main_capture(m_d4, env_d4)
+check("一覧の取得が続けて失敗したら、その回はやめる（3回まで。1回につき3回まで試すので、問い合わせは9回）・ほかの更新は続ける・続きの位置は進めない", code_d4 == 0 and sum(1 for ep, q in env_d4.queries if ep == "ActressSearch" and "offset" in q) == 9 and json.load(open(dir_file, encoding="utf-8"))["cursor"] == {"filter": 0, "offset": 1}, out_d4[-300:])
+row_ok = m_d4.directory_row({"id": "123", "name": "テスト", "ruby": "てすと", "bust": "86", "height": "abc", "birthday": "1700-01-01", "blood_type": "A", "imageURL": {"small": "http://pics.dmm.co.jp/mono/actjpgs/thumbnail/test_a.jpg"}}, TODAY_STR)
+check("名簿の1行: 変な値（数字でない身長・ありえない生年月日）は捨てる。http の画像も、ファイル名だけ取り出す", row_ok == {"id": "123", "name": "テスト", "ruby": "てすと", "img": "test_a", "bust": 86, "cup": "", "waist": None, "hip": None, "height": None, "birthday": ""}, row_ok)
+check("名簿の1行: 体型・身長・生年月日がどれも無い人・id が数字でない人は入れない", m_d4.directory_row({"id": "5", "name": "x", "imageURL": {"small": "http://pics.dmm.co.jp/mono/actjpgs/thumbnail/x.jpg"}}, TODAY_STR) is None and m_d4.directory_row({"id": "abc", "name": "x", "bust": "80"}, TODAY_STR) is None)
+check("名簿の1行: FANZAの画像でないURLは使わない", m_d4.directory_row({"id": "7", "name": "x", "bust": "80", "imageURL": {"small": "https://evil.example/mono/actjpgs/thumbnail/x.jpg"}}, TODAY_STR)["img"] == "")
 
 print("\n■ ソースの安全チェック")
 src = open(SCRIPT, encoding="utf-8").read()

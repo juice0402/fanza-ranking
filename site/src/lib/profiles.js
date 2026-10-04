@@ -6,7 +6,11 @@ import { FANZA_HOSTS, daysBetween, isDay, isVrWork, safeHttpsUrl } from './items
 export const ACTRESS_SEARCH_INDEX_PATH = '/data/actresses-index.json';
 export const FANZA_LIST_HOSTS = ['fanza.co.jp', 'dmm.co.jp']; // 「FANZAで全作品を見る」のリンクとして通してよいホスト
 export const RANKING_MAX = 6; // 売れ筋ランキングの、取っておく本数の上限（画面に出すのは先頭の RANKING_SHOWN 本。VR作品を隠すとき、次の順位から差し替えるため、多めに持つ）
-export const RANKING_STALE_DAYS = 7; // 売れ筋ランキングが、これより古い日付になったら、画面には出さない（更新が止まっているときに、古い順位を出し続けない）
+export const RANKING_STALE_DAYS = 7;
+/** 女優の顔写真（FANZA公式）の置き場所。索引には、ファイル名（例 hasumi_kurea）だけを入れて、ブラウザで、ここにつなげる */
+export const ACTRESS_IMAGE_BASE = 'https://pics.dmm.co.jp/mono/actjpgs/thumbnail/';
+const IMAGE_KEY = /^https:\/\/pics\.dmm\.co\.jp\/mono\/actjpgs\/(?:thumbnail\/)?([a-z0-9_]{1,60})\.jpg$/;
+const KEY_ONLY = /^[a-z0-9_]{1,60}$/; // 売れ筋ランキングが、これより古い日付になったら、画面には出さない（更新が止まっているときに、古い順位を出し続けない）
 
 /** 整数で、範囲内のときだけその値（そうでなければ null） */
 const intIn = (v, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : null);
@@ -17,6 +21,50 @@ function isRealDay(s) {
   const [y, m, d] = s.split('-').map(Number);
   const t = new Date(Date.UTC(y, m - 1, d));
   return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+}
+
+/** FANZAの顔写真のURL → ファイル名（例 hasumi_kurea）。決まった形でなければ '' */
+export const imageKeyOf = (url) => (IMAGE_KEY.exec(String(url ?? '')) || [])[1] || '';
+
+/**
+ * actress_directory.json（女優検索の名簿。FANZA公式の出演者検索の一覧から、毎日の更新が集める）を、画面で使う形に揃える。
+ * 生年月日は年齢にだけ変える（ここから先には持ち出さない）。壊れた値は空にする。ファイルが無い・形が違っても落ちない
+ */
+export function normalizeDirectory(raw, today) {
+  const rows = Array.isArray(raw?.rows) ? raw.rows : [];
+  const seen = new Set();
+  const out = [];
+  for (const r of rows) {
+    if (!r || typeof r !== 'object') continue;
+    const id = String(r.id ?? '').trim();
+    const name = String(r.name ?? '').trim();
+    if (!/^\d{1,12}$/.test(id) || !name || seen.has(id)) continue;
+    seen.add(id);
+    const cup = typeof r.cup === 'string' && /^[A-Z]$/.test(r.cup) ? r.cup : '';
+    out.push({
+      id,
+      name,
+      ruby: String(r.ruby ?? '').trim(),
+      img: typeof r.img === 'string' && KEY_ONLY.test(r.img) ? r.img : '',
+      bust: intIn(r.bust, 50, 160),
+      cup,
+      waist: intIn(r.waist, 40, 130),
+      hip: intIn(r.hip, 50, 160),
+      height: intIn(r.height, 120, 210),
+      age: ageFromBirthday(r.birthday, today),
+    });
+  }
+  return out;
+}
+
+/** 「FANZAで全作品を見る」のURLの形（{ID} のところに女優の id が入る）を、保存済みのプロフィールのURLから作る。作れなければ '' */
+export function listTemplateOf(profiles) {
+  for (const p of profiles) {
+    if (!p.listUrl || !p.id) continue;
+    const parts = p.listUrl.split(p.id);
+    if (parts.length === 2 && safeHttpsUrl(p.listUrl, FANZA_LIST_HOSTS)) return parts.join('{ID}');
+  }
+  return '';
 }
 
 /** 生年月日 → 今日の年齢。18〜80歳の範囲外・日付でないものは null（あり得ない値は表示しない） */
@@ -122,33 +170,51 @@ export function countWorksByName(items) {
  *   専用ページがある人は、プロフィールを取れていなくても入れる（検索の部品が出ると、最初から載っている一覧は隠れるため。
  *   入れないと、新しく2本以上になった出演者が一覧から消える）。その場合、数字は null。
  */
-export function buildActressSearchIndex(profiles, items, actressByName, today) {
+export function buildActressSearchIndex(profiles, items, actressByName, today, directory = []) {
+  // 女優検索の索引（/data/actresses-index.json）。
+  //   名簿（directory: FANZA公式の出演者検索で、体型・身長・生年月日が載っている人。約1万人）＋ 取得済みのプロフィール（このサイトの作品の出演者）
+  //   ＋ 専用ページのある出演者（プロフィールが無くても、名前・作品数で探せるように）。
+  // 1人の行: { n 名前, r 読み, id FANZAの女優の番号, s 専用ページの短い名前, k このサイトの作品数, i 顔写真のファイル名（または URL）,
+  //            a 年齢, h 身長, b バスト, c カップ, wa ウエスト, hi ヒップ, l 全作品のURL（決まった形と違うときだけ） }。値が無い項目は入れない（索引を小さくするため）
+  // 生年月日は入れない（年齢だけ）。同じ名前の別人（id が違う）は、それぞれ別の行（専用ページは、作品の出演者と同じ人の行にだけ付ける）
   const counts = countWorksByName(items);
-  const rows = profiles
-    .filter((p) => p.fetched)
-    .map((p) => ({
-      n: p.name,
-      r: p.ruby,
-      s: actressByName.get(p.name)?.slug ?? '',
-      k: counts.get(p.name) ?? 0,
-      i: p.imageSmall,
-      a: p.age,
-      h: p.height,
-      b: p.bust,
-      c: p.cup,
-      wa: p.waist,
-      hi: p.hip,
-      l: p.listUrl,
-    }));
-  const have = new Set(rows.map((r) => r.n));
-  const byName = profileByName(profiles);
-  for (const [name, group] of actressByName) {
-    if (have.has(name)) continue;
-    const p = byName.get(name);
-    rows.push({ n: name, r: p?.ruby ?? '', s: group.slug, k: counts.get(name) ?? group.items?.length ?? 0, i: '', a: null, h: null, b: null, c: '', wa: null, hi: null, l: '' });
+  const template = listTemplateOf(profiles);
+  const byId = new Map();
+  const put = (id, fields) => {
+    const row = byId.get(id) ?? { id };
+    for (const [k, v] of Object.entries(fields)) if (v !== null && v !== '' && v !== undefined) row[k] = v;
+    byId.set(id, row);
+  };
+  for (const d of directory) {
+    put(d.id, { n: d.name, r: d.ruby, i: d.img, a: d.age, h: d.height, b: d.bust, c: d.cup, wa: d.waist, hi: d.hip });
   }
-  rows.sort((a, b) => b.k - a.k || (a.n < b.n ? -1 : a.n > b.n ? 1 : 0));
-  return { generated: today, actresses: rows };
+  const byName = profileByName(profiles);
+  for (const p of profiles.filter((x) => x.fetched)) {
+    const img = imageKeyOf(p.imageSmall) || imageKeyOf(p.imageLarge) || p.imageSmall || p.imageLarge;
+    put(p.id, { n: p.name, r: p.ruby, i: img, a: p.age, h: p.height, b: p.bust, c: p.cup, wa: p.waist, hi: p.hip });
+    if (p.listUrl && p.listUrl !== template.replace('{ID}', p.id)) byId.get(p.id).l = p.listUrl;
+  }
+  const rows = [...byId.values()];
+  // このサイトの作品数・専用ページは、名前で付ける（作品には名前しか載らない）。同じ名前の別人がいるときは、プロフィールの id の人にだけ付ける
+  for (const row of rows) {
+    const p = byName.get(row.n);
+    if (p && p.id !== row.id) continue;
+    if (!p && rows.some((o) => o !== row && o.n === row.n)) continue; // 同じ名前が2人以上いて、どちらか分からない
+    const k = counts.get(row.n);
+    if (k) row.k = k;
+    const slug = actressByName.get(row.n)?.slug;
+    if (slug) row.s = slug;
+  }
+  const haveName = new Set(rows.filter((r) => r.s).map((r) => r.n));
+  for (const [name, group] of actressByName) {
+    if (haveName.has(name)) continue;
+    const p = byName.get(name);
+    const row = { n: name, s: group.slug, k: counts.get(name) ?? group.items?.length ?? 0 };
+    if (p?.ruby) row.r = p.ruby;
+    rows.push(row);
+  }
+  rows.sort((a, b) => (b.k ?? 0) - (a.k ?? 0) || (a.n < b.n ? -1 : a.n > b.n ? 1 : 0) || String(a.id ?? '').localeCompare(String(b.id ?? '')));
+  return { generated: today, img: ACTRESS_IMAGE_BASE, list: template, actresses: rows };
 }
 
 /** 出演者の一覧に「どれくらいの人のデータがあるか」を出すための数（データが無い人が多いことを、正直に伝える） */
@@ -160,6 +226,18 @@ export function profileCoverage(profiles) {
     withAge: got.filter((p) => p.age !== null).length,
     withHeight: got.filter((p) => p.height !== null).length,
     withSize: got.filter((p) => p.bust !== null && p.waist !== null && p.hip !== null).length,
+  };
+}
+
+/** 女優検索の索引で、探せる人数（全体・年齢・身長・スリーサイズ・カップが分かる人数） */
+export function indexCoverage(index) {
+  const rows = Array.isArray(index?.actresses) ? index.actresses : [];
+  return {
+    total: rows.length,
+    withAge: rows.filter((r) => typeof r.a === 'number').length,
+    withHeight: rows.filter((r) => typeof r.h === 'number').length,
+    withSize: rows.filter((r) => typeof r.b === 'number' && typeof r.wa === 'number' && typeof r.hi === 'number').length,
+    withCup: rows.filter((r) => r.c).length,
   };
 }
 

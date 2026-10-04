@@ -5,11 +5,11 @@ import { normalizeItems, splitByRelease, jstToday, groupByActress, groupByMaker,
 import { normalizeRoundups } from './roundups.js';
 import { groupByMonth, groupByTag, monthPathByKey } from './collections.js';
 import { buildFactsContext } from './facts.js';
-import { buildActressSearchIndex, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay } from './profiles.js';
+import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay } from './profiles.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 export const today = jstToday();
@@ -36,7 +36,10 @@ export const roundups = normalizeRoundups(rawRoundups, all);
 export const profiles = normalizeProfiles(optionalData('actresses'), today);
 export const profilesByName = profileByName(profiles);
 export const profilesCoverage = profileCoverage(profiles);
-export const actressSearchIndex = buildActressSearchIndex(profiles, all, actressByName, today);
+// 女優検索の名簿（FANZA公式の出演者検索の一覧。体型・身長・生年月日が載っている人）。まだ無ければ空
+export const directory = normalizeDirectory(optionalData('actress_directory'), today);
+export const actressSearchIndex = buildActressSearchIndex(profiles, all, actressByName, today, directory);
+export const actressIndexCoverage = indexCoverage(actressSearchIndex);
 
 // 売れ筋ランキング（FANZAの人気順の上位3本）。無い・古いときは null（画面に出さない）
 export const ranking = rankingForDisplay(optionalData('ranking'), today, new Set(all.filter((i) => i.vr).map((i) => i.cid)));

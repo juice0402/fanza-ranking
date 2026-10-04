@@ -4,10 +4,17 @@ name: Refresh FANZA Data
 #   ・保存済みの作品の出演者・サンプル動画を、品番で取り直す
 #   ・出演者のプロフィール（顔写真・体型・年齢・FANZAの全作品リンク）を取りに行く
 #   ・売れ筋ランキングを取り直す
+#   ・女優検索の名簿（FANZA公式の出演者検索の一覧）を、続きから取る。ふだんは毎日40回ずつ。
+#     「名簿の一覧を取る回数」を増やして実行すると、一気に集められる（全部で約200回。1回100人）
 # 新しい機能のブランチで、本物のAPIを使った確認をするときにも使う（Run workflow で、ブランチを選んで実行）。
 # 結果のデータは、実行したブランチに commit する。
 on:
   workflow_dispatch:
+    inputs:
+      directory_calls:
+        description: '女優検索の名簿の一覧を取る回数（1回100人。0〜400。ふだんは40、一気に集めるなら250）'
+        required: false
+        default: '40'
 
 permissions:
   contents: write
@@ -37,7 +44,12 @@ jobs:
         env:
           API_ID: ${{ secrets.API_ID }}
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
-        run: python get_new_releases.py --refresh-only
+          DIRECTORY_CALLS: ${{ inputs.directory_calls || '40' }}
+        run: |
+          # 回数は数字だけ・400回まで（打ちまちがいで、とても長く動かないように）
+          case "$DIRECTORY_CALLS" in ''|*[!0-9]*) echo "名簿の一覧を取る回数は、数字で入れてください（いま: $DIRECTORY_CALLS）"; exit 1;; esac
+          if [ "$DIRECTORY_CALLS" -gt 400 ]; then echo "名簿の一覧を取る回数は400回までです"; exit 1; fi
+          python get_new_releases.py --refresh-only
 
       - name: Commit and push if changed
         run: |
