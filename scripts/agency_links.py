@@ -34,7 +34,7 @@ DATA_DIR = os.path.join(ROOT, "site", "src", "data")
 # 事務所ごとの、一覧のページと、プロフィールのページのURLの形（2026-10-05 に下調べ。robots.txt で止められていない・プロフィールにSNSのリンクがある所）
 SITES = [
     {"key": "tpowers", "name": "ティーパワーズ", "roster": ["https://www.t-powers.co.jp/talent/"],
-     "profile": r"^https://www\.t-powers\.co\.jp/talent/[A-Za-z0-9_-]+/?$"},
+     "profile": r"^https://www\.t-powers\.co\.jp/talent/[^/?#]+/?$"},
     {"key": "mines", "name": "マインズ", "roster": ["https://mines-pro.jp/model/"],
      "profile": r"^https://mines-pro\.jp/model/\d+/?$"},
     {"key": "bambi", "name": "バンビプロモーション", "roster": ["https://bambi.ne.jp/models.html"],
@@ -165,27 +165,51 @@ def sns_links(page_html, base_url):
 
 
 def fanza_names():
-    """FANZA 公式の名前（女優検索の名簿・出演者プロフィール）→ { 照らし合わせ用の名前: [(名前, id)] }"""
+    """FANZA 公式の名前（女優検索の名簿・出演者プロフィール・このサイトの作品の出演者）→ { 照らし合わせ用の名前: { FANZAの名前: {id, …} } }。
+    「河北彩花（河北彩伽）」のような、かっこの中の別名でも引けるようにする（かっこの前の名前と、かっこの中の名前の両方）"""
     table = {}
 
-    def add(name, id_):
-        key = norm_name(name)
-        if key:
-            rows = table.setdefault(key, [])
-            if (name, id_) not in rows and not any(r[1] == id_ and id_ for r in rows):
-                rows.append((name, id_))
+    def add(name, id_=""):
+        name = str(name or "").strip()
+        if not name:
+            return
+        keys = [name] + re.split(r"[（(]", name)[:1] + re.findall(r"[（(]([^）)]+)[）)]", name)
+        for key in keys:
+            k = norm_name(key)
+            if len(k) >= 2:
+                ids = table.setdefault(k, {}).setdefault(name, set())
+                if id_:
+                    ids.add(id_)
 
-    try:
-        for r in json.load(open(os.path.join(DATA_DIR, "actress_directory.json"), encoding="utf-8")).get("rows", []):
-            add(r.get("name"), str(r.get("id") or ""))
-    except (OSError, ValueError):
-        pass
-    try:
-        for r in json.load(open(os.path.join(DATA_DIR, "actresses.json"), encoding="utf-8")).get("actresses", []):
-            add(r.get("name"), str(r.get("id") or ""))
-    except (OSError, ValueError):
-        pass
+    for path, field in (("actress_directory.json", "rows"), ("actresses.json", "actresses")):
+        try:
+            for r in json.load(open(os.path.join(DATA_DIR, path), encoding="utf-8")).get(field, []):
+                add(r.get("name"), str(r.get("id") or ""))
+        except (OSError, ValueError, AttributeError):
+            pass
+    shards = [os.path.join(DATA_DIR, "new_releases.json")]
+    catalog_dir = os.path.join(DATA_DIR, "catalog")
+    if os.path.isdir(catalog_dir):
+        shards += [os.path.join(catalog_dir, f) for f in sorted(os.listdir(catalog_dir)) if f.endswith(".json")]
+    for path in shards:
+        try:
+            for item in json.load(open(path, encoding="utf-8")):
+                for name in item.get("actress") or []:
+                    add(name)
+        except (OSError, ValueError, AttributeError, TypeError):
+            pass
     return table
+
+
+def lookup(table, cand):
+    """候補の名前 → (FANZAの名前, id, 理由)。1人に決まらなければ名前は空"""
+    hits = table.get(norm_name(cand), {})
+    if not hits:
+        return "", "", "FANZAの名前と合わない"
+    if len(hits) > 1 or any(len(ids) > 1 for ids in hits.values()):
+        return "", "", "FANZAに同じ名前が何人もいる"
+    (name, ids), = hits.items()
+    return name, next(iter(ids), ""), "一致"
 
 
 def collect_site(site, table):
@@ -243,18 +267,16 @@ def collect_site(site, table):
         igs = [h for h in igs if h.lower() not in wide_ig]
         tried = [c for c in ([label] if label else []) + cands if norm_name(c) not in wide_c]
         # 名前は、候補の文字の全体（空白を除く）が FANZA の名前と完全に同じときだけ。文字の一部（「河北 彩花」の「彩花」など）では合わせない（人違いを防ぐ）
-        found_names = {}
+        found_names, how = {}, "FANZAの名前と合わない"
         for cand in tried:
-            hits = table.get(norm_name(cand), [])
-            for h in hits:
-                found_names.setdefault(h[1] or h[0], (h, len(hits)))
-        match, how = None, "FANZAの名前と合わない"
-        if len(found_names) == 1:
-            (hit, n_same), = found_names.values()
-            if n_same == 1:
-                match, how = hit, "一致"
-            else:
-                how = "FANZAに同じ名前が何人もいる"
+            name, id_, why = lookup(table, cand)
+            if name:
+                found_names[name] = id_
+            elif why != "FANZAの名前と合わない":
+                how = why
+        match = None
+        if len(found_names) == 1 and how == "FANZAの名前と合わない":
+            match, how = next(iter(found_names.items())), "一致"
         elif len(found_names) > 1:
             how = "名前の候補が何人もいる"
         rows.append({
