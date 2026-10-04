@@ -113,6 +113,9 @@ const allVr = T.buildTopics({ ...ctx, items: many.map((i) => (i.cid === 'n1' ? i
 check('代わりになるVRでない作品が無ければ、繰り上げは付かない（VR作品を隠すと、その話題は消える）', allVr.every((t) => t.vr && !t.alt), JSON.stringify(allVr.map((t) => [t.title, t.alt?.title])));
 check('人気の女優: 顔写真が無いときの表紙は、VRでない作品のもの', actress.image === 'https://pics.dmm.co.jp/r1pl.jpg', actress.image);
 
+const lowToday = T.buildTopics({ ...ctx, items: [...many.map((i) => (i.cid === 'n1' ? { ...i, vr: true } : i)), it('n2', TODAY, 160, { actress: ['星子'] })] }).find((t) => t.kind === 'today');
+check('きょう発売の繰り上げは、新着の人気TOP100の外からも探す（きょう発売の上位がVRばかりの日）', lowToday?.vr === true && lowToday.alt?.title === '作品 n2' && lowToday.alt.text === '星子｜M｜新着の人気順 160位', JSON.stringify(lowToday?.alt));
+
 const roundup = { week_start: '2026-09-28', week_end: '2026-10-04', lead: 'まとめの書き出し。'.repeat(10), picks: [{ cid: 'n1', note: 'x' }], written: TODAY };
 const withWeekly = T.buildTopics({ ...ctx, roundup }, 20);
 const weekly = withWeekly.find((t) => t.kind === 'weekly');
