@@ -202,6 +202,44 @@ def main():
         except Exception as e:  # noqa: BLE001
             say(f"- 取得できませんでした: {type(e).__name__}: {str(e)[:150]}")
 
+    say("\n## 7) ActressSearch: 一覧で何人取れるか（女優検索を大きくするための下調べ。名前や体型の値は出さない）")
+    for label, extra in (("絞り込みなし", {}), ("バストあり gte_bust=1", {"gte_bust": 1}), ("身長あり gte_height=1", {"gte_height": 1}),
+                         ("生年月日あり gte_birthday=1900-01-01", {"gte_birthday": "1900-01-01"}), ("バスト・身長あり", {"gte_bust": 1, "gte_height": 1})):
+        res, err = call("ActressSearch", dict({"hits": 1}, **extra))
+        say(f"- {label}: " + (f"❌ {err}" if err else f"total_count {res.get('total_count')}"))
+    for label, extra in (("sort=-id hits=100 offset=1", {"sort": "-id", "hits": 100, "offset": 1}), ("sort=id hits=100 offset=1", {"sort": "id", "hits": 100, "offset": 1}),
+                         ("gte_bust=1 sort=-id hits=100 offset=101", {"gte_bust": 1, "sort": "-id", "hits": 100, "offset": 101})):
+        res, err = call("ActressSearch", extra)
+        if err:
+            say(f"- {label}: ❌ {err}")
+            continue
+        rows = res.get("actress") or []
+        ids = [int(a.get("id")) for a in rows if str(a.get("id") or "").isdigit()]
+        has = lambda k: sum(1 for a in rows if a.get(k))
+        say(f"- {label}: {len(rows)}件（result_count {res.get('result_count')} / first_position {res.get('first_position')}）/ id {ids[:1]}…{ids[-1:]} / "
+            f"バストあり {has('bust')}・身長あり {has('height')}・生年月日あり {has('birthday')}・顔写真あり {sum(1 for a in rows if (a.get('imageURL') or {}).get('small'))}・読みあり {has('ruby')}")
+    for off in (10001, 30001, 50001):
+        res, err = call("ActressSearch", {"sort": "id", "hits": 1, "offset": off})
+        say(f"- offset={off}: " + (f"❌ {err}" if err else f"{len(res.get('actress') or [])}件"))
+
+    say("\n## 8) ItemList: 作品の説明文があるか・シリーズ・レーベル（ひとことを詳しくするための下調べ）")
+    res, err = call("ItemList", dict(base, sort="date", hits=50, lte_date=today.replace(hour=23, minute=59, second=59).strftime(fmt)))
+    if err:
+        say(f"❌ {err}")
+    else:
+        rows = res.get("items") or []
+        top = sorted({k for x in rows for k in x})
+        info = sorted({k for x in rows for k in (x.get("iteminfo") or {})})
+        say(f"- 作品{len(rows)}件の項目（すべて）: {', '.join(top)}")
+        say(f"- iteminfo の項目（すべて）: {', '.join(info)}")
+        texty = [k for k in top if any(isinstance(x.get(k), str) and len(x.get(k)) > 80 for x in rows) and k not in ("title", "affiliateURL", "affiliateURLsp", "URL", "URLsp")]
+        say(f"- 長い文の項目（説明文の候補）: {texty or 'なし'}")
+        for k in ("series", "label", "director"):
+            vals = [v.get("name") for x in rows for v in ((x.get("iteminfo") or {}).get(k) or []) if isinstance(v, dict)]
+            say(f"- iteminfo.{k}: {sum(1 for x in rows if (x.get('iteminfo') or {}).get(k))}件にあり / 例 {vals[:5]}")
+        say(f"- maker_product あり: {sum(1 for x in rows if x.get('maker_product'))}件 / 例 {[x.get('maker_product') for x in rows if x.get('maker_product')][:5]}")
+        say(f"- review あり: {sum(1 for x in rows if x.get('review'))}件")
+
     # ログの取得が制限される環境でも読めるように、見出しごとに「注釈（notice）」としても出す（GitHub の check-run の注釈として読める）
     if os.environ.get("GITHUB_ACTIONS"):
         sections = []
