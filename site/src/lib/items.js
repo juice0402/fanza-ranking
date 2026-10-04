@@ -53,6 +53,11 @@ export function truncate(text, max) {
 /** "YYYY-MM-DD" の形か */
 export const isDay = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
 
+/** "YYYY-MM-DD" から n 日あと（n が負なら前）の "YYYY-MM-DD"（日付だけで計算するので、時差の影響を受けない） */
+export function addDays(dateKey, n) {
+  return new Date(Date.UTC(+dateKey.slice(0, 4), +dateKey.slice(5, 7) - 1, +dateKey.slice(8, 10)) + n * 86400000).toISOString().slice(0, 10);
+}
+
 export const itemPath = (cid) => `/item/${cid}/`;
 export const archivePath = (n) => `/archive/${n}/`;
 

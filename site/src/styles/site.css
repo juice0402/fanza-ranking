@@ -209,11 +209,16 @@ button:focus-visible {
 
 /* 日本語の文章を、文節のところで改行する。ビルドの最後に、全ページの文章へ、文節の区切り（<wbr>）とこの印が入る（site/src/lib/phrase.js）。
    keep-all で、<wbr> の所以外では改行しない。1つの文節が行より長いときだけ、どこででも改行する（anywhere） */
-.ph {
+.ph,
+.ph-js {
   word-break: keep-all;
   line-break: strict; /* 行のはじめに「ー」「～」「ぁ」などが来ないようにする（禁則を厳しめに） */
   overflow-wrap: break-word; /* anywhere に対応していない古いブラウザ向け */
   overflow-wrap: anywhere;
+}
+/* 短い出演者名・メーカー名（10文字まで）は、途中で改行しない（「S-Cute」の「-」のあと・「犬/妄想族」の「/」のあとでも）。phrase.js が包む */
+.nb {
+  white-space: nowrap;
 }
 
 .hero-lead {

@@ -67,11 +67,15 @@ const OPEN = /[（「『【〔〈《［｛]/; // 日本語のかっこだけ（A
 const CLOSE = /[）」』】〕〉》］｝]/;
 // 同じ文字を2つ重ねて使う記号（「……」「――」）は、間で区切らない
 const PAIRED = /[…‥―─━]/;
+// 伏せ字（「チ○ポ」「J●」など）の記号。前後の文字とくっつけて、語の途中で改行しない
+const CENSOR = /[○●◯〇×✕＊*■□]/;
 
-/** i の前で改行してよいか（禁則・英数字・重ねる記号を守る） */
-function canBreakAt(text, i) {
+/** i の前で改行してよいか（禁則・英数字・重ねる記号・伏せ字・守る範囲を守る）。keep: 改行してはいけない位置の Set（出演者名・メーカー名の途中など） */
+function canBreakAt(text, i, keep) {
+  if (keep && keep.has(i)) return false;
   const prev = text[i - 1];
   const next = text[i];
+  if (CENSOR.test(prev) || CENSOR.test(next)) return false;
   if (NO_START.test(next) && !(next === '・')) return false;
   if (next === '・') return false; // 中黒は、前の語にくっつける（「・」で改行するのは、その後ろ）
   if (NO_END.test(prev) && !/\s/.test(prev)) return false;
@@ -86,43 +90,80 @@ export const MAX_PHRASE = 8;
 // 文字の種類（ひらがな・カタカナ・漢字・それ以外）。種類が変わる所は、語の切れ目になりやすい
 const kindOf = (ch) => (/[\u3040-\u309f]/.test(ch) ? 'hira' : /[\u30a0-\u30ff]/.test(ch) ? 'kata' : /[\u3400-\u4dbf\u4e00-\u9fff]/.test(ch) ? 'kanji' : 'other');
 
-/** 長い文節を、禁則を守りながら、真ん中あたりで分ける（MAX_PHRASE 以下になるまで）。文字の種類が変わる所を、先に選ぶ（「ご利用／いただけません」） */
-function splitLong(phrase) {
-  if (phrase.trimEnd().length <= MAX_PHRASE) return [phrase];
-  const mid = phrase.length / 2;
+/** text の [start, end) の文節が長ければ、禁則を守りながら、真ん中あたりで分ける（MAX_PHRASE 以下になるまで）。
+ * 文字の種類が変わる所を、先に選ぶ（「ご利用／いただけません」）。分ける位置（text の中の番号）を cuts に足す */
+function splitLong(text, start, end, keep, cuts) {
+  const piece = text.slice(start, end);
+  if (piece.trimEnd().length <= MAX_PHRASE) return;
+  const mid = start + piece.length / 2;
   let best = -1;
   let bestScore = Infinity;
-  for (let i = 2; i <= phrase.length - 2; i++) {
-    if (!canBreakAt(phrase, i)) continue;
-    const score = Math.abs(i - mid) + (kindOf(phrase[i - 1]) !== kindOf(phrase[i]) ? 0 : 3);
+  for (let i = start + 2; i <= end - 2; i++) {
+    if (!canBreakAt(text, i, keep)) continue;
+    const score = Math.abs(i - mid) + (kindOf(text[i - 1]) !== kindOf(text[i]) ? 0 : 3);
     if (score < bestScore) {
       best = i;
       bestScore = score;
     }
   }
-  if (best < 0) return [phrase]; // 禁則・英数字で、分けられる所が無い
-  return [...splitLong(phrase.slice(0, best)), ...splitLong(phrase.slice(best))];
+  if (best < 0) return; // 禁則・英数字・名前の途中で、分けられる所が無い
+  cuts.push(best);
+  splitLong(text, start, best, keep, cuts);
+  splitLong(text, best, end, keep, cuts);
 }
 
-/** 文章（HTMLの記号を含まない普通の文字列）→ 文節の配列 */
-export function splitPhrases(text) {
+/** 守る語（出演者名・メーカー名）が text の中にあれば、その途中の位置の Set を返す（そこでは改行しない） */
+export function protectedPositions(text, namesRe) {
+  const keep = new Set();
+  if (!namesRe || !text) return keep;
+  namesRe.lastIndex = 0;
+  for (const m of text.matchAll(namesRe)) {
+    for (let i = m.index + 1; i < m.index + m[0].length; i++) keep.add(i);
+  }
+  return keep;
+}
+
+/** 文章（HTMLの記号を含まない普通の文字列）→ 文節の配列。namesRe: 途中で改行しない語（出演者名・メーカー名）の正規表現（g つき。無くてもよい） */
+export function splitPhrases(text, namesRe = null) {
   if (!text) return [];
+  const keep = protectedPositions(text, namesRe);
   const found = new Set(parser.parseBoundaries(text));
   for (let i = 1; i < text.length; i++) {
     // 中黒（・）のあと、開きかっこの前、閉じかっこのあと（次がひらがなでないとき。「…」から、のように続く助詞は離さない）も、改行してよい所にする（BudouXの区切りに足す）
     if (text[i - 1] === '\u30fb' || OPEN.test(text[i]) || (CLOSE.test(text[i - 1]) && kindOf(text[i]) !== 'hira')) found.add(i);
+    // 空白のあとは、もともと改行してよい所（そこで先に分けてから、長いものだけを分ける）
+    if (/\s/.test(text[i - 1]) && !/\s/.test(text[i])) found.add(i);
   }
-  const bounds = [...found].sort((x, y) => x - y).filter((i) => canBreakAt(text, i));
-  const rough = [];
+  const bounds = [...found].sort((x, y) => x - y).filter((i) => (/\s/.test(text[i - 1]) && !keep.has(i)) || canBreakAt(text, i, keep));
+  const cuts = [...bounds];
   let start = 0;
-  for (const b of bounds) {
-    rough.push(text.slice(start, b));
+  for (const b of [...bounds, text.length]) {
+    splitLong(text, start, b, keep, cuts);
     start = b;
   }
-  rough.push(text.slice(start));
-  // 空白のあとは、もともと改行してよい所。そこで先に分けてから、長いものだけを分ける
-  return rough.flatMap((p) => p.split(/(?<=\s)(?=\S)/)).flatMap(splitLong);
+  const all = [...new Set(cuts)].sort((x, y) => x - y);
+  const out = [];
+  start = 0;
+  for (const c of all) {
+    out.push(text.slice(start, c));
+    start = c;
+  }
+  out.push(text.slice(start));
+  return out.filter((p) => p !== '');
 }
+
+/** 名前の一覧 → 名前を探す正規表現（長い名前を先に。2文字以上だけ）。名前が無ければ null */
+export function namesPattern(names) {
+  const list = [...new Set((names || []).filter((n) => typeof n === 'string' && [...n.trim()].length >= 2).map((n) => n.trim()))];
+  if (!list.length) return null;
+  list.sort((a, b) => b.length - a.length);
+  // 名前のすぐあとの「さん」「ちゃん」「様」も、名前にくっつける（「青坂あおい／さん」で改行しない）
+  return new RegExp('(?:' + list.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')(?:さん|ちゃん|様)?', 'g');
+}
+
+/** この長さ（文字数）以下の名前は、<span class="nb">（white-space: nowrap）で包み、まったく改行しない（「S-Cute」の「-」のあとや、「犬/妄想族」の「/」のあとでも）。
+ * 長い名前は包まない（狭い画面ではみ出さないように。区切りの <wbr> を入れないだけ） */
+export const NOWRAP_MAX = 10;
 
 // HTMLの文字参照（&amp; &#39; &#x27; など）。1文字として扱い、途中で区切らない
 const ENTITY = /&(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);/g;
@@ -131,43 +172,56 @@ const ENTITY = /&(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);/g;
  * HTMLの「文字だけの部分」（タグの外）を1つ受け取り、文節の区切りに <wbr> を入れて、<span class="ph"> で包んで返す。
  * 日本語が MIN_JAPANESE 文字より少なければ、そのまま返す。前後の空白は、包みの外に残す。
  */
-export function phraseText(htmlText) {
+export function phraseText(htmlText, namesRe = null) {
   const m = htmlText.match(/^(\s*)([\s\S]*?)(\s*)$/);
   const [, lead, core, tail] = m;
-  if (japaneseCount(core) < MIN_JAPANESE) return htmlText;
+  if (japaneseCount(core) < MIN_JAPANESE) {
+    // 日本語が少ない（短い名前・英字の名前など）ときは、区切りは入れず、短い名前だけを改行しないように包む
+    const wrapped = wrapNames(core, namesRe);
+    return wrapped === core ? htmlText : `${lead}${wrapped}${tail}`;
+  }
   // 文字参照は、1文字（￼）に置き換えてから区切りを探し、あとで元に戻す
   const refs = core.match(ENTITY) || [];
   const plain = core.replace(ENTITY, '￼');
-  const phrases = splitPhrases(plain);
+  const phrases = splitPhrases(plain, namesRe);
   let r = 0;
   const restored = phrases.map((p) => p.replace(/￼/g, () => refs[r++]));
   // 空白のあとには、<wbr> は要らない（空白で、もともと改行できる）
   const body = restored.map((p, i) => (i === 0 || /\s$/.test(restored[i - 1]) ? p : '<wbr>' + p)).join('');
-  return `${lead}<span class="ph">${body}</span>${tail}`;
+  return `${lead}<span class="ph">${wrapNames(body, namesRe)}</span>${tail}`;
+}
+
+/** 文字列の中の短い名前（NOWRAP_MAX 文字以下）を <span class="nb"> で包む（名前の中には <wbr> が無いので、そのまま探せる） */
+function wrapNames(text, namesRe) {
+  if (!namesRe) return text;
+  namesRe.lastIndex = 0;
+  return text.replace(namesRe, (name) => ([...name].length <= NOWRAP_MAX ? `<span class="nb">${name}</span>` : name));
 }
 
 // 触らない所: コメント・script・style・title・textarea・pre・code・noscript・svg・template・select・option・button（中身ごと飛ばす）、
 // すでに処理した <span class="ph">…</span>（もう一度かけても二重にならない）、ふつうのタグ、doctype
 const SKIP = String.raw`<!--[\s\S]*?-->` +
   String.raw`|<(script|style|textarea|title|pre|code|noscript|svg|template|select|option|button)\b(?:"[^"]*"|'[^']*'|[^>"'])*>[\s\S]*?<\/\1\s*>` +
-  String.raw`|<span class="ph">[\s\S]*?<\/span>` +
+  String.raw`|<span class="ph">(?:[^<]|<wbr>|<span class="nb">[^<]*<\/span>)*<\/span>` +
+  String.raw`|<span class="nb">[^<]*<\/span>` +
   String.raw`|<\/?[A-Za-z][A-Za-z0-9:-]*(?:"[^"]*"|'[^']*'|[^>"'])*>` +
   String.raw`|<![A-Za-z][^>]*>`;
 
-/** HTML全体 → 文章の部分だけに文節の区切りを足したHTML */
-export function phraseHtml(html) {
+/** HTML全体 → 文章の部分だけに文節の区切りを足したHTML。namesRe: 途中で改行しない名前（namesPattern で作る。無くてもよい） */
+export function phraseHtml(html, namesRe = null) {
   const re = new RegExp(SKIP, 'gi');
   let out = '';
   let last = 0;
   for (const m of html.matchAll(re)) {
-    out += phraseText(html.slice(last, m.index)) + m[0];
+    out += phraseText(html.slice(last, m.index), namesRe) + m[0];
     last = m.index + m[0].length;
   }
-  return out + phraseText(html.slice(last));
+  return out + phraseText(html.slice(last), namesRe);
 }
 
-/** フォルダの中の全 .html を書き換える（ビルドの最後に使う）。書き換えたファイルの数を返す */
-export function phraseDirectory(dir) {
+/** フォルダの中の全 .html を書き換える（ビルドの最後に使う）。書き換えたファイルの数を返す。names: 途中で改行しない名前（出演者・メーカー） */
+export function phraseDirectory(dir, names = []) {
+  const namesRe = namesPattern(names);
   let changed = 0;
   const walk = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -175,7 +229,7 @@ export function phraseDirectory(dir) {
       if (e.isDirectory()) walk(p);
       else if (e.name.endsWith('.html')) {
         const before = fs.readFileSync(p, 'utf-8');
-        const after = phraseHtml(before);
+        const after = phraseHtml(before, namesRe);
         if (after !== before) {
           fs.writeFileSync(p, after);
           changed++;
@@ -187,7 +241,19 @@ export function phraseDirectory(dir) {
   return changed;
 }
 
-/** 元に戻す（テストと検査用）: <wbr> を消し、<span class="ph"> の包みを外す */
+/** 元に戻す（テストと検査用）: <wbr> を消し、<span class="nb"> と <span class="ph"> の包みを外す */
 export function unphraseHtml(html) {
-  return html.replace(/<wbr\s*\/?>/g, '').replace(/<span class="ph">([\s\S]*?)<\/span>/g, '$1');
+  return html
+    .replace(/<wbr\s*\/?>/g, '')
+    .replace(/<span class="nb">([^<]*)<\/span>/g, '$1')
+    .replace(/<span class="ph">([^<]*)<\/span>/g, '$1');
+}
+
+/** ブラウザで作る文章（作品検索・お気に入り）のための形: 文節の区切りに、幅のない空白（U+200B）を入れた文字列。
+ * 画面では、CSS の .ph-js（word-break: keep-all）と組み合わせて、区切りの所だけで改行させる（ビルドの <wbr> と同じ考え方） */
+export const ZWSP = '\u200b';
+export function phraseZwsp(text, namesRe = null) {
+  if (!text || japaneseCount(text) < MIN_JAPANESE) return text || '';
+  const parts = splitPhrases(text, namesRe);
+  return parts.map((p, i) => (i === 0 || /\s$/.test(parts[i - 1]) ? p : ZWSP + p)).join('');
 }

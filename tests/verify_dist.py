@@ -50,8 +50,11 @@ def read_raw(path):
 
 
 def unphrase(text):
-    """日本語の文章に足した、文節の区切り（<wbr>）と包み（<span class="ph">）を取り除く（site/src/lib/phrase.js の逆。文字を探す検査が、区切りで途切れないように）"""
-    return re.sub(r'<span class="ph">([\s\S]*?)</span>', r"\1", re.sub(r"<wbr\s*/?>", "", text))
+    """日本語の文章に足した、文節の区切り（<wbr>）と包み（<span class="ph">・名前の <span class="nb">）を取り除く
+    （site/src/lib/phrase.js の逆。文字を探す検査が、区切りで途切れないように）"""
+    text = re.sub(r"<wbr\s*/?>", "", text)
+    text = re.sub(r'<span class="nb">([^<]*)</span>', r"\1", text)
+    return re.sub(r'<span class="ph">([^<]*)</span>', r"\1", text)
 
 
 def read(path):
@@ -981,7 +984,12 @@ if os.path.isfile(ii):
     check("索引が正しいJSONで、generated・newDays・genres・items がある", bool(ok_shape), str(iidx)[:80])
     if ok_shape:
         irows, igenres = iidx["items"], iidx["genres"]
-        check("索引の項目が、短い名前（c,t,d,a,m,g,i,v）だけで、データにある作品・長い文やURLは入っていない", all(isinstance(r, dict) and set(r) <= set("ctdamgiv") and {"c", "t", "d", "a", "m", "g", "i"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("ctdamgiv"))][:1])
+        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v）だけで、データにある作品・長い文やURLは入っていない", all(isinstance(r, dict) and set(r) <= set("cptdamgiv") and {"c", "t", "d", "a", "m", "g", "i"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("cptdamgiv"))][:1])
+        bad_p = [(r["c"], r.get("p")) for r in irows if (r.get("p") or "") != product_code(r["c"])]
+        check("索引の品番（p）が、作品ページと同じ品番（作れない作品には無い）", not bad_p, bad_p[:3])
+        bad_t = [r["c"] for r in irows if r["c"] in valid and r["t"].replace("\u200b", "") != str(valid[r["c"]].get("title", "")).strip()]
+        check("索引のタイトルは、文節の区切り（U+200B）を除くと、データのタイトルと同じ", not bad_t, bad_t[:3])
+        check("索引のタイトルに、文節の区切り（U+200B）が入っている（ブラウザで語の途中で改行しないため）", any("\u200b" in r["t"] for r in irows))
         check(f"索引の作品の数（{len(irows)}）= min(データの件数 {len(valid)}, 3000)", len(irows) == min(len(valid), 3000), (len(irows), len(valid)))
         check("索引は発売日の新しい順", [r["d"] for r in irows] == sorted((r["d"] for r in irows), reverse=True))
         check("ジャンルの番号（g）が、すべて genres の範囲内で、作品のジャンルの名前に戻る", all(all(isinstance(n, int) and 0 <= n < len(igenres) for n in r["g"]) and sorted(igenres[n] for n in r["g"]) == sorted(set(g for g in (valid[r["c"]].get("genres") or []) if g)) for r in irows), [r["c"] for r in irows if sorted(igenres[n] for n in r["g"] if isinstance(n, int) and 0 <= n < len(igenres)) != sorted(set(g for g in (valid[r["c"]].get("genres") or []) if g))][:2])
@@ -996,7 +1004,8 @@ print("\n■ 日本語の文章の改行（文節の区切り）")
 # 日本語の文章は、ビルドの最後に、文節の区切り（<wbr>）と包み（<span class="ph">）が足される（site/src/lib/phrase.js・Astro の拡張 phrase-breaks）。
 # iPhone/iPadのSafari系には、CSSで文節ごとに改行する機能が無いため、「あ／り」のような語の途中の改行を、これで防いでいる
 html_files = glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True)
-PH_BLOCK = re.compile(r'<span class="ph">[\s\S]*?</span>')
+PH_BLOCK = re.compile(r'<span class="ph">(?:[^<]|<wbr>|<span class="nb">[^<]*</span>)*</span>')
+NB_SPAN = re.compile(r'<span class="nb">([^<]*)</span>')
 SKIP_EL = re.compile(r"<(script|style|title|textarea|button|option|select|pre|code|noscript|svg|template)\b[^>]*>[\s\S]*?</\1\s*>", re.I)
 stray_wbr, tag_in_ph, ph_in_skip, with_ph = [], [], [], 0
 for p in html_files:
@@ -1005,12 +1014,28 @@ for p in html_files:
         with_ph += 1
     if "<wbr" in PH_BLOCK.sub("", raw):
         stray_wbr.append(rel(p))
-    if any("<" in re.sub(r"<wbr>", "", m.group(0)[len('<span class="ph">'):-len("</span>")]) for m in PH_BLOCK.finditer(raw)):
+    if any("<" in NB_SPAN.sub("", re.sub(r"<wbr>", "", m.group(0)[len('<span class="ph">'):-len("</span>")])) for m in PH_BLOCK.finditer(raw)):
         tag_in_ph.append(rel(p))
     if any('class="ph"' in m.group(0) or "<wbr" in m.group(0) for m in SKIP_EL.finditer(raw)):
         ph_in_skip.append(rel(p))
 check("全ページで、文節の区切り（<wbr>）が、すべて <span class=\"ph\"> の中にある", not stray_wbr, stray_wbr[:3])
-check("<span class=\"ph\"> の中には、<wbr> のほか、タグが入っていない（文章だけ）", not tag_in_ph, tag_in_ph[:3])
+check("<span class=\"ph\"> の中には、<wbr> と名前の <span class=\"nb\"> のほか、タグが入っていない（文章だけ）", not tag_in_ph, tag_in_ph[:3])
+# 出演者名・メーカー名の途中には、区切り（<wbr>）が入っていない（運営者が見つけた「波多｜野結衣」のような改行を防ぐ）
+name_list = sorted({n for it in valid.values() for n in [*(it.get("actress") or []), it.get("maker") or ""] if n and n != "不明" and len(n) >= 2}, key=len, reverse=True)
+split_names = []
+for p in html_files:
+    raw = read_raw(p)
+    for m in PH_BLOCK.finditer(raw):
+        inner = NB_SPAN.sub(r"\1", m.group(0)[len('<span class="ph">'):-len("</span>")])
+        flat = inner.replace("<wbr>", "")
+        for n in name_list:
+            if n in flat and n not in inner:
+                split_names.append((rel(p), n))
+check("出演者名・メーカー名の途中に、文節の区切り（<wbr>）が入っていない", not split_names, split_names[:5])
+nb_rules = [body for sels, body in css_rules if ".nb" in sels]
+check("CSS: 短い名前の包み（.nb）は white-space: nowrap（途中で改行しない）", any(re.search(r"white-space\s*:\s*nowrap", b) for b in nb_rules), nb_rules[:1])
+nb_long = sorted({m.group(1) for p in html_files for m in NB_SPAN.finditer(read_raw(p)) if len(m.group(1)) > 13})
+check("改行しない包み（.nb）は、短い名前だけ（長いと、狭い画面ではみ出すため）", not nb_long, nb_long[:3])
 check("script・style・title・ボタン・コードなどの中には、区切りを入れていない", not ph_in_skip, ph_in_skip[:3])
 check(f"ほとんどのページ（9割以上）の日本語の文章に、文節の区切りが入っている（Astro の拡張が動いた証拠。{with_ph}/{len(html_files)}）", html_files and with_ph >= len(html_files) * 0.9, (with_ph, len(html_files)))
 for path_, label in [("index.html", "トップ"), ("actress/index.html", "出演者一覧（運営者が見つけた説明文）"), ("calendar/index.html", "カレンダーの使い方")]:

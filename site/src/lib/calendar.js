@@ -1,7 +1,8 @@
 // 発売日カレンダー（.ics）の部品（画面に依存しない）。
 // iPad・iPhone・Googleカレンダーなどで「購読」すると、発売日が自動でカレンダーに入る（毎日の更新に合わせて、カレンダー側が定期的に読み直す）。
 // カレンダーの予定の「題名」には、作品のタイトルを入れない（カレンダーを人に見られても困らないように）。タイトルと品番・リンクは、予定の詳細（説明）に入れる。
-import { SITE_URL, itemPath, isDay } from './items.js';
+import { SITE_URL, addDays, itemPath, isDay } from './items.js';
+import { productCode } from './facts.js';
 
 export const CALENDAR_PATH = '/calendar/';
 export const UPCOMING_ICS_PATH = '/calendar/upcoming.ics';
@@ -47,8 +48,7 @@ export function foldIcsLine(line) {
 }
 
 const compact = (day) => day.replace(/-/g, '');
-const nextDay = (day) => compact(new Date(Date.UTC(+day.slice(0, 4), +day.slice(5, 7) - 1, +day.slice(8, 10)) + 86400000).toISOString().slice(0, 10));
-const minusDays = (day, n) => new Date(Date.UTC(+day.slice(0, 4), +day.slice(5, 7) - 1, +day.slice(8, 10)) - n * 86400000).toISOString().slice(0, 10);
+const nextDay = (day) => compact(addDays(day, 1));
 
 /**
  * カレンダーに入れる作品: 発売日が（今日 − CALENDAR_PAST_DAYS日）以降のもの。発売日の早い順。
@@ -56,7 +56,7 @@ const minusDays = (day, n) => new Date(Date.UTC(+day.slice(0, 4), +day.slice(5, 
  * （古い方から入れると、遠い先の予約が切れてしまうため）。
  */
 export function calendarItems(items, today, limit = CALENDAR_MAX_EVENTS) {
-  const from = minusDays(today, CALENDAR_PAST_DAYS);
+  const from = addDays(today, -CALENDAR_PAST_DAYS);
   const sorted = items
     .filter((i) => i.dateKey >= from)
     .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.cid.localeCompare(b.cid));
@@ -93,7 +93,8 @@ export function buildIcs({ calName, items, today, subject = '', siteUrl = SITE_U
   for (const item of calendarItems(items, today)) {
     if (!isDay(item.dateKey)) continue;
     const summary = eventSummary(item, subject);
-    const description = `${item.title}\n品番: ${item.cid}\n${siteUrl}${itemPath(item.cid)}`;
+    const code = productCode(item.cid); // 作品ページと同じ品番（作れないときは作品ID）
+    const description = `${item.title}\n${code ? `品番: ${code}` : `作品ID: ${item.cid}`}\n${siteUrl}${itemPath(item.cid)}`;
     lines.push(
       'BEGIN:VEVENT',
       `UID:${item.cid}@${host}`,

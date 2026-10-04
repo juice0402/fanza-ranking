@@ -43,7 +43,13 @@ check('画像: DMMのURLの先頭を省く（DMM以外のホストの画像は�
 check('画像: ブラウザ側で付け直すと、もとの画像URLに戻る（DMMのもの）', idx.items.filter((r) => r.i.startsWith('digital/')).every((r) => S.imageUrl(r.i) === 'https://pics.dmm.co.jp/' + r.i && items.find((i) => i.cid === r.c).image_url === S.imageUrl(r.i)));
 check('画像: DMM以外のホスト・ホスト名を似せたURL・空・数字は、ブラウザ側で使わない', ['https://example.net/img.jpg', 'https://dmm.co.jp.evil.example/a.jpg', 'https://evildmm.co.jp/a.jpg', '', null, 5].every((u) => S.imageUrl(u) === ''));
 check('画像: ホストを偽る形（https://dmm.co.jp:@evil…）も通さない', S.imageUrl('https://evil.example/x.jpg') === '' && S.imageUrl('https://pics.dmm.co.jp:@evil.example/x.jpg') === '' && S.imageUrl('') === '');
-check('個人情報や長い文（コメント・URL）は索引に入れない（短い名前 c,t,d,a,m,g,i,v だけ）', idx.items.every((r) => Object.keys(r).every((k) => 'ctdamgiv'.includes(k))) && !JSON.stringify(idx).includes('al.fanza.co.jp'));
+check('個人情報や長い文（コメント・URL）は索引に入れない（短い名前 c,p,t,d,a,m,g,i,v だけ）', idx.items.every((r) => Object.keys(r).every((k) => 'cptdamgiv'.includes(k))) && !JSON.stringify(idx).includes('al.fanza.co.jp'));
+const coded = L.buildItemsIndex(normalizeItems([{ cid: '1dldss00566', title: '品番のある作品です。長めの題名にしておきます', date: '2026-10-01', maker: 'DAHLIA', actress: ['青坂あおい'] }, { cid: 'a001', title: 'x', date: '2026-10-01' }]), today);
+check('品番を作れる作品には p（例 DLDSS-566）が入る。作れない作品には無い', coded.items.find((r) => r.c === '1dldss00566').p === 'DLDSS-566' && !('p' in coded.items.find((r) => r.c === 'a001')));
+const ct = coded.items.find((r) => r.c === '1dldss00566').t;
+check('タイトルには、文節の区切りに幅のない空白（U+200B）が入る。取り除くと元のタイトルに戻る', ct.includes('\u200b') && ct.replace(/\u200b/g, '') === '品番のある作品です。長めの題名にしておきます', JSON.stringify(ct));
+const named = L.buildItemsIndex(normalizeItems([{ cid: 'n1', title: '出演は青坂あおいさんの作品', date: '2026-10-01', actress: ['青坂あおい'] }]), today).items[0].t;
+check('タイトルの中の出演者名の途中には、区切りを入れない', named.includes('青坂あおいさん') || named.includes('青坂あおい'), JSON.stringify(named));
 const limited = L.buildItemsIndex(items, today, 2);
 check('作品の数に上限がある（新しい順に残す）・ジャンル一覧は残した作品のものだけ', limited.items.map((r) => r.c).join() === 'a003,a001' && [...limited.genres].sort().join() === ['VR専用', '巨乳'].sort().join(), limited.genres.join());
 check('空の入力でも落ちない', L.buildItemsIndex([], today).items.length === 0);
@@ -101,6 +107,12 @@ check('索引の1行が使える形か（品番は英数字・ハイフン・下
 check('「新作」「予約」のシール: 今日以降は予約・6日以内は新作・それより前は無し', S.statusOf('2026-10-04', today, 6) === 'wait' && S.statusOf('2026-10-03', today, 6) === 'new' && S.statusOf('2026-09-27', today, 6) === 'new' && S.statusOf('2026-09-26', today, 6) === '');
 check('日本時間の今日（UTC 15:30 → 翌日）', S.jstToday(Date.UTC(2026, 9, 1, 15, 30)) === '2026-10-02' && S.jstToday(Date.UTC(2026, 9, 1, 14, 59)) === '2026-10-01');
 check('検索用の文字: 全角/半角・カタカナ/ひらがな・大文字小文字・空白と中点を無視', S.normalizeText('ＡＢｃ　テスト・花子') === 'abcてすと花子' && S.normalizeText(null) === '');
+check('検索用の文字: 品番の「-」と、文節の区切り（U+200B）も無視する', S.normalizeText('DLDSS-566') === 'dldss566' && S.normalizeText('ＤＬＤＳＳ－５６６') === 'dldss566' && S.normalizeText('作品\u200bです') === 'さくひんです'.replace('さくひん', '作品'));
+const crow = plain(coded.items).map((r) => ({ ...r }));
+S.prepare(crow, coded.genres);
+const byCode = (q) => S.filterRows(crow, { terms: S.splitTerms(q), tags: [], status: '', sort: 'new' }, { today, hideVr: false }).map((r) => r.c).join();
+check('品番で探せる（DLDSS-566・dldss566・dldss-566・DLDSS566・作品IDの dldss00566）', ['DLDSS-566', 'dldss566', 'dldss-566', 'DLDSS566', 'dldss00566'].every((q) => byCode(q) === '1dldss00566'), ['DLDSS-566', 'dldss566'].map(byCode).join('/'));
+check('タイトルの言葉で探すとき、文節の区切りがあっても見つかる（「作品です」）', byCode('作品です') === '1dldss00566');
 
 console.log('\n■ 「VR作品を隠す」スイッチ（vr-filter.js）');
 check('保存のキーと、html に付ける印', V.KEY === 'hide-vr' && V.CLASS === 'hide-vr');

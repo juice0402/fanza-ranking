@@ -1,7 +1,8 @@
 // 日本語の文章を文節で改行させる部品（site/src/lib/phrase.js）のテスト。実行: node tests/test_phrase.mjs
 // （画面での見え方・Astro の拡張が実際に動くかは、PRのビルド（tests/verify_dist.py）とプレビューで見る）
 import fs from 'node:fs';
-import { splitPhrases, phraseText, phraseHtml, unphraseHtml, MIN_JAPANESE, MAX_PHRASE } from '../site/src/lib/phrase.js';
+import { splitPhrases, phraseText, phraseHtml, unphraseHtml, phraseZwsp, namesPattern, MIN_JAPANESE, MAX_PHRASE, NOWRAP_MAX, ZWSP } from '../site/src/lib/phrase.js';
+import { namesFromData } from '../site/src/integrations/phrase-breaks.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -52,6 +53,34 @@ check('文字参照（&amp; &#12354; &lt; など）は、途中で切らない',
 check('区切りが無い短い名前も、語の途中で改行されないよう、包む', phraseText('三葉ちはる') === '<span class="ph">三葉ちはる</span>', phraseText('三葉ちはる'));
 check('前後の空白は、包みの外に残る', phraseText('\n  専用ページがあり、それ以外の人は \n') .startsWith('\n  <span class="ph">') && phraseText('\n  専用ページがあり、それ以外の人は \n').endsWith('</span> \n'));
 check('空白のあとには <wbr> を入れない（空白で改行できるため）', !/\s<wbr>/.test(phraseText('Where is my wife？ 三葉ちはる')), phraseText('Where is my wife？ 三葉ちはる'));
+
+console.log('\n■ 出演者名・メーカー名の途中では改行しない（運営者が見つけた「波多｜野結衣」「パラダイ｜ステレビ」のような改行）');
+const names = ['青坂あおい', '波多野結衣', 'パラダイステレビ', 'グローリークエスト', '無理くりえいてぃぶ', 'S-Cute', '犬/妄想族', 'KMPVR-彩-', 'とても長い名前のメーカーの株式会社です'];
+const re = namesPattern(names);
+const sent = 'パラダイステレビの作品です。出演は青坂あおいさんと波多野結衣さん。グローリークエスト・無理くりえいてぃぶ・S-Cute・犬/妄想族の新作も。';
+const sp = splitPhrases(sent, re);
+check('区切っても、つなげると元に戻る（名前つき）', sp.join('') === sent);
+check('名前（と、すぐあとの「さん」）の途中に区切りが無い', ['パラダイステレビ', '青坂あおいさん', '波多野結衣さん', 'グローリークエスト', '無理くりえいてぃぶ'].every((n) => sp.some((p) => p.includes(n))), JSON.stringify(sp));
+check('名前が無いときは、いままでどおり（名前の途中で切れることがある）', splitPhrases(sent).join('｜') !== sp.join('｜'));
+const hx = phraseHtml(`<p>${sent}</p><a>S-Cute</a><a>犬/妄想族</a><dd>青坂あおい</dd><p>とても長い名前のメーカーの株式会社ですの作品の説明です。</p>`, re);
+check(`${NOWRAP_MAX}文字以下の名前は <span class="nb">（改行しない）で包む。英字の名前（S-Cute）や「/」入りの名前も`, ['<span class="nb">青坂あおいさん</span>', '<span class="nb">パラダイステレビ</span>', '<a><span class="nb">S-Cute</span></a>', '<span class="nb">犬/妄想族</span></span></a>', '<dd><span class="ph"><span class="nb">青坂あおい</span></span></dd>'].every((x) => hx.includes(x)), hx);
+check(`${NOWRAP_MAX}文字より長い名前は包まない（狭い画面ではみ出さないように）が、途中に <wbr> も入れない`, !hx.includes('<span class="nb">とても') && hx.includes('とても長い名前のメーカーの株式会社です'), hx);
+check('2回かけても同じ（名前の包みも二重にしない）', phraseHtml(hx, re) === hx);
+check('元に戻せる（<span class="nb"> も外れる）', unphraseHtml(hx) === `<p>${sent}</p><a>S-Cute</a><a>犬/妄想族</a><dd>青坂あおい</dd><p>とても長い名前のメーカーの株式会社ですの作品の説明です。</p>`);
+check('名前の一覧が空・1文字の名前だけなら、守る語なし（null）', namesPattern([]) === null && namesPattern(['A', '']) === null && namesPattern(null) === null);
+check('名前に正規表現の記号（. * + ( ) など）が入っていても壊れない', splitPhrases('メーカー(株).*の新作です', namesPattern(['メーカー(株).*'])).join('') === 'メーカー(株).*の新作です');
+check('ビルドで使う名前の一覧を、作品データから集められる（出演者・メーカー。「不明」は除く）', namesFromData().length > 20 && !namesFromData().includes('不明'));
+check('作品データが読めなければ、名前の一覧は空（ビルドは止めない）', namesFromData(new URL('file:///no/such/file.json')).length === 0);
+
+console.log('\n■ 伏せ字（○●）のまわりでは改行しない');
+const cz = splitPhrases('剥き出しチ○ポ中毒とJ●痴●ガチナマ路線の作品です');
+check('「チ○ポ」「J●痴●」の途中で区切らない', cz.some((p) => p.includes('チ○ポ')) && cz.some((p) => p.includes('J●痴●')), JSON.stringify(cz));
+
+console.log('\n■ ブラウザで作る文章（作品検索・お気に入り）用: 幅のない空白（U+200B）で区切る');
+const z = phraseZwsp('専用ページがあり、それ以外の人はFANZAの作品一覧にリンクします。');
+check('文節の区切りに U+200B が入り、取り除くと元に戻る', z.includes(ZWSP) && z.split(ZWSP).join('') === '専用ページがあり、それ以外の人はFANZAの作品一覧にリンクします。', JSON.stringify(z));
+check('名前の途中には入れない', !phraseZwsp('出演は青坂あおいさんの作品です', re).split(ZWSP).some((p) => p.endsWith('青坂') || p.endsWith('青坂あ')));
+check('短い文字列・空は、そのまま', phraseZwsp('発売中') === '発売中' && phraseZwsp('') === '' && phraseZwsp(null) === '');
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

@@ -1,6 +1,8 @@
 // 作品検索（/search/）のための、サイト側の部品（画面に依存しない）。
 // ブラウザ側の動き（絞り込み・結果の表示）は site/public/search.js、「VR作品を隠す」スイッチは site/public/vr-filter.js。
 import { NEW_BADGE_DAYS } from '../config.js';
+import { namesPattern, phraseZwsp } from './phrase.js';
+import { productCode } from './facts.js';
 
 export const SEARCH_PATH = '/search/';
 export const ITEMS_INDEX_PATH = '/data/items-index.json';
@@ -13,7 +15,9 @@ export const searchPath = (tag = '') => (tag ? `${SEARCH_PATH}?tag=${encodeURICo
 /**
  * 作品検索のための索引（/data/items-index.json）。
  *   generated: 作った日 / newDays: 「新作」シールを付ける日数 / genres: ジャンル名の一覧（作品の多い順）
- *   items: 発売日の新しい順に、{ c 品番, t タイトル, d 発売日, a 出演者, m メーカー, g ジャンルの番号（genres の何番目か）, v VRなら 1（VRでなければ無い）, i 画像 }
+ *   items: 発売日の新しい順に、{ c 作品ID, p 品番（例 DLDSS-566。作れないときは無い）, t タイトル, d 発売日, a 出演者, m メーカー,
+ *           g ジャンルの番号（genres の何番目か）, v VRなら 1（VRでなければ無い）, i 画像 }
+ * タイトルには、文節の区切りに幅のない空白（U+200B）が入っている（ブラウザで、語の途中で改行しないため。site/src/lib/phrase.js の phraseZwsp）。
  * 出演者・メーカー・ジャンルは、作品ページと同じ名前。メーカーが「不明」のときは ''。
  * 画像は、DMMの画像のURLの先頭（https://pics.dmm.co.jp/）を省いた形（ほかのホストのURLはそのまま）。
  */
@@ -26,6 +30,7 @@ export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT) {
   for (const item of picked) for (const g of new Set(item.genres)) counts.set(g, (counts.get(g) ?? 0) + 1);
   const genres = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a) || (a < b ? -1 : a > b ? 1 : 0));
   const numberOf = new Map(genres.map((g, i) => [g, i]));
+  const namesRe = namesPattern(picked.flatMap((i) => [...i.actress, i.maker]).filter((n) => n !== '不明'));
 
   return {
     generated: today,
@@ -34,7 +39,7 @@ export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT) {
     items: picked.map((item) => {
       const row = {
         c: item.cid,
-        t: item.title,
+        t: phraseZwsp(item.title, namesRe),
         d: item.dateKey,
         a: item.actress,
         m: item.maker === '不明' ? '' : item.maker,
@@ -42,6 +47,8 @@ export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT) {
         i: item.image_url.startsWith(DMM_IMAGE_PREFIX) ? item.image_url.slice(DMM_IMAGE_PREFIX.length) : item.image_url,
       };
       if (item.vr) row.v = 1;
+      const code = productCode(item.cid);
+      if (code) row.p = code;
       return row;
     }),
   };

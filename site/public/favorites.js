@@ -311,9 +311,10 @@
       link.appendChild(img);
     }
     var body = el('span', 'fav-row-body');
-    body.appendChild(el('span', 'fav-row-title', item.t));
+    // ph-js: 文節の区切り（タイトルに入っている U+200B）と「、」の所だけで改行する（名前・語の途中で改行しない）
+    body.appendChild(el('span', 'fav-row-title ph-js', item.t));
     var cast = Array.isArray(item.a) && item.a.length ? item.a.join('、') : '';
-    body.appendChild(el('span', 'fav-row-meta', jpDate(item.d) + (cast ? '　' + cast : '')));
+    body.appendChild(el('span', 'fav-row-meta ph-js', jpDate(item.d) + (cast ? '　' + cast : '')));
     link.appendChild(body);
     row.appendChild(link);
     if (onRemove) {
@@ -385,14 +386,14 @@
         var row = el('li', 'fav-row');
         var body = el('span', 'fav-row-body');
         if (entry.slug) {
-          var link = el('a', 'fav-row-title fav-row-title-link', name);
+          var link = el('a', 'fav-row-title fav-row-title-link ph-js', name);
           link.href = def[2] + entry.slug + '/';
           body.appendChild(link);
           var cal = el('a', 'fav-row-meta', '発売日をカレンダーで受け取る');
           cal.href = 'webcal://' + location.host + def[3] + entry.slug + '.ics';
           body.appendChild(cal);
         } else {
-          body.appendChild(el('span', 'fav-row-title', name));
+          body.appendChild(el('span', 'fav-row-title ph-js', name));
           body.appendChild(el('span', 'fav-row-meta', '作品が2本以上になると、専用ページとカレンダーが使えます'));
         }
         row.appendChild(body);

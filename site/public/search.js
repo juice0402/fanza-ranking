@@ -23,7 +23,8 @@
     s = s.toLowerCase().replace(/[ァ-ヶ]/g, function (c) {
       return String.fromCharCode(c.charCodeAt(0) - 0x60);
     });
-    return s.replace(/[\s　・·.・]/g, '');
+    // 品番の「-」の有無（DLDSS-566 / dldss566）と、タイトルの文節の区切り（幅のない空白 U+200B）も、そろえる
+    return s.replace(/[\s　・·.・\-\u200b]/g, '');
   }
 
   // キーワードを、空白で区切った語に分ける（全部の語を含む作品だけを探す）
@@ -89,7 +90,7 @@
       var names = row.g.map(function (n) {
         return genres[n] || '';
       });
-      row._h = normalizeText(row.t) + SEP + row.a.map(normalizeText).join(SEP) + SEP + normalizeText(row.m) + SEP + normalizeText(row.c) + SEP + names.map(normalizeText).join(SEP);
+      row._h = normalizeText(row.t) + SEP + row.a.map(normalizeText).join(SEP) + SEP + normalizeText(row.m) + SEP + normalizeText(row.c) + SEP + normalizeText(typeof row.p === 'string' ? row.p : '') + SEP + names.map(normalizeText).join(SEP);
     });
     return rows;
   }
@@ -286,7 +287,7 @@
     article.appendChild(cover);
 
     var heading = el('h3', 'item-title');
-    var link = el('a', 'item-title-link', row.t);
+    var link = el('a', 'item-title-link ph-js', row.t); // ph-js: 文節の区切り（索引のタイトルに入っている U+200B）の所だけで改行する
     link.href = href;
     heading.appendChild(link);
     article.appendChild(heading);
@@ -294,8 +295,8 @@
     var cast = row.a.filter(function (name) {
       return typeof name === 'string' && name;
     });
-    article.appendChild(el('p', 'item-cast', cast.length ? cast.join('、') : '出演者の記載なし'));
-    article.appendChild(el('p', 'item-meta', jp(row.d) + '発売' + (row.m ? '・' + row.m : '')));
+    article.appendChild(el('p', 'item-cast ph-js', cast.length ? cast.join('、') : '出演者の記載なし'));
+    article.appendChild(el('p', 'item-meta ph-js', jp(row.d) + '発売' + (row.m ? '・' + row.m : '')));
     li.appendChild(article);
     return li;
   }
