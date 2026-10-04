@@ -1,0 +1,42 @@
+---
+// きょうの数字（トップ）: FANZA動画全体の、きょう発売の本数・この1週間の本数・予約受付中の本数と、日ごとの本数の棒（lib/topics.js の todayStats）。
+// 毎日の更新が、FANZA公式のAPIで数えたもの（このサイトに載せている本数ではない）
+const { stats } = Astro.props;
+const fmt = (n) => (Number.isInteger(n) ? n.toLocaleString('ja-JP') : '—');
+const span = stats.days === 7 ? 'この1週間' : `この${stats.days}日`;
+---
+
+<section id="stats" class="today-stats" aria-labelledby="stats-title">
+  <div class="today-sec-head">
+    <h2 id="stats-title" class="today-sec-title">きょうの数字</h2>
+    <p class="section-note">FANZA動画（ビデオ）全体の本数</p>
+  </div>
+  <div class="stats">
+    <dl class="stats-nums">
+      <div class="stat stat-main">
+        <dt class="stat-label">きょう発売</dt>
+        <dd class="stat-value"><span class="stat-n">{fmt(stats.today)}</span>本</dd>
+      </div>
+      <div class="stat">
+        <dt class="stat-label">{span}</dt>
+        <dd class="stat-value"><span class="stat-n">{fmt(stats.week)}</span>本</dd>
+      </div>
+      {stats.upcoming !== null && (
+        <div class="stat">
+          <dt class="stat-label">予約受付中</dt>
+          <dd class="stat-value"><span class="stat-n">{fmt(stats.upcoming)}</span>本</dd>
+        </div>
+      )}
+    </dl>
+    <ol class="bars" aria-label={`${span}の、日ごとの発売本数`}>
+      {stats.bars.map((b) => (
+        <li class={b.today ? 'bar is-today' : 'bar'}>
+          <span class="bar-track">
+            <span class="bar-fill" style={`--h: ${Math.max(3, Math.round(b.ratio * 100))}%`}><span class="bar-n">{fmt(b.n)}</span></span>
+          </span>
+          <span class="bar-day">{b.today ? 'きょう' : `${b.label.m}/${b.label.d}`}<span class="bar-wd">{b.label.wd}</span></span>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>

@@ -153,6 +153,15 @@ pop_new, pop_all = _rank_map(_pop.get("new")), _rank_map(_pop.get("all"))
 all_rank_of = lambda c: catalog_rank.get(c) if c in catalog else pop_all.get(c)  # 全体の人気順（過去作品は catalog_rank、毎日の更新の作品は popularity.json の all）
 has_comment = lambda x: bool(str(x.get("comment") or "").strip())
 
+
+def is_vr_raw(x):
+    """保存データの1件がVR作品か（site/src/lib/items.js の isVrWork と同じ決まり。突き合わせるため、別に書いてある）"""
+    title = str(x.get("title", ""))
+    tags_ = [t for t in (x.get("tags") or []) if isinstance(t, str) and re.fullmatch(r"[0-9A-Za-z]{1,6}", t)]
+    genres_ = [g for g in (x.get("genres") or []) if g]
+    return bool(re.search(r"【[^】]*VR[^】]*】", title, re.I)) or any("VR" in t.upper() for t in tags_) or any("VR" in str(g).upper() for g in genres_)
+
+
 print("■ ページが揃っている")
 index_path = os.path.join(DIST, "index.html")
 check("トップページ", os.path.isfile(index_path))
@@ -576,7 +585,7 @@ if os.path.isfile(search_page):
     check(f"JavaScriptが使えないとき用の一覧に、専用ページのある出演者がいる（{len(actress_pages)}人。多いときは作品数の多い順に{index_limit}人まで）", static_rows == min(len(actress_pages), index_limit) and any(t.get("id") == "actress-static" for t in tags(stext, "section")), (static_rows, len(actress_pages)))
     check("検索の注意書き（載っていない人は絞り込みで外れる・データのある人数・FANZA公式のデータ）が、ページにある", (not rows) or ("結果に出ません" in stext and "いま探せる" in stext and "FANZA公式" in stext))
 
-print("\n■ 売れ筋ランキング（トップページ）")
+print("\n■ トップ: きょうの新着人気TOP3・きょうの数字・きょうの話題")
 rk_raw = load_json(RANKING) if os.path.isfile(RANKING) else None
 rk_items = []
 rk_fresh = False
@@ -590,28 +599,100 @@ if isinstance(rk_raw, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(rk_raw.ge
 # トップの検索欄: 作品検索のページ（/search/）へ、キーワード（q）を送る。JavaScript が無くても動く（ふつうのフォーム）
 hero_forms = [t for t in tags(home_html, "form") if has_class(t, "hero-search")]
 check("トップに検索欄があり、/search/ にキーワード（q）を送る", len(hero_forms) == 1 and hero_forms[0].get("action") == "/search/" and hero_forms[0].get("method", "get").lower() == "get" and any(t.get("name") == "q" for t in tags(home_html, "input")), hero_forms)
+check("トップの見出しは「きょうのFANZA新作」で、更新した日付が入っている", re.search(r'<h1 class="today-title">きょうのFANZA新作</h1>', home_html) is not None and f'<time datetime="{JST_TODAY}">' in home_html)
+
+# TOP3: この1週間に発売された作品を、新着の人気順に6本（画面に出すのは先頭の3本）。まだ無いときは売れ筋（ranking.json）で代わりにする
+_top_from = (datetime.date.fromisoformat(JST_TODAY) - datetime.timedelta(days=7)).isoformat()
+want_top = sorted((c for c in everything if c in pop_new and _top_from <= str(everything[c]["date"])[:10] <= JST_TODAY),
+                  key=lambda c: (pop_new[c], -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:6]
 home_sections = [t for t in tags(home_html, "section") if t.get("id") == "ranking"]
-rank_cards = [t for t in tags(home_html, "article") if has_class(t, "rank-item")]
-if rk_fresh and rk_items:
-    check("ランキングがあるとき: トップに「売れ筋」の欄があり、本数が合う", len(home_sections) == 1 and len(rank_cards) == len(rk_items), (len(home_sections), len(rank_cards), len(rk_items)))
-    hrefs = {t.get("href"): t for t in tags(home_html, "a")}
-    missing = [r["cid"] for r in rk_items if r["url"] not in hrefs or not SPONSORED <= set(hrefs[r["url"]].get("rel", "").split())]
-    check("各作品の「FANZAで見る」は、アフィリエイトのURLで、広告のリンクの属性（sponsored など）が付いている", not missing, missing)
+medal_cells = [(m.group(1), m.group(2), m.group(3)) for m in re.finditer(r'<li class="medal-cell([^"]*)"([^>]*)>(.*?)</li>', home_html, re.S)]
+top_rows = [{"cid": c, "url": everything[c].get("url"), "title": everything[c]["title"], "vr": is_vr_raw(everything[c])} for c in want_top] if want_top else (
+    [{"cid": str(r["cid"]), "url": r["url"], "title": str(r["title"]).strip(), "vr": r.get("vr") is True or bool(re.search(r"【[^】]*VR[^】]*】", str(r["title"]), re.I)) or (str(r["cid"]) in valid and is_vr_raw(valid[str(r["cid"])]))} for r in rk_items] if rk_fresh else [])
+top_hrefs = []
+if top_rows:
+    title_ = "きょうの新着人気TOP3" if want_top else "売れ筋TOP3"
+    check(f"TOP3の欄がある（見出し「{title_}」）・本数が合う（{len(top_rows)}本）", len(home_sections) == 1 and f'id="ranking-title" class="today-sec-title">{title_}</h2>' in home_html and len(medal_cells) == len(top_rows), (len(home_sections), len(medal_cells), len(top_rows)))
+    podium = next((t for t in tags(home_html, "ol") if has_class(t, "medals")), None)
+    shown_n = min(len(top_rows), 3)
+    check("TOP3の並びに、出す本数（data-show=3）・見えている本数（data-visible）の印がある（VR作品を隠したとき、vr-filter.js が付け直す）", bool(podium) and has_class(podium, "rank-podium") and podium.get("data-show") == "3" and podium.get("data-visible") == str(shown_n), podium)
+    cell_attrs = [tags(f'<li class="medal-cell{cls}"{attrs}>', "li")[0] for cls, attrs, _ in medal_cells]
+    check("TOP3: 先頭の3本だけが見えていて、4位以降は rank-off（VR作品を隠したとき、差し替えに使う）。各マスに順位（data-rank）と、先頭の3本にメダルの色（data-place 1 金・2 銀・3 銅）",
+          [has_class(a, "rank-off") for a in cell_attrs] == [i >= 3 for i in range(len(cell_attrs))] and [a.get("data-rank") for a in cell_attrs] == [str(i) for i in range(1, len(cell_attrs) + 1)]
+          and [a.get("data-place") for a in cell_attrs] == [str(i + 1) if i < 3 else None for i in range(len(cell_attrs))], [(a.get("class"), a.get("data-rank"), a.get("data-place")) for a in cell_attrs])
+    badges = [re.search(r'<span class="medal rank-badge">(\d+)位</span>', inner) for _, _, inner in medal_cells]
+    check("TOP3: メダルに順位（1位から順に）", [b.group(1) if b else None for b in badges] == [str(i) for i in range(1, len(medal_cells) + 1)])
+    bad_link, bad_order, bad_vr = [], [], []
+    for (cls, attrs, inner), row in zip(medal_cells, top_rows):
+        a_ = next((t for t in tags(inner, "a") if has_class(t, "medal-card")), {})
+        href = a_.get("href", "")
+        top_hrefs.append(href)
+        if href == f"/item/{row['cid']}/":
+            if row["cid"] not in paged:
+                bad_link.append((row["cid"], href))
+        elif href != row["url"] or not SPONSORED <= set(a_.get("rel", "").split()) or a_.get("target") != "_blank":
+            bad_link.append((row["cid"], href))
+        elif row["cid"] in paged:
+            bad_link.append((row["cid"], "作品ページがあるのにFANZAへ"))
+        t_ = re.search(r'<span class="medal-title">(.*?)</span>', inner, re.S)
+        if not t_ or htmllib.unescape(re.sub(r"<[^>]+>", "", t_.group(1))) != row["title"].strip():
+            bad_order.append(row["cid"])
+        if ('data-vr="true"' in attrs) != row["vr"]:
+            bad_vr.append((row["cid"], row["vr"]))
+    check("TOP3: 各作品のリンクは、作品ページがあれば作品ページ・無ければFANZA（広告のリンクの属性つき）", not bad_link, bad_link[:3])
+    check("TOP3: 並び（作品）が、順位のファイルから決めたものと同じ", not bad_order, bad_order[:3])
+    check("TOP3: VR作品にだけ data-vr が付いている（VR作品を隠すと、次の順位から差し替える）", not bad_vr, bad_vr[:3])
+    check("TOP3の見出しの横に、「VRを除く」の注記（最初は隠れている。VR作品を隠したとき、JavaScriptが出す）がある", re.search(r'<span class="rank-vr-note" hidden>｜VRを除く</span>', home_html) is not None)
     check("「人気順」と書いてある（FANZAのデイリーランキングと同じとは書かない）", "人気順" in home_html and "デイリーランキング" not in home_html)
-    check("売れ筋の欄は、トップのはじめのほう（発売中の新作より前）にある", home_html.find('id="ranking"') < home_html.find('id="released"'))
-    cell_places = [re.search(r"\brank-([0-3])\b", t.get("class", "")) for t in rank_cards]
-    check("1〜3位のカードに、順位ごとの大きさの目印（rank-1〜rank-3。4位以降は rank-0）が、順番どおりに付いている（表示の順位は、抜けがあっても1,2,3…とそろえる）", [m.group(1) if m else None for m in cell_places] == [str(i) if i <= 3 else "0" for i in range(1, len(rk_items) + 1)], [t.get("class") for t in rank_cards])
-    check("売れ筋の並びに rank-podium の目印がある（スマホで1位を大きく・広い画面で3本を横いっぱいにする見た目の足がかり）", any(has_class(t, "rank-podium") for t in tags(home_html, "ul")))
-    # 「VR作品を隠す」で本数が減っても空白ができないよう、並べ方の印（data-visible・先頭の .is-hero）を付けている（隠す前は、全部が見えている状態）
-    podium = next((t for t in tags(home_html, "ul") if has_class(t, "rank-podium")), None)
-    podium_cells = [t for t in tags(home_html, "li") if has_class(t, "rank-cell")]
-    shown_n = min(len(podium_cells), 3)
-    hero_expected = [i == 0 and (shown_n == 1 or shown_n >= 3) for i in range(len(podium_cells))]
-    check("売れ筋の並びに、出す本数（data-show=3）・見えている本数（data-visible）・大きく出す1本（先頭の is-hero。3本以上か1本のとき）の印がある", bool(podium) and podium.get("data-show") == "3" and podium.get("data-visible") == str(shown_n) and [has_class(t, "is-hero") for t in podium_cells] == hero_expected, (podium.get("data-show") if podium else None, podium.get("data-visible") if podium else None, [t.get("class") for t in podium_cells]))
-    check("売れ筋: 先頭の3本だけが見えていて、4位以降は rank-off（VR作品を隠したとき、差し替えに使う）。各マスに元の順位（data-rank）が入っている", [has_class(t, "rank-off") for t in podium_cells] == [i >= 3 for i in range(len(podium_cells))] and [t.get("data-rank") for t in podium_cells] == [str(i) for i in range(1, len(podium_cells) + 1)], [(t.get("class"), t.get("data-rank")) for t in podium_cells])
-    check("売れ筋の見出しの横に、「VRを除く」の注記（最初は隠れている。VR作品を隠したとき、JavaScriptが出す）がある", re.search(r'<span class="rank-vr-note" hidden>｜VRを除く</span>', home_html) is not None)
+    check("TOP3の欄は、トップのはじめのほう（発売中の新作より前）にあり、ランキングのページ（新着・全体）への案内がある", home_html.find('id="ranking"') < home_html.find('id="released"') and 'class="today-links"' in home_html and 'href="/ranking/"' in home_html and 'href="/ranking/all/"' in home_html)
 else:
-    check("ランキングが無い・古い（7日より前）・使える行が無いときは、トップに売れ筋の欄を出さない", not home_sections and not rank_cards and 'href="#ranking"' not in home_html)
+    check("新着の人気順も売れ筋（新しいもの）も無いときは、TOP3の欄を出さない", not home_sections and not medal_cells and 'href="#ranking"' not in home_html)
+
+# きょうの数字: today.json（FANZA動画全体の日ごとの発売本数・予約受付中の本数）。今日のデータのときだけ出す
+TODAY_JSON = os.path.join(ROOT, "site", "src", "data", "today.json")
+td_raw = load_json(TODAY_JSON) if os.path.isfile(TODAY_JSON) else None
+td_daily = [r for r in (td_raw.get("daily") if isinstance(td_raw, dict) and isinstance(td_raw.get("daily"), list) else []) if isinstance(r, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("d", ""))) and isinstance(r.get("n"), int) and not isinstance(r.get("n"), bool) and r["n"] >= 0]
+stats_on = isinstance(td_raw, dict) and td_raw.get("date") == JST_TODAY and bool(td_daily) and td_daily[-1]["d"] == JST_TODAY
+stats_sec = [t for t in tags(home_html, "section") if t.get("id") == "stats"]
+today_box = next((t for t in tags(home_html, "div") if has_class(t, "today")), {})
+if stats_on:
+    nums = re.findall(r'<span class="stat-n">([^<]*)</span>', home_html)
+    want_nums = [f"{td_daily[-1]['n']:,}", f"{sum(r['n'] for r in td_daily):,}"]
+    if isinstance(td_raw.get("upcoming_total"), int) and not isinstance(td_raw.get("upcoming_total"), bool) and td_raw["upcoming_total"] >= 0:
+        want_nums.append(f"{td_raw['upcoming_total']:,}")
+    bars = [t for t in tags(home_html, "li") if has_class(t, "bar")]
+    check("きょうの数字: 欄がある・きょう発売／この期間の合計／予約受付中の本数が today.json と同じ（3けたごとに「,」）", len(stats_sec) == 1 and nums == want_nums and has_class(today_box, "has-stats"), (nums, want_nums))
+    check("きょうの数字: 日ごとの棒が日数分あり、きょうの棒だけに印", len(bars) == len(td_daily) and [has_class(b, "is-today") for b in bars] == [r["d"] == JST_TODAY for r in td_daily], len(bars))
+    check("きょうの数字: FANZA動画全体の本数であることが書いてある（このサイトに載せた本数ではない）", "FANZA動画（ビデオ）全体の本数" in home_html)
+else:
+    check("今日の数字が無い・古いときは、きょうの数字の欄を出さない（古い数字を「きょう」として出さない）", not stats_sec and not has_class(today_box, "has-stats"))
+
+# きょうの話題: 種類ごとの札・リンク先（作品ページ・女優のページ・まとめ記事・セールのページ・FANZA）
+TOPIC_LABELS = {"rise": "急上昇", "today": "きょう発売", "upcoming": "予約の人気1位", "entry": "予約に初登場", "debut": "デビュー作", "actress": "人気の女優", "weekly": "週のまとめ", "sale": "もうすぐ終わる"}
+topic_cells = [(m.group(1), m.group(2), m.group(3)) for m in re.finditer(r'<li class="topic topic-([a-z]+)"([^>]*)>(.*?)</li>', home_html, re.S)]
+bad_topic = []
+for kind, attrs, inner in topic_cells:
+    a_ = next((t for t in tags(inner, "a") if has_class(t, "topic-link")), {})
+    href = a_.get("href", "")
+    label = re.search(r'<span class="topic-tag">([^<]*)</span>', inner)
+    if kind not in TOPIC_LABELS or not label or label.group(1) != TOPIC_LABELS[kind]:
+        bad_topic.append((kind, "札"))
+    elif href.startswith("/"):
+        if not os.path.isfile(page_file(href)) or (kind not in ("actress", "weekly", "sale") and not href.startswith("/item/")):
+            bad_topic.append((kind, href))
+    elif not (fanza_https(href, FANZA_LINK) and SPONSORED <= set(a_.get("rel", "").split()) and a_.get("target") == "_blank") or kind in ("weekly", "sale"):
+        bad_topic.append((kind, href))
+    if href in top_hrefs[:3]:
+        bad_topic.append((kind, "TOP3と同じ作品"))
+    if ("data-sale-end" in attrs) != (kind == "sale") or (kind == "sale" and not re.search(r'data-sale-end="\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:59\+09:00"', attrs)):
+        bad_topic.append((kind, "セールの終わり"))
+check(f"きょうの話題（{len(topic_cells)}件。8件まで）: 種類ごとの札と、リンク先（サイトの中はあるページ・外はFANZAで広告のリンクの属性つき）。TOP3の作品は出さない",
+      len(topic_cells) <= 8 and not bad_topic and (not topic_cells or 'id="topics"' in home_html), bad_topic[:3])
+topic_text = " ".join(re.sub(r"<[^>]+>", "", inner) for _, _, inner in topic_cells)
+check("きょうの話題: 評価の言葉を書かない（データで決まった形の文だけ）", not re.search(r"おすすめ|話題作|必見|最高傑作|大人気|神作", topic_text))
+if any(k == "sale" for k, _, _ in topic_cells):
+    check("きょうの話題に、もうすぐ終わるセールがあるときは、終わったら隠すスクリプト（sale.js）がある", 'src="/sale.js"' in home_html)
+warn("きょうの話題が、トップにある（データがそろっていれば出る）", bool(topic_cells) or not pop_new)
 
 print("\n■ お気に入り・発売日カレンダー")
 all_pages = sorted(glob.glob(os.path.join(DIST, "**", "index.html"), recursive=True))
@@ -859,14 +940,6 @@ check("応答ヘッダー: 名前にハッシュが付くファイル（/_astro/
 print("\n■ サムネの切り取り・作品検索・「VR作品を隠す」")
 
 
-def is_vr_raw(x):
-    """保存データの1件がVR作品か（site/src/lib/items.js の isVrWork と同じ決まり。突き合わせるため、別に書いてある）"""
-    title = str(x.get("title", ""))
-    tags_ = [t for t in (x.get("tags") or []) if isinstance(t, str) and re.fullmatch(r"[0-9A-Za-z]{1,6}", t)]
-    genres_ = [g for g in (x.get("genres") or []) if g]
-    return bool(re.search(r"【[^】]*VR[^】]*】", title, re.I)) or any("VR" in t.upper() for t in tags_) or any("VR" in str(g).upper() for g in genres_)
-
-
 # サムネ: パッケージ画像（800×538）の右端の表紙だけを、すべて同じ比率で切り出す（背表紙を入れない・表紙を欠かさない）
 def rule_bodies(selector):
     return [body for sels, body in css_rules if selector in sels]
@@ -879,7 +952,9 @@ check("CSS: サムネの比率（--cover-ratio）が、表紙（379:538 ≒ 0.70
 cover_boxes = [b for b in rule_bodies(".item-cover") if "aspect-ratio" in b]
 check("CSS: 作品カードのサムネの枠（.item-cover）が --cover-ratio の比率", len(cover_boxes) == 1 and re.search(r"aspect-ratio\s*:\s*var\(--cover-ratio\)", cover_boxes[0]) is not None, cover_boxes[:2])
 other_ratios = [sels for sels, body in css_rules if "aspect-ratio" in body and any(x.endswith("item-cover") and x != ".item-cover" for x in sels)]
-check("CSS: ランキング（.rank-item など）が、サムネの比率を別の値に変えていない（3:4だと背表紙が入る）", not other_ratios, other_ratios[:2])
+check("CSS: ほかの場所（ランキングなど）が、作品カードのサムネの比率を別の値に変えていない（3:4だと背表紙が入る）", not other_ratios, other_ratios[:2])
+top_boxes = {sel: " ".join(rule_bodies(sel)) for sel in (".medal-cover", ".topic-thumb")}
+check("CSS: トップのTOP3（.medal-cover）・きょうの話題（.topic-thumb）のサムネも --cover-ratio の比率", all(re.search(r"aspect-ratio\s*:\s*var\(--cover-ratio\)", b_) for b_ in top_boxes.values()), top_boxes)
 img_rules = rule_bodies(".item-img")
 check("CSS: サムネの画像（.item-img）は、枠いっぱいに、右端にそろえて切り出す（object-fit: cover・object-position: 100% 50%）", any(re.search(r"object-fit\s*:\s*cover", b) and re.search(r"object-position\s*:\s*100%\s*50%", b) for b in img_rules), img_rules[:1])
 thumb = " ".join(rule_bodies(".fav-thumb"))
@@ -889,7 +964,7 @@ check("CSS: お気に入りのサムネ（.fav-thumb）も、表紙の比率に�
 # 「VR作品を隠す」の見た目の決まり
 hide_rule = [b for sels, b in css_rules if ".hide-vr [data-vr]" in sels]
 rank_sels = [x for sels, b in css_rules for x in sels]
-check("CSS: 売れ筋は、VRを隠して2本・1本になったときの並べ方（data-visible=2/1）と、全部がVRのとき売れ筋ごと隠す（#ranking.vr-empty）がある", '.rank-podium[data-visible="2"]' in rank_sels and '.rank-podium[data-visible="1"]' in rank_sels and any("#ranking.vr-empty" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules), [x for x in rank_sels if "data-visible" in x or "vr-empty" in x])
+check("CSS: TOP3は、メダルの色（data-place 1〜3）があり、全部がVRのときTOP3ごと隠す（#ranking.vr-empty）・4位以降（.rank-off）は隠す", all(f".medal-cell[data-place='{n}']" in rank_sels for n in (1, 2, 3)) and any("#ranking.vr-empty" in sels and ".rank-podium .rank-cell.rank-off" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules), [x for x in rank_sels if "data-place" in x or "vr-empty" in x])
 vr_tag = next((g for g in glob.glob(os.path.join(DIST, "tag", "*", "index.html")) if "<h1" in read(g) and "VR作品の新作・予約作品" in read(g)), None)
 if vr_tag:
     check("VR作品のページでは、「VR作品を隠す」を選んでいても作品を隠さない（data-vr を付けない。全部が消えて空になるため）", "data-vr" not in re.sub(r"data-vr-(toggle|group)", "", read(vr_tag)), os.path.relpath(vr_tag, DIST))
@@ -953,18 +1028,6 @@ for lp in list_pages:
             wrong_mark.append((os.path.relpath(lp, DIST), cid, marked))
 check(f"作品の一覧のマス（{marked_total}個）: VR作品（データのタイトル・形式・ジャンルから判定）にだけ data-vr が付いている", not wrong_mark, wrong_mark[:3])
 warn("VR作品のマスが、一覧のどこかにある（目印のテストが空振りしていない）", vr_total > 0)
-rank_wrong = []
-for cls, attrs, cid, inner in shelf_cells(home_html):
-    if "rank-cell" not in cls:
-        continue
-    rank_title = (re.search(r'class="item-title-link"[^>]*>([^<]*)<', inner) or [None, ""])[1]
-    rk = next((r for r in rk_items if htmllib.unescape(rank_title) == str(r.get("title", "")).strip()), None)
-    if rk is None:
-        continue
-    expect = rk.get("vr") is True or bool(re.search(r"【[^】]*VR[^】]*】", str(rk["title"]), re.I)) or (str(rk["cid"]) in valid and is_vr_raw(valid[str(rk["cid"])]))
-    if ('data-vr="true"' in attrs) != expect:
-        rank_wrong.append((rk["cid"], 'data-vr="true"' in attrs, expect))
-check("売れ筋: VR作品（データの vr・題名の【VR】・当サイトの作品のジャンル）にだけ data-vr が付いている", not rank_wrong, rank_wrong[:3])
 
 # スイッチ（VR作品を隠す）の置き場所: 最初は隠れていて、JavaScriptが出す
 toggle_pages = [index_path, os.path.join(DIST, "search", "index.html")] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html")))[:1] + sorted(glob.glob(os.path.join(DIST, "actress", "*", "index.html")))[:1] + sorted(glob.glob(os.path.join(DIST, "maker", "*", "index.html")))[:1]

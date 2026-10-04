@@ -1,12 +1,32 @@
 ---
 import Base from '../layouts/Base.astro';
 import DaySection from '../components/DaySection.astro';
-import RankCard from '../components/RankCard.astro';
+import TodayStats from '../components/TodayStats.astro';
+import TopThree from '../components/TopThree.astro';
+import TopicList from '../components/TopicList.astro';
 import VrToggle from '../components/VrToggle.astro';
-import { all, sale, today, released, upcoming, roundups, ranking, monthGroups, tagGroups } from '../lib/data.js';
-import { RANKING_PATH } from '../lib/popularity.js';
-import { SALE_PATH, endIso, saleBadge, saleCount, saleHighlights, salePriceNote } from '../lib/sale.js';
 import ItemCard from '../components/ItemCard.astro';
+import {
+  all,
+  sale,
+  today,
+  released,
+  upcoming,
+  roundups,
+  ranking,
+  monthGroups,
+  tagGroups,
+  paged,
+  popularity,
+  todayData,
+  actressByName,
+  profilesByName,
+} from '../lib/data.js';
+import { itemHref } from '../lib/plan.js';
+import { faceUrl } from '../lib/profiles.js';
+import { RANKING_ALL_PATH, RANKING_PATH } from '../lib/popularity.js';
+import { SALE_PATH, endIso, saleBadge, saleCount, saleHighlights, salePriceNote } from '../lib/sale.js';
+import { TOP_SHOWN, buildTopics, todayStats, topEntries } from '../lib/topics.js';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import { weeklyPath } from '../lib/roundups.js';
 import { SEARCH_PATH } from '../lib/search.js';
@@ -15,8 +35,6 @@ import {
   groupByDate,
   countByDate,
   vrAttrs,
-  rankHasHero,
-  RANKING_SHOWN,
   archivePath,
   websiteLd,
   SITE_NAME,
@@ -31,29 +49,86 @@ const upcomingGroups = groupByDate(upcoming.slice(0, HOME_UPCOMING_LIMIT), count
 const upcomingShown = Math.min(upcoming.length, HOME_UPCOMING_LIMIT); // 「予約受付中 N本」は、下に並ぶ数と同じにする
 const hasMore = released.length > HOME_RELEASED_LIMIT;
 const latestRoundup = roundups[0]; // いちばん新しい週のまとめ（無ければ undefined）
-const rankingDay = ranking ? dateParts(ranking.date) : null;
+const day = dateParts(today);
+
+// きょうの新着人気TOP3（この1週間に発売された作品の、その日のFANZAの人気順）。まだ集まっていないあいだは、売れ筋（FANZAの人気順の上位）で代わりにする
+const newTop = topEntries(all, today);
+const topIsNew = newTop.length > 0;
+const top = topIsNew ? newTop : (ranking?.items ?? []);
+const topDay = topIsNew ? (popularity.date ? dateParts(popularity.date) : day) : ranking ? dateParts(ranking.date) : null;
+
+// きょうの数字（FANZA動画全体の発売本数・予約受付中の本数）。今日のデータが無ければ出さない
+const stats = todayStats(todayData, today);
+
+// きょうの話題（毎日の更新が集めた人気順・予約の人気順・セールから、データで決まった形の文を作る。TOP3に出ている作品は除く）
+const topics = buildTopics({
+  items: all,
+  today,
+  popularity,
+  todayData,
+  sale,
+  roundup: latestRoundup ?? null,
+  linkOf: (item) => itemHref(item, paged),
+  actressPage: (name) => actressByName.get(name)?.path ?? '',
+  faceOf: (name) => faceUrl(profilesByName.get(name)),
+  skip: new Set(top.slice(0, TOP_SHOWN).map((i) => i.cid)),
+});
+
 // セール中（FANZAのキャンペーン。人気の高い作品から数本。終わった時刻をすぎたものは、ブラウザで隠す /sale.js）
 const saleShown = saleHighlights(all, sale, today);
 const saleTotal = saleCount(all, sale, today);
-// 売れ筋は、データに多め（最大6本）に入っていて、画面に出すのは先頭の RANKING_SHOWN 本（残りは rank-off で隠しておく）。
-// 「VR作品を隠す」を押すと、VRを除いた先頭の RANKING_SHOWN 本に差し替える（site/public/vr-filter.js の rankLayout）。
-// 並べ方の印（data-visible = 見えている本数、先頭の .is-hero = 大きく出す1本）も、そのとき付け直す
-const rankShownCount = ranking ? Math.min(ranking.items.length, RANKING_SHOWN) : 0;
-const rankFirstIsHero = rankHasHero(rankShownCount);
 ---
 
 <Base
   title={`${SITE_NAME}｜毎日更新のFANZA新作・予約作品まとめ`}
-  description="FANZAの新作・新着と予約中の作品を、発売日ごとにまとめて毎日更新。作品ごとにひとこと添えています。"
+  description="FANZAの新作・新着と予約中の作品を、発売日ごとにまとめて毎日更新。きょうの新着人気TOP3・発売本数・話題も、毎日入れかわります。"
   path="/"
   jsonLd={[websiteLd()]}
 >
   <div class="wrap">
     <a id="fav-banner" class="fav-banner" href="/favorites/" hidden></a>
 
-    <section class="hero">
-      <h1 class="hero-title"><span class="phrase">FANZAの新作を、</span><span class="phrase">発売日ごとに。</span></h1>
-      <p class="hero-lead">発売日ごとに新作をまとめて、作品ごとにひとこと添えています。毎日更新。</p>
+    <div class={stats ? 'today has-stats' : 'today'}>
+      <header class="today-head">
+        <p class="today-date"><time datetime={today}>{day.m}月{day.d}日（{day.wd}）</time>の更新</p>
+        <h1 class="today-title">きょうのFANZA新作</h1>
+        <p class="today-lead">新作・予約を発売日ごとにまとめて、人気の順位と話題を毎日入れかえています。</p>
+        <div class="list-tools today-tools">
+          <VrToggle />
+        </div>
+      </header>
+
+      {top.length > 0 && (
+        <section id="ranking" class="today-top" aria-labelledby="ranking-title">
+          <div class="today-sec-head">
+            <h2 id="ranking-title" class="today-sec-title">{topIsNew ? 'きょうの新着人気TOP3' : '売れ筋TOP3'}</h2>
+            <p class="section-note">
+              {topIsNew ? 'この1週間に発売された作品の人気順' : 'FANZAの人気順'}｜{topDay.m}月{topDay.d}日時点<span class="rank-vr-note" hidden>｜VRを除く</span>
+            </p>
+          </div>
+          <TopThree entries={top} />
+          <p class="today-links">
+            <a class="chip-link" href={RANKING_PATH}>新着の人気ランキング</a>
+            <a class="chip-link" href={RANKING_ALL_PATH}>全体の人気ランキング</a>
+          </p>
+        </section>
+      )}
+
+      {stats && <TodayStats stats={stats} />}
+
+      {topics.length > 0 && (
+        <section id="topics" class="today-topics" aria-labelledby="topics-title">
+          <div class="today-sec-head">
+            <h2 id="topics-title" class="today-sec-title">きょうの話題</h2>
+            <p class="section-note">FANZAの人気順・予約・セールから｜毎日入れかわります</p>
+          </div>
+          <TopicList topics={topics} />
+        </section>
+      )}
+    </div>
+
+    <section class="find" aria-labelledby="find-title">
+      <h2 id="find-title" class="find-title">作品を探す</h2>
       <form class="hero-search" action={SEARCH_PATH} method="get" role="search">
         <label class="visually-hidden" for="hero-q">作品を探す（タイトル・出演者・メーカー・品番）</label>
         <input id="hero-q" class="hero-search-input" type="search" name="q" placeholder="タイトル・出演者・品番" enterkeyhint="search" autocomplete="off" />
@@ -68,27 +143,6 @@ const rankFirstIsHero = rankHasHero(rankShownCount);
         {latestRoundup && <a class="chip-link" href={weeklyPath(latestRoundup.week_start)}>週のまとめ</a>}
       </nav>
     </section>
-
-    <div class="list-tools">
-      <VrToggle />
-    </div>
-
-    {ranking && (
-      <section id="ranking" class="section" aria-labelledby="ranking-title">
-        <div class="section-head">
-          <h2 id="ranking-title" class="section-title">売れ筋TOP3</h2>
-          <p class="section-note">FANZAの人気順｜{rankingDay.m}月{rankingDay.d}日時点<span class="rank-vr-note" hidden>｜VRを除く</span></p>
-        </div>
-        <ul class="shelf rank-podium" data-show={RANKING_SHOWN} data-visible={rankShownCount}>
-          {ranking.items.map((entry, i) => (
-            <li class={`shelf-cell rank-cell${i === 0 && rankFirstIsHero ? ' is-hero' : ''}${i >= RANKING_SHOWN ? ' rank-off' : ''}`} data-rank={entry.rank} {...vrAttrs(entry)}>
-              <RankCard entry={entry} first={i === 0} />
-            </li>
-          ))}
-        </ul>
-        <p class="more"><a class="btn btn-quiet" href={RANKING_PATH}>人気ランキングをもっと見る（新着・全体）</a></p>
-      </section>
-    )}
 
     {saleShown.length > 0 && (
       <section id="sale" class="section" aria-labelledby="sale-title" data-sale-group data-vr-group>
