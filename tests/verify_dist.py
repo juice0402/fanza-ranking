@@ -964,7 +964,7 @@ check("CSS: お気に入りのサムネ（.fav-thumb）も、表紙の比率に�
 # 「VR作品を隠す」の見た目の決まり
 hide_rule = [b for sels, b in css_rules if ".hide-vr [data-vr]" in sels]
 rank_sels = [x for sels, b in css_rules for x in sels]
-check("CSS: TOP3は、メダルの色（data-place 1〜3）があり、全部がVRのときTOP3ごと隠す（#ranking.vr-empty）・4位以降（.rank-off）は隠す", all(f".medal-cell[data-place='{n}']" in rank_sels for n in (1, 2, 3)) and any("#ranking.vr-empty" in sels and ".rank-podium .rank-cell.rank-off" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules), [x for x in rank_sels if "data-place" in x or "vr-empty" in x])
+check("CSS: TOP3は、メダルの色（data-place 1〜3）があり、全部がVRのときTOP3ごと隠す（#ranking.vr-empty）・4位以降（.rank-off）は隠す", all(f'.medal-cell[data-place="{n}"]' in [x.replace("'", '"') for x in rank_sels] for n in (1, 2, 3)) and any("#ranking.vr-empty" in sels and ".rank-podium .rank-cell.rank-off" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules), [x for x in rank_sels if "data-place" in x or "vr-empty" in x or "rank-off" in x])
 vr_tag = next((g for g in glob.glob(os.path.join(DIST, "tag", "*", "index.html")) if "<h1" in read(g) and "VR作品の新作・予約作品" in read(g)), None)
 if vr_tag:
     check("VR作品のページでは、「VR作品を隠す」を選んでいても作品を隠さない（data-vr を付けない。全部が消えて空になるため）", "data-vr" not in re.sub(r"data-vr-(toggle|group)", "", read(vr_tag)), os.path.relpath(vr_tag, DIST))
