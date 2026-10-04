@@ -2,7 +2,7 @@ name: Daily FANZA Update
 
 on:
   schedule:
-    - cron: '5 15 * * *' # 毎日 日本時間の午前0時5分（UTC 15:05）。日付が変わった直後に更新して、その日発売の作品を朝から「発売中」にする。ちょうど0時にしないのは、GitHubの定時実行が正時に混み合って遅れやすいため。そのあと 0:20 に Claude がコメントを書き足す
+    - cron: '5 15 * * *' # 毎日 日本時間の午前0時5分（UTC 15:05）。日付が変わった直後に更新して、その日発売の作品を朝から「発売中」にする。ちょうど0時にしないのは、GitHubの定時実行が正時に混み合って遅れやすいため。そのあと 0:20 に Claude がコメントを書き上げる（定時実行が遅れていたら、Claude が手動実行で動かす）
   workflow_dispatch: # GitHubの Actions 画面から「Run workflow」で手動実行もできる
 
 # 更新したデータをリポジトリに保存（commit）するために必要な権限
@@ -22,12 +22,28 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      # GitHub の定時実行は、混んでいると数時間遅れることがある（2026-10-04 は 0:05 の予定が 3:58 に動いた）。
+      # その間に Claude の予約タスク（0:20）が更新を動かしていたら、遅れて来た定時実行は何もしない（Gemini の無料枠を二重に使わないため）。
+      # 手動実行（Run workflow）のときは、調べずに動かす
+      - name: Skip if today's update is already done
+        id: guard
+        if: github.event_name == 'schedule'
+        run: |
+          # 定時実行が順番待ちのあいだに、別の更新が入っていることもあるので、いまの main を取り直して調べる
+          git fetch -q --depth=50 origin "${GITHUB_REF_NAME}"
+          if bash scripts/already_updated.sh FETCH_HEAD; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+            echo "### ⏭ 今日の更新は済んでいたので、定時実行はお休みしました" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Set up Python
+        if: steps.guard.outputs.skip != '1'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Run update script
+        if: steps.guard.outputs.skip != '1'
         env:
           API_ID: ${{ secrets.API_ID }}
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
@@ -35,6 +51,7 @@ jobs:
         run: python get_new_releases.py
 
       - name: Commit and push if changed
+        if: steps.guard.outputs.skip != '1'
         run: |
           # 保存するのはデータの置き場所（site/src/data）だけ（他のファイルが紛れ込まないように）。
           # 出演者データ・ランキングは最初の実行で新しくできる（まだ無いファイルを名前で指定すると git add が失敗するので、フォルダで指定する）

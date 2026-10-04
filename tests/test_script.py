@@ -977,6 +977,30 @@ rc1, st1 = stage_in_temp_repo([data_dir + "new_releases.json"])
 check("最初の実行（出演者データ・ランキングがまだ無い）でも、git add が失敗せず、作品データを保存する", rc1 == 0 and st1 == [data_dir + "new_releases.json"], (rc1, st1))
 rc2, st2 = stage_in_temp_repo([data_dir + "new_releases.json", data_dir + "actresses.json", data_dir + "ranking.json"])
 check("3つのデータファイルがそろっていれば、3つとも保存する・データ以外（ページなど）は保存しない", rc2 == 0 and st2 == sorted([data_dir + n for n in ("new_releases.json", "actresses.json", "ranking.json")]), (rc2, st2))
+print("\n■ 定時実行が遅れたときに、二重に動かない（scripts/already_updated.sh）")
+GUARD = os.path.join(ROOT, "scripts", "already_updated.sh")
+
+
+def guard_in_temp_repo(subjects, today, ref=None):
+    """記録（コミットの件名）を並べた git の置き場で already_updated.sh を動かし、終了コードを返す"""
+    repo = tempfile.mkdtemp(dir=tmp)
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    for i, subject in enumerate(subjects):
+        open(os.path.join(repo, "f.txt"), "w").write(str(i))
+        subprocess.run(["git", "add", "f.txt"], cwd=repo, check=True)
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", subject], cwd=repo, check=True)
+    r = subprocess.run(["bash", GUARD] + ([ref] if ref else []), cwd=repo, capture_output=True, text=True, env=dict(os.environ, TODAY=today))
+    return r.returncode
+
+
+check("今日の「データ更新」があれば、済んでいる（0）", guard_in_temp_repo(["データ更新: 2026-10-03", "データ更新: 2026-10-04", "コメントの仕上げ（Claude）: 40件"], "2026-10-04") == 0)
+check("前の日の更新・取り直し・似た件名だけなら、まだ（1）",
+      guard_in_temp_repo(["データ更新: 2026-10-03", "データの取り直し: 2026-10-04", "データ更新: 2026-10-04（テスト）"], "2026-10-04") == 1)
+check("記録を読めないとき（無い名前）は、まだとして扱う（1）", guard_in_temp_repo(["データ更新: 2026-10-04"], "2026-10-04", ref="no-such-ref") == 1)
+check("update.yml: 定時実行のときだけ調べ、済んでいたら更新と保存をしない",
+      "if: github.event_name == 'schedule'" in yml_update and "already_updated.sh FETCH_HEAD" in yml_update
+      and yml_update.count("if: steps.guard.outputs.skip != '1'") == 3 and 'git commit -m "データ更新: $(TZ=Asia/Tokyo date +%Y-%m-%d)"' in yml_update)
+
 yml_refresh = open(os.path.join(ROOT, ".github", "workflows", "refresh-data.yml"), encoding="utf-8").read() if os.path.exists(os.path.join(ROOT, ".github", "workflows", "refresh-data.yml")) else ""
 check("refresh-data.yml は --refresh-only で動かし、Gemini のキーを渡さない", "--refresh-only" in yml_refresh and "GEMINI_API_KEY" not in yml_refresh)
 
