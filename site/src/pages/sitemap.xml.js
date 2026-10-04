@@ -1,6 +1,8 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
-import { all, released, today, upcoming, actressGroups, makerGroups, roundups, monthGroups, tagGroups } from '../lib/data.js';
+// 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
+import { all, allReleased, paged, released, today, upcoming, actressGroups, makerGroups, roundups, monthGroups, tagGroups } from '../lib/data.js';
+import { itemIndexable, listIndexable } from '../lib/plan.js';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import {
   ACTRESS_INDEX_PATH,
@@ -17,11 +19,11 @@ import { WEEKLY_INDEX_PATH, weeklyPath } from '../lib/roundups.js';
 
 export function GET() {
   const home = [...released.slice(0, HOME_RELEASED_LIMIT), ...upcoming.slice(0, HOME_UPCOMING_LIMIT)];
-  const archive = Array.from({ length: archivePageCount(released.length) }, (_, i) => ({
-    path: `/archive/${i + 1}/`,
-    lastmod: listLastmod(released.slice(i * ARCHIVE_PAGE_SIZE, (i + 1) * ARCHIVE_PAGE_SIZE), today),
-  }));
-  const groupPages = (groups) => groups.map((g) => ({ path: g.path, lastmod: listLastmod(g.items, today) }));
+  const archive = Array.from({ length: archivePageCount(allReleased.length) }, (_, i) => allReleased.slice(i * ARCHIVE_PAGE_SIZE, (i + 1) * ARCHIVE_PAGE_SIZE))
+    .map((items, i) => ({ path: `/archive/${i + 1}/`, items }))
+    .filter((p) => listIndexable(p.items))
+    .map((p) => ({ path: p.path, lastmod: listLastmod(p.items, today) }));
+  const groupPages = (groups) => groups.filter((g) => listIndexable(g.items)).map((g) => ({ path: g.path, lastmod: listLastmod(g.items, today) }));
   const entries = [
     { path: '/', lastmod: listLastmod(home, today) },
     ...archive,
@@ -32,7 +34,7 @@ export function GET() {
     // 月ごと・ジャンルごとのまとめページ（1つも無いあいだは、一覧ページも地図に入れない）
     ...(monthGroups.length > 0 ? [{ path: MONTH_INDEX_PATH, lastmod: listLastmod(monthGroups.flatMap((g) => g.items), today) }, ...groupPages(monthGroups)] : []),
     ...(tagGroups.length > 0 ? [{ path: TAG_INDEX_PATH, lastmod: listLastmod(tagGroups.flatMap((g) => g.items), today) }, ...groupPages(tagGroups)] : []),
-    ...all.map((item) => ({ path: itemPath(item.cid), lastmod: item.updated })),
+    ...all.filter((item) => itemIndexable(item, paged)).map((item) => ({ path: itemPath(item.cid), lastmod: item.updated })),
     // 週のまとめ記事（1本も無いあいだは、一覧ページも地図に入れない）
     ...(roundups.length > 0
       ? [

@@ -2,8 +2,9 @@
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import ItemCard from '../../components/ItemCard.astro';
-import { all, roundups, actressByName, makerByName } from '../../lib/data.js';
-import { breadcrumbLd, dateParts, formatDateJp, groupByDate, itemPath, vrAttrs } from '../../lib/items.js';
+import { curated, paged, roundups, actressByName, makerByName } from '../../lib/data.js';
+import { itemHref, OUTBOUND_ATTRS } from '../../lib/plan.js';
+import { breadcrumbLd, dateParts, formatDateJp, groupByDate, vrAttrs } from '../../lib/items.js';
 import {
   WEEKLY_INDEX_PATH,
   articleLd,
@@ -23,9 +24,9 @@ export function getStaticPaths() {
 
 const { roundup } = Astro.props;
 const title = roundupTitle(roundup);
-const week = itemsInWeek(all, roundup.week_start);
-const stats = weekStats(all, roundup.week_start);
-const byCid = new Map(all.map((i) => [i.cid, i]));
+const week = itemsInWeek(curated, roundup.week_start);
+const stats = weekStats(curated, roundup.week_start);
+const byCid = new Map(curated.map((i) => [i.cid, i]));
 const picks = roundup.picks.map((p) => ({ note: p.note, item: byCid.get(p.cid) })).filter((p) => p.item);
 const { prev, next } = neighbours(roundups, roundup.week_start);
 const trail = [
@@ -124,12 +125,15 @@ const day = (dateKey) => {
           <div class="week-day">
             <h3 class="week-day-title">{day(g.dateKey)}</h3>
             <ul class="week-list">
-              {g.items.map((i) => (
-                <li>
-                  <a class="week-list-link" href={itemPath(i.cid)}>{i.title}</a>
-                  {i.actress.length > 0 && <span class="week-list-cast">{i.actress.join('、')}</span>}
-                </li>
-              ))}
+              {g.items.map((i) => {
+                const link = itemHref(i, paged); // 作品ページが無い作品（ほぼ無い）は、FANZAへ
+                return (
+                  <li>
+                    <a class="week-list-link" href={link.href} {...(link.external ? OUTBOUND_ATTRS : {})}>{i.title}</a>
+                    {i.actress.length > 0 && <span class="week-list-cast">{i.actress.join('、')}</span>}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         ))}

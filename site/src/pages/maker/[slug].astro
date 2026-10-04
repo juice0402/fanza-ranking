@@ -12,8 +12,11 @@ import {
   groupByDate,
   makerPageTitle,
   makerSummary,
+  rankedNames,
   summaryDescription,
 } from '../../lib/items.js';
+import { ENTITY_LIST_LIMIT } from '../../config.js';
+import { entityListing, hasCalendar, listIndexable } from '../../lib/plan.js';
 import { CALENDAR_PATH, makerIcsPath, webcalUrl } from '../../lib/calendar.js';
 
 // 作品が2本以上あるメーカーごとに1ページ作る
@@ -23,8 +26,18 @@ export function getStaticPaths() {
 
 const { group } = Astro.props;
 const summary = makerSummary(group);
-const groups = groupByDate(group.items);
-const cast = [...new Set(group.items.flatMap((i) => i.actress))];
+// 並べるのは新しい順に ENTITY_LIST_LIMIT 本まで（過去作品が多い人・メーカーで、ページが重くなりすぎないように）
+const listing = entityListing(group.items, ENTITY_LIST_LIMIT);
+const groups = groupByDate(listing.shown);
+// 発売日カレンダーは、新作・予約が載っている人・メーカーだけ（lib/plan.js の hasCalendar）
+const calendar = hasCalendar(group);
+// コメントのある作品が1本も無いページ（過去作品だけ）は、検索エンジンには出さない
+const noindex = !listIndexable(group.items);
+// 出演者は、出演の多い順に CAST_LIMIT 人まで（過去作品の多いメーカーで、名前だけで画面が埋まらないように）
+const CAST_LIMIT = 40;
+const castRanked = rankedNames(group.items.flatMap((i) => i.actress), CAST_LIMIT);
+const cast = castRanked.names;
+const castTotal = new Set(group.items.flatMap((i) => i.actress)).size;
 const formats = formatsOf(group.items);
 const trail = [
   { name: 'トップ', path: '/' },
@@ -37,6 +50,7 @@ const trail = [
   title={makerPageTitle(group)}
   description={summaryDescription(summary)}
   path={group.path}
+  noindex={noindex}
   jsonLd={[breadcrumbLd(trail)]}
 >
   <div class="wrap">
@@ -47,10 +61,12 @@ const trail = [
       <p class="summary">{summary}</p>
       <div class="hero-actions">
         <FavButton type="maker" favKey={group.name} slug={group.slug} off="このメーカーをお気に入りに追加" on="お気に入り済み（新作が「お気に入り」に出ます）" />
-        <span class="cal-set">
-          <a class="cal-link" href={webcalUrl(makerIcsPath(group.slug))}>発売日をカレンダーで受け取る</a>
-          <a class="cal-help" href={CALENDAR_PATH}>使い方</a>
-        </span>
+        {calendar && (
+          <span class="cal-set">
+            <a class="cal-link" href={webcalUrl(makerIcsPath(group.slug))}>発売日をカレンダーで受け取る</a>
+            <a class="cal-help" href={CALENDAR_PATH}>使い方</a>
+          </span>
+        )}
       </div>
     </section>
 
@@ -67,6 +83,7 @@ const trail = [
                 {actressByName.get(name) ? <a class="spec-link" href={actressByName.get(name).path}>{name}</a> : name}
               </>
             ))}
+            {castRanked.more && `ほか${castTotal - cast.length}人`}
           </dd>
         </>
       )}
@@ -81,7 +98,7 @@ const trail = [
     <section class="section" aria-labelledby="works-title">
       <div class="section-head">
         <h2 id="works-title" class="section-title">作品（{group.items.length}本）</h2>
-        <p class="section-note">発売日が新しい順</p>
+        <p class="section-note">{listing.hidden > 0 ? `発売日が新しい順に${listing.shown.length}本を表示（ほか${listing.hidden}本は「過去の作品」の一覧にあります）` : '発売日が新しい順'}</p>
       </div>
       <div class="list-tools">
         <VrToggle />

@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import VrToggle from '../../components/VrToggle.astro';
-import { all } from '../../lib/data.js';
+import { all, paged } from '../../lib/data.js';
 import { ACTRESS_INDEX_PATH, MAKER_INDEX_PATH, SITE_NAME, archivePath, breadcrumbLd } from '../../lib/items.js';
 import { ITEMS_INDEX_PATH, SEARCH_PATH } from '../../lib/search.js';
 
@@ -10,7 +10,7 @@ const trail = [
   { name: 'トップ', path: '/' },
   { name: '作品を探す', path: SEARCH_PATH },
 ];
-const hasWorks = all.length > 0;
+const hasWorks = all.some((i) => paged.has(i.cid));
 // 検索画面は、条件の組み合わせごとに内容が変わる（JavaScriptで作る）ので、検索エンジンには載せない（noindex）
 ---
 

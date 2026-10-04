@@ -5,7 +5,7 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import FavButton from '../../components/FavButton.astro';
 import Face from '../../components/Face.astro';
 import SampleMovie from '../../components/SampleMovie.astro';
-import { all, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName } from '../../lib/data.js';
+import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName } from '../../lib/data.js';
 import {
   breadcrumbLd,
   formatDateJp,
@@ -22,12 +22,16 @@ import { monthLinkFor, VR_TAG_NAME } from '../../lib/collections.js';
 import { workFavoriteAttrs } from '../../lib/favorites.js';
 import { faceUrl } from '../../lib/profiles.js';
 
-// 作品ごとに1ページ作る
+// 作品ごとに1ページ作る（サイト全体を2万ファイル以内に収めるため、作るのは lib/plan.js が選んだ作品だけ。
+// あふれた古い過去作品は、一覧からFANZAへ直接リンクする）
 export function getStaticPaths() {
-  return all.map((item) => ({ params: { cid: item.cid }, props: { item } }));
+  return all.filter((item) => paged.has(item.cid)).map((item) => ({ params: { cid: item.cid }, props: { item } }));
 }
 
 const { item } = Astro.props;
+// コメントがまだ無い作品（過去作品）は、FANZAの情報を並べただけのページなので、検索エンジンには出さない（noindex。sitemap にも入れない）。
+// Claude がコメントを書くと、次のビルドから出す
+const noindex = !item.comment.trim();
 const related = relatedItems(item, all, 8);
 const samples = item.sample_images.slice(0, 8);
 // サンプル動画がある作品は、動画を表紙の場所に出し、パッケージ写真は、サンプル画像の下に別の欄で大きく出す
@@ -63,6 +67,7 @@ const facts = itemFacts(item, factsContext, {
   path={itemPath(item.cid)}
   image={item.image_url}
   stickyCta={Boolean(item.url)}
+  noindex={noindex}
   jsonLd={[breadcrumbLd(trail)]}
 >
   <div class="wrap">

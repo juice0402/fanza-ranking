@@ -15,6 +15,8 @@ import {
   groupByDate,
   summaryDescription,
 } from '../../lib/items.js';
+import { ENTITY_LIST_LIMIT } from '../../config.js';
+import { entityListing, hasCalendar, listIndexable } from '../../lib/plan.js';
 import { CALENDAR_PATH, actressIcsPath, webcalUrl } from '../../lib/calendar.js';
 import { faceUrl, profileFacts } from '../../lib/profiles.js';
 
@@ -25,7 +27,13 @@ export function getStaticPaths() {
 
 const { group } = Astro.props;
 const summary = actressSummary(group);
-const groups = groupByDate(group.items);
+// 並べるのは新しい順に ENTITY_LIST_LIMIT 本まで（過去作品が多い人・メーカーで、ページが重くなりすぎないように）
+const listing = entityListing(group.items, ENTITY_LIST_LIMIT);
+const groups = groupByDate(listing.shown);
+// 発売日カレンダーは、新作・予約が載っている人・メーカーだけ（lib/plan.js の hasCalendar）
+const calendar = hasCalendar(group);
+// コメントのある作品が1本も無いページ（過去作品だけ）は、検索エンジンには出さない
+const noindex = !listIndexable(group.items);
 const makers = [...new Set(group.items.map((i) => i.maker).filter((m) => m !== '不明'))];
 const formats = formatsOf(group.items);
 const profile = profilesByName.get(group.name); // FANZA公式の出演者データ（無い人もいる）
@@ -41,6 +49,7 @@ const trail = [
   title={actressPageTitle(group)}
   description={summaryDescription(summary)}
   path={group.path}
+  noindex={noindex}
   jsonLd={[breadcrumbLd(trail)]}
 >
   <div class="wrap">
@@ -59,10 +68,12 @@ const trail = [
           <a class="btn btn-hot" href={profile.listUrl} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで{group.name}の全作品を見る</a>
         )}
         <FavButton type="actress" favKey={group.name} slug={group.slug} off="この出演者をお気に入りに追加" on="お気に入り済み（新作が「お気に入り」に出ます）" />
-        <span class="cal-set">
-          <a class="cal-link" href={webcalUrl(actressIcsPath(group.slug))}>発売日をカレンダーで受け取る</a>
-          <a class="cal-help" href={CALENDAR_PATH}>使い方</a>
-        </span>
+        {calendar && (
+          <span class="cal-set">
+            <a class="cal-link" href={webcalUrl(actressIcsPath(group.slug))}>発売日をカレンダーで受け取る</a>
+            <a class="cal-help" href={CALENDAR_PATH}>使い方</a>
+          </span>
+        )}
       </div>
     </section>
 
@@ -101,7 +112,7 @@ const trail = [
     <section class="section" aria-labelledby="works-title">
       <div class="section-head">
         <h2 id="works-title" class="section-title">出演作品（{group.items.length}本）</h2>
-        <p class="section-note">発売日が新しい順</p>
+        <p class="section-note">{listing.hidden > 0 ? `発売日が新しい順に${listing.shown.length}本を表示（ほか${listing.hidden}本は「過去の作品」の一覧にあります）` : '発売日が新しい順'}</p>
       </div>
       <div class="list-tools">
         <VrToggle />

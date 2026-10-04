@@ -5,6 +5,7 @@ import Face from '../../components/Face.astro';
 import { actressGroups, actressSearchIndex, actressIndexCoverage, profilesByName } from '../../lib/data.js';
 import { ACTRESS_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
 import { ACTRESS_SEARCH_INDEX_PATH, compactSpec, faceUrl } from '../../lib/profiles.js';
+import { INDEX_LIST_LIMIT } from '../../config.js';
 
 const trail = [
   { name: 'トップ', path: '/' },
@@ -13,6 +14,9 @@ const trail = [
 const hasSearch = actressSearchIndex.actresses.length > 0;
 const cov = actressIndexCoverage;
 const fmt = (n) => n.toLocaleString('ja-JP');
+// JavaScriptが使えないとき用の一覧は、作品数の多い順に INDEX_LIST_LIMIT 人まで（過去作品が増えて、出演者が多くなっても、ページが重くなりすぎないように。
+// 全員は、上の「条件で探す」で探せる）
+const staticShown = actressGroups.slice(0, INDEX_LIST_LIMIT);
 
 // 数字の条件（下限・上限を、数字で入れる）。name は actress-search.js の RANGES と同じ
 const RANGES = [
@@ -119,7 +123,7 @@ const SORTS = [
       {actressGroups.length > 0
         ? (
           <ul class="actress-list">
-            {actressGroups.map((g) => {
+            {staticShown.map((g) => {
               const profile = profilesByName.get(g.name);
               const spec = compactSpec(profile);
               return (

@@ -1,6 +1,9 @@
 // 日本語の文章を文節で改行させる部品（site/src/lib/phrase.js）のテスト。実行: node tests/test_phrase.mjs
 // （画面での見え方・Astro の拡張が実際に動くかは、PRのビルド（tests/verify_dist.py）とプレビューで見る）
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { splitPhrases, phraseText, phraseHtml, unphraseHtml, phraseZwsp, namesPattern, MIN_JAPANESE, MAX_PHRASE, NOWRAP_MAX, ZWSP } from '../site/src/lib/phrase.js';
 import { namesFromData } from '../site/src/integrations/phrase-breaks.js';
 
@@ -69,8 +72,34 @@ check('2回かけても同じ（名前の包みも二重にしない）', phrase
 check('元に戻せる（<span class="nb"> も外れる）', unphraseHtml(hx) === `<p>${sent}</p><a>S-Cute</a><a>犬/妄想族</a><dd>青坂あおい</dd><p>とても長い名前のメーカーの株式会社ですの作品の説明です。</p>`);
 check('名前の一覧が空・1文字の名前だけなら、守る語なし（null）', namesPattern([]) === null && namesPattern(['A', '']) === null && namesPattern(null) === null);
 check('名前に正規表現の記号（. * + ( ) など）が入っていても壊れない', splitPhrases('メーカー(株).*の新作です', namesPattern(['メーカー(株).*'])).join('') === 'メーカー(株).*の新作です');
+{
+  // 名前の探し方: 左から、重ならないように、その位置で一番長い名前（＋すぐあとの「さん」など）。ふつうの正規表現（長い順の「または」）と同じ結果になる
+  const list = ['青坂', '青坂あおい', 'あおい', 'S-Cute', 'Cute', '波多野結衣', '結衣', '野結', 'ちゃんこ', '様子見'];
+  const asRegex = new RegExp('(?:' + [...list].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')(?:さん|ちゃん|様)?', 'g');
+  const texts = ['青坂あおいさんと青坂さん、あおいちゃん。', 'S-Cuteの新作。Cute様。', '波多野結衣さん結衣野結ちゃんこ様子見', '青坂あおい青坂あおいさんさん', '', '結', '😀青坂あおい😀様'];
+  const same = texts.every((t) => JSON.stringify(namesPattern(list).find(t).map((m) => [m.index, m.text])) === JSON.stringify([...t.matchAll(asRegex)].map((m) => [m.index, m[0]])));
+  check('名前の探し方が、長い順の正規表現と同じ結果（長い名前を優先・「さん」「ちゃん」「様」をくっつける・重ならない）', same);
+  // 名前が数万あっても速い（過去作品を集めると、出演者・メーカーの名前が数万になる。1つの大きな正規表現では、ビルドが何十分もかかった）
+  // （先頭の2文字が同じ名前が多くても遅くならないことも見る）
+  const many = Array.from({ length: 30000 }, (_, i) => `名前${String.fromCharCode(0x3042 + (i % 80))}${i}`);
+  const longText = `出演は${many[12345]}さんほか。`.repeat(2000);
+  const t0 = Date.now();
+  const hits = namesPattern(many).find(longText).length;
+  check('名前が3万あっても、長い文章（2.6万文字）を1秒以内に調べられる', hits === 2000 && Date.now() - t0 < 1000, `${hits}件・${Date.now() - t0}ms`);
+}
 check('ビルドで使う名前の一覧を、作品データから集められる（出演者・メーカー。「不明」は除く）', namesFromData().length > 20 && !namesFromData().includes('不明'));
-check('作品データが読めなければ、名前の一覧は空（ビルドは止めない）', namesFromData(new URL('file:///no/such/file.json')).length === 0);
+check('作品データが読めなければ、名前の一覧は空（ビルドは止めない）', namesFromData(new URL('file:///no/such/file.json'), new URL('file:///no/such/dir/')).length === 0);
+{
+  // 過去作品（data/catalog/*.json）の出演者・メーカーの名前も守る
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'phrase-'));
+  fs.writeFileSync(path.join(tmp, 'cur.json'), JSON.stringify([{ actress: ['今の人'], maker: '今のメーカー' }]));
+  fs.mkdirSync(path.join(tmp, 'catalog'));
+  fs.writeFileSync(path.join(tmp, 'catalog', '2019-05.json'), JSON.stringify([{ actress: ['昔の人', '今の人'], maker: '昔のメーカー' }, { actress: [], maker: '不明' }]));
+  fs.writeFileSync(path.join(tmp, 'catalog', 'broken.json'), '{こわれた');
+  const got = namesFromData(pathToFileURL(path.join(tmp, 'cur.json')), pathToFileURL(path.join(tmp, 'catalog') + '/'));
+  check('過去作品（catalog）の名前も集める（重複なし・「不明」は除く・壊れたファイルは飛ばす）', JSON.stringify(got.sort()) === JSON.stringify(['今のメーカー', '今の人', '昔のメーカー', '昔の人'].sort()), JSON.stringify(got));
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
 
 check('10文字より長い名前（ケイ・エム・プロデュース）は包まない（狭い画面ではみ出さないように）が、途中に <wbr> は入れない', !phraseHtml('<p>ケイ・エム・プロデュースの新作です。</p>', re).includes('<span class="nb">ケイ') && !phraseHtml('<p>ケイ・エム・プロデュースの新作です。</p>', re).includes('ケイ・<wbr>'));
 check('文字参照（&amp; など）の中は、名前として包まない（名前が「amp」でも）', phraseHtml('<p>A&amp;Bの新作です。ampの作品です。</p>', namesPattern(['amp'])).includes('A&amp;B') && unphraseHtml(phraseHtml('<p>A&amp;Bの新作です。ampの作品です。</p>', namesPattern(['amp']))) === '<p>A&amp;Bの新作です。ampの作品です。</p>');

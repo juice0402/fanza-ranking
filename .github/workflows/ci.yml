@@ -16,7 +16,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30  # 過去作品が増えると、ビルドと点検に時間がかかる（2万ファイル近くで、10分ほどの見込み）
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

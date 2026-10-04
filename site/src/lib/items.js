@@ -336,13 +336,16 @@ export function dateRangeJp(items) {
   return first === last ? `${formatDateJp(first)}` : `${formatDateJp(first)}から${formatDateJp(last)}`;
 }
 
+/** 紹介文の書き出し。過去作品（catalog）を含むときは、新作・予約だけではないことが分かる言い方にする */
+const listedAs = (items) => (items.some((i) => i.catalog) ? 'FANZAの新作・予約と過去の作品として掲載している' : 'FANZAの新作・予約として掲載している');
+
 /** 出演者ページの紹介文。作品データ（件数・発売日・メーカー・形式）だけから作るので、事実と食い違わない */
 export function actressSummary(group) {
   const { name, items } = group;
   const makers = rankedNames(items.map((i) => i.maker).filter((m) => m !== '不明'), 3);
   const formats = formatsOf(items);
   const parts = [
-    `FANZAの新作・予約として掲載している${name}さん出演の作品は${items.length}本です。`,
+    `${listedAs(items)}${name}さん出演の作品は${items.length}本です。`,
     `発売日は${dateRangeJp(items)}です。`,
   ];
   if (makers.names.length) parts.push(`メーカーは${makers.names.join('、')}${makers.more ? 'ほか' : ''}です。`);
@@ -356,7 +359,7 @@ export function makerSummary(group) {
   const cast = rankedNames(items.flatMap((i) => i.actress), 4);
   const formats = formatsOf(items);
   const parts = [
-    `FANZAの新作・予約として掲載している${name}の作品は${items.length}本です。`,
+    `${listedAs(items)}${name}の作品は${items.length}本です。`,
     `発売日は${dateRangeJp(items)}です。`,
   ];
   if (cast.names.length) parts.push(`出演は${cast.names.join('、')}${cast.more ? 'ほか' : ''}です。`);
