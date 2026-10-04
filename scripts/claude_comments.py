@@ -31,15 +31,20 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.environ.get("DATA_PATH", os.path.join(ROOT, "site", "src", "data", "new_releases.json"))
 JST = timezone(timedelta(hours=9))
 
-MIN_LEN = 40            # コメントの文字数の下限（目安は60〜90文字）
-MAX_LEN = 120           # 上限
+MIN_LEN = 80            # コメントの文字数の下限（目安は100〜160文字。2〜3文。運営者の希望で、2026-10-04 に長くした）
+MAX_LEN = 200           # 上限
 DEFAULT_LIMIT = 30      # list で一度に出す件数
 
 # 出してはいけない言葉。コメントは出演者・メーカー・形式・発売日だけから書くので、
 # 本来は出てこないはずの言葉。うっかり入ったときの安全網です。
-EXPLICIT_WORDS = ["中出", "射精", "精液", "挿入", "フェラ", "レイプ", "強姦", "凌辱", "陵辱", "輪姦", "痴漢", "盗撮", "調教"]
+EXPLICIT_WORDS = ["中出", "射精", "精液", "挿入", "フェラ", "レイプ", "強姦", "凌辱", "陵辱", "輪姦", "痴漢", "盗撮", "調教",
+                  "セックス", "SEX", "性交", "膣", "精子", "ザーメン", "絶頂", "潮吹", "乳首", "巨根", "デカチン", "チンポ", "ちんぽ",
+                  "マンコ", "まんこ", "手コキ", "パイズリ", "クンニ", "アナル", "淫語", "淫乱", "ハメ", "オナニー", "イラマ", "顔射",
+                  "ぶっかけ", "ごっくん", "放尿", "失禁", "催眠", "媚薬", "監禁", "拘束", "寝取", "NTR", "犯さ", "犯す", "便器", "奴隷",
+                  "鬼畜", "エロ", "●"]
 MINOR_WORDS = ["未成年", "少女", "ロリ", "児童", "幼", "女子高生", "女子校生", "女子中", "中学生", "高校生", "小学生",
-               "JK", "JC", "JS", "制服"]
+               "JK", "JC", "JS", "制服", "校生", "学生", "生徒", "教え子", "園児", "子供", "子ども", "妹", "娘", "童顔", "貧乳",
+               "つるぺた", "パイパン", "処女"]
 FORBIDDEN_CHARS = "<>*#"
 # コメントは保存したままずっと表示されるので、日がたつと古くなる言い方は使わない（日付で書く）
 RELATIVE_TIME_WORDS = ["今日", "本日", "明日", "昨日", "今週", "来週", "先週", "今夜", "今朝", "今月", "来月"]
@@ -51,6 +56,19 @@ HYPE_WORDS = ["待望", "話題", "熱い視線", "高い関心", "期待が高�
 AVOID_PHRASES = ["気になる方は", "チェック", "ぜひ", "いまのうちに", "お早めに", "お見逃しなく", "おすすめ"]
 # 発売日をすぎると古くなる言い方（予約中の作品に書いたコメントが、発売後も「予約受付中」のまま残らないように探す）
 STALE_STATUS = re.compile(r"予約|発売予定|発売前|発売を前に|発売に向けて|発売日を待|発売まで|リリース前|リリースを前に|リリースへ向け|待ちきれ|まもなく|近日")
+
+# タイトルを Claude に見せない作品（内容に触れない）: 未成年を連想させる言葉・同意の無い行為・薬などの言葉や、伏せ字（●○）があるもの。
+# それ以外のタイトルは、内容に「さらっと」触れるための手がかりとして見せる（Gemini には、どの作品のタイトルも渡さない）
+TITLE_BLOCK = MINOR_WORDS + ["レイプ", "強姦", "凌辱", "陵辱", "輪姦", "痴漢", "盗撮", "催眠", "媚薬", "薬", "泥酔", "睡眠", "昏睡", "監禁",
+                             "拘束", "調教", "奴隷", "鬼畜", "無理やり", "無理矢理", "強制", "脅", "犯", "洗脳", "便器", "姪"]
+CENSOR_CHARS = "●○◯×＊"
+# コメントの手がかりに出すジャンル（決めた一覧だけ）: サイトの「ジャンルのページ」の一覧（config.js の TAG_PAGE_GENRES）と、ここに足した、
+# 作品の舞台・関係・形式を表す、おだやかなもの。過激な行為・未成年を連想させるもの（学校・体操着・小柄など）・同意の無い行為・薬は入れない
+COMMENT_EXTRA_GENRES = ["ドラマ", "企画", "ドキュメンタリー", "恋愛", "デート", "不倫", "未亡人", "看護婦・ナース", "職業色々", "部下・同僚",
+                        "ビジネススーツ", "めがね", "お風呂", "温泉", "旅行", "エステ", "マッサージ・リフレ", "主観", "ナンパ", "レズビアン",
+                        "ニューハーフ", "キス・接吻", "美脚", "長身", "スポーツ", "アイドル・芸能人", "キャバ嬢・風俗嬢", "メイド", "OL",
+                        "VR専用", "ハイクオリティVR", "8KVR", "4K", "ハイビジョン", "独占配信", "単体作品", "4時間以上作品", "複数話"]
+COPY_RUN = 10           # タイトルの文字を、これより長く続けて写したら断る（タイトルは手がかり。文章は自分の言葉で）
 
 # コメントの種類（get_new_releases.py と同じ）: template＝定型文、ai＝Gemini の下書き、claude＝Claude が仕上げたもの
 FINAL_KIND = "claude"
@@ -64,6 +82,39 @@ FORMAT_TAG = re.compile(r"^[0-9A-Za-z]{1,6}$")
 
 def jst_today():
     return datetime.now(JST).strftime("%Y-%m-%d")
+
+
+def safe_title(item):
+    """Claude に見せてよいタイトル（見せないときは ""）。TITLE_BLOCK の言葉・伏せ字があれば見せない"""
+    title = str(item.get("title") or "").strip()
+    if not title or any(c in title for c in CENSOR_CHARS):
+        return ""
+    low = title.lower()
+    return "" if any(w.lower() in low for w in TITLE_BLOCK) else title
+
+
+def comment_genres(item, allowed=None):
+    """コメントの手がかりに出すジャンル（決めた一覧にあるものだけ。並びはデータのまま）"""
+    allowed = allowed if allowed is not None else set(safe_genres_from_config()) | set(COMMENT_EXTRA_GENRES)
+    out = []
+    for g in item.get("genres") or []:
+        if isinstance(g, str) and g in allowed and g not in out and not any(w.lower() in g.lower() for w in EXPLICIT_WORDS + TITLE_BLOCK):
+            out.append(g)
+    return out
+
+
+def copied_from_title(text, title, names=()):
+    """コメントの中に、タイトルから COPY_RUN 文字以上そのまま写した所があれば、その文字（なければ ""）。出演者名・メーカー名は除いて調べる"""
+    if not title:
+        return ""
+    for n in sorted((n for n in names if n), key=len, reverse=True):
+        title = title.replace(n, "\u0000")
+        text = text.replace(n, "\u0001")
+    for i in range(0, max(0, len(text) - COPY_RUN + 1)):
+        piece = text[i:i + COPY_RUN]
+        if "\u0001" not in piece and piece in title:
+            return piece
+    return ""
 
 
 def safe_genres_from_config(path=CONFIG_JS):
@@ -151,7 +202,7 @@ def cmd_list(args):
     drafts = [x for x in todo if pending_reason(x, today) == "下書きを仕上げる"]
     shown = (ordered(urgent) + ordered(drafts))[: max(args.limit, 0)]
 
-    safe = set(safe_genres_from_config())
+    allowed = set(safe_genres_from_config()) | set(COMMENT_EXTRA_GENRES)
     rows = []
     for x in shown:
         maker = x.get("maker")
@@ -166,11 +217,17 @@ def cmd_list(args):
             "maker": None if (not maker or maker == "不明") else maker,
             "tags": [t for t in (x.get("tags") or []) if isinstance(t, str) and FORMAT_TAG.match(t)],
             "duration_min": minutes if isinstance(minutes, int) and not isinstance(minutes, bool) and minutes > 0 else None,
-            # ジャンルは、サイトの「ジャンルのページ」と同じ、決めた一覧にあるものだけ（過激な言葉は出さない）
-            "genres": [g for g in (x.get("genres") or []) if g in safe],
+            # ジャンルは、決めた一覧（ジャンルのページの一覧＋COMMENT_EXTRA_GENRES）にあるものだけ
+            "genres": comment_genres(x, allowed),
             "sample_movie": bool(x.get("sample_movie")),
             "sample_images": len(x.get("sample_images") or []),
         }
+        # タイトル: 内容にさらっと触れるための手がかり（安全チェックを通ったものだけ。通らなければ title_hidden: true で、内容には触れない）
+        title = safe_title(x)
+        if title:
+            row["title"] = title
+        else:
+            row["title_hidden"] = True
         if x.get("comment_kind") in (DRAFT_KIND, FINAL_KIND):
             row["draft"] = x.get("comment") or ""  # 仕上げる前の文（Gemini の下書きなど）。そのまま使わず、書き直す
         rows.append(row)
@@ -220,6 +277,9 @@ def comment_problems(comment, item):
     for name in item.get("actress") or []:
         if name and text.count(name) > 1:
             problems.append(f"出演者名「{name}」が2回以上入っています（1回まで）")
+    copied = copied_from_title(text, str(item.get("title") or ""), [*(item.get("actress") or []), item.get("maker") or ""])
+    if copied:
+        problems.append(f"タイトルの言葉をそのまま写しています（「{copied}」。内容は、自分の言葉で、やわらかく言いかえてください）")
     if text == (item.get("comment") or "").strip():
         problems.append("いまのコメントと同じです")
     return problems

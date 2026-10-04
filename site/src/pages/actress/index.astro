@@ -8,7 +8,7 @@ import { ACTRESS_SEARCH_INDEX_PATH, compactSpec, faceUrl } from '../../lib/profi
 
 const trail = [
   { name: 'トップ', path: '/' },
-  { name: '出演者一覧', path: ACTRESS_INDEX_PATH },
+  { name: '女優検索', path: ACTRESS_INDEX_PATH },
 ];
 const hasSearch = actressSearchIndex.actresses.length > 0;
 const cov = profilesCoverage;
@@ -25,8 +25,8 @@ const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
 ---
 
 <Base
-  title={`出演者別の新作・出演作品一覧｜${SITE_NAME}`}
-  description="FANZAの新作・予約作品を出演者ごとにまとめた一覧です。名前・年齢・身長・スリーサイズ・カップで出演者を探せます。"
+  title={`女優検索｜年齢・身長・スリーサイズ・カップで探す｜${SITE_NAME}`}
+  description="FANZAのAV女優を、名前・年齢・身長・スリーサイズ（バスト・ウエスト・ヒップ）・カップで検索できます。プロフィールはFANZA公式のデータです。"
   path={ACTRESS_INDEX_PATH}
   jsonLd={[breadcrumbLd(trail)]}
 >
@@ -34,7 +34,7 @@ const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
     <Breadcrumb trail={trail} />
 
     <section class="hero">
-      <h1 class="hero-title">出演者から探す</h1>
+      <h1 class="hero-title">女優検索</h1>
       <p class="hero-lead">
         {hasSearch
           ? <>名前・年齢・身長・スリーサイズ・カップで、出演者を探せます。掲載作品が{ENTITY_MIN_ITEMS}本以上の人は専用ページがあり、それ以外の人はFANZAの作品一覧にリンクします。</>

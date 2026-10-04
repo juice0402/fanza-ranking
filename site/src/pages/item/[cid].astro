@@ -71,7 +71,7 @@ const facts = itemFacts(item, factsContext, {
     <article class="detail-grid">
       <div class="detail-media">
         {hasMovie
-          ? <SampleMovie src={item.sample_movie} title={truncate(item.title, 60)} fallbackUrl={item.url} poster={item.image_url} />
+          ? <SampleMovie src={item.sample_movie} title={truncate(item.title, 60)} fallbackUrl={item.url} />
           : item.image_url && (
             <img
               class="detail-cover"

@@ -145,8 +145,8 @@ const hasUpcoming = upcoming.length > 0; // 予約の作品が無い日は、ヘ
       <nav class="site-nav" aria-label="メイン">
         <a class="site-nav-link" href="/#released">発売中</a>
         {hasUpcoming && <a class="site-nav-link" href="/#upcoming">予約</a>}
-        <a class="site-nav-link" href="/archive/1/">過去の作品</a>
-        <a class="site-nav-link" href={SEARCH_PATH}>検索</a>
+        <a class="site-nav-link" href={SEARCH_PATH}>作品検索</a>
+        <a class="site-nav-link" href={ACTRESS_INDEX_PATH}>女優検索</a>
         <a class="site-nav-link" href={FAVORITES_PATH}>★お気に入り</a>
       </nav>
     </header>
@@ -171,7 +171,7 @@ const hasUpcoming = upcoming.length > 0; // 予約の作品が無い日は、ヘ
           <a class="foot-link" href={CALENDAR_PATH}>発売日カレンダー</a>
           {monthGroups.length > 0 && <a class="foot-link" href={MONTH_INDEX_PATH}>月ごとの新作</a>}
           {tagGroups.length > 0 && <a class="foot-link" href={TAG_INDEX_PATH}>ジャンルから探す</a>}
-          <a class="foot-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a>
+          <a class="foot-link" href={ACTRESS_INDEX_PATH}>女優検索（出演者から探す）</a>
           <a class="foot-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
           {roundups.length > 0 && <a class="foot-link" href={WEEKLY_INDEX_PATH}>週ごとのまとめ</a>}
         </nav>
