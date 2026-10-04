@@ -1,0 +1,47 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { tagGroups } from '../../lib/data.js';
+import { TAG_INDEX_PATH } from '../../lib/collections.js';
+import { TAG_MIN_ITEMS } from '../../config.js';
+import { breadcrumbLd, SITE_NAME } from '../../lib/items.js';
+
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: 'ジャンルから探す', path: TAG_INDEX_PATH },
+];
+---
+
+<Base
+  title={`ジャンル別のFANZA新作・予約作品一覧｜${SITE_NAME}`}
+  description="FANZAの新作・予約作品を、ジャンル（VR・巨乳・美少女・痴女など）ごとにまとめた一覧です。作品数の多い順に並べています。"
+  path={TAG_INDEX_PATH}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">ジャンルから探す</h1>
+      <p class="hero-lead">掲載している作品が{TAG_MIN_ITEMS}本以上あるジャンルの一覧です。作品数の多い順に並べています。ほかの言葉で探すときは、<a class="spec-link" href="/search/">作品検索</a>をお使いください。</p>
+    </section>
+
+    <section class="section" aria-labelledby="tag-list-title">
+      <h2 id="tag-list-title" class="visually-hidden">ジャンルの一覧</h2>
+      {tagGroups.length > 0
+        ? (
+          <ul class="name-grid">
+            {tagGroups.map((g) => (
+              <li>
+                <a class="name-link" href={g.path}>
+                  <span class="name-link-name">{g.name}</span>
+                  <span class="name-link-count">{g.items.length}本</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+        : <p class="empty">まだ一覧に載せられるジャンルがありません。毎日の更新をお待ちください。</p>}
+    </section>
+  </div>
+</Base>

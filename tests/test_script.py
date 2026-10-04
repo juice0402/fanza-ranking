@@ -220,6 +220,8 @@ class Env:
         if self.gemini_mode == "mixed" and not self.first_429_done:
             self.first_429_done = True
             raise urllib.error.HTTPError(req.full_url, 429, "rate", {}, io.BytesIO(b"{}"))
+        if self.gemini_mode == "hype":  # 確かめられない評価が入った答え（採用されないはず）
+            return FakeResponse({"candidates": [{"content": {"parts": [{"text": "待望の新作が登場。熱い視線が集まる注目の一本です。ぜひご覧ください。"}]}}]})
         if "ブロック太郎" in prompt and self.gemini_mode == "mixed":
             return FakeResponse({"promptFeedback": {"blockReason": "PROHIBITED_CONTENT"}})
         return FakeResponse({"candidates": [{"content": {"parts": [{"text": "「テスト用のAIコメントです。**上品**に紹介します。」\n"}]}}]})
@@ -354,6 +356,49 @@ retried_u = [x for x in du if x["cid"] in tries0 and x["comment_tries"] > tries0
 check("ブロックされて再挑戦したが、コメントが変わらなかった作品がある", len(retried_u) > 0, len(retried_u))
 check("そうした作品の更新日は動かない", all(x["updated"] == "2000-01-01" for x in retried_u), {x["updated"] for x in retried_u})
 check("新しく入った作品は今日の日付", all(x["updated"] == TODAY_STR for x in du if x["cid"] not in tries0))
+
+print("\n■ コメントの書き分け（切り口・書き出し・結び）と、確かめられない評価の除外")
+m_v = load_module(os.path.join(tmp, "v.json"))
+base_item = {"cid": "x00001", "actress": ["花子"], "maker": "メーカーA", "tags": ["VR"], "duration_min": 92, "date": "2026-11-22"}
+prompts_v = {m_v.build_prompt(dict(base_item, cid=f"x{i:05d}"), 0, today="2026-10-04") for i in range(300)}
+check("切り口が6種類・書き出しが4種類・結びが4種類ある", len(m_v.ANGLES) == 6 and len(m_v.OPENINGS) == 4 and len(m_v.CLOSINGS) == 4, (len(m_v.ANGLES), len(m_v.OPENINGS), len(m_v.CLOSINGS)))
+check("作品ごとに、いろいろな組み合わせの依頼が作られる（300作品で、少なくとも60通り）", len(prompts_v) >= 60, len(prompts_v))
+check("同じ作品・同じ回数なら、いつも同じ依頼になる", m_v.build_prompt(base_item, 0, today="2026-10-04") == m_v.build_prompt(dict(base_item), 0, today="2026-10-04"))
+check("再挑戦（回数が増える）では、別の組み合わせになる作品がある", sum(m_v.build_prompt(dict(base_item, cid=f"x{i:05d}"), 0, today="2026-10-04") != m_v.build_prompt(dict(base_item, cid=f"x{i:05d}"), 1, today="2026-10-04") for i in range(50)) >= 40)
+p_up = m_v.build_prompt(base_item, 0, today="2026-10-04")
+p_rel = m_v.build_prompt(base_item, 0, today="2026-12-01")
+check("発売前の作品には「予約受付中」「発売予定」など古くなる言い方を使わないよう頼み、日付で書かせる", "古くなる言い方は使わず" in p_up and "「○月○日発売」" in p_up and "この作品は発売済み" not in p_up)
+check("発売済みの作品には「発売されました」と書いてよいと伝える", "この作品は発売済み" in p_rel and "古くなる" not in p_rel)
+check("使いすぎる言い回し（気になる方は・チェック・ぜひ…）は使わないよう頼む", all(w in p_up for w in m_v.AVOID_PHRASES))
+check("収録時間（事実）を渡す。無いときは「記載なし」", "収録時間: 約92分" in p_up and "収録時間: 記載なし" in m_v.build_prompt(dict(base_item, duration_min=None), 0, today="2026-10-04") and "収録時間: 記載なし" in m_v.build_prompt(dict(base_item, duration_min=True), 0, today="2026-10-04"))
+check("人気・期待度・評判は書かないよう頼む。「前向きなトーン」とは頼まない", "人気" in p_up and "期待度" in p_up and "前向き" not in p_up)
+check("依頼にタイトルは入らない（従来どおり）", "title" not in p_up and "タイトル" not in p_up)
+
+check("確かめられない評価の言葉を見つけられる", m_v.rejected_words("待望の新作で、ファンの期待が高い注目の一本") == ["待望", "ファンの", "注目の"], m_v.rejected_words("待望の新作で、ファンの期待が高い注目の一本"))
+check("過激な言葉・未成年を連想させる言葉も見つけられる", "中出" in m_v.rejected_words("中出しの") and "少女" in m_v.rejected_words("少女のような") and "JK" in m_v.rejected_words("jkの"))
+check("ふつうのコメントは、見つからない", m_v.rejected_words("花子さん出演の、メーカーAの新作です。発売は11月22日、収録時間は約92分です。") == [])
+
+# 言葉の一覧が、Claude の道具（scripts/claude_comments.py）と同じ
+spec_cc = importlib.util.spec_from_file_location("cc_test", os.path.join(ROOT, "scripts", "claude_comments.py"))
+cc = importlib.util.module_from_spec(spec_cc)
+spec_cc.loader.exec_module(cc)
+check("確かめられない評価・過激な言葉・結びの言い回しの一覧が、Claude の道具と同じ（片方だけ直し忘れない）",
+      m_v.HYPE_WORDS == cc.HYPE_WORDS and m_v.EXPLICIT_WORDS == cc.EXPLICIT_WORDS and m_v.MINOR_WORDS == cc.MINOR_WORDS and m_v.AVOID_PHRASES == cc.AVOID_PHRASES)
+
+path_h = os.path.join(tmp, "hype.json")
+shutil.copy(SAVED_DATA, path_h)
+d_before = json.load(open(path_h, encoding="utf-8"))
+tries_h0 = {x["cid"]: x["comment_tries"] for x in d_before}
+e = Env()
+e.gemini_mode = "hype"
+m_h = load_module(path_h)
+code_h, out_h = run_main_capture(m_h, e)
+d_h = json.load(open(path_h, encoding="utf-8"))
+new_h = [x for x in d_h if x["cid"] not in tries_h0]
+check("確かめられない評価が入った答えは、採用されない（新しい作品は、すべて定型文）", code_h == 0 and new_h and all(x["comment_kind"] == "template" and "待望" not in x["comment"] and "熱い視線" not in x["comment"] for x in new_h), [(x["cid"], x["comment_kind"]) for x in new_h][:3])
+check("採用しなかった作品は、再挑戦の回数が1増える（上限まで続けば、Claude が書き直す）", all(x["comment_tries"] == 1 for x in new_h), {x["comment_tries"] for x in new_h})
+check("採用しなかった数が、画面とカウンターに出る（連続失敗のお休みにはならない）", m_h.CommentMaker is not None and "採用せず" in out_h and e.gemini_calls > 4, e.gemini_calls)
+check("定型文に入るのは作品情報だけ（確かめられない評価は入らない）", all(not m_h.rejected_words(x["comment"]) for x in new_h))
 
 print("\n■ Geminiが使えない/APIキー無しでも止まらない")
 path_b = os.path.join(tmp, "b.json")

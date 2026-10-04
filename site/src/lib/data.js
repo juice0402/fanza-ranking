@@ -3,6 +3,8 @@ import raw from '../data/new_releases.json';
 import rawRoundups from '../data/roundups.json';
 import { normalizeItems, splitByRelease, jstToday, groupByActress, groupByMaker, indexByName } from './items.js';
 import { normalizeRoundups } from './roundups.js';
+import { groupByMonth, groupByTag, monthPathByKey } from './collections.js';
+import { buildFactsContext } from './facts.js';
 import { buildActressSearchIndex, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay } from './profiles.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
@@ -19,6 +21,13 @@ export const actressGroups = groupByActress(all);
 export const makerGroups = groupByMaker(all);
 export const actressByName = indexByName(actressGroups);
 export const makerByName = indexByName(makerGroups);
+
+// 月ごと・ジャンルごとのまとめページ（作品が少ない月・ジャンルは作らない）と、作品ページの「この作品のデータ」欄の集計
+export const monthGroups = groupByMonth(all);
+export const monthByKey = monthPathByKey(monthGroups);
+export const tagGroups = groupByTag(all);
+export const tagByName = indexByName(tagGroups);
+export const factsContext = buildFactsContext(all);
 
 // 週のまとめ記事（Claudeが毎週月曜に書く。まだ1本も無いときは空）
 export const roundups = normalizeRoundups(rawRoundups, all);
