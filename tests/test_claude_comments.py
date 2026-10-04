@@ -295,7 +295,7 @@ fresh_data()
 stale_data = read_data()
 ai_item = next(x for x in stale_data if x["comment_kind"] == "claude")
 plain_ai = next(x for x in stale_data if x["comment_kind"] == "claude" and x["cid"] != ai_item["cid"])
-ai_item["comment"] = "予約受付中のVR作品です。発売日は11月1日。メーカーの新作として並んでいます。"
+ai_item["comment"] = "予約受付中のVR作品です。" + good_comment(ai_item, 3)  # 出演者名入り・文字数も足りる（情報が増えた、では対象にならない形）
 ai_item["date"] = "2026-11-01 00:00:00"
 open(DATA, "w", encoding="utf-8").write(json.dumps(stale_data, ensure_ascii=False, indent=1) + "\n")
 stale_base = read_text()
@@ -436,6 +436,29 @@ for word in ("レイプ", "拉致", "便器", "中出し"):
     check(f"「{word}」は書けない", r.returncode == 1 and "使えない言葉" in r.stdout, r.stdout)
 r = run("list", "--today", "2026-11-03", "--limit", "100")
 check("list: fiction_theme はタイトルを見せる作品にだけ付く", all(x.get("title") for x in json.loads(r.stdout)["items"] if x.get("fiction_theme")))
+
+print("\n■ 仕上げたあとに情報が増えた作品・これから先の言い方（発売後に書き直す）")
+fresh_data()
+data_i = read_data()
+fin = next(x for x in data_i if x["comment_kind"] == "claude" and x.get("actress"))
+fin["comment"] = good_comment(fin, 0)
+check("ふつうの仕上げ済み（出演者名あり・文字数も足りる）は、情報が増えた扱いにならない", cc_mod.info_added(fin) == "")
+no_name = dict(fin, comment="出演者名はFANZAの作品情報に載っていません。" + good_comment(dict(fin, actress=["ほかの人"]), 0))
+check("出演者が載ったのに、コメントに名前が1人も無いと「出演者が載った」", cc_mod.info_added(no_name) == "出演者が載った")
+short = dict(fin, comment=good_comment(fin, 0)[:90], title="職場の先輩とのドライブ", duration_min=120)
+check("事実が増えて100文字が必要になったのに、短いまま（80文字台）だと「情報が増えた」", cc_mod.info_added(short) == "情報が増えた")
+check("発売後に書き直す言い方: 「発売されます」「出ます」「控えています」",
+      all(cc_mod.STALE_STATUS.search(t) for t in ("11月1日に発売されます。", "同じ日には新作も出ます。", "出演も控えています。")) and not cc_mod.STALE_STATUS.search("11月1日発売の一本です。"))
+fut = dict(fin, comment=good_comment(fin, 0) + "11月1日に発売されます。", date="2026-11-01 00:00:00")
+check("予約のうちは「発売されます」のままでよく、発売日をすぎたら書き直しの対象", cc_mod.stale_status_word(fut, "2026-10-30") == "" and cc_mod.stale_status_word(fut, "2026-11-02") == "発売されます")
+for x in data_i:
+    if x["cid"] == fin["cid"]:
+        x["comment"] = no_name["comment"]
+open(DATA, "w", encoding="utf-8").write(json.dumps(data_i, ensure_ascii=False, indent=1) + "\n")
+out_i = json.loads(run("list", "--limit", "100", "--today", "2026-11-03").stdout)
+row_i = next((x for x in out_i["items"] if x["cid"] == fin["cid"]), None)
+check("list に「出演者が載った」で出て、仕上げ済みでも書き直せる", row_i is not None and row_i["reason"] == "出演者が載った"
+      and run("apply", write_comments("refill.json", {fin["cid"]: good_comment(fin, 1)}), "--today", "2026-11-03", "--dry-run").returncode == 0)
 
 print("\n■ 学校・子どもの生活を連想させる場面の言葉（試運転で「職業体験」「学園」「家庭教師」に触れたコメントがあったため）")
 fresh_data()
