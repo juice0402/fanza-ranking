@@ -645,6 +645,37 @@ chip_hidden = [b for b in chip_rules if re.search(r"display\s*:\s*none|visibilit
 chip_small = [b for b in chip_rules for m in [re.search(r"font-size\s*:\s*(\d+(?:\.\d+)?)px", b)] if m and float(m.group(1)) < 11]
 check("CSS: 広告ラベル（.pr-chip）が、隠されていない・小さすぎない（11px以上）", bool(chip_rules) and not chip_hidden and not chip_small, (len(chip_rules), chip_hidden[:1], chip_small[:1]))
 check("CSS: 動画の枠（.movie-box）に contain: paint と isolation: isolate がある（枠の外に出ない）", movie_clip)
+# 18歳確認の背景: 真っ黒ではなく濃い曇りガラス（ぼかし）。ぼかしが弱すぎると後ろが読める・強すぎると画面のふちが逆にぼけない（Chromiumで確認済み）ので、10〜30pxに収める
+gate_rules = [body for sels, body in css_rules if ".gate" in sels]
+gate_blur = [float(m.group(1)) for b in gate_rules for m in [re.search(r"(?<![-\w])backdrop-filter\s*:\s*blur\(\s*(\d+(?:\.\d+)?)px", b)] if m]
+gate_blur_prefixed = any(re.search(r"-webkit-backdrop-filter\s*:\s*blur\(", b) for b in gate_rules)
+
+
+def css_alpha(body):
+    """background: の色の透明度（0〜1）。ビルドで rgba(…) が #rrggbbaa に縮められても読めるようにしてある。読めなければ None"""
+    m = re.search(r"(?<![-\w])background\s*:\s*(rgba?\([^)]*\)|#[0-9a-fA-F]{3,8})", body)
+    if not m:
+        return None
+    v = m.group(1)
+    if v.startswith("#"):
+        h = v[1:]
+        if len(h) == 8:
+            return int(h[6:8], 16) / 255
+        if len(h) == 4:
+            return int(h[3] * 2, 16) / 255
+        return 1.0
+    parts = [x.strip() for x in re.split(r"[,/\s]+", v[v.index("(") + 1:-1]) if x.strip()]
+    return float(parts[3]) if len(parts) >= 4 else 1.0
+
+
+gate_tint = [a for a in (css_alpha(b) for b in gate_rules) if a is not None]
+gate_fixed = any(re.search(r"position\s*:\s*fixed", b) and re.search(r"touch-action\s*:\s*none", b) for b in gate_rules)
+gate_lock = any(("html.gate-open" in sels or "html.gate-open body" in sels) and re.search(r"overflow\s*:\s*hidden", body) for sels, body in css_rules)
+gate_vignette = any(sels in ([".gate::before"], [".gate:before"]) and "gradient" in body for sels, body in css_rules)  # ビルドで ::before が :before に縮められることがある
+check("CSS: 18歳確認の背景は、ぼかし（backdrop-filter: blur 10〜30px・-webkit- つき）で、色の重ねは真っ黒でない（透明度0.5〜0.75）", bool(gate_blur) and 10 <= gate_blur[0] <= 30 and gate_blur_prefixed and any(0.5 <= a <= 0.75 for a in gate_tint), (gate_blur, gate_blur_prefixed, gate_tint))
+check("CSS: 18歳確認は画面に固定（position: fixed）・指でなぞっても動かない（touch-action: none）・開いている間は後ろのページをスクロールさせない（html.gate-open の overflow: hidden）", gate_fixed and gate_lock, (gate_fixed, gate_lock))
+check("CSS: 18歳確認の画面のふちを暗くする覆い（.gate::before）がある（ふちでぼかしが弱くなるブラウザ向け）", gate_vignette)
+check("CSS: ぼかしが使えない・「透明さを減らす」設定のときは、ほぼ真っ黒（透明度0.9以上）にする", sum(1 for a in gate_tint if a >= 0.9) >= 2, gate_tint)
 hdr = os.path.join(DIST, "_headers")
 htext = read(hdr) if os.path.isfile(hdr) else ""
 check("応答ヘッダーの設定（_headers）がある: nosniff・フレームへの埋め込み禁止（frame-ancestors）", "X-Content-Type-Options: nosniff" in htext and "frame-ancestors 'self'" in htext and re.search(r"^/\*\s*$", htext, re.M) is not None)

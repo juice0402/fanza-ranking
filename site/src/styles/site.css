@@ -61,8 +61,11 @@ body.has-sticky {
   padding-bottom: 76px;
 }
 
+/* 18歳確認が出ているあいだは、後ろのページを動かさない（html にも body にも。端まで引っぱったときの動きも止める） */
+html.gate-open,
 html.gate-open body {
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 img {
@@ -765,14 +768,45 @@ button:focus-visible {
 
 /* ---------- 18歳以上の確認 ---------- */
 
+/* 後ろは、真っ黒ではなく、濃い曇りガラスのように強くぼかす（何が書いてあるか・写っているか分からない強さ）。
+   色をほんの少し暗く重ねて、ぼかしを助ける。ぼかしが使えない・「透明さを減らす」設定のときは、ほぼ真っ黒にする */
 .gate {
   position: fixed;
   inset: 0;
   z-index: 100;
-  display: grid;
-  place-items: center;
+  display: flex; /* 画面が低いとき、箱の上が切れないよう、flex と margin: auto（.gate-box）で中央にする */
   padding: 20px;
-  background: rgba(10, 7, 15, 0.97);
+  touch-action: none; /* 指でなぞっても、後ろのページが動かない */
+  overscroll-behavior: none;
+  background: rgba(14, 10, 20, 0.66);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+
+/* 画面のふち（上下左右の約110px）は、ブラウザによって、ぼかしが弱くなって文字が読めてしまうことがある。
+   そこだけ暗くして、ふちまで「何が書いてあるか分からない」ようにする（暗い額縁のような見た目） */
+.gate::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(10, 7, 15, 0.97), rgba(10, 7, 15, 0.8) 40px, rgba(10, 7, 15, 0) 110px, rgba(10, 7, 15, 0) calc(100% - 110px), rgba(10, 7, 15, 0.8) calc(100% - 40px), rgba(10, 7, 15, 0.97)),
+    linear-gradient(to right, rgba(10, 7, 15, 0.97), rgba(10, 7, 15, 0.8) 40px, rgba(10, 7, 15, 0) 110px, rgba(10, 7, 15, 0) calc(100% - 110px), rgba(10, 7, 15, 0.8) calc(100% - 40px), rgba(10, 7, 15, 0.97));
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .gate {
+    background: rgba(10, 7, 15, 0.97);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .gate {
+    background: rgba(10, 7, 15, 0.97);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 .gate[hidden] {
@@ -780,8 +814,10 @@ button:focus-visible {
 }
 
 .gate-box {
+  position: relative; /* 縁の暗がり（.gate::before）より前に出す */
   width: 100%;
   max-width: 420px;
+  margin: auto;
   padding: 28px 24px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -808,6 +844,33 @@ button:focus-visible {
 .gate-actions {
   display: grid;
   gap: 10px;
+}
+
+/* 横向きのスマホなど、画面が低いときは、箱を小さくして、上下が切れないようにする */
+@media (max-height: 480px) {
+  .gate {
+    padding: 10px;
+  }
+
+  .gate-box {
+    padding: 14px 18px;
+  }
+
+  .gate-mark {
+    margin-bottom: 4px;
+    font-size: 30px;
+  }
+
+  .gate-title {
+    margin-bottom: 4px;
+    font-size: 17px;
+  }
+
+  .gate-text {
+    margin-bottom: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
 }
 
 /* ---------- 404 ---------- */
