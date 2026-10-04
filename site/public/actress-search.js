@@ -199,7 +199,7 @@
     var text = el('span', 'actress-row-text');
     text.appendChild(el('span', 'actress-row-name', row.n));
     var spec = specText(row);
-    text.appendChild(el('span', 'actress-row-spec' + (spec ? '' : ' is-empty'), spec || 'プロフィールの数字は未掲載'));
+    if (spec) text.appendChild(el('span', 'actress-row-spec', spec)); // 数字が載っていない人は、行ごと出さない（同じ文が何十行も並ばないように）
     text.appendChild(el('span', 'actress-row-meta', page ? '掲載' + row.k + '本 ›' : 'FANZAで全作品を見る ›'));
     a.appendChild(text);
     li.appendChild(a);
@@ -237,8 +237,12 @@
     setTimeout(onChange, 0); // リセットで項目が空に戻ったあとに、一覧を作り直す
   });
   more.addEventListener('click', function () {
+    var before = shown;
     shown += PAGE_SIZE;
     render();
+    // 増えた分の先頭の人へ、フォーカスを移す（「もっと見る」が消えても、フォーカスがページの先頭に飛ばないように）
+    var first = list.children[before] && list.children[before].querySelector('a');
+    if (first) first.focus();
   });
 
   fetch(indexUrl, { credentials: 'same-origin' })
@@ -249,6 +253,9 @@
     .then(function (data) {
       rows = data && Array.isArray(data.actresses) ? data.actresses : [];
       if (!rows.length) return; // データが無いときは、最初から載っている一覧のまま
+      // 広い画面では、年齢・身長・サイズの欄を最初から開いておく（スマホでは、たたんだまま。結果がすぐ見えるように）
+      var filters = document.getElementById('as-filters');
+      if (filters && typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 720px)').matches) filters.open = true;
       root.hidden = false;
       if (staticList) staticList.hidden = true;
       render();

@@ -55,7 +55,7 @@ check('前後の空白は、包みの外に残る', phraseText('\n  専用ペー
 check('空白のあとには <wbr> を入れない（空白で改行できるため）', !/\s<wbr>/.test(phraseText('Where is my wife？ 三葉ちはる')), phraseText('Where is my wife？ 三葉ちはる'));
 
 console.log('\n■ 出演者名・メーカー名の途中では改行しない（運営者が見つけた「波多｜野結衣」「パラダイ｜ステレビ」のような改行）');
-const names = ['青坂あおい', '波多野結衣', 'パラダイステレビ', 'グローリークエスト', '無理くりえいてぃぶ', 'S-Cute', '犬/妄想族', 'KMPVR-彩-', 'とても長い名前のメーカーの株式会社です'];
+const names = ['青坂あおい', '波多野結衣', 'パラダイステレビ', 'グローリークエスト', '無理くりえいてぃぶ', 'S-Cute', '犬/妄想族', 'KMPVR-彩-', 'とても長い名前のメーカーの株式会社です', 'ケイ・エム・プロデュース'];
 const re = namesPattern(names);
 const sent = 'パラダイステレビの作品です。出演は青坂あおいさんと波多野結衣さん。グローリークエスト・無理くりえいてぃぶ・S-Cute・犬/妄想族の新作も。';
 const sp = splitPhrases(sent, re);
@@ -72,6 +72,10 @@ check('名前に正規表現の記号（. * + ( ) など）が入っていても
 check('ビルドで使う名前の一覧を、作品データから集められる（出演者・メーカー。「不明」は除く）', namesFromData().length > 20 && !namesFromData().includes('不明'));
 check('作品データが読めなければ、名前の一覧は空（ビルドは止めない）', namesFromData(new URL('file:///no/such/file.json')).length === 0);
 
+check('12文字の名前（ケイ・エム・プロデュース）も包む（「・」のあとでブラウザが改行しないように）', phraseHtml('<p>ケイ・エム・プロデュースの新作です。</p>', re).includes('<span class="nb">ケイ・エム・プロデュース</span>'));
+const dates = splitPhrases('発売日は2026年10月3日から2026年11月3日です。収録時間は約246分で、3本あります。');
+check('日付・数字と単位は、途中で区切らない（「2026年11／月」「246／分」にしない）', ['2026年10月3日', '2026年11月3日', '約246分', '3本'].every((w) => dates.some((p) => p.includes(w))), JSON.stringify(dates));
+
 console.log('\n■ 伏せ字（○●）のまわりでは改行しない');
 const cz = splitPhrases('剥き出しチ○ポ中毒とJ●痴●ガチナマ路線の作品です');
 check('「チ○ポ」「J●痴●」の途中で区切らない', cz.some((p) => p.includes('チ○ポ')) && cz.some((p) => p.includes('J●痴●')), JSON.stringify(cz));
@@ -81,6 +85,14 @@ const z = phraseZwsp('専用ページがあり、それ以外の人はFANZAの�
 check('文節の区切りに U+200B が入り、取り除くと元に戻る', z.includes(ZWSP) && z.split(ZWSP).join('') === '専用ページがあり、それ以外の人はFANZAの作品一覧にリンクします。', JSON.stringify(z));
 check('名前の途中には入れない', !phraseZwsp('出演は青坂あおいさんの作品です', re).split(ZWSP).some((p) => p.endsWith('青坂') || p.endsWith('青坂あ')));
 check('短い文字列・空は、そのまま', phraseZwsp('発売中') === '発売中' && phraseZwsp('') === '' && phraseZwsp(null) === '');
+
+console.log('\n■ 「～」の前では改行しない（ブラウザは keep-all でも「～」の前で改行することがある）');
+const tl = '<p>お客様のザーメンを気持ちよ～く膣奥中出し アングルVR ～精子を全搾り</p>';
+const th = phraseHtml(tl);
+check('「～」は、前の1文字（と、あいだの空白）と一緒に <span class="nb"> で包む', th.includes('<span class="nb">よ～</span>') && th.includes('<span class="nb">R ～</span>'), th);
+check('元に戻せる・2回かけても同じ', unphraseHtml(th) === tl && phraseHtml(th) === th);
+const tz = phraseZwsp('お客様のザーメンを気持ちよ～く膣奥中出し アングルVR ～精子を全搾り');
+check('ブラウザで作る文章では、「～」の前に改行を止める見えない文字（U+2060）・改行しない空白（U+00A0）を入れる', tz.includes('よ\u2060～') && tz.includes('R\u00a0～') && !/\u200b[～〜]/.test(tz), JSON.stringify(tz));
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

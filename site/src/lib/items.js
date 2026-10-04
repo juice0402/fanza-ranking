@@ -356,7 +356,7 @@ export function makerSummary(group) {
     `FANZAの新作・予約として掲載している${name}の作品は${items.length}本です。`,
     `発売日は${dateRangeJp(items)}です。`,
   ];
-  if (cast.names.length) parts.push(`出演は${cast.names.join('、')}${cast.more ? 'ほか' : ''}などです。`);
+  if (cast.names.length) parts.push(`出演は${cast.names.join('、')}${cast.more ? 'ほか' : ''}です。`);
   if (formats.length) parts.push(`${formats.join('・')}の作品を含みます。`);
   return parts.join('');
 }

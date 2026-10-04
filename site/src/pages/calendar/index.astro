@@ -31,7 +31,11 @@ const trail = [
       <h2 id="cal-all-title" class="section-title">すべての発売予定</h2>
       <p class="summary">このサイトにある予約・新作の発売日が、まとめてカレンダーに入ります。</p>
       <p><a class="btn btn-hot cal-btn" href={webcalUrl(UPCOMING_ICS_PATH)}>カレンダーに追加する</a></p>
-      <p class="fine">うまく開かないときは、このアドレスをカレンダーアプリの「照会カレンダーを追加」に貼り付けてください: <code class="cal-url">{SITE_URL + UPCOMING_ICS_PATH}</code></p>
+      <p class="fine">うまく開かないとき・Android・Googleカレンダーでは、このアドレスを使います（下の「使い方」）。</p>
+      <div class="cal-url-row">
+        <code class="cal-url">{SITE_URL + UPCOMING_ICS_PATH}</code>
+        <button type="button" class="btn btn-quiet cal-copy" data-copy={SITE_URL + UPCOMING_ICS_PATH} hidden>アドレスをコピー</button>
+      </div>
     </section>
 
     <section class="section" aria-labelledby="cal-fav-title">
@@ -48,6 +52,17 @@ const trail = [
       </ol>
     </section>
 
+    <section class="section" aria-labelledby="cal-google-title">
+      <h2 id="cal-google-title" class="section-title">使い方（Android・Googleカレンダー）</h2>
+      <p class="summary">Googleカレンダーは、アドレスでの追加を、パソコンのブラウザでだけ受け付けています（スマホのアプリからはできません）。一度追加すれば、スマホのGoogleカレンダーにも出ます。</p>
+      <ol class="steps">
+        <li>上の「アドレスをコピー」で、カレンダーのアドレスをコピーします（パソコンに送っておくと楽です）。</li>
+        <li>パソコンのブラウザで、Googleカレンダー（calendar.google.com）を開きます。</li>
+        <li>左の「他のカレンダー」の「＋」から「URLで追加」を選び、アドレスを貼り付けて「カレンダーを追加」を押します。</li>
+        <li>スマホのGoogleカレンダーで見えないときは、アプリの設定で、このカレンダーの「同期」をオンにします。</li>
+      </ol>
+    </section>
+
     <section class="section" aria-labelledby="cal-note-title">
       <h2 id="cal-note-title" class="section-title">知っておいてほしいこと</h2>
       <ul class="notes">
@@ -58,4 +73,27 @@ const trail = [
       </ul>
     </section>
   </div>
+
+  {/* 「アドレスをコピー」: コピーの機能がある端末でだけ出す。押すと「コピーしました」に変わる（ページの中だけの小さな動き） */}
+  <script is:inline>
+    (function () {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) return;
+      document.querySelectorAll('.cal-copy').forEach(function (button) {
+        button.hidden = false;
+        button.addEventListener('click', function () {
+          navigator.clipboard.writeText(button.getAttribute('data-copy') || '').then(
+            function () {
+              button.textContent = 'コピーしました';
+              setTimeout(function () {
+                button.textContent = 'アドレスをコピー';
+              }, 2000);
+            },
+            function () {
+              button.textContent = 'コピーできませんでした';
+            }
+          );
+        });
+      });
+    })();
+  </script>
 </Base>

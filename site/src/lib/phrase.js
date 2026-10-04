@@ -76,6 +76,9 @@ function canBreakAt(text, i, keep) {
   const prev = text[i - 1];
   const next = text[i];
   if (CENSOR.test(prev) || CENSOR.test(next)) return false;
+  // 数字と、そのあとの単位（「11／月」「3／本」「246／分」）、「年」「月」と、そのあとの数字（「2026年／10月」）は離さない（日付・本数を1かたまりに）
+  if (/[0-9０-９]/.test(prev) && !/\s/.test(next)) return false;
+  if (/[年月]/.test(prev) && /[0-9０-９]/.test(next)) return false;
   if (NO_START.test(next) && !(next === '・')) return false;
   if (next === '・') return false; // 中黒は、前の語にくっつける（「・」で改行するのは、その後ろ）
   if (NO_END.test(prev) && !/\s/.test(prev)) return false;
@@ -163,7 +166,7 @@ export function namesPattern(names) {
 
 /** この長さ（文字数）以下の名前は、<span class="nb">（white-space: nowrap）で包み、まったく改行しない（「S-Cute」の「-」のあとや、「犬/妄想族」の「/」のあとでも）。
  * 長い名前は包まない（狭い画面ではみ出さないように。区切りの <wbr> を入れないだけ） */
-export const NOWRAP_MAX = 10;
+export const NOWRAP_MAX = 12;
 
 // HTMLの文字参照（&amp; &#39; &#x27; など）。1文字として扱い、途中で区切らない
 const ENTITY = /&(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);/g;
@@ -188,14 +191,21 @@ export function phraseText(htmlText, namesRe = null) {
   const restored = phrases.map((p) => p.replace(/￼/g, () => refs[r++]));
   // 空白のあとには、<wbr> は要らない（空白で、もともと改行できる）
   const body = restored.map((p, i) => (i === 0 || /\s$/.test(restored[i - 1]) ? p : '<wbr>' + p)).join('');
-  return `${lead}<span class="ph">${wrapNames(body, namesRe)}</span>${tail}`;
+  return `${lead}<span class="ph">${glueTilde(wrapNames(body, namesRe))}</span>${tail}`;
+}
+
+/** 「～」「〜」の前では改行しない（「気持ちよ／～く」「オニごっこ／～集団」のように、行の頭に「～」が来るのを防ぐ）。
+ * ブラウザは keep-all でも「～」の前で改行することがあるので、前の1文字（と、あいだの空白）と一緒に <span class="nb"> で包む */
+function glueTilde(html) {
+  return html.replace(/([^\s>;])(\s?)(?:<wbr>)?([～〜])/g, '<span class="nb">$1$2$3</span>');
 }
 
 /** 文字列の中の短い名前（NOWRAP_MAX 文字以下）を <span class="nb"> で包む（名前の中には <wbr> が無いので、そのまま探せる） */
 function wrapNames(text, namesRe) {
   if (!namesRe) return text;
   namesRe.lastIndex = 0;
-  return text.replace(namesRe, (name) => ([...name].length <= NOWRAP_MAX ? `<span class="nb">${name}</span>` : name));
+  // 長さは、あとに付けた「さん」などを除いて数える（「善場まみ（茉城まみ）さん」も、名前が10文字なので包む）
+  return text.replace(namesRe, (name) => ([...name.replace(/(?:さん|ちゃん|様)$/, '')].length <= NOWRAP_MAX ? `<span class="nb">${name}</span>` : name));
 }
 
 // 触らない所: コメント・script・style・title・textarea・pre・code・noscript・svg・template・select・option・button（中身ごと飛ばす）、
@@ -255,5 +265,7 @@ export const ZWSP = '\u200b';
 export function phraseZwsp(text, namesRe = null) {
   if (!text || japaneseCount(text) < MIN_JAPANESE) return text || '';
   const parts = splitPhrases(text, namesRe);
-  return parts.map((p, i) => (i === 0 || /\s$/.test(parts[i - 1]) ? p : ZWSP + p)).join('');
+  const joined = parts.map((p, i) => (i === 0 || /\s$/.test(parts[i - 1]) ? p : ZWSP + p)).join('');
+  // 「～」の前で改行しない（ビルドの glueTilde と同じ考え方。文字で表すので、改行を止める見えない文字 U+2060 と、改行しない空白 U+00A0 を使う）
+  return joined.replace(/(\S)\u200b?([～〜])/g, '$1\u2060$2').replace(/(\S) ([～〜])/g, '$1\u00a0$2');
 }

@@ -76,7 +76,7 @@ const rankFirstIsHero = rankHasHero(rankShownCount);
         <ul class="shelf rank-podium" data-show={RANKING_SHOWN} data-visible={rankShownCount}>
           {ranking.items.map((entry, i) => (
             <li class={`shelf-cell rank-cell${i === 0 && rankFirstIsHero ? ' is-hero' : ''}${i >= RANKING_SHOWN ? ' rank-off' : ''}`} data-rank={entry.rank} {...vrAttrs(entry)}>
-              <RankCard entry={entry} />
+              <RankCard entry={entry} first={i === 0} />
             </li>
           ))}
         </ul>

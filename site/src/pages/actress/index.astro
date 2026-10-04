@@ -50,6 +50,9 @@ const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
             名前（ひらがな・カタカナでもOK）
             <input type="search" name="text" placeholder="例: さくら" enterkeyhint="search" />
           </label>
+          {/* 年齢・身長・サイズ・並び順は、たためる（スマホで、結果がすぐ見えるように。広い画面では最初から開く。actress-search.js） */}
+          <details id="as-filters" class="ws-filters">
+            <summary class="ws-filters-toggle">年齢・身長・サイズ・並び順で絞り込む</summary>
           <div class="as-grid">
             {Object.entries(RANGES).map(([name, def]) => (
               <label class="as-field">
@@ -76,6 +79,7 @@ const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
               </select>
             </label>
           </div>
+          </details>
           <div class="as-actions">
             <button type="reset" class="btn btn-quiet">条件をクリア</button>
           </div>
@@ -104,7 +108,7 @@ const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
                     <Face name={g.name} src={faceUrl(profile)} size="md" />
                     <span class="actress-row-text">
                       <span class="actress-row-name">{g.name}</span>
-                      <span class={`actress-row-spec${spec ? '' : ' is-empty'}`}>{spec || 'プロフィールの数字は未掲載'}</span>
+                      {spec && <span class="actress-row-spec">{spec}</span>}
                       <span class="actress-row-meta">掲載{g.items.length}本 ›</span>
                     </span>
                   </a>

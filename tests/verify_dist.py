@@ -322,6 +322,17 @@ for cid, x in valid.items():
             problems_here.append("動画が無いのに movie.js を読み込んでいる")
         if problems_here:
             bad_movie.append((cid, problems_here))
+# 表示の速さ: 最初の画面の主な画像（動画が無い作品の表紙・動画の再生ボタンの画像）は、優先して読む（fetchpriority="high"）
+slow_lcp = []
+for cid, x in valid.items():
+    page = os.path.join(DIST, "item", cid, "index.html")
+    if not os.path.isfile(page) or not str(x.get("image_url") or "").strip():
+        continue
+    imgs = tags(read(page), "img")
+    main_img = next((t for t in imgs if has_class(t, "detail-cover") or has_class(t, "movie-poster")), None)
+    if not main_img or main_img.get("fetchpriority") != "high" or main_img.get("loading") == "lazy":
+        slow_lcp.append(cid)
+check("作品ページの最初の画面の画像（表紙・動画の再生ボタンの画像）を、優先して読む（fetchpriority=high・lazy にしない）", not slow_lcp, slow_lcp[:3])
 check(f"動画がある作品（{movie_count}件）は動画を表紙の場所に出し、パッケージ写真をサンプル画像の下の別の欄に大きく出している／動画が無い作品は、これまでどおり表紙", not bad_movie, bad_movie[:3])
 foreign_frames = []
 for pth in all_html:
@@ -729,6 +740,7 @@ check("CSS: ふだん（ぼかしが使えない古いブラウザ）と「透�
 hdr = os.path.join(DIST, "_headers")
 htext = read(hdr) if os.path.isfile(hdr) else ""
 check("応答ヘッダーの設定（_headers）がある: nosniff・フレームへの埋め込み禁止（frame-ancestors）", "X-Content-Type-Options: nosniff" in htext and "frame-ancestors 'self'" in htext and re.search(r"^/\*\s*$", htext, re.M) is not None)
+check("応答ヘッダー: 名前にハッシュが付くファイル（/_astro/*）は長くキャッシュ（immutable）。名前が変わらないスクリプト・索引は短く", re.search(r"^/_astro/\*\s*\n\s+Cache-Control: public, max-age=31536000, immutable", htext, re.M) is not None and all(re.search(r"^/%s\s*\n\s+Cache-Control: public, max-age=600\s*$" % re.escape(os.path.basename(j)), htext, re.M) for j in glob.glob(os.path.join(DIST, "*.js"))))
 
 
 print("\n■ サムネの切り取り・作品検索・「VR作品を隠す」")
@@ -1003,8 +1015,8 @@ if os.path.isfile(ii):
         check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v）だけで、データにある作品・長い文やURLは入っていない", all(isinstance(r, dict) and set(r) <= set("cptdamgiv") and {"c", "t", "d", "a", "m", "g", "i"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("cptdamgiv"))][:1])
         bad_p = [(r["c"], r.get("p")) for r in irows if (r.get("p") or "") != product_code(r["c"])]
         check("索引の品番（p）が、作品ページと同じ品番（作れない作品には無い）", not bad_p, bad_p[:3])
-        bad_t = [r["c"] for r in irows if r["c"] in valid and r["t"].replace("\u200b", "") != str(valid[r["c"]].get("title", "")).strip()]
-        check("索引のタイトルは、文節の区切り（U+200B）を除くと、データのタイトルと同じ", not bad_t, bad_t[:3])
+        bad_t = [r["c"] for r in irows if r["c"] in valid and r["t"].replace("\u200b", "").replace("\u2060", "").replace("\u00a0", " ") != str(valid[r["c"]].get("title", "")).strip()]
+        check("索引のタイトルは、文節の区切り（U+200B）と改行を止める文字（U+2060・U+00A0）を戻すと、データのタイトルと同じ", not bad_t, bad_t[:3])
         check("索引のタイトルに、文節の区切り（U+200B）が入っている（ブラウザで語の途中で改行しないため）", any("\u200b" in r["t"] for r in irows))
         check(f"索引の作品の数（{len(irows)}）= min(データの件数 {len(valid)}, 3000)", len(irows) == min(len(valid), 3000), (len(irows), len(valid)))
         check("索引は発売日の新しい順", [r["d"] for r in irows] == sorted((r["d"] for r in irows), reverse=True))
@@ -1050,7 +1062,7 @@ for p in html_files:
 check("出演者名・メーカー名の途中に、文節の区切り（<wbr>）が入っていない", not split_names, split_names[:5])
 nb_rules = [body for sels, body in css_rules if ".nb" in sels]
 check("CSS: 短い名前の包み（.nb）は white-space: nowrap（途中で改行しない）", any(re.search(r"white-space\s*:\s*nowrap", b) for b in nb_rules), nb_rules[:1])
-nb_long = sorted({m.group(1) for p in html_files for m in NB_SPAN.finditer(read_raw(p)) if len(m.group(1)) > 13})
+nb_long = sorted({m.group(1) for p in html_files for m in NB_SPAN.finditer(read_raw(p)) if len(re.sub(r"(さん|ちゃん|様)$", "", m.group(1))) > 12})
 check("改行しない包み（.nb）は、短い名前だけ（長いと、狭い画面ではみ出すため）", not nb_long, nb_long[:3])
 check("script・style・title・ボタン・コードなどの中には、区切りを入れていない", not ph_in_skip, ph_in_skip[:3])
 check(f"ほとんどのページ（9割以上）の日本語の文章に、文節の区切りが入っている（Astro の拡張が動いた証拠。{with_ph}/{len(html_files)}）", html_files and with_ph >= len(html_files) * 0.9, (with_ph, len(html_files)))

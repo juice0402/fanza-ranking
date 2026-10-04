@@ -313,14 +313,21 @@
     var body = el('span', 'fav-row-body');
     // ph-js: 文節の区切り（タイトルに入っている U+200B）と「、」の所だけで改行する（名前・語の途中で改行しない）
     body.appendChild(el('span', 'fav-row-title ph-js', item.t));
-    var cast = Array.isArray(item.a) && item.a.length ? item.a.join('、') : '';
-    body.appendChild(el('span', 'fav-row-meta ph-js', jpDate(item.d) + (cast ? '　' + cast : '')));
+    var cast = Array.isArray(item.a) ? item.a.filter(function (n) { return typeof n === 'string' && n; }) : [];
+    var meta = el('span', 'fav-row-meta ph-js', jpDate(item.d) + (cast.length ? '　' : ''));
+    cast.forEach(function (name, i) {
+      if (i > 0) meta.appendChild(document.createTextNode('、'));
+      meta.appendChild(el('span', name.length <= 12 ? 'nb' : '', name)); // 短い名前は、途中で改行しない
+    });
+    body.appendChild(meta);
     link.appendChild(body);
     row.appendChild(link);
     if (onRemove) {
       var button = el('button', 'fav-remove', '外す');
       button.type = 'button';
-      button.addEventListener('click', onRemove);
+      button.addEventListener('click', function () {
+        onRemove(button);
+      });
       row.appendChild(button);
     }
     return row;
@@ -331,6 +338,21 @@
     box.appendChild(el('h2', 'section-title', title));
     if (note) box.appendChild(el('p', 'section-note', note));
     return box;
+  }
+
+  // 「外す」を押すと一覧を作り直すので、フォーカスを、同じ位置の「外す」（無ければ、ページの最初の見出し）へ移す（ページの先頭に飛ばないように）
+  function indexOfRemove(container, button) {
+    return Array.prototype.indexOf.call(container.querySelectorAll('.fav-remove'), button);
+  }
+
+  function refocus(container, at) {
+    var buttons = container.querySelectorAll('.fav-remove');
+    var target = buttons.length ? buttons[Math.max(0, Math.min(at, buttons.length - 1))] : container.querySelector('h2, .empty');
+    if (!target) return;
+    if (!buttons.length) target.setAttribute('tabindex', '-1');
+    try {
+      target.focus({ preventScroll: false });
+    } catch (e) {}
   }
 
   function renderPage(container) {
@@ -400,8 +422,10 @@
         var button = el('button', 'fav-remove', '外す');
         button.type = 'button';
         button.addEventListener('click', function () {
+          var at = indexOfRemove(container, button);
           write(remove(read(), def[0], name));
           renderPage(container);
+          refocus(container, at);
         });
         row.appendChild(button);
         list.appendChild(row);
@@ -417,9 +441,11 @@
       var wlist = el('ul', 'fav-list');
       works.sort(function (a, b) { return store.work[b].at - store.work[a].at; }).forEach(function (cid) {
         var w = store.work[cid];
-        wlist.appendChild(workRow({ c: cid, t: w.t, i: w.i, d: w.d, a: w.a }, function () {
+        wlist.appendChild(workRow({ c: cid, t: w.t, i: w.i, d: w.d, a: w.a }, function (button) {
+          var at = indexOfRemove(container, button);
           write(remove(read(), 'work', cid));
           renderPage(container);
+          refocus(container, at);
         }));
       });
       wbox.appendChild(wlist);

@@ -5,11 +5,12 @@ import { dateParts, vrAttrs } from '../lib/items.js';
 // groups: groupByDate() の結果（発売日ごとの作品のまとまり）
 // headingLevel: 日付タブの見出し階層。カードの見出しは、その1つ下になる
 // keepVr: 「VR作品を隠す」を選んでいても隠さない（VR作品のページ。そこで全部が消えて空になるのを防ぐ）
-const { groups, headingLevel = 'h3', cardLevel = 'h4', keepVr = false } = Astro.props;
+// eagerFirst: 先頭の日付の、先頭から何本の画像を、すぐ読むか（ページのはじめに一覧があるページで、最初の画面の表示を速くする）
+const { groups, headingLevel = 'h3', cardLevel = 'h4', keepVr = false, eagerFirst = 0 } = Astro.props;
 const DayHeading = headingLevel;
 ---
 
-{groups.map((g) => {
+{groups.map((g, gi) => {
   const p = dateParts(g.dateKey);
   return (
     <section class="day" aria-labelledby={`day-${g.dateKey}`}>
@@ -22,8 +23,8 @@ const DayHeading = headingLevel;
         <p class="divider-count">{g.total > g.items.length ? `${g.items.length}本（全${g.total}本）` : `${g.items.length}本`}</p>
       </header>
       <ul class="shelf">
-        {g.items.map((item) => (
-          <li class="shelf-cell" {...(keepVr ? {} : vrAttrs(item))}><ItemCard item={item} level={cardLevel} /></li>
+        {g.items.map((item, ii) => (
+          <li class="shelf-cell" {...(keepVr ? {} : vrAttrs(item))}><ItemCard item={item} level={cardLevel} eager={gi === 0 && ii < eagerFirst} /></li>
         ))}
       </ul>
     </section>

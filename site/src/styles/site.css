@@ -216,7 +216,7 @@ button:focus-visible {
   overflow-wrap: break-word; /* anywhere に対応していない古いブラウザ向け */
   overflow-wrap: anywhere;
 }
-/* 短い出演者名・メーカー名（10文字まで）は、途中で改行しない（「S-Cute」の「-」のあと・「犬/妄想族」の「/」のあとでも）。phrase.js が包む */
+/* 短い出演者名・メーカー名（12文字まで）は、途中で改行しない（「S-Cute」の「-」のあと・「犬/妄想族」の「/」のあとでも）。phrase.js が包む */
 .nb {
   white-space: nowrap;
 }
@@ -763,6 +763,7 @@ button:focus-visible {
 }
 
 .fine {
+  max-width: 44em; /* 広い画面で、1行が長くなりすぎないように */
   margin: 10px 0 0;
   color: var(--paper-dim);
   font-size: 12px;
@@ -1544,9 +1545,31 @@ html.lightbox-open {
   font-size: 14px;
 }
 
+/* カレンダーのアドレス（コピーして使う）。枠に入れて、読みやすい大きさに */
+.cal-url-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+
 .cal-url {
-  font-size: 12px;
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--board);
+  font-size: 13px;
+  line-height: 1.5;
   overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.cal-copy {
+  flex: none;
 }
 
 /* ---------- 出演者の顔写真・出演者のプロフィール ---------- */
@@ -1634,13 +1657,8 @@ html.lightbox-open {
   margin: 0;
 }
 
-.profile-spec {
-  margin: 6px 0 0;
-  color: var(--paper-dim);
-  font-size: 13px;
-}
-
 .profile-source {
+  max-width: 44em; /* 広い画面で、1行が長くなりすぎないように */
   margin: 8px 0 0;
   color: var(--paper-dim);
   font-size: 12px;
@@ -1832,6 +1850,7 @@ html.lightbox-open {
 
 .as-note,
 .as-coverage {
+  max-width: 44em;
   margin: 6px 0 0;
   color: var(--paper-dim);
   font-size: 12px;
@@ -1876,7 +1895,6 @@ html.lightbox-open {
   font-size: 12px;
 }
 
-.actress-row-spec.is-empty,
 .actress-row-meta {
   color: var(--paper-dim);
   font-size: 12px;

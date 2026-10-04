@@ -3,7 +3,8 @@ import { itemPath, statusOf } from '../lib/items.js';
 import { today } from '../lib/data.js';
 
 // level: 見出しの階層（ページの構造に合わせて h3 / h4 を指定）
-const { item, level = 'h4' } = Astro.props;
+// eager: 最初の画面に入る作品だけ、画像をすぐ読む（ほかは、見えそうになってから読む loading="lazy"）
+const { item, level = 'h4', eager = false } = Astro.props;
 const Heading = level;
 const status = statusOf(item, today);
 const href = itemPath(item.cid);
@@ -16,7 +17,7 @@ const href = itemPath(item.cid);
         class="item-img"
         src={item.image_url}
         alt=""
-        loading="lazy"
+        loading={eager ? 'eager' : 'lazy'}
         decoding="async"
         onerror="this.style.visibility='hidden'"
       />

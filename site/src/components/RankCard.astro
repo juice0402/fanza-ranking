@@ -6,7 +6,8 @@ import { itemPath } from '../lib/items.js';
 import { all } from '../lib/data.js';
 
 // level: 見出しの階層（トップページでは「売れ筋」が h2 なので、既定は h3）
-const { entry, level = 'h3' } = Astro.props;
+// first: 先頭（1位）の画像は、トップの最初の画面に入るので、すぐ・優先して読む
+const { entry, level = 'h3', first = false } = Astro.props;
 const Heading = level;
 const inSite = all.some((i) => i.cid === entry.cid);
 const place = [1, 2, 3].includes(entry.rank) ? entry.rank : 0; // 1〜3位だけ、大きさを変える（見た目は site.css の .rank-1〜.rank-3）
@@ -17,7 +18,7 @@ const outbound = inSite ? {} : { target: '_blank', rel: 'sponsored nofollow noop
 <article class={`item rank-item rank-${place}`}>
   <a class="item-cover" href={href} tabindex="-1" aria-hidden="true" {...outbound}>
     {entry.image_url && (
-      <img class="item-img" src={entry.image_url} alt="" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'" />
+      <img class="item-img" src={entry.image_url} alt="" loading={first ? 'eager' : 'lazy'} fetchpriority={first ? 'high' : undefined} decoding="async" onerror="this.style.visibility='hidden'" />
     )}
     <span class="rank-badge">{entry.rank}位</span>
   </a>

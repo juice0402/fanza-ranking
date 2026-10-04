@@ -24,7 +24,7 @@
       return String.fromCharCode(c.charCodeAt(0) - 0x60);
     });
     // 品番の「-」の有無（DLDSS-566 / dldss566）と、タイトルの文節の区切り（幅のない空白 U+200B）も、そろえる
-    return s.replace(/[\s　・·.・\-\u200b]/g, '');
+    return s.replace(/[\s　・·.・\-\u200b\u2060]/g, '');
   }
 
   // キーワードを、空白で区切った語に分ける（全部の語を含む作品だけを探す）
@@ -261,6 +261,16 @@
     return Number(day.slice(0, 4)) + '年' + Number(day.slice(5, 7)) + '月' + Number(day.slice(8, 10)) + '日';
   }
 
+  // 名前を並べる。短い名前（12文字まで）は、途中で改行しない（.nb）。ビルドの phrase.js と同じ考え方
+  function names(parent, list, sep, empty) {
+    if (!list.length && empty) parent.appendChild(document.createTextNode(empty));
+    list.forEach(function (name, i) {
+      if (i > 0) parent.appendChild(document.createTextNode(sep));
+      parent.appendChild(el('span', name.length <= 12 ? 'nb' : '', name));
+    });
+    return parent;
+  }
+
   function card(row, today) {
     var li = el('li', 'shelf-cell');
     var article = el('article', 'item');
@@ -297,8 +307,10 @@
     var cast = row.a.filter(function (name) {
       return typeof name === 'string' && name;
     });
-    article.appendChild(el('p', 'item-cast ph-js', cast.length ? cast.join('、') : '出演者の記載なし'));
-    article.appendChild(el('p', 'item-meta ph-js', jp(row.d) + '発売' + (row.m ? '・' + row.m : '')));
+    article.appendChild(names(el('p', 'item-cast ph-js'), cast, '、', '出演者の記載なし'));
+    var meta = el('p', 'item-meta ph-js', jp(row.d) + '発売' + (row.m ? '・' : ''));
+    if (row.m) names(meta, [row.m], '', '');
+    article.appendChild(meta);
     li.appendChild(article);
     return li;
   }

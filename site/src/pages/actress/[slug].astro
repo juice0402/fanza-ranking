@@ -16,7 +16,7 @@ import {
   summaryDescription,
 } from '../../lib/items.js';
 import { CALENDAR_PATH, actressIcsPath, webcalUrl } from '../../lib/calendar.js';
-import { compactSpec, faceUrl, profileFacts } from '../../lib/profiles.js';
+import { faceUrl, profileFacts } from '../../lib/profiles.js';
 
 // 作品が2本以上ある出演者ごとに1ページ作る
 export function getStaticPaths() {
@@ -30,7 +30,6 @@ const makers = [...new Set(group.items.map((i) => i.maker).filter((m) => m !== '
 const formats = formatsOf(group.items);
 const profile = profilesByName.get(group.name); // FANZA公式の出演者データ（無い人もいる）
 const facts = profileFacts(profile);
-const spec = compactSpec(profile);
 const trail = [
   { name: 'トップ', path: '/' },
   { name: '出演者一覧', path: ACTRESS_INDEX_PATH },
@@ -52,7 +51,6 @@ const trail = [
         <Face name={group.name} src={faceUrl(profile, true)} size="lg" eager />
         <div class="profile-body">
           <h1 class="hero-title"><span class="phrase">{group.name}の</span><span class="phrase">新作・出演作品</span></h1>
-          {spec && <p class="profile-spec">{spec}</p>}
         </div>
       </div>
       <p class="summary">{summary}</p>
