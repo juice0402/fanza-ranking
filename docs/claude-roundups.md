@@ -22,7 +22,7 @@
 ## 手順
 
 1. リポジトリ `juice0402/fanza-ranking` を使える状態にする（無ければ add_repo → clone）。`main` を最新にして、作業用のブランチを作る
-   `git fetch origin main && git checkout -B claude/roundup-YYYYMMDD origin/main`
+   `git fetch origin main && git checkout -B claude/roundup-$(TZ=Asia/Tokyo date +%Y%m%d-%H%M) origin/main`（ブランチ名に時刻まで入れる。同じ日にやり直したとき、前の名前のブランチが残っていても、ぶつからないように。GitHub のブランチは Claude の環境からは消せない）
 2. 対象を出す: `python3 scripts/claude_roundups.py list`
    - `status` が `ready` 以外（`not_finished`・`already_written`・`too_few_items`）なら、**何も変更せず、PRも作らずに終了**（理由を報告）
    - 出力には作品タイトルを含めません（出演者・メーカー・形式・発売日・収録時間だけ）。週の集計（本数・日別・メーカー・出演者・形式）も出ます

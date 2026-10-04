@@ -26,11 +26,11 @@ Claude が書き上げたコメントは `comment_kind: "claude"` にします�
 ## 手順
 
 1. リポジトリ `juice0402/fanza-ranking` を使える状態にする（無ければ add_repo → clone）。`main` を最新にして、作業用のブランチを作る
-   `git fetch origin main && git checkout -B claude/comments-YYYYMMDD origin/main`
+   `git fetch origin main && git checkout -B claude/comments-$(TZ=Asia/Tokyo date +%Y%m%d-%H%M) origin/main`（ブランチ名に時刻まで入れる。同じ日にやり直したとき、前の名前のブランチが残っていても、ぶつからないように。GitHub のブランチは Claude の環境からは消せない）
    - **今日の更新（0:05）が済んでいるかを確かめる**: `bash scripts/already_updated.sh origin/main`（GitHub の定時実行は、混んでいると数時間遅れることがある。2026-10-04 は 0:05 の予定が 3:58 に動いた）
      - 「済んでいます」なら、そのまま手順2へ
      - 「まだです」なら、更新が動いている最中かを見る: `gh api "repos/juice0402/fanza-ranking/actions/workflows/update.yml/runs?per_page=3" --jq '.workflow_runs[] | .status + " " + .created_at'`。`queued` か `in_progress` があれば、それが終わるのを待つ。無ければ、更新を動かす: `gh api -X POST repos/juice0402/fanza-ranking/actions/workflows/update.yml/dispatches -f ref=main`（遅れて来た定時実行は、更新が済んでいるのを見て何もしないので、二重にはならない）
-     - 30秒ごとに様子を見て、終わったら（`completed`）、もう一度 `git fetch origin main && git checkout -B claude/comments-YYYYMMDD origin/main` で取り込み直す。20分たっても終わらない・失敗したときは、いまのデータのまま続けて、報告に書く
+     - 30秒ごとに様子を見て、終わったら（`completed`）、もう一度 `git fetch origin main && git rebase origin/main`（まだ何も書いていなければ `git reset --hard origin/main` でもよい）で取り込み直す。20分たっても終わらない・失敗したときは、いまのデータのまま続けて、報告に書く
 2. 対象を出す: `python3 scripts/claude_comments.py list --limit 40`
    - `total_pending` が 0 なら、**何も変更せず、PRも作らずに終了**（「対象なし」と報告）
    - 1回に書くのは40件まで（多い日は、残りを次の日に回す。急がなくてよい）
