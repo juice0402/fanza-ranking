@@ -1,8 +1,9 @@
 ---
 // きょうの新着人気TOP3（トップ）。🥇🥈🥉のメダルで、スマホでも横に3本並べる（運営者の希望。2026-10-04 夜）。
+// メダルは小さく、表紙の左下のふちに半分かける（表紙の上のほうの顔を隠さない。運営者の希望。2026-10-05）。
 // データは TOP_DATA 本（6本）。画面に出すのは先頭の3本で、「VR作品を隠す」ときは、VRを除いて次の順位から差し替える
 // （site/public/vr-filter.js が、rank-off・data-place（メダルの色）・順位の数字を付け直す。.rank-podium・.rank-cell・.rank-badge はその目印）
-// 発売日と、前の日からの順位の動き（▲3・▼1・→・初登場）も出す（毎日見に来たとき、何が変わったかが分かるように）
+// 発売日（メダルの横）と、前の日からの順位の動き（▲3・▼1・→・初登場。表紙の右上のふちの小さな札）も出す（毎日見に来たとき、何が変わったかが分かるように）
 import { paged, popularity } from '../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
 import { dateParts, vrAttrs } from '../lib/items.js';
@@ -23,18 +24,16 @@ const shown = Math.min(entries.length, TOP_SHOWN);
     return (
       <li class={`medal-cell rank-cell${i >= TOP_SHOWN ? ' rank-off' : ''}`} data-rank={i + 1} data-place={place} {...vrAttrs(item)}>
         <a class="medal-card" href={link.href} {...(link.external ? OUTBOUND_ATTRS : {})}>
-          <span class="medal-cover">
-            {item.image_url && (
-              <img class="item-img" src={item.image_url} alt="" loading={i < TOP_SHOWN ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} decoding="async" onerror="this.style.visibility='hidden'" />
-            )}
-          </span>
-          <span class="medal rank-badge">{i + 1}位</span>
-          {(md || move) && (
-            <span class="medal-meta">
-              {md && <span class="medal-date">{md.m}/{md.d}発売</span>}
-              {move && <span class={`medal-move move-${move.kind}`} title={move.label}><span class="visually-hidden">{move.label}</span><span aria-hidden="true">{move.text}</span></span>}
+          <span class="medal-art">
+            <span class="medal-cover">
+              {item.image_url && (
+                <img class="item-img" src={item.image_url} alt="" loading={i < TOP_SHOWN ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} decoding="async" onerror="this.style.visibility='hidden'" />
+              )}
             </span>
-          )}
+            <span class="medal rank-badge">{i + 1}位</span>
+            {move && <span class={`medal-move move-${move.kind}`} title={move.label}><span class="visually-hidden">{move.label}</span><span aria-hidden="true">{move.text}</span></span>}
+          </span>
+          <span class="medal-meta">{md && <span class="medal-date">{md.m}/{md.d}発売</span>}</span>
           <span class="medal-title">{item.title}</span>
           <span class="medal-cast">{item.actress.length ? item.actress.slice(0, 2).join('、') : '出演者の記載なし'}</span>
         </a>

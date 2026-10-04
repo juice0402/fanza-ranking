@@ -31,25 +31,18 @@ const rawToday = {
     { c: 'up3', t: 'リンクの無い作品', d: '2026-10-09', r: 3, u: 'https://evil.example/' },
     { c: 'up4', t: '', d: '2026-10-09', r: 4, u: 'https://video.dmm.co.jp/av/content/?id=up4' },
     { c: 'up5', t: '順位の無い作品', d: '2026-10-09', u: 'https://video.dmm.co.jp/av/content/?id=up5' },
+    { c: 'up6', t: '予約6', d: '2026-10-12', a: [], m: 'メーカーC', i: 'https://pics.dmm.co.jp/up6.jpg', u: 'https://video.dmm.co.jp/av/content/?id=up6', r: 3 },
   ],
   prev_upcoming: ['up9', 7],
 };
 const td = T.normalizeToday(rawToday);
 check('日付・本数を読む（形の違う行は捨てる）', td.date === TODAY && td.daily.length === 2 && td.upcomingTotal === 3402, JSON.stringify(td.daily));
 check('予約の人気順: タイトル・順位・FANZAのリンクがある作品だけ（リンクはFANZAのhttpsだけ・画像もFANZAだけ）',
-  td.upcoming.map((u) => u.cid).join() === 'up1,up2' && td.upcoming[1].image_url === '' && td.upcoming[0].title === '予約の作品', td.upcoming.map((u) => u.cid).join());
+  td.upcoming.map((u) => u.cid).join() === 'up1,up2,up6' && td.upcoming[1].image_url === '' && td.upcoming[0].title === '予約の作品', td.upcoming.map((u) => u.cid).join());
 check('出演者は文字だけ・メーカーが空なら「不明」・VRの印（v:1）', td.upcoming[0].actress.join() === '花子' && td.upcoming[0].maker === '不明' && td.upcoming[0].vr === true && td.upcoming[1].vr === false);
 check('前の日の予約の人気順は、作品IDの文字だけ', td.prevUpcoming.has('up9') && td.prevUpcoming.size === 1);
 const empty = T.normalizeToday(null);
 check('無い・形が違うときは空（落ちない）', empty.date === '' && empty.daily.length === 0 && empty.upcomingTotal === null && empty.upcoming.length === 0 && T.normalizeToday([1]).date === '');
-
-console.log('\n■ きょうの数字（todayStats）');
-const st = T.todayStats(T.normalizeToday({ date: TODAY, daily: [{ d: '2026-10-03', n: 100 }, { d: '2026-10-04', n: 250 }, { d: TODAY, n: 200 }], upcoming_total: 50 }), TODAY);
-check('きょう発売・期間の合計・予約受付中', st.today === 200 && st.week === 550 && st.days === 3 && st.upcoming === 50);
-check('棒の高さは、いちばん多い日を1として・きょうの棒に印', st.bars[1].ratio === 1 && st.bars[0].ratio === 0.4 && st.bars[2].today && !st.bars[1].today && st.bars[2].label.wd === '月');
-check('今日のデータでなければ出さない（古い数字を「きょう」として出さない）', T.todayStats(td, '2026-10-06') === null && T.todayStats(T.normalizeToday({ date: TODAY, daily: [{ d: '2026-10-04', n: 1 }] }), TODAY) === null && T.todayStats(empty, TODAY) === null);
-check('予約の本数が無いときは null（画面で出さない）', T.todayStats(T.normalizeToday({ date: TODAY, daily: [{ d: TODAY, n: 3 }] }), TODAY).upcoming === null);
-check('全部0本でも落ちない', T.todayStats(T.normalizeToday({ date: TODAY, daily: [{ d: TODAY, n: 0 }] }), TODAY).bars[0].ratio === 0);
 
 console.log('\n■ 新着人気TOP3（topEntries）');
 const items = [
@@ -72,11 +65,12 @@ const many = [
   it('r1', '2026-10-01', 4, { actress: ['花子'] }), // 前の日 40位 → 4位
   it('r2', '2026-10-02', 6, { actress: ['花子'], vr: true }), // 前の日は圏外（41位あつかい）→ 6位（VR）
   it('r3', '2026-10-02', 30), // 前の日 35位 → 30位（上がり幅が小さい）
+  it('r4', '2026-10-01', 12), // 前の日 30位 → 12位（VR作品を隠したときの、急上昇の繰り上げ）
   it('n1', TODAY, 7, { actress: ['月子'], maker: 'メーカーA' }), // きょう発売（前の日は無いので、急上昇には入れない）
   it('db', '2026-10-03', 9, { actress: ['新人'], genres: ['デビュー作品'] }),
   it('s1', '2026-09-01', null, { popAll: 5 }),
 ];
-const pop = normalizePopularity({ date: TODAY, new: {}, prev_date: '2026-10-04', prev: { t1: 1, t2: 2, t3: 3, r1: 40, r3: 35 } });
+const pop = normalizePopularity({ date: TODAY, new: {}, prev_date: '2026-10-04', prev: { t1: 1, t2: 2, t3: 3, r1: 40, r3: 35, r4: 30, db: 10 } });
 const saleData = normalizeSale({
   date: TODAY,
   campaigns: [{ title: '週末セール', begin: '2026-10-01 00:00', end: '2026-10-06 23:59' }, { title: '長いセール', begin: '2026-10-01', end: '2026-10-30' }],
@@ -89,17 +83,19 @@ const ctx = {
 };
 const topics = T.buildTopics(ctx);
 const kinds = topics.map((t) => t.kind).join();
-check('種類と順番: 急上昇 → きょう発売 → 予約の人気1位 → 予約に初登場 → デビュー作 → 人気の女優 → もうすぐ終わるセール', kinds === 'rise,rise,today,upcoming,entry,debut,actress,sale', kinds);
+check('種類と順番: 急上昇 → きょう発売 → 予約で人気 → 予約に初登場 → デビュー作 → 人気の女優 → もうすぐ終わるセール', kinds === 'rise,rise,today,upcoming,entry,debut,actress,sale', kinds);
 const rise = topics.filter((t) => t.kind === 'rise');
 check('急上昇: 上がり幅の大きい順・前の日の順位から（圏外からも）。TOP3の作品・上がり幅の小さい作品・きょう発売の作品は入れない',
   rise.map((t) => t.text).join('/') === '新着の人気順 40位 → 4位/新着の人気順 圏外 → 6位', rise.map((t) => t.text).join('/'));
 check('VR作品の話題には印（VR作品を隠すと消える）', rise[0].vr === false && rise[1].vr === true);
+check('VR作品の急上昇には、VRでない次の作品の代わり（繰り上げ）が付く。VRでない話題には付かない', rise[1].alt?.title === '作品 r4' && rise[1].alt.vr === false && rise[1].alt.kind === 'rise' && rise[1].alt.text === '新着の人気順 30位 → 12位' && !rise[0].alt, JSON.stringify(rise[1].alt));
 const tday = topics.find((t) => t.kind === 'today');
 check('きょう発売: 出演者・メーカー・順位', tday.title === '作品 n1' && tday.text === '月子｜メーカーA｜新着の人気順 7位' && tday.href === '/item/n1/', tday.text);
 const up = topics.find((t) => t.kind === 'upcoming');
-check('予約の人気1位: 発売日と出演者', up.text === '10月8日発売｜花子' && up.vr === true);
+check('予約で人気: 予約の人気順の順位・発売日・出演者', up.label === '予約で人気' && up.text === '予約の人気順 1位｜10月8日発売｜花子' && up.vr === true, up.text);
+check('予約で人気の1位がVR作品なら、VRでない次の作品が代わり（繰り上げ）', up.alt?.title === '予約2' && up.alt.text === '予約の人気順 2位｜10月9日発売', JSON.stringify(up.alt));
 const entry = topics.find((t) => t.kind === 'entry');
-check('予約に初登場: 前の日の予約の人気順にいなかった作品（1位は別の話題に出したので、次の作品）', entry.title === '予約2' && entry.text === '予約の人気順 2位｜10月9日発売', entry.text);
+check('予約に初登場: 前の日の予約の人気順にいなかった作品（ほかの話題に出した作品・繰り上げに使った作品は出さない）', entry.title === '予約6' && entry.text === '予約の人気順 3位｜10月12日発売', entry.text);
 const debut = topics.find((t) => t.kind === 'debut');
 check('デビュー作: 出演者の名前と、顔写真（あれば）', debut.title === '新人のデビュー作' && debut.face === 'https://pics.dmm.co.jp/face.jpg');
 const actress = topics.find((t) => t.kind === 'actress');
@@ -107,8 +103,15 @@ check('人気の女優: 新着の人気TOP100に2本以上。女優のページ�
 const sale = topics.find((t) => t.kind === 'sale');
 check('もうすぐ終わるセール: 終わりが2日以内のキャンペーンだけ。セールのページへ・終わりの時刻（ブラウザが、すぎたら隠す）',
   sale.title === '週末セール' && sale.text === '10月6日 23:59まで｜1本がセール中' && sale.href === '/sale/' && sale.end === '2026-10-06T23:59:59+09:00', sale.text);
-check('同じ作品は2回出さない', new Set(topics.filter((t) => t.kind !== 'actress' && t.kind !== 'sale').map((t) => t.title)).size === topics.length - 2);
+const shownTitles = topics.flatMap((t) => [t, ...(t.alt ? [t.alt] : [])]).filter((t) => t.kind !== 'actress' && t.kind !== 'sale').map((t) => t.title);
+check('同じ作品は2回出さない（繰り上げの作品も含めて）', new Set(shownTitles).size === shownTitles.length, shownTitles.join());
 check('数が多いときは、まず2つ目の急上昇を外す', T.buildTopics(ctx, 7).map((t) => t.kind).join() === 'rise,today,upcoming,entry,debut,actress,sale' && T.buildTopics(ctx, 3).length === 3);
+
+const withSkipVrOff = T.buildTopics({ ...ctx, skipVrOff: new Set(['r4']) }).find((t) => t.kind === 'rise' && t.vr);
+check('VR作品を隠したときにTOP3に出る作品（skipVrOff）は、繰り上げに使わない', withSkipVrOff && withSkipVrOff.alt?.title !== '作品 r4', JSON.stringify(withSkipVrOff?.alt));
+const allVr = T.buildTopics({ ...ctx, items: many.map((i) => (i.cid === 'n1' ? i : { ...i, vr: i.cid.startsWith('r') ? true : i.vr })) }).filter((t) => t.kind === 'rise');
+check('代わりになるVRでない作品が無ければ、繰り上げは付かない（VR作品を隠すと、その話題は消える）', allVr.every((t) => t.vr && !t.alt), JSON.stringify(allVr.map((t) => [t.title, t.alt?.title])));
+check('人気の女優: 顔写真が無いときの表紙は、VRでない作品のもの', actress.image === 'https://pics.dmm.co.jp/r1pl.jpg', actress.image);
 
 const roundup = { week_start: '2026-09-28', week_end: '2026-10-04', lead: 'まとめの書き出し。'.repeat(10), picks: [{ cid: 'n1', note: 'x' }], written: TODAY };
 const withWeekly = T.buildTopics({ ...ctx, roundup }, 20);

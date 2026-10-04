@@ -1,7 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
 import DaySection from '../components/DaySection.astro';
-import TodayStats from '../components/TodayStats.astro';
 import TopThree from '../components/TopThree.astro';
 import TopicList from '../components/TopicList.astro';
 import VrToggle from '../components/VrToggle.astro';
@@ -26,7 +25,7 @@ import { itemHref } from '../lib/plan.js';
 import { faceUrl } from '../lib/profiles.js';
 import { RANKING_ALL_PATH, RANKING_PATH } from '../lib/popularity.js';
 import { SALE_PATH, endIso, saleBadge, saleCount, saleHighlights, salePriceNote } from '../lib/sale.js';
-import { TOP_SHOWN, buildTopics, todayStats, topEntries } from '../lib/topics.js';
+import { TOP_SHOWN, buildTopics, topEntries } from '../lib/topics.js';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import { weeklyPath } from '../lib/roundups.js';
 import { SEARCH_PATH } from '../lib/search.js';
@@ -57,10 +56,9 @@ const topIsNew = newTop.length > 0;
 const top = topIsNew ? newTop : (ranking?.items ?? []);
 const topDay = topIsNew ? (popularity.date ? dateParts(popularity.date) : day) : ranking ? dateParts(ranking.date) : null;
 
-// きょうの数字（FANZA動画全体の発売本数・予約受付中の本数）。今日のデータが無ければ出さない
-const stats = todayStats(todayData, today);
-
-// きょうの話題（毎日の更新が集めた人気順・予約の人気順・セールから、データで決まった形の文を作る。TOP3に出ている作品は除く）
+// きょうの話題（毎日の更新が集めた人気順・予約の人気順・セールから、データで決まった形の文を作る。TOP3に出ている作品は除く。
+// VR作品を隠したときにTOP3に繰り上がる作品も除き、話題の作品がVR作品なら、VRでない次の作品も用意する）
+const topVrOff = top.filter((i) => !i.vr).slice(0, TOP_SHOWN).map((i) => i.cid);
 const topics = buildTopics({
   items: all,
   today,
@@ -71,7 +69,8 @@ const topics = buildTopics({
   linkOf: (item) => itemHref(item, paged),
   actressPage: (name) => actressByName.get(name)?.path ?? '',
   faceOf: (name) => faceUrl(profilesByName.get(name)),
-  skip: new Set(top.slice(0, TOP_SHOWN).map((i) => i.cid)),
+  skip: new Set([...top.slice(0, TOP_SHOWN).map((i) => i.cid), ...topVrOff]),
+  skipVrOff: new Set(topVrOff),
 });
 
 // セール中（FANZAのキャンペーン。人気の高い作品から数本。終わった時刻をすぎたものは、ブラウザで隠す /sale.js）
@@ -81,14 +80,14 @@ const saleTotal = saleCount(all, sale, today);
 
 <Base
   title={`${SITE_NAME}｜毎日更新のFANZA新作・予約作品まとめ`}
-  description="FANZAの新作・新着と予約中の作品を、発売日ごとにまとめて毎日更新。きょうの新着人気TOP3・発売本数・話題も、毎日入れかわります。"
+  description="FANZAの新作・新着と予約中の作品を、発売日ごとにまとめて毎日更新。きょうの新着人気TOP3と話題も、毎日入れかわります。"
   path="/"
   jsonLd={[websiteLd()]}
 >
   <div class="wrap">
     <a id="fav-banner" class="fav-banner" href="/favorites/" hidden></a>
 
-    <div class={stats ? 'today has-stats' : 'today'}>
+    <div class={topics.length > 0 ? 'today has-topics' : 'today'}>
       <header class="today-head">
         <p class="today-date"><time datetime={today}>{day.m}月{day.d}日（{day.wd}）</time>の更新</p>
         <h1 class="today-title">きょうのFANZA新作</h1>
@@ -114,8 +113,6 @@ const saleTotal = saleCount(all, sale, today);
         </section>
       )}
 
-      {stats && <TodayStats stats={stats} />}
-
       {topics.length > 0 && (
         <section id="topics" class="today-topics" aria-labelledby="topics-title">
           <div class="today-sec-head">
@@ -125,24 +122,24 @@ const saleTotal = saleCount(all, sale, today);
           <TopicList topics={topics} />
         </section>
       )}
-    </div>
 
-    <section class="find" aria-labelledby="find-title">
-      <h2 id="find-title" class="find-title">作品を探す</h2>
-      <form class="hero-search" action={SEARCH_PATH} method="get" role="search">
-        <label class="visually-hidden" for="hero-q">作品を探す（タイトル・出演者・メーカー・品番）</label>
-        <input id="hero-q" class="hero-search-input" type="search" name="q" placeholder="タイトル・出演者・品番" enterkeyhint="search" autocomplete="off" />
-        <button class="hero-search-btn" type="submit">探す</button>
-      </form>
-      <nav class="hero-jump" aria-label="探し方">
-        {tagGroups.length > 0 && <a class="chip-link" href={TAG_INDEX_PATH}>ジャンル</a>}
-        <a class="chip-link" href={ACTRESS_INDEX_PATH}>女優検索</a>
-        <a class="chip-link" href={MAKER_INDEX_PATH}>メーカー</a>
-        {monthGroups.length > 0 && <a class="chip-link" href={MONTH_INDEX_PATH}>月ごと</a>}
-        {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約 {upcomingShown}本</a>}
-        {latestRoundup && <a class="chip-link" href={weeklyPath(latestRoundup.week_start)}>週のまとめ</a>}
-      </nav>
-    </section>
+      <section class="find" aria-labelledby="find-title">
+        <h2 id="find-title" class="find-title">作品を探す</h2>
+        <form class="hero-search" action={SEARCH_PATH} method="get" role="search">
+          <label class="visually-hidden" for="hero-q">作品を探す（タイトル・出演者・メーカー・品番）</label>
+          <input id="hero-q" class="hero-search-input" type="search" name="q" placeholder="タイトル・出演者・品番" enterkeyhint="search" autocomplete="off" />
+          <button class="hero-search-btn" type="submit">探す</button>
+        </form>
+        <nav class="hero-jump" aria-label="探し方">
+          {tagGroups.length > 0 && <a class="chip-link" href={TAG_INDEX_PATH}>ジャンル</a>}
+          <a class="chip-link" href={ACTRESS_INDEX_PATH}>女優検索</a>
+          <a class="chip-link" href={MAKER_INDEX_PATH}>メーカー</a>
+          {monthGroups.length > 0 && <a class="chip-link" href={MONTH_INDEX_PATH}>月ごと</a>}
+          {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約 {upcomingShown}本</a>}
+          {latestRoundup && <a class="chip-link" href={weeklyPath(latestRoundup.week_start)}>週のまとめ</a>}
+        </nav>
+      </section>
+    </div>
 
     {saleShown.length > 0 && (
       <section id="sale" class="section" aria-labelledby="sale-title" data-sale-group data-vr-group>

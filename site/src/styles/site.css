@@ -2171,24 +2171,31 @@ html.lightbox-open {
   box-shadow: 0 0 0 2px var(--m);
 }
 
-/* メダル: 首にかけるリボン（::before）と、丸い金属の円盤（::after）。順位の文字（「1位」）は、その上にのる。
+/* 表紙と、メダルをのせる台（メダルは、表紙の左下のふちに半分かける。表紙の上のほうの顔を隠さないように） */
+.medal-art {
+  position: relative;
+  display: block;
+}
+
+/* メダル: 丸い金属の円盤（::after）と、下にたれる2本のリボン（::before。ロゼットの形）。順位の文字（「1位」）は、その上にのる。
    .rank-badge（順位の札）の形を、ここで打ち消す */
 .medals .medal {
-  --mt: 10px; /* 表紙の上のふちから、メダルまで（リボンは、ふちから下がる） */
+  --md: 32px; /* 円盤の大きさ */
   position: absolute;
-  top: var(--mt);
-  left: 6px;
+  top: auto;
+  bottom: calc(var(--md) / -2);
+  left: 4px;
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: var(--md);
+  height: var(--md);
   min-width: 0;
   padding: 0;
   background: none;
   box-shadow: none;
   color: #23180a;
-  font: 400 14px/1 var(--font-display);
+  font: 400 12px/1 var(--font-display);
   letter-spacing: -0.04em;
   transform: none;
 }
@@ -2197,13 +2204,13 @@ html.lightbox-open {
   content: '';
   position: absolute;
   z-index: -2;
-  top: calc(-1 * var(--mt) - 2px);
-  bottom: 50%;
+  top: 55%;
   left: 50%;
-  width: 28px;
+  width: 80%;
+  height: 75%;
   transform: translateX(-50%);
   background: linear-gradient(90deg, var(--hot) 0 50%, #99102f 50% 100%);
-  clip-path: polygon(0 0, 38% 0, 50% 34%, 62% 0, 100% 0, 70% 100%, 30% 100%);
+  clip-path: polygon(14% 0, 86% 0, 100% 100%, 84% 84%, 66% 100%, 50% 22%, 34% 100%, 16% 84%, 0 100%);
 }
 
 .medals .medal::after {
@@ -2215,25 +2222,38 @@ html.lightbox-open {
   background: radial-gradient(circle at 32% 28%, var(--m-hi) 0 12%, var(--m) 48%, var(--m-lo) 100%);
   box-shadow:
     inset 0 0 0 2px var(--m-lo),
-    inset 0 0 0 4px rgba(255, 255, 255, 0.35),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.35),
     0 2px 3px rgba(0, 0, 0, 0.5);
 }
 
-/* 発売日と、前の日からの順位の動き */
+/* 発売日（左下のメダルの横） */
 .medal-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2px 6px;
-  margin-top: 9px;
+  display: block;
+  min-height: 22px;
+  margin-top: 4px;
+  padding-left: 40px; /* 左下のメダルの横から（メダルと重ならないように） */
+  overflow: hidden;
   color: var(--paper-dim);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.5;
+  white-space: nowrap;
 }
 
+/* 前の日からの順位の動き: 表紙の右上のふちに半分かける小さな札（表紙の上のほうの顔を隠さないように、ふちだけ） */
 .medal-move {
+  position: absolute;
+  top: -9px;
+  right: 4px;
+  z-index: 2;
+  padding: 0 7px;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  box-shadow: 0 0 0 1px var(--line);
+  color: var(--paper-dim);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
   white-space: nowrap;
 }
 
@@ -2242,9 +2262,8 @@ html.lightbox-open {
 }
 
 .move-new {
-  padding: 0 7px;
-  border-radius: var(--r-pill);
   background: var(--pop);
+  box-shadow: none;
   color: var(--ink);
 }
 
@@ -2269,6 +2288,12 @@ html.lightbox-open {
   white-space: nowrap;
 }
 
+/* 1行で「…」にする出演者の行では、文節の区切り（<wbr>）で改行させない（Chromium は white-space: nowrap でも <wbr> で改行してしまい、2行になる） */
+.item-cast wbr,
+.medal-cast wbr {
+  display: none;
+}
+
 .medal-card:hover .medal-title {
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -2286,129 +2311,6 @@ html.lightbox-open {
   justify-content: center;
   padding: 0 8px;
   white-space: nowrap;
-}
-
-/* --- きょうの数字: 3つの本数と、日ごとの本数の棒（きょうの棒だけ黄色） --- */
-.stats {
-  margin-top: 12px;
-  padding: 16px 14px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-panel);
-  background: var(--board);
-}
-
-.stats-nums {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-}
-
-.stat {
-  min-width: 0;
-}
-
-.stat + .stat {
-  padding-left: 12px;
-  border-left: 1px solid var(--line);
-}
-
-.stat:not(:last-child) {
-  padding-right: 8px;
-}
-
-.stat-label {
-  color: var(--paper-dim);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.stat-value {
-  margin: 2px 0 0;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.stat-n {
-  margin-right: 2px;
-  font: 400 clamp(20px, 6vw, 28px) / 1.15 var(--font-display);
-}
-
-.stat-main .stat-n {
-  color: var(--pop);
-}
-
-.bars {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
-  height: 128px;
-  margin: 18px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.bar {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  min-width: 0;
-}
-
-/* 棒の上の数字の分だけ、上をあけておく（いちばん高い棒でも、数字がはみ出さない） */
-.bar-track {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-  padding-top: 16px;
-}
-
-.bar-fill {
-  position: relative;
-  width: 100%;
-  max-width: 30px;
-  height: var(--h);
-  border-radius: var(--r-media) var(--r-media) 0 0;
-  background: rgba(244, 235, 221, 0.3);
-}
-
-.bar-n {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  padding-bottom: 2px;
-  color: var(--paper-dim);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.3;
-  white-space: nowrap;
-  transform: translateX(-50%);
-}
-
-.bar-day {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 4px;
-  border-top: 1px solid var(--line);
-  color: var(--paper-dim);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.35;
-  white-space: nowrap;
-}
-
-.bar-wd {
-  font-weight: 400;
-}
-
-.bar.is-today .bar-fill {
-  background: var(--pop);
-}
-
-.bar.is-today .bar-n,
-.bar.is-today .bar-day {
-  color: var(--pop);
 }
 
 /* --- きょうの話題: 画像（表紙・出演者の顔）＋札＋見出し＋ひとこと の行 --- */
@@ -2515,9 +2417,22 @@ html.lightbox-open {
   text-underline-offset: 3px;
 }
 
+/* VR作品の話題の、代わりの作品（繰り上げ）。「VR作品を隠す」のときだけ出す（VR作品の話題は .hide-vr [data-vr] で隠れる） */
+.topic-alt {
+  display: none;
+}
+
+.hide-vr .topic-alt {
+  display: block;
+}
+
 /* --- 作品を探す（検索欄と、探し方のリンク） --- */
 .find {
   margin-top: 44px;
+}
+
+.today > .find {
+  margin-top: 0; /* トップでは、上の欄とのすき間は .today の gap */
 }
 
 .find-title {
@@ -2535,18 +2450,14 @@ html.lightbox-open {
   }
 
   .medals .medal {
-    --mt: 12px;
-    left: 8px;
-    width: 50px;
-    height: 50px;
-    font-size: 16px;
-  }
-
-  .medals .medal::before {
-    width: 32px;
+    --md: 40px;
+    left: 6px;
+    font-size: 14px;
   }
 
   .medal-meta {
+    min-height: 26px;
+    padding-left: 52px;
     font-size: 12px;
   }
 
@@ -2573,22 +2484,21 @@ html.lightbox-open {
   }
 }
 
+/* パソコン: 左に「TOP3」と「作品を探す」、右に「きょうの話題」（1列）。話題が無い日は、1列のまま */
 @media (min-width: 960px) {
   .today {
-    grid-template-areas:
-      'head head'
-      'top top'
-      'topics topics';
-    column-gap: 40px;
+    column-gap: 44px;
     padding-top: 30px;
   }
 
-  .today.has-stats {
+  .today.has-topics {
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-rows: auto auto auto 1fr;
     grid-template-areas:
       'head head'
-      'top stats'
-      'topics topics';
+      'top topics'
+      'find topics'
+      '. topics';
   }
 
   .today-head {
@@ -2610,31 +2520,20 @@ html.lightbox-open {
     margin-top: 0;
   }
 
-  .today-top {
+  .today.has-topics .today-top {
     grid-area: top;
   }
 
-  .today-stats {
-    grid-area: stats;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* TOP3と同じ高さまで、棒をのばす */
-  .today-stats .stats {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    padding: 20px 20px 14px;
-  }
-
-  .today-stats .bars {
-    flex: 1;
-    min-height: 150px;
-  }
-
-  .today-topics {
+  .today.has-topics .today-topics {
     grid-area: topics;
+  }
+
+  .today.has-topics .find {
+    grid-area: find;
+  }
+
+  .today.has-topics .topics {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .today-sec-title,
