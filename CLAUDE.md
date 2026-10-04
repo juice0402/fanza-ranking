@@ -12,10 +12,10 @@ FANZAの新作・予約作品を毎日自動で集め、AIのひとことコメ�
 GitHub Actions（毎日 0:05 JST。日付が変わった直後）
   → get_new_releases.py
       FANZA(DMM) アフィリエイトAPI から「発売済み」「予約」を別々に取得
-      保存済み作品の「空だった出演者」「空だったジャンル」「未取得のサンプル動画」を補う（今回の取得に出ていれば refresh_from_fetched、
+      保存済み作品の「空だった出演者・ジャンル・サンプル画像・収録時間」「未取得のサンプル動画」を補い、発売日の変更（延期）を反映する（今回の取得に出ていれば refresh_from_fetched、
         出ていなければ品番を指定して取り直し refetch_by_cid。1回20件まで。出演者は発売30日後まで、動画は3回まで。
         ジャンルは、予約の作品にあとから載るので、今回の取得か、出演者・動画の取り直しのついでに入る）
-      Gemini でひとことコメント作成（ブロック時は代替文 → 次回再挑戦）
+      Gemini でひとことコメントの「下書き」を作成（comment_kind: ai。ブロック時は代替文 template → 次回再挑戦）
       → site/src/data/new_releases.json に作品IDごとにためていく
       出演者のプロフィール（顔写真・体型・生年月日・FANZAの全作品リンク）を女優検索APIで取得（1回30人まで）
       → site/src/data/actresses.json（Geminiは使わない）
@@ -23,7 +23,8 @@ GitHub Actions（毎日 0:05 JST。日付が変わった直後）
   → main に commit → Cloudflare Pages が自動ビルド（Astro, 静的サイト）→ 公開
 
 Claude の予約タスク（毎日 0:20 JST。手順は docs/claude-comments.md）
-  → Gemini が書けず定型文のままの作品と、発売日をすぎたのに「予約」の言い方が残る作品に、Claude がコメントを書く（scripts/claude_comments.py）
+  → Gemini の下書き・定型文のままの作品と、発売日をすぎたのに「予約」の言い方が残る作品を、Claude が読み直して完成した文章に書き上げる
+    （comment_kind: claude。scripts/claude_comments.py。1回40件まで）
   → ブランチ+PR → CIが緑ならMerge → 公開
 
 Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundups.md）
@@ -36,7 +37,7 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | 場所 | 役割 |
 |---|---|
 | `get_new_releases.py` | 毎日の更新スクリプト。Python標準ライブラリだけ（pip不要） |
-| `scripts/claude_comments.py` | Claude がコメントを書くための道具（`list` で対象を出し、`apply` で点検して書き込む。確かめられない評価・古くなる言い方は断る）。標準ライブラリだけ |
+| `scripts/claude_comments.py` | Claude がコメントを書き上げるための道具（`list` で対象と下書き・使える事実を出し、`apply` で点検して書き込む。書いたものは `comment_kind: "claude"`。確かめられない評価・古くなる言い方・下書きと同じ文は断る）。標準ライブラリだけ |
 | `scripts/claude_roundups.py` | Claude が週のまとめ記事を書くための道具（`list` で週の作品データを出し、`apply` で点検して `roundups.json` に書き込む）。標準ライブラリだけ |
 | `site/` | サイト本体（Astro 7 / 静的出力）。Cloudflare Pages のビルド対象 |
 | `site/src/config.js` | **サイト名・URL・表示件数の設定はここだけ**（独自ドメイン化もここ）。月・ジャンルのページの最低本数と、ページを作るジャンルの一覧（`TAG_PAGE_GENRES`）もここ |

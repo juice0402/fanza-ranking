@@ -132,7 +132,8 @@ export function normalizeItems(raw) {
       formats,
       vr: isVrWork({ title, formats, genres }),
       comment: String(r.comment ?? ''),
-      isAi: r.comment_kind === 'ai',
+      // 文章のコメントか（ai＝Gemini の下書き、claude＝Claude が仕上げたもの）。定型文（template）なら false
+      isAi: r.comment_kind === 'ai' || r.comment_kind === 'claude',
       // データ（コメント）を最後に変えた日。分からなければ ''（sitemap には載せない）
       updated: isDay(r.updated) ? r.updated : '',
     });

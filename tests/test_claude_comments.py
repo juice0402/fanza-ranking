@@ -28,7 +28,17 @@ DATA = os.path.join(tmp, "data.json")
 
 
 def fresh_data():
-    shutil.copy(FIXTURE, DATA)
+    """固定データのコピー。AIコメント（ai）のうち先頭の2件は、Claude が仕上げたもの（claude）にしておく"""
+    with open(FIXTURE, encoding="utf-8") as f:
+        items = json.load(f)
+    n = 0
+    for x in items:
+        if x["comment_kind"] == "ai" and n < 2:
+            x["comment_kind"] = "claude"
+            n += 1
+    with open(DATA, "w", encoding="utf-8") as f:
+        json.dump(items, f, ensure_ascii=False, indent=1)
+        f.write("\n")
 
 
 def run(*args):
@@ -66,10 +76,12 @@ def good_comment(item, n=0):
 fresh_data()
 original = read_data()
 templates = [x for x in original if x["comment_kind"] == "template"]
-ais = [x for x in original if x["comment_kind"] == "ai"]
+drafts = [x for x in original if x["comment_kind"] == "ai"]       # Gemini の下書き（仕上げの対象）
+finals = [x for x in original if x["comment_kind"] == "claude"]   # Claude が仕上げたもの（対象外）
+pending = templates + drafts
 
 print("■ 前提（固定データ）")
-check("固定データに定型文とAIコメントの両方がある", len(templates) >= 5 and len(ais) >= 2, (len(templates), len(ais)))
+check("固定データに、定型文・Geminiの下書き・Claudeが仕上げたものがある", len(templates) >= 5 and len(drafts) >= 2 and len(finals) == 2, (len(templates), len(drafts), len(finals)))
 check("何も変えずに書き戻すと、ファイルが1バイトも変わらない（差分が余計に出ない）",
       json.dumps(original, ensure_ascii=False, indent=1) + "\n" == read_text())
 
@@ -78,17 +90,27 @@ r = run("list", "--today", "2026-11-03", "--limit", "100")
 check("list が成功する", r.returncode == 0, r.stderr)
 out = json.loads(r.stdout)
 cids = [x["cid"] for x in out["items"]]
-check("対象は定型文の作品だけ（AIコメントの作品は出ない）", set(cids) == {x["cid"] for x in templates}, cids)
-check("total_pending が定型文の件数と同じ", out["total_pending"] == len(templates) == out["shown"])
+check("対象は、定型文とGeminiの下書き（Claudeが仕上げたものは出ない）", set(cids) == {x["cid"] for x in pending} and not (set(cids) & {x["cid"] for x in finals}), cids)
+check("total_pending が、定型文と下書きの件数と同じ", out["total_pending"] == len(pending) == out["shown"])
 check("作品タイトルは出力しない", "title" not in r.stdout and not any(x["title"] in r.stdout for x in original))
-check("画像やURLなど、不要な項目も出さない", all(set(x) == {"cid", "reason", "status", "date", "actress", "maker", "tags", "duration_min"} for x in out["items"]))
+BASE_KEYS = {"cid", "reason", "status", "date", "actress", "maker", "tags", "duration_min", "genres", "sample_movie", "sample_images"}
+check("画像やURLなど、不要な項目も出さない（サンプル動画・画像は、有無と枚数だけ）",
+      all(set(x) == BASE_KEYS | ({"draft"} if x["reason"] == "下書きを仕上げる" else set()) for x in out["items"]) and "http" not in r.stdout,
+      [sorted(set(x) - BASE_KEYS) for x in out["items"]])
+check("下書きの作品には、いまの文（draft）を出す。定型文には出さない",
+      all(x["draft"] == next(o["comment"] for o in original if o["cid"] == x["cid"]) for x in out["items"] if x["reason"] == "下書きを仕上げる")
+      and all("draft" not in x for x in out["items"] if x["reason"] == "定型文"))
+check("reason: 定型文は「定型文」、Geminiの下書きは「下書きを仕上げる」",
+      {x["cid"]: x["reason"] for x in out["items"]} == {**{t["cid"]: "定型文" for t in templates}, **{d["cid"]: "下書きを仕上げる" for d in drafts}})
+check("サンプル動画は true/false、サンプル画像は枚数", all(isinstance(x["sample_movie"], bool) and isinstance(x["sample_images"], int) for x in out["items"])
+      and {x["cid"]: x["sample_images"] for x in out["items"]} == {t["cid"]: len(t.get("sample_images") or []) for t in pending})
 check("収録時間（分）を出す。無いものは null", all((x["duration_min"] is None) or (isinstance(x["duration_min"], int) and x["duration_min"] > 0) for x in out["items"])
-      and any(x["duration_min"] for x in out["items"]) and {x["cid"]: x["duration_min"] for x in out["items"]} == {t["cid"]: (t.get("duration_min") or None) for t in templates},
+      and any(x["duration_min"] for x in out["items"]) and {x["cid"]: x["duration_min"] for x in out["items"]} == {t["cid"]: (t.get("duration_min") or None) for t in pending},
       {x["cid"]: x["duration_min"] for x in out["items"]})
 statuses = [x["status"] for x in out["items"]]
 check("発売済みが先、予約があと", statuses == sorted(statuses, key=lambda s: 0 if s == "発売済み" else 1), statuses)
 check("--today を基準に 発売済み/予約 を分ける",
-      {x["cid"] for x in out["items"] if x["status"] == "発売済み"} == {"urvrsp00633", "savr01219", "1dldss00568", "1dldss00567", "1dldss00560"},
+      all((x["status"] == "発売済み") == (x["date"] <= "2026-11-03") for x in out["items"]) and "予約" in statuses and "発売済み" in statuses,
       statuses)
 released_dates = [x["date"] for x in out["items"] if x["status"] == "発売済み"]
 upcoming_dates = [x["date"] for x in out["items"] if x["status"] == "予約"]
@@ -108,6 +130,19 @@ check("list の形式タグは英数字（VR・8K など）だけ。日本語の
       and (data[1]["cid"] not in tag_out or tag_out[data[1]["cid"]] == ["VR", "8K"])
       and (data[2]["cid"] not in tag_out or tag_out[data[2]["cid"]] == []), tag_out)
 check("確認に使った項目が、実際に list の対象に入っていた（確認が空振りでない）", len(mixed) >= 1, mixed)
+# ジャンルは、サイトの「ジャンルのページ」と同じ、決めた一覧（config.js の TAG_PAGE_GENRES）にあるものだけ出す
+data = read_data()
+target = next(x for x in data if x["comment_kind"] != "claude")
+target["genres"] = ["巨乳", "中出し", "ハイビジョン", "女子校生", "OL"]
+with open(DATA, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=1)
+    f.write("\n")
+g_out = {x["cid"]: x["genres"] for x in json.loads(run("list", "--limit", "100").stdout)["items"]}
+check("ジャンルは決めた一覧のものだけ（過激な言葉・未成年を連想させる言葉・技術的な区分は出さない）", g_out.get(target["cid"]) == ["巨乳", "OL"], g_out.get(target["cid"]))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import claude_comments as cc_mod  # noqa: E402
+check("ジャンルの一覧を config.js から読める（10個以上）", len(cc_mod.safe_genres_from_config()) >= 10, cc_mod.safe_genres_from_config())
+check("config.js が読めなければ、ジャンルを出さないだけ（止まらない）", cc_mod.safe_genres_from_config(os.path.join(tmp, "nothing.js")) == [])
 data = read_data()
 weird = [(data[1], 0), (data[1], -5), (data[1], "90"), (data[1], True), (data[1], 87)]
 got = []
@@ -123,7 +158,7 @@ fresh_data()
 original = read_data()
 
 r2 = run("list", "--today", "2026-11-03", "--limit", "3")
-check("--limit で件数を絞れる", json.loads(r2.stdout)["shown"] == 3 and json.loads(r2.stdout)["total_pending"] == len(templates))
+check("--limit で件数を絞れる", json.loads(r2.stdout)["shown"] == 3 and json.loads(r2.stdout)["total_pending"] == len(pending))
 
 print("\n■ apply（点検して書き込む）")
 sample = templates[:4]
@@ -137,8 +172,8 @@ r = run("apply", path, "--today", "2026-11-03")
 check("正しいコメントは書き込める", r.returncode == 0, r.stdout + r.stderr)
 after = read_data()
 by_cid = {x["cid"]: x for x in after}
-check("書いた作品は comment と comment_kind=ai になる",
-      all(by_cid[c]["comment"] == t and by_cid[c]["comment_kind"] == "ai" for c, t in good.items()))
+check("書いた作品は comment と comment_kind=claude（Claude が仕上げたもの）になる",
+      all(by_cid[c]["comment"] == t and by_cid[c]["comment_kind"] == "claude" for c, t in good.items()))
 check("件数と並び順は変わらない", [x["cid"] for x in after] == [x["cid"] for x in original])
 changed = {}
 for old, new in zip(original, after):
@@ -154,7 +189,7 @@ check("タイトル・URL・画像などは1つも変わらない",
       all({k: v for k, v in o.items() if k not in ("comment", "comment_kind", "updated")} == {k: v for k, v in n.items() if k not in ("comment", "comment_kind", "updated")}
           for o, n in zip(original, after)))
 check("書き込み後も list の対象が減っている",
-      json.loads(run("list", "--limit", "100").stdout)["total_pending"] == len(templates) - len(sample))
+      json.loads(run("list", "--limit", "100").stdout)["total_pending"] == len(pending) - len(sample))
 check("書き込み後のファイルの書き方が元と同じ（インデント1・日本語そのまま・末尾に改行）",
       read_text() == json.dumps(after, ensure_ascii=False, indent=1) + "\n")
 check("作業用の .tmp ファイルが残らない", not os.path.exists(DATA + ".tmp"))
@@ -191,15 +226,17 @@ rejected("発売日をすぎると古くなる言い方（発売予定）が入�
 rejected("出演者名が2回入っている", {t0["cid"]: good_comment(t0) + t0["actress"][0]}, "2回以上")
 rejected("同じ文章を複数の作品に使い回している", {t0["cid"]: ok_text, t1["cid"]: ok_text}, "同じ文章")
 rejected("保存データにない cid", {"no-such-cid": ok_text}, "ない cid")
-rejected("Geminiが書いたAIコメントは上書きしない", {ais[0]["cid"]: ok_text}, "上書きしません")
+rejected("Claude が仕上げたコメントは上書きしない", {finals[0]["cid"]: ok_text}, "上書きしません")
 rejected("文字列でないコメント", {t0["cid"]: 12345}, "文字列")
 rejected("良いコメントと悪いコメントが混ざっていたら、良いほうも書かない",
          {t0["cid"]: good_comment(t0), t1["cid"]: "短い"}, "文字数")
 
-same = {t0["cid"]: t0["comment"]}
+r = run("apply", write_comments("draft_ok.json", {drafts[0]["cid"]: good_comment(drafts[0], 5)}), "--dry-run")
+check("Gemini の下書きは、仕上げた文で上書きできる", r.returncode == 0, r.stdout + r.stderr)
+same = {drafts[0]["cid"]: drafts[0]["comment"]}
 path = write_comments("same.json", same)
 r = run("apply", path)
-check("いまのコメントと同じ文は断る", r.returncode == 1 and "いまのコメントと同じ" in r.stdout and read_text() == base, r.stdout)
+check("いまのコメント（下書き）と同じ文は断る（仕上げになっていない）", r.returncode == 1 and "いまのコメントと同じ" in r.stdout and read_text() == base, r.stdout)
 
 print("\n■ apply の入力の形・特別な場合")
 fresh_data()
@@ -211,7 +248,7 @@ check("--today を省略すると、日本時間の今日が更新日になる",
 fresh_data()
 path = write_comments("list_form.json", [{"cid": t0["cid"], "comment": good_comment(t0)}, {"cid": t1["cid"], "comment": good_comment(t1, 1)}])
 r = run("apply", path)
-check("[{cid, comment}] のリスト形式でも書き込める", r.returncode == 0 and sum(x["comment_kind"] == "ai" for x in read_data()) == len(ais) + 2, r.stdout + r.stderr)
+check("[{cid, comment}] のリスト形式でも書き込める", r.returncode == 0 and sum(x["comment_kind"] == "claude" for x in read_data()) == len(finals) + 2, r.stdout + r.stderr)
 
 fresh_data()
 path = write_comments("dup_list.json", [{"cid": t0["cid"], "comment": good_comment(t0)}, {"cid": t0["cid"], "comment": good_comment(t0, 1)}])
@@ -232,8 +269,8 @@ check("壊れたJSONは断る", r.returncode != 0 and read_text() == base)
 print("\n■ 発売日をすぎたのに「予約」の言い方が残っているコメント（書き直しの対象）")
 fresh_data()
 stale_data = read_data()
-ai_item = next(x for x in stale_data if x["comment_kind"] == "ai")
-plain_ai = next(x for x in stale_data if x["comment_kind"] == "ai" and x["cid"] != ai_item["cid"])
+ai_item = next(x for x in stale_data if x["comment_kind"] == "claude")
+plain_ai = next(x for x in stale_data if x["comment_kind"] == "claude" and x["cid"] != ai_item["cid"])
 ai_item["comment"] = "予約受付中のVR作品です。発売日は11月1日。メーカーの新作として並んでいます。"
 ai_item["date"] = "2026-11-01 00:00:00"
 open(DATA, "w", encoding="utf-8").write(json.dumps(stale_data, ensure_ascii=False, indent=1) + "\n")
@@ -242,18 +279,18 @@ out_before = json.loads(run("list", "--limit", "100", "--today", "2026-10-30").s
 check("まだ発売前の作品に「予約受付中」とあっても、対象にならない", ai_item["cid"] not in {x["cid"] for x in out_before["items"]}, out_before["total_pending"])
 out_after = json.loads(run("list", "--limit", "100", "--today", "2026-11-02").stdout)
 row = next((x for x in out_after["items"] if x["cid"] == ai_item["cid"]), None)
-check("発売日をすぎたのに「予約受付中」が残っているAIコメントは、list の対象になる（reason つき）", row is not None and row["reason"] == "予約の言い方が残っている" and row["status"] == "発売済み", row)
-check("定型文の reason は「定型文」", all(x["reason"] == "定型文" for x in out_after["items"] if x["cid"] != ai_item["cid"]) and out_after["total_pending"] == len(templates) + 1, out_after["total_pending"])
-check("ふつうのAIコメントは、対象にならない", plain_ai["cid"] not in {x["cid"] for x in out_after["items"]})
+check("発売日をすぎたのに「予約受付中」が残っている仕上げ済みのコメントは、list の対象になる（reason つき・draft つき）", row is not None and row["reason"] == "予約の言い方が残っている" and row["status"] == "発売済み" and row.get("draft") == ai_item["comment"], row)
+check("ほかの対象は、定型文と下書きのまま", all(x["reason"] in ("定型文", "下書きを仕上げる") for x in out_after["items"] if x["cid"] != ai_item["cid"]) and out_after["total_pending"] == len(pending) + 1, out_after["total_pending"])
+check("ふつうの仕上げ済みのコメントは、対象にならない", plain_ai["cid"] not in {x["cid"] for x in out_after["items"]})
 r = run("apply", write_comments("stale_ok.json", {ai_item["cid"]: good_comment(ai_item, 2)}), "--today", "2026-11-02")
 now_item = next(x for x in read_data() if x["cid"] == ai_item["cid"])
 check("書き直せる（コメントが入れ替わり、更新日が今日になる）", r.returncode == 0 and now_item["comment"] == good_comment(ai_item, 2) and now_item["updated"] == "2026-11-02", r.stdout + r.stderr)
 check("書き直したあとは、対象から外れる", ai_item["cid"] not in {x["cid"] for x in json.loads(run("list", "--limit", "100", "--today", "2026-11-02").stdout)["items"]})
 open(DATA, "w", encoding="utf-8").write(stale_base)
 r = run("apply", write_comments("plain_ai.json", {plain_ai["cid"]: good_comment(plain_ai, 2)}), "--today", "2026-11-02")
-check("ふつうのAIコメント（予約の言い方なし）は、上書きできない", r.returncode == 1 and "上書きしません" in r.stdout and read_text() == stale_base, r.stdout)
+check("ふつうの仕上げ済みのコメント（予約の言い方なし）は、上書きできない", r.returncode == 1 and "上書きしません" in r.stdout and read_text() == stale_base, r.stdout)
 r = run("apply", write_comments("stale_early.json", {ai_item["cid"]: good_comment(ai_item, 2)}), "--today", "2026-10-30")
-check("まだ発売前なら、「予約受付中」のAIコメントも書き直さない", r.returncode == 1 and "上書きしません" in r.stdout and read_text() == stale_base, r.stdout)
+check("まだ発売前なら、「予約受付中」の仕上げ済みのコメントも書き直さない", r.returncode == 1 and "上書きしません" in r.stdout and read_text() == stale_base, r.stdout)
 
 print("\n■ 同じ言い回しが多すぎるときの警告")
 fresh_data()
@@ -274,11 +311,11 @@ check("リストでないデータも止まる", run("list").returncode != 0)
 
 print("\n■ 全件を書き換えた後")
 fresh_data()
-everything = {x["cid"]: good_comment(x, i) for i, x in enumerate(templates)}
+everything = {x["cid"]: good_comment(x, i) for i, x in enumerate(pending)}
 r = run("apply", write_comments("all.json", everything))
-check("定型文を全部まとめて書き換えられる", r.returncode == 0 and "残り0件" in r.stdout, r.stdout + r.stderr)
+check("定型文と下書きを全部まとめて書き換えられる", r.returncode == 0 and "残り0件" in r.stdout, r.stdout + r.stderr)
 check("そのあと list は空になる", json.loads(run("list").stdout)["items"] == [])
-check("全件が comment_kind ai になる", all(x["comment_kind"] == "ai" for x in read_data()))
+check("全件が comment_kind claude になる", all(x["comment_kind"] == "claude" for x in read_data()))
 
 print("\n■ ソースの安全チェック")
 src = open(SCRIPT, encoding="utf-8").read()

@@ -9,7 +9,8 @@ GitHub Actions から毎日自動で実行されます。
 
 保存先: site/src/data/new_releases.json
   - 作品ごとに1件。cid（作品ID）で重複を防ぎ、毎回「追記」します。
-  - comment_kind が "ai" ならAIが書いたコメント、"template" なら作品情報から作った代わりの文。
+  - comment_kind が "ai" なら Gemini が書いたコメント（下書き）、"claude" なら Claude が読み直して仕上げたコメント、
+    "template" なら作品情報から作った代わりの文。下書きと定型文は、毎日 0:20 の Claude の予約タスクが仕上げる（docs/claude-comments.md）。
   - updated は、その作品のデータ（コメント）を最後に変えた日（日本時間 YYYY-MM-DD）。sitemap の lastmod に使います。
   - sample_movie は、FANZAのサンプル動画のURL（無ければ空）。movie_tries は、品番で取り直しても見つからなかった回数。
 保存先（出演者）: site/src/data/actresses.json … 出演者ごとの顔写真・体型・年齢の元データ・FANZAの全作品リンク（FANZA公式のデータ）
@@ -235,9 +236,28 @@ def build_prompt(item, tries, today=None):
     )
 
 
+# コメントの種類: template＝定型文、ai＝Gemini の下書き、claude＝Claude が仕上げたもの
+COMMENT_KINDS = ("ai", "claude", "template")
+WRITTEN_KINDS = ("ai", "claude")  # 文章が書かれている（定型文ではない）もの
+
+
+def strip_wrapping(text):
+    """全体が「…」や "…" で囲まれていれば、その囲みだけを外す（文の途中の「」は残す）"""
+    pairs = (("「", "」"), ("『", "』"), ('"', '"'), ("'", "'"))
+    changed = True
+    while changed and len(text) >= 2:
+        changed = False
+        for left, right in pairs:
+            inner = text[len(left):-len(right)]
+            if text.startswith(left) and text.endswith(right) and left not in inner and right not in inner:
+                text = inner.strip()
+                changed = True
+    return text
+
+
 def clean_comment(text):
     text = re.sub(r"[\r\n]+", " ", text or "").strip()
-    text = text.strip("「」\"' ")
+    text = strip_wrapping(text)
     text = re.sub(r"\*+", "", text)  # マークダウンの強調記号を除く
     if len(text) > 140:
         text = text[:139] + "…"
@@ -374,7 +394,7 @@ class CommentMaker:
                     print("   ⚠️ 連続で失敗したので、今回はAIコメントをお休みします")
                     self.stop("連続で失敗した（Geminiが混み合っている）")
 
-        if item.get("comment_kind") != "ai":
+        if item.get("comment_kind") not in WRITTEN_KINDS:
             item["comment"] = template_comment(item)
             item["comment_kind"] = "template"
             item.setdefault("comment_tries", tries)
@@ -405,7 +425,7 @@ def normalize_loaded(item):
         "sample_movie": safe_https_url(item.get("sample_movie"), MOVIE_HOSTS),
         "movie_tries": int(item.get("movie_tries") or 0),
         "comment": item.get("comment") or "",
-        "comment_kind": item.get("comment_kind") if item.get("comment_kind") in ("ai", "template") else "template",
+        "comment_kind": item.get("comment_kind") if item.get("comment_kind") in COMMENT_KINDS else "template",
         "comment_tries": int(item.get("comment_tries") or 0),
         "updated": day_key(item.get("updated")),
     }
@@ -563,14 +583,34 @@ def parse_api_item(raw):
 
 
 def apply_fresh(old, fresh, today_str):
-    """保存済みの作品 old に、取り直した fresh から、空だった項目（出演者・ジャンル・サンプル動画）だけを補う。
+    """保存済みの作品 old に、取り直した fresh から、空だった項目（出演者・ジャンル・サンプル動画・サンプル画像・
+    収録時間・パッケージ画像）を補い、発売日が変わっていれば直す。
 
-    ・すでに入っている項目は書き換えない（空欄を埋めるだけ）
+    ・すでに入っている項目は書き換えない（空欄を埋めるだけ）。発売日だけは、FANZAで延期・前倒しされたら合わせる
     ・補ったら更新日（updated）を進める（sitemap の lastmod に使う）
-    ・ジャンル（商品タグ）は、予約の作品には、発売が近づいてからFANZAに載ることが多い（作品検索のタグ・VR判定に使う）
-    補った項目名のリスト（"actress" / "genres" / "sample_movie"）を返す
+    ・ジャンル（商品タグ）・サンプル画像・収録時間は、予約の作品には、発売が近づいてからFANZAに載ることが多い
+    補った項目名のリスト（"actress" / "genres" / "sample_movie" / "sample_images" / "duration_min" / "image_url" / "date"）を返す
     """
     changed = []
+    fresh_day = day_key(fresh.get("date"))
+    old_day = day_key(old.get("date"))
+    if fresh_day and fresh_day != old_day:
+        old["date"] = fresh["date"]  # 発売日の延期・前倒し（トップの「発売中/予約」・カレンダー・月のページに使う）
+        changed.append("date")
+        # コメントに古い発売日（例: 11月1日）が書いてあれば、間違いになるので定型文に戻す（その日のうちに Claude が書き直す）
+        if old_day and old.get("comment_kind") in WRITTEN_KINDS and f"{int(old_day[5:7])}月{int(old_day[8:10])}日" in (old.get("comment") or ""):
+            old["comment"] = template_comment(old)
+            old["comment_kind"] = "template"
+            changed.append("comment")
+    if not old.get("sample_images") and fresh.get("sample_images"):
+        old["sample_images"] = list(fresh["sample_images"])
+        changed.append("sample_images")
+    if not old.get("duration_min") and fresh.get("duration_min"):
+        old["duration_min"] = fresh["duration_min"]
+        changed.append("duration_min")
+    if not old.get("image_url") and fresh.get("image_url"):
+        old["image_url"] = fresh["image_url"]
+        changed.append("image_url")
     if not old.get("actress") and fresh.get("actress"):
         old["actress"] = list(fresh["actress"])
         changed.append("actress")
@@ -992,8 +1032,8 @@ def main():
                 print(f"  {item['comment_kind']:8s} {item['comment'][:24]}")
 
     save_archive(archive)
-    total_ai = sum(1 for it in archive.values() if it.get("comment_kind") == "ai")
-    print(f"\n✨ 保存完了！ 合計{len(archive)}件（AIコメント{total_ai}件 / 代わりの文{len(archive) - total_ai}件）")
+    kinds = [it.get("comment_kind") for it in archive.values()]
+    print(f"\n✨ 保存完了！ 合計{len(archive)}件（Claudeが仕上げ{kinds.count('claude')}件 / Geminiの下書き{kinds.count('ai')}件 / 代わりの文{kinds.count('template')}件）")
     if maker:
         print(f"   今回のAI成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / 採用せず {maker.rejected}件 / Geminiに頼んだ回数 {maker.calls}回")
         if maker.stop_reason:
@@ -1029,7 +1069,8 @@ def main():
         f"- 出演者が空だった作品に補った: {len(filled_cast)}件",
         f"- サンプル動画を補った: {len(filled_movie)}件" + (f"（品番で取り直した作品 {refetched[1]}件）" if refetched else ""),
         f"- ジャンルを補った: {len(filled_genres)}件",
-        f"- 合計: {len(archive)}件（AIコメント {total_ai}件 / 代わりの文 {len(archive) - total_ai}件）",
+        "- 合計: {}件（Claudeが仕上げ {}件 / Geminiの下書き {}件 / 代わりの文 {}件。下書きと代わりの文は、0:20 に Claude が仕上げます）".format(
+            len(archive), *(sum(1 for it in archive.values() if it.get("comment_kind") == k) for k in ("claude", "ai", "template"))),
     ]
     if maker:
         summary.append(f"- 今回のAIコメント: 成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / 採用せず（確かめられない言い回しが入っていた）{maker.rejected}件 / Geminiに頼んだ回数 {maker.calls}回")
