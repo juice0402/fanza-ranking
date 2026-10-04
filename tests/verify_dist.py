@@ -752,8 +752,32 @@ for tp in toggle_pages:
         bad_toggle.append((os.path.relpath(tp, DIST), btns[:1]))
 check("「VR作品を隠す」スイッチが、トップ・検索・過去の作品・出演者・メーカーのページに1つずつある（最初は隠れている・押された状態ではない・文言つき）", not bad_toggle, bad_toggle[:3])
 
-# 作品ページ: ジャンルは、そのジャンルで絞り込んだ検索へのリンク
+# 作品ページ: ジャンルは、ジャンルのページ（/tag/…。ページがあるジャンル）か、そのジャンルで絞り込んだ検索へのリンク
 import urllib.parse as _up
+import hashlib as _hl
+import unicodedata as _ud
+
+
+def entity_slug(name):
+    """site/src/lib/items.js の entitySlug と同じ（名前 → URLの短い英数字）。突き合わせるため、別に書いてある"""
+    return _hl.sha1(_ud.normalize("NFC", str(name)).encode("utf-8")).hexdigest()[:10]
+
+
+def config_value(name):
+    """site/src/config.js の export const NAME = … の値（数字・文字列のリスト）を読む"""
+    text_ = read(os.path.join(ROOT, "site", "src", "config.js"))
+    m_ = re.search(r"export const %s = (\[.*?\]|\d+);" % name, text_, re.S)
+    assert m_, name
+    return int(m_.group(1)) if m_.group(1).isdigit() else re.findall(r"'([^']+)'", m_.group(1))
+
+
+TAG_MIN = config_value("TAG_MIN_ITEMS")
+TAG_GENRES = config_value("TAG_PAGE_GENRES")
+genre_counts = {}
+for x in valid.values():
+    for g in set(g for g in (x.get("genres") or []) if g):
+        genre_counts[g] = genre_counts.get(g, 0) + 1
+tag_pages_expected = {g for g in TAG_GENRES if genre_counts.get(g, 0) >= TAG_MIN}
 bad_chip, chip_pages = [], 0
 for cid, x in valid.items():
     fp = os.path.join(DIST, "item", cid, "index.html")
@@ -762,10 +786,101 @@ for cid, x in valid.items():
         continue
     chip_pages += 1
     links_ = [t.get("href") for t in tags(read(fp), "a") if has_class(t, "chip-tag")]
-    if links_ != ["/search/?tag=" + _up.quote(g, safe="") for g in genres_]:
-        bad_chip.append((cid, links_[:2]))
-check(f"作品ページのジャンル（{chip_pages}ページ）が、そのジャンルで絞り込んだ検索（/search/?tag=…）へのリンクになっている", not bad_chip, bad_chip[:2])
+    want_ = [(f"/tag/{entity_slug(g)}/" if g in tag_pages_expected else "/search/?tag=" + _up.quote(g, safe="")) for g in genres_]
+    if links_ != want_:
+        bad_chip.append((cid, links_[:2], want_[:2]))
+check(f"作品ページのジャンル（{chip_pages}ページ）が、ジャンルのページ（ある場合）か、そのジャンルで絞り込んだ検索（/search/?tag=…）へのリンクになっている", not bad_chip, bad_chip[:2])
 warn("ジャンルのある作品が1本以上ある", chip_pages > 0)
+
+print("\n■ 品番・作品ページの情報欄・月ごとのページ・ジャンルのページ（検索から来てもらうための作り）")
+
+
+def product_code(cid):
+    """site/src/lib/facts.js の productCode と同じ（作品ID → 品番。作れなければ ''）。突き合わせるため、別に書いてある"""
+    m_ = re.match(r"^(?:h_\d+|\d{1,3})?([a-z]{2,10})(\d{3,5})$", str(cid).lower())
+    return f"{m_.group(1).upper()}-{int(m_.group(2)):03d}" if m_ else ""
+
+
+def ymd_jp(day):
+    return f"{int(day[:4])}年{int(day[5:7])}月{int(day[8:10])}日"
+
+
+by_date_count = {}
+for x in valid.values():
+    by_date_count[x["date"][:10]] = by_date_count.get(x["date"][:10], 0) + 1
+bad_code, bad_facts, with_code = [], [], 0
+for cid, x in valid.items():
+    fp = os.path.join(DIST, "item", cid, "index.html")
+    if not os.path.isfile(fp):
+        continue
+    html_ = read(fp)
+    code_ = product_code(cid)
+    row_ = re.search(r'<dt class="spec-term">品番</dt>\s*<dd class="spec-desc">([^<]*)</dd>', html_)
+    title_ = re.search(r"<title>(.*?)</title>", html_, re.S).group(1)
+    desc_ = re.search(r'<meta name="description" content="([^"]*)"', html_)
+    if code_:
+        with_code += 1
+        if not (row_ and row_.group(1) == code_ and htmllib.unescape(title_).startswith(code_ + " ") and desc_ and code_ in htmllib.unescape(desc_.group(1))):
+            bad_code.append((cid, code_, row_.group(1) if row_ else None, title_[:30]))
+    elif row_ or re.match(r"^[A-Z0-9]+-\d{3,} ", htmllib.unescape(title_)):
+        bad_code.append((cid, "品番を作れないのに出ている", title_[:30]))
+    # 情報欄: 「同じ発売日」の行（いつも出る）の本数が、データを数えた値と同じ
+    facts_ = re.search(r'<h2 id="facts-title"[^>]*>この作品のデータ</h2>\s*<ul class="facts">(.*?)</ul>', html_, re.S)
+    rows_ = re.findall(r'<li class="facts-row">\s*<span class="facts-label">(.*?)</span>\s*<span class="facts-text">(.*?)</span>\s*</li>', facts_.group(1), re.S) if facts_ else []
+    n_same = by_date_count[x["date"][:10]]
+    want_day = f"{ymd_jp(x['date'][:10])}発売の作品は、" + ("この1本だけです。" if n_same == 1 else f"掲載中で{n_same}本あります。")
+    if not rows_ or rows_[0][0] != "同じ発売日" or want_day not in htmllib.unescape(re.sub(r"<[^>]+>", "", rows_[0][1])):
+        bad_facts.append((cid, want_day, (rows_[0] if rows_ else None)))
+check(f"作品ページの品番（作れる{with_code}ページ）: 「品番」の欄・タイトルの先頭・説明文に、同じ品番が出ている。作れない作品には出ていない", not bad_code, bad_code[:3])
+check("作品ページに「この作品のデータ」欄があり、先頭の行（同じ発売日）の本数が、データを数えた値と同じ", not bad_facts, bad_facts[:2])
+warn("品番を作れる作品が1本以上ある", with_code > 0)
+
+MONTH_MIN = config_value("MONTH_MIN_ITEMS")
+TAG_LIMIT = config_value("TAG_PAGE_LIMIT")
+month_counts = {}
+for x in valid.values():
+    month_counts[x["date"][:7]] = month_counts.get(x["date"][:7], 0) + 1
+months_want = {ym: n for ym, n in month_counts.items() if n >= MONTH_MIN}
+month_files = {os.path.basename(os.path.dirname(f)): f for f in glob.glob(os.path.join(DIST, "month", "*", "index.html"))}
+check(f"月ごとのページが、作品が{MONTH_MIN}本以上ある月（{len(months_want)}か月）だけ作られている", set(month_files) == set(months_want), (sorted(month_files), sorted(months_want)))
+bad_month = []
+for ym, f in month_files.items():
+    html_ = read(f)
+    h1_ = re.search(r'<h1 class="hero-title">(.*?)</h1>', html_, re.S)
+    cards_ = len(re.findall(r'<article class="item">', html_))
+    if not (h1_ and f"{int(ym[:4])}年{int(ym[5:7])}月発売" in h1_.group(1) and cards_ == months_want.get(ym) and 'name="robots" content="noindex' not in html_):
+        bad_month.append((ym, h1_.group(1)[:30] if h1_ else None, cards_, months_want.get(ym)))
+check("月ごとのページ: 見出しに「○年○月発売」・並んでいる作品の数が、その月の作品の数と同じ・noindexではない", not bad_month, bad_month[:3])
+month_index = os.path.join(DIST, "month", "index.html")
+if months_want:
+    check("月の一覧ページ（/month/）がある。すべての月のページへのリンクがある", os.path.isfile(month_index) and all(f'href="/month/{ym}/"' in read(month_index) for ym in months_want))
+    check("月の一覧・月ごとのページが、sitemap に入っている", "/month/" in sm_paths and all(f"/month/{ym}/" in sm_paths for ym in months_want), [p for p in sm_paths if p.startswith("/month")][:3])
+else:
+    check("月ごとのページが1つも無いときは、一覧ページも作らず、sitemap にも入れない", not os.path.isfile(month_index) and not [p for p in sm_paths if p.startswith("/month")])
+
+tag_counts = {entity_slug(g): (g, n) for g, n in ((g, genre_counts.get(g, 0)) for g in TAG_GENRES) if n >= TAG_MIN}
+vr_n = sum(1 for x in valid.values() if is_vr_raw(x))
+if vr_n >= TAG_MIN:
+    tag_counts[entity_slug("VR作品")] = ("VR作品", vr_n)
+tag_files = {os.path.basename(os.path.dirname(f)): f for f in glob.glob(os.path.join(DIST, "tag", "*", "index.html"))}
+check(f"ジャンルのページが、許可したジャンル（config.js の TAG_PAGE_GENRES）で作品が{TAG_MIN}本以上あるものと、VR作品だけ作られている（{len(tag_counts)}ページ）", set(tag_files) == set(tag_counts), (len(tag_files), len(tag_counts)))
+bad_tag = []
+for slug_, f in tag_files.items():
+    html_ = read(f)
+    name_, n_ = tag_counts.get(slug_, ("", 0))
+    cards_ = len(re.findall(r'<article class="item">', html_))
+    h1_ = re.search(r'<h1 class="hero-title">(.*?)</h1>', html_, re.S)
+    if not (h1_ and name_.replace("VR作品", "VR作品") in h1_.group(1) and cards_ == min(n_, TAG_LIMIT) and 'name="robots" content="noindex' not in html_):
+        bad_tag.append((slug_, name_, cards_, min(n_, TAG_LIMIT)))
+check("ジャンルのページ: 見出しにジャンル名・並んでいる作品の数が、そのジャンルの作品の数（多いときは上限まで）と同じ・noindexではない", not bad_tag, bad_tag[:3])
+tag_index = os.path.join(DIST, "tag", "index.html")
+if tag_counts:
+    check("ジャンルの一覧ページ（/tag/）がある。すべてのジャンルのページへのリンクがある", os.path.isfile(tag_index) and all(f'href="/tag/{sl}/"' in read(tag_index) for sl in tag_counts))
+    check("ジャンルの一覧・ジャンルのページが、sitemap に入っている", "/tag/" in sm_paths and all(f"/tag/{sl}/" in sm_paths for sl in tag_counts), [p for p in sm_paths if p.startswith("/tag")][:3])
+else:
+    check("ジャンルのページが1つも無いときは、一覧ページも作らず、sitemap にも入れない", not os.path.isfile(tag_index) and not [p for p in sm_paths if p.startswith("/tag")])
+no_sensitive_tag = [g for g, _ in tag_counts.values() if re.search(r"制服|校生|学生|少女|ロリ|幼|中出|顔射|フェラ|レイプ|痴漢|盗撮|調教|ドラッグ|放尿", g)]
+check("ジャンルのページに、過激な行為・未成年を連想させる名前のものが無い", not no_sensitive_tag, no_sensitive_tag)
 
 # 検索ページ
 sp = os.path.join(DIST, "search", "index.html")

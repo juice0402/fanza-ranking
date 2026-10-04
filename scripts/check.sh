@@ -26,6 +26,9 @@ python3 tests/test_data.py || failed=1
 step "サイトの部品 (Node.js)"
 node tests/test_items.mjs || failed=1
 
+step "品番・作品ページの情報欄・月ごと/ジャンルごとのページの部品 (Node.js)"
+node tests/test_seo.mjs || failed=1
+
 step "週のまとめ記事の部品 (Node.js + Pythonとの突き合わせ)"
 node tests/test_roundups.mjs || failed=1
 

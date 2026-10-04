@@ -39,7 +39,7 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | `scripts/claude_comments.py` | Claude がコメントを書くための道具（`list` で対象を出し、`apply` で点検して書き込む）。標準ライブラリだけ |
 | `scripts/claude_roundups.py` | Claude が週のまとめ記事を書くための道具（`list` で週の作品データを出し、`apply` で点検して `roundups.json` に書き込む）。標準ライブラリだけ |
 | `site/` | サイト本体（Astro 7 / 静的出力）。Cloudflare Pages のビルド対象 |
-| `site/src/config.js` | **サイト名・URL・表示件数の設定はここだけ**（独自ドメイン化もここ） |
+| `site/src/config.js` | **サイト名・URL・表示件数の設定はここだけ**（独自ドメイン化もここ）。月・ジャンルのページの最低本数と、ページを作るジャンルの一覧（`TAG_PAGE_GENRES`）もここ |
 | `site/src/lib/items.js` | 並べ替え・日付・sitemap/robots・出演者/メーカーのまとめ・構造化データ（JSON-LD）など、テストできる部品（画面に依存しない） |
 | `site/src/lib/roundups.js` | 週のまとめ記事の部品（週の計算・集計・読み込み・Article構造化データ。画面に依存しない）。集計は `claude_roundups.py` の `week_stats` と同じ数え方（`tests/test_roundups.mjs` で突き合わせている） |
 | `site/src/lib/favorites.js` / `site/src/lib/calendar.js` | お気に入りの索引（`/data/favorites-index.json`）と、発売日カレンダー（`.ics`）の部品（画面に依存しない。`tests/test_calendar.mjs`）。カレンダーの予定の**題名に作品タイトルを入れない**（「【発売】○○の新作」。タイトル・品番・リンクは説明に入れる）。`escapeIcsText` は `;` `,` `\` 改行を書き換える |
@@ -50,8 +50,9 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | `site/public/actress-search.js` / `site/public/movie.js` | ブラウザで動く小さなスクリプト。`actress-search.js` は `/actress/` の「条件で探す」（名前・年齢・身長・スリーサイズ・カップ。索引を読んで、端末の中で絞り込む）。`movie.js` は作品ページのサンプル動画の枠の拡大・縮小。部品は node でテストできる（`tests/test_profiles.mjs` / `tests/test_movie.mjs`）。DOM は `textContent` で作る |
 | `site/public/_headers` / アイコン | Cloudflare Pages の応答ヘッダー（nosniff・フレームへの埋め込み禁止など。CSP は最小限）と、サイトのアイコン（`favicon.svg` / `favicon.ico` / `apple-touch-icon.png`）。`tests/verify_dist.py` が、全ページの `<head>`・ヘッダーの広告ラベル（`pr-chip`）とフッターの広告文・18歳確認・クレジット・FANZAへのリンクの属性と一緒に検査する |
 | `site/src/components/` | 画面の部品。`Face`（出演者の顔の丸。写真が無い・読み込めないときは頭文字）、`SampleMovie`（FANZAのサンプル動画の枠）、`RankCard`（売れ筋の1枚）など |
+| `site/src/lib/facts.js` / `site/src/lib/collections.js` | SEOのための部品（画面に依存しない。`tests/test_seo.mjs`）。`facts.js` は作品ページの「この作品のデータ」欄（掲載データを数えた事実だけ。評価の言葉は書かない）と、作品IDから作る**品番**（`productCode`。形がはっきりしたものだけ。作れないときは出さない）。`collections.js` は月ごとのページ（`/month/YYYY-MM/`。5本以上の月）とジャンルのページ（`/tag/<ハッシュ>/`。3本以上。**作るのは `config.js` の `TAG_PAGE_GENRES` にあるジャンルと「VR作品」だけ**。過激・未成年を連想させる名前は入れない） |
 | `site/src/lib/data.js` | JSON読み込み。`released`/`upcoming`/`all`/`roundups`/`ranking`/`profilesByName`/`actressSearchIndex` などを各ページに渡す。`actresses.json` と `ranking.json` は、まだ無くてもビルドが止まらない（`import.meta.glob` で任意に読む） |
-| `site/src/pages/` | トップ、`item/[cid]`（作品）、`archive/[page]`（過去作品）、`actress/`（出演者別。2本以上の人だけ）、`maker/`（メーカー別。2本以上だけ）、`weekly/`（週のまとめ記事。1本も無いあいだは一覧が noindex・sitemap にも入らず、リンクも出さない）、`favorites`（お気に入り。noindex）、`calendar/`（使い方のページ＋購読用の `.ics`。使い方は noindex）、`data/favorites-index.json.js`、`data/actresses-index.json.js`（出演者検索の索引）、404、`sitemap.xml.js`、`robots.txt.js` |
+| `site/src/pages/` | トップ、`item/[cid]`（作品）、`archive/[page]`（過去作品）、`actress/`（出演者別。2本以上の人だけ）、`maker/`（メーカー別。2本以上だけ）、`month/`（月ごと）、`tag/`（ジャンルごと）、`weekly/`（週のまとめ記事。1本も無いあいだは一覧が noindex・sitemap にも入らず、リンクも出さない）、`favorites`（お気に入り。noindex）、`calendar/`（使い方のページ＋購読用の `.ics`。使い方は noindex）、`data/favorites-index.json.js`、`data/actresses-index.json.js`（出演者検索の索引）、404、`sitemap.xml.js`、`robots.txt.js` |
 | `site/src/data/new_releases.json` | **自動更新のデータ。手で編集しない**（作品IDごとに蓄積。`updated` は、その作品のコメントを最後に変えた日で、sitemap の `lastmod` に使う） |
 | `site/src/data/actresses.json` | **自動更新のデータ。手で編集しない**（出演者のプロフィール。`{actresses:[…], unmatched:{名前:探した日}}`。体型は数字・生年月日は年齢の計算用で、画面に出すのは**年齢だけ**。血液型・趣味・出身地は**保存しない**。名前の完全一致が1人だけのときだけ採用し、推測で選ばない） |
 | `site/src/data/ranking.json` | **自動更新のデータ。手で編集しない**（売れ筋ランキング上位3本。取得に失敗したら前回のものを残す） |
@@ -95,7 +96,7 @@ cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
 
 ## 変更のしかた（例）
 
-- 表示件数・サイト名・URL → `site/src/config.js`
+- 表示件数・サイト名・URL・ページを作るジャンル → `site/src/config.js`
 - デザイン → `site/src/styles/site.css`、部品は `site/src/components/`、全ページ共通部分は `site/src/layouts/Base.astro`
 - コメントの文体・代替文 → `get_new_releases.py`（`ANGLES`、`template_comment`、`build_prompt`）。Claude が書くコメントの書き方・手順 → `docs/claude-comments.md`。週のまとめ記事の書き方・手順 → `docs/claude-roundups.md`
 - 取得する件数・日数 → `get_new_releases.py` 冒頭の定数（`NEW_ITEMS_PER_RUN` など。Geminiの回数上限とセットで考える → 守ること8）

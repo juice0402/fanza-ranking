@@ -3,7 +3,8 @@ import Base from '../layouts/Base.astro';
 import DaySection from '../components/DaySection.astro';
 import RankCard from '../components/RankCard.astro';
 import VrToggle from '../components/VrToggle.astro';
-import { released, upcoming, roundups, ranking } from '../lib/data.js';
+import { released, upcoming, roundups, ranking, monthGroups, tagGroups } from '../lib/data.js';
+import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import { weeklyPath } from '../lib/roundups.js';
 import { SEARCH_PATH } from '../lib/search.js';
 import {
@@ -45,6 +46,8 @@ const rankingDay = ranking ? dateParts(ranking.date) : null;
         {ranking && <a class="chip-link" href="#ranking">売れ筋TOP3</a>}
         {released.length > 0 && <a class="chip-link" href="#released">発売中の新作 {released.length}本</a>}
         {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約受付中 {upcomingShown}本</a>}
+        {monthGroups.length > 0 && <a class="chip-link" href={MONTH_INDEX_PATH}>月ごとの新作</a>}
+        {tagGroups.length > 0 && <a class="chip-link" href={TAG_INDEX_PATH}>ジャンルから探す</a>}
         <a class="chip-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a>
         <a class="chip-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
         {latestRoundup && <a class="chip-link" href={weeklyPath(latestRoundup.week_start)}>最新の週のまとめ</a>}
