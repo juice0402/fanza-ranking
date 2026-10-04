@@ -11,6 +11,8 @@ import {
   groupByDate,
   countByDate,
   vrAttrs,
+  rankHasHero,
+  RANKING_SHOWN,
   archivePath,
   websiteLd,
   SITE_NAME,
@@ -26,6 +28,11 @@ const upcomingShown = Math.min(upcoming.length, HOME_UPCOMING_LIMIT); // 「予�
 const hasMore = released.length > HOME_RELEASED_LIMIT;
 const latestRoundup = roundups[0]; // いちばん新しい週のまとめ（無ければ undefined）
 const rankingDay = ranking ? dateParts(ranking.date) : null;
+// 売れ筋は、データに多め（最大6本）に入っていて、画面に出すのは先頭の RANKING_SHOWN 本（残りは rank-off で隠しておく）。
+// 「VR作品を隠す」を押すと、VRを除いた先頭の RANKING_SHOWN 本に差し替える（site/public/vr-filter.js の rankLayout）。
+// 並べ方の印（data-visible = 見えている本数、先頭の .is-hero = 大きく出す1本）も、そのとき付け直す
+const rankShownCount = ranking ? Math.min(ranking.items.length, RANKING_SHOWN) : 0;
+const rankFirstIsHero = rankHasHero(rankShownCount);
 ---
 
 <Base
@@ -59,10 +66,14 @@ const rankingDay = ranking ? dateParts(ranking.date) : null;
       <section id="ranking" class="section" aria-labelledby="ranking-title">
         <div class="section-head">
           <h2 id="ranking-title" class="section-title">売れ筋TOP3</h2>
-          <p class="section-note">FANZAの人気順｜{rankingDay.m}月{rankingDay.d}日時点</p>
+          <p class="section-note">FANZAの人気順｜{rankingDay.m}月{rankingDay.d}日時点<span class="rank-vr-note" hidden>｜VRを除く</span></p>
         </div>
-        <ul class="shelf rank-podium">
-          {ranking.items.map((entry) => <li class="shelf-cell rank-cell" {...vrAttrs(entry)}><RankCard entry={entry} /></li>)}
+        <ul class="shelf rank-podium" data-show={RANKING_SHOWN} data-visible={rankShownCount}>
+          {ranking.items.map((entry, i) => (
+            <li class={`shelf-cell rank-cell${i === 0 && rankFirstIsHero ? ' is-hero' : ''}${i >= RANKING_SHOWN ? ' rank-off' : ''}`} data-rank={entry.rank} {...vrAttrs(entry)}>
+              <RankCard entry={entry} />
+            </li>
+          ))}
         </ul>
       </section>
     )}
