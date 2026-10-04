@@ -63,12 +63,12 @@ def write_comments(name, payload):
 
 
 def good_comment(item, n=0):
-    """条件を満たす（80文字以上・出演者名1回・絵文字なし・確かめられない評価や古くなる言い方なし）コメントを、作品ごとに違う文で作る"""
+    """条件を満たす（100文字以上・出演者名1回・絵文字なし・確かめられない評価や古くなる言い方なし）コメントを、作品ごとに違う文で作る"""
     who = (item.get("actress") or ["出演者"])[0]
     bodies = [
-        f"{who}が出演する、発売日の決まっている新作です。作品の情報は、この詳細のページに載っていて、サンプル画像やメーカーの一覧からも、ほかの作品をたどれます。",
-        f"{who}の出演作が、新作の棚に並びました。メーカーのページからは、同じメーカーのほかの作品もたどれます。くわしい内容はFANZAのページで確かめてください。",
-        f"新作の棚にまた一本。出演は{who}で、収録時間や形式は、上の表にまとめて載せてあります。くわしい内容は、FANZAのページとサンプル画像で確かめられます。",
+        f"{who}が出演する、発売日の決まっている新作です。作品の情報は、この詳細のページにまとめて載っていて、メーカーの一覧からも、同じメーカーのほかの作品をたどれます。収録時間や形式も、上の表で確かめられます。",
+        f"{who}の出演作が、新作の棚に並びました。メーカーのページからは、同じメーカーのほかの作品もたどれます。くわしい内容はFANZAのページで確かめてください。発売日と収録時間は、上の表にまとめてあります。",
+        f"新作の棚にまた一本が加わりました。出演は{who}で、収録時間や形式は、上の表にまとめて載せてあります。出演者の名前から、ほかの出演作もたどれます。くわしい内容は、FANZAの作品ページで確かめられます。",
     ]
     return bodies[n % len(bodies)] + f"（その{n}）"  # 末尾の数字で、1件ごとに別の文になる
 
@@ -322,6 +322,28 @@ check("「チェック」が多すぎると、警告を出す（書き込みは�
 varied = {x["cid"]: good_comment(x, i) for i, x in enumerate(templates[:7])}
 r = run("apply", write_comments("varied.json", varied), "--dry-run")
 check("言い回しがばらけていれば、警告は出ない", r.returncode == 0 and "を使ったコメント" not in r.stdout, r.stdout + r.stderr)
+
+print("\n■ 同じ型の結びが多すぎるときは断る（試運転で、40本ほぼすべてが「サンプル動画と…で雰囲気を確かめられます」だったため）")
+fresh_data()
+seven = templates[:7]
+same_end = {x["cid"]: good_comment(x, i) + "サンプル画像で雰囲気を確かめられます。" for i, x in enumerate(seven)}
+r = run("apply", write_comments("same_end.json", same_end), "--dry-run")
+check("7本中7本が「サンプル」で終わると断る（何も書き込まない）", r.returncode == 1 and "「サンプル」を使ったコメントが 7/7 件" in r.stdout and read_data() == original, r.stdout + r.stderr)
+few_end = {x["cid"]: good_comment(x, i) + ("サンプル画像は12枚です。" if i < 2 else "") for i, x in enumerate(seven)}
+r = run("apply", write_comments("few_end.json", few_end), "--dry-run")
+check("3本に1本まで（7本中2本）なら通る", r.returncode == 0, r.stdout + r.stderr)
+small = {x["cid"]: good_comment(x, i) + "サンプル画像は12枚です。" for i, x in enumerate(templates[:3])}
+r = run("apply", write_comments("small.json", small), "--dry-run")
+check("5本以下のときは数えない（毎日の少ない本数で、書けなくならないように）", r.returncode == 0, r.stdout + r.stderr)
+
+print("\n■ 学校・子どもの生活を連想させる場面の言葉（試運転で「職業体験」「学園」「家庭教師」に触れたコメントがあったため）")
+for word in ("学園", "職業体験", "家庭教師", "放課後", "部活"):
+    one = templates[0]
+    r = run("apply", write_comments("minor_ctx.json", {one["cid"]: f"{word}を舞台にした一本です。" + good_comment(one, 0)}), "--dry-run")
+    check(f"コメントに「{word}」があると断る", r.returncode == 1 and word in r.stdout, r.stdout)
+check("タイトルに「職業体験」「学園」「家庭教師」があると、Claude にも見せない（内容に触れない）",
+      all(cc_mod.safe_title({"title": t}) == "" for t in ("職業体験で出会った介護士と", "学園のハーレム生活", "家庭教師の先生と二人きり"))
+      and cc_mod.safe_title({"title": "職場の先輩とのドライブ"}) != "")
 
 print("\n■ 保存データが壊れているとき")
 open(DATA, "w", encoding="utf-8").write("{壊れている")
