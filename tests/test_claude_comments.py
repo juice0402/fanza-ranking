@@ -98,7 +98,7 @@ check("タイトルは、安全チェックを通ったものだけ title に出
       and all(next(o["title"] for o in original if o["cid"] == x["cid"]) not in r.stdout for x in out["items"] if x.get("title_hidden")))
 BASE_KEYS = {"cid", "reason", "status", "date", "actress", "maker", "tags", "duration_min", "genres", "sample_movie", "sample_images", "min_len"}
 check("画像やURLなど、不要な項目も出さない（サンプル動画・画像は、有無と枚数だけ）",
-      all(set(x) - {"title", "title_hidden", "content_off"} == BASE_KEYS | ({"draft"} if x["reason"] == "下書きを仕上げる" else set()) for x in out["items"]) and "http" not in r.stdout,
+      all(set(x) - {"title", "title_hidden", "content_off", "fiction_theme"} == BASE_KEYS | ({"draft"} if x["reason"] == "下書きを仕上げる" else set()) for x in out["items"]) and "http" not in r.stdout,
       [sorted(set(x) - BASE_KEYS) for x in out["items"]])
 check("下書きの作品には、いまの文（draft）を出す。定型文には出さない",
       all(x["draft"] == next(o["comment"] for o in original if o["cid"] == x["cid"]) for x in out["items"] if x["reason"] == "下書きを仕上げる")
@@ -253,8 +253,10 @@ print("\n■ タイトルを見せるかどうか（safe_title）・タイトル
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import claude_comments as ccm  # noqa: E402
 check("ふつうのタイトルは見せる", ccm.safe_title({"title": "会社の先輩とドライブデートに出かける一本"}) == "会社の先輩とドライブデートに出かける一本")
-check("未成年を連想させる言葉・同意の無い行為・薬・伏せ字があるタイトルは見せない",
-      all(ccm.safe_title({"title": t}) == "" for t in ("女子校生の放課後", "小生意気な妹2人", "痴漢電車", "媚薬で", "拘束されて", "優しく犯してあげる", "J●と", "レ○プ", "")))
+check("未成年を連想させるタイトルは見せない",
+      all(ccm.safe_title({"title": t}) == "" for t in ("女子校生の放課後", "小生意気な妹2人", "J●と", "制服美少女", "")))
+check("同意の無い場面・薬などのフィクションの設定は、タイトルを見せる（運営者の希望。2026-10-04）",
+      all(ccm.safe_title({"title": t}) == t for t in ("痴漢電車", "媚薬で", "拘束されて", "優しく犯してあげる", "レ○プ")))
 check("タイトルから10文字以上そのまま写したら見つける（出演者名・メーカー名の部分は除く）",
       ccm.copied_from_title("会社の先輩とドライブデートに出かける作品です", "会社の先輩とドライブデートに出かける一本") != ""
       and ccm.copied_from_title("先輩と出かけるドライブが舞台の作品です", "会社の先輩とドライブデートに出かける一本") == ""
@@ -380,17 +382,24 @@ print("\n■ 全作品の点検（2026-10-04 夕方）: 伏せ字・「×」の�
 st = lambda t: cc_mod.safe_title({"title": t})
 check("行為・体の言葉の伏せ字（中●し・チ○ポ・マ●コ）だけなら、タイトルを見せる", all(st(t) == t for t in ("お姉さん10人！思わず中●ししちゃいました", "撮影会に潜入！チ○ポ中毒", "作業員が性処理エコマ●コに再利用")))
 check("「A×B」の区切りの×は伏せ字として数えない", st("金玉からっぽにしてあげる 逢沢みゆ×幸村泉希") != "" and st("JOI×射精管理×ご褒美") != "")
-check("未成年・同意の無い行為を伏せた形（J× J〇 女子○生 ●学生 レ●プ 痴● 強●）は見せない",
-      all(st(t) == "" for t in ("巨乳ギャルJ×。留年回避と", "ウブJ〇", "アヘ顔女子○生下品", "パイパン●学生いおり", "校内1週間レ●プ！", "潜入！【痴●団地】", "強●クスリ漬け")))
+check("未成年を伏せた形（J× J〇 女子○生 ●学生）は見せない",
+      all(st(t) == "" for t in ("巨乳ギャルJ×。留年回避と", "ウブJ〇", "アヘ顔女子○生下品", "パイパン●学生いおり")))
+check("同意の無い行為を伏せた形（レ●プ 痴● 強●）は見せて、fiction_theme にする",
+      all(st(t) == t and cc_mod.title_block_reason({"title": t}) == "theme" for t in ("1週間レ●プ！", "潜入！【痴●団地】", "強●クスリ漬け")))
 check("全角の英字（ＪＫ）も見分ける・タイトルもコメントも", st("ＪＫと放課後") == "" and st("ｊｋ") == "")
-check("嫌がらせ・制裁・連れ去りなどの言葉があれば見せない", all(st(t) == "" for t in ("【授乳手コキセクハラ】残業中のオフィス", "電車生姦制裁 ＃014", "家出少女を", "人妻寝取られ", "母の筆おろし")))
+check("嫌がらせ・制裁・寝取りなどは見せる（fiction_theme）。家出少女・筆おろしは未成年を連想させるので見せない",
+      all(st(t) == t and cc_mod.title_block_reason({"title": t}) == "theme" for t in ("【授乳手コキセクハラ】残業中のオフィス", "電車生姦制裁 ＃014", "人妻寝取られ"))
+      and all(st(t) == "" for t in ("家出少女を", "母の筆おろし")) and st("家出した人妻") != "")
+check("大人どうしの言葉の一部（幼なじみ・姉妹・母娘・男の娘・女の子・処女）では、未成年あつかいしない",
+      all(cc_mod.title_block_reason({"title": t}) != "minor" for t in ("隣の幼なじみが", "隣の巨乳姉妹に", "いいなり母娘", "むっつりスケベな女の子", "処女11人を", "2穴肛門娘"))
+      and cc_mod.title_block_reason({"title": "男の娘J系ギャル"}) == "minor")
 fresh_data()
 one = templates[0]
 r = run("apply", write_comments("fw.json", {one["cid"]: "ＪＫ風の衣装で登場する一本です。" + good_comment(one, 0)}), "--dry-run")
 check("コメントの全角の英字（ＪＫ）も断る", r.returncode == 1 and "JK" in r.stdout, r.stdout)
 rich = dict(one, title="職場の先輩とのドライブデート", duration_min=120, genres=["OL"])
 sparse = dict(one, title="職場の先輩とのドライブデート", duration_min=None, genres=[])
-hidden = dict(one, title="痴漢電車", duration_min=120, genres=[])
+hidden = dict(one, title="制服の美少女", duration_min=120, genres=[])
 check("事実が少ない作品（予約で収録時間もジャンルも無い・タイトルを見せずジャンルも無い）は80文字から、ほかは100文字から",
       cc_mod.min_length_for(rich) == 100 and cc_mod.min_length_for(sparse) == 80 and cc_mod.min_length_for(hidden) == 80)
 r = run("list", "--today", "2026-11-03", "--limit", "100")
@@ -406,8 +415,8 @@ check("--no-daily-limit なら、1日の上限を数えない（ふだんは断�
 print("\n■ 未成年を連想させるタイトルの作品は、場面のジャンルにも触れない（content_off）")
 fresh_data()
 minor_item = dict(templates[0], title="制服の美少女と", genres=["ハイビジョン", "OL", "コスプレ"], duration_min=120)
-check("title_block_reason: 未成年は minor・同意の無い行為は other・ふつうは空",
-      cc_mod.title_block_reason(minor_item) == "minor" and cc_mod.title_block_reason(dict(minor_item, title="痴漢電車")) == "other"
+check("title_block_reason: 未成年は minor・同意の無い場面の設定は theme・ふつうは空",
+      cc_mod.title_block_reason(minor_item) == "minor" and cc_mod.title_block_reason(dict(minor_item, title="痴漢電車")) == "theme"
       and cc_mod.title_block_reason(dict(minor_item, title="職場の先輩とのドライブ")) == "")
 check("未成年を連想させる作品には、形式のジャンルだけを渡し、文字数の下限は80", cc_mod.genres_for_comment(minor_item, {"ハイビジョン", "OL", "コスプレ"}) == ["ハイビジョン"] and cc_mod.min_length_for(minor_item) == 80)
 check("その作品のコメントに場面のジャンル（コスプレ）が入っていれば断る", any("場面・関係のジャンル" in p for p in cc_mod.comment_problems("コスプレのジャンルに入る一本です。" + good_comment(minor_item, 0), dict(minor_item, comment="")))
@@ -416,6 +425,17 @@ r = run("list", "--today", "2026-11-03", "--limit", "100")
 outl = json.loads(r.stdout)["items"]
 check("list: content_off の作品は、タイトルを出さず（title_hidden）、形式以外のジャンルも出さない",
       all(x.get("title_hidden") and set(x["genres"]) <= set(cc_mod.FORMAT_GENRES) for x in outl if x.get("content_off")))
+
+print("\n■ フィクションの設定を表す言葉は、コメントに書ける（行為・体・暴行の言葉は書けない）")
+fresh_data()
+one = templates[0]
+r = run("apply", write_comments("theme_ok.json", {one["cid"]: "職場のセクハラを題材にした、催眠ものの設定のドラマです。" + good_comment(one, 0)}), "--dry-run")
+check("「セクハラ」「催眠」などの設定の言葉は書ける", r.returncode == 0, r.stdout + r.stderr)
+for word in ("レイプ", "拉致", "便器", "中出し"):
+    r = run("apply", write_comments("theme_ng.json", {one["cid"]: f"{word}を描く一本です。" + good_comment(one, 0)}), "--dry-run")
+    check(f"「{word}」は書けない", r.returncode == 1 and "使えない言葉" in r.stdout, r.stdout)
+r = run("list", "--today", "2026-11-03", "--limit", "100")
+check("list: fiction_theme はタイトルを見せる作品にだけ付く", all(x.get("title") for x in json.loads(r.stdout)["items"] if x.get("fiction_theme")))
 
 print("\n■ 学校・子どもの生活を連想させる場面の言葉（試運転で「職業体験」「学園」「家庭教師」に触れたコメントがあったため）")
 fresh_data()
