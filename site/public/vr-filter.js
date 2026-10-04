@@ -86,6 +86,17 @@
     }
   }
 
+  // 作品ページの「同じ出演者・メーカーの作品」・週のまとめの「注目の作品」など（data-vr-group の付いたまとまり）:
+  // 隠すときに、中の作品が全部VRなら、見出しごと隠す（見出しだけが残って、空に見えないように）
+  function updateGroups(hide) {
+    var groups = document.querySelectorAll('[data-vr-group]');
+    for (var i = 0; i < groups.length; i++) {
+      var cells = groups[i].querySelectorAll('.shelf-cell').length;
+      var vr = groups[i].querySelectorAll('.shelf-cell[data-vr]').length;
+      groups[i].classList.toggle('vr-empty', dayIsEmpty(cells, vr, hide));
+    }
+  }
+
   // 売れ筋TOP3: 隠すときは、VRを除いた先頭の3本に差し替え（順位の数字も1・2・3にふり直す）、隠さないときは、元の先頭3本に戻す。
   // 出す本数に合わせて、並べ方の印（data-visible・.is-hero）も付け直す。全部がVRなら、売れ筋の見出しごと隠す
   function updateRanking(hide) {
@@ -120,6 +131,7 @@
     root.classList.toggle(CLASS, hide);
     updateButtons(hide);
     updateDays(hide);
+    updateGroups(hide);
     updateRanking(hide);
   }
 

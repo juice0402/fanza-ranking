@@ -283,6 +283,13 @@ for cid, x in valid.items():
         problems_here = []
         if len(iframes) != 1 or frame.get("src") != movie:
             problems_here.append("動画の枠(iframe)が1つで、動画のURLと同じではない")
+        # 開いた時点では、重いFANZAの再生ページを読み込まない（再生ボタンを押すと movie.js が入れる。iframe は JavaScript が無いとき用の <noscript> の中だけ）
+        outside = re.sub(r"<noscript>[\s\S]*?</noscript>", "", text)
+        if tags(outside, "iframe"):
+            problems_here.append("ページを開いた時点で、再生ページ(iframe)を読み込んでいる（<noscript> の外に iframe がある）")
+        plays = [t for t in tags(text, "button") if has_class(t, "movie-play")]
+        if len(plays) != 1 or plays[0].get("data-movie-src") != movie:
+            problems_here.append("再生ボタン（.movie-play）が1つで、動画のURL（data-movie-src）と同じではない")
         if frame.get("width") != "476" or frame.get("height") != "306":
             problems_here.append("枠のサイズが 476x306 ではない")
         if 'src="/movie.js"' not in text:
@@ -475,6 +482,9 @@ if isinstance(rk_raw, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(rk_raw.ge
         if isinstance(r, dict) and re.fullmatch(r"[A-Za-z0-9_\-]+", str(r.get("cid", ""))) and str(r.get("title", "")).strip() and fanza_https(r.get("url"), FANZA_LINK):
             rk_items.append(r)
     rk_items = rk_items[:6]  # 売れ筋は、VR作品を隠したときの差し替え用に、6本まで持つ（画面に出すのは先頭の3本）
+# トップの検索欄: 作品検索のページ（/search/）へ、キーワード（q）を送る。JavaScript が無くても動く（ふつうのフォーム）
+hero_forms = [t for t in tags(home_html, "form") if has_class(t, "hero-search")]
+check("トップに検索欄があり、/search/ にキーワード（q）を送る", len(hero_forms) == 1 and hero_forms[0].get("action") == "/search/" and hero_forms[0].get("method", "get").lower() == "get" and any(t.get("name") == "q" for t in tags(home_html, "input")), hero_forms)
 home_sections = [t for t in tags(home_html, "section") if t.get("id") == "ranking"]
 rank_cards = [t for t in tags(home_html, "article") if has_class(t, "rank-item")]
 if rk_fresh and rk_items:
@@ -483,7 +493,7 @@ if rk_fresh and rk_items:
     missing = [r["cid"] for r in rk_items if r["url"] not in hrefs or not SPONSORED <= set(hrefs[r["url"]].get("rel", "").split())]
     check("各作品の「FANZAで見る」は、アフィリエイトのURLで、広告のリンクの属性（sponsored など）が付いている", not missing, missing)
     check("「人気順」と書いてある（FANZAのデイリーランキングと同じとは書かない）", "人気順" in home_html and "デイリーランキング" not in home_html)
-    check("ページ内の移動に「売れ筋TOP3」がある", 'href="#ranking"' in home_html)
+    check("売れ筋の欄は、トップのはじめのほう（発売中の新作より前）にある", home_html.find('id="ranking"') < home_html.find('id="released"'))
     cell_places = [re.search(r"\brank-([0-3])\b", t.get("class", "")) for t in rank_cards]
     check("1〜3位のカードに、順位ごとの大きさの目印（rank-1〜rank-3。4位以降は rank-0）が、順番どおりに付いている（表示の順位は、抜けがあっても1,2,3…とそろえる）", [m.group(1) if m else None for m in cell_places] == [str(i) if i <= 3 else "0" for i in range(1, len(rk_items) + 1)], [t.get("class") for t in rank_cards])
     check("売れ筋の並びに rank-podium の目印がある（スマホで1位を大きく・広い画面で3本を横いっぱいにする見た目の足がかり）", any(has_class(t, "rank-podium") for t in tags(home_html, "ul")))
@@ -755,6 +765,12 @@ check("CSS: お気に入りのサムネ（.fav-thumb）も、表紙の比率に�
 hide_rule = [b for sels, b in css_rules if ".hide-vr [data-vr]" in sels]
 rank_sels = [x for sels, b in css_rules for x in sels]
 check("CSS: 売れ筋は、VRを隠して2本・1本になったときの並べ方（data-visible=2/1）と、全部がVRのとき売れ筋ごと隠す（#ranking.vr-empty）がある", '.rank-podium[data-visible="2"]' in rank_sels and '.rank-podium[data-visible="1"]' in rank_sels and any("#ranking.vr-empty" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules), [x for x in rank_sels if "data-visible" in x or "vr-empty" in x])
+vr_tag = next((g for g in glob.glob(os.path.join(DIST, "tag", "*", "index.html")) if "<h1" in read(g) and "VR作品の新作・予約作品" in read(g)), None)
+if vr_tag:
+    check("VR作品のページでは、「VR作品を隠す」を選んでいても作品を隠さない（data-vr を付けない。全部が消えて空になるため）", "data-vr" not in re.sub(r"data-vr-(toggle|group)", "", read(vr_tag)), os.path.relpath(vr_tag, DIST))
+related_pages = [p for p in glob.glob(os.path.join(DIST, "item", "*", "index.html")) if 'id="related-title"' in read(p)]
+check("作品ページの「同じ出演者・メーカーの作品」は、VRを隠して全部が消えたら見出しごと隠せる（data-vr-group）", related_pages and all(re.search(r'<section[^>]*aria-labelledby="related-title"[^>]*data-vr-group', read(p)) for p in related_pages), len(related_pages))
+check("CSS: 全部がVRのまとまり（[data-vr-group].vr-empty）を隠す", any("[data-vr-group].vr-empty" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules))
 check("CSS: html.hide-vr のとき、VR作品の目印（data-vr）のマスと、全部がVRの日付（.day.vr-empty）を隠す", bool(hide_rule) and all(re.search(r"display\s*:\s*none", b) for b in hide_rule) and any(".day.vr-empty" in sels for sels, b in css_rules if ".hide-vr [data-vr]" in sels), hide_rule[:1])
 hidden_ok = [sels for sels, b in css_rules if ".vr-toggle[hidden]" in sels and re.search(r"display\s*:\s*none", b)]
 check("CSS: 隠れているスイッチ・検索（hidden）が、display の指定に負けずに隠れる", bool(hidden_ok) and any(".work-search[hidden]" in sels for sels in hidden_ok), hidden_ok[:1])
@@ -764,7 +780,7 @@ no_head_vr, no_vr_js, no_nav_search, no_foot_search = [], [], [], []
 for p in pages:
     html_ = read(p)
     head_ = html_[: html_.find("</head>")] if "</head>" in html_ else ""
-    if "localStorage.getItem('hide-vr') === '1'" not in head_ or "classList.add('hide-vr')" not in head_:
+    if not re.search(r"localStorage\.getItem\('hide-vr'\)\s*===\s*'1'", head_) or "classList.add('hide-vr')" not in head_:
         no_head_vr.append(os.path.relpath(p, DIST))
     if 'src="/vr-filter.js"' not in html_:
         no_vr_js.append(os.path.relpath(p, DIST))

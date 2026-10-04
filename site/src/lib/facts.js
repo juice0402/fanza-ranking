@@ -84,15 +84,26 @@ export function itemFacts(item, ctx, pages = {}) {
     rows.push({ key: 'maker', label: 'メーカー', text, ...(href ? { href, linkLabel: `${item.maker}の作品一覧を見る` } : {}) });
   }
 
+  // 出演者: 掲載が2本以上の人は1人ずつの行（先頭から FACTS_MAX_CAST 人まで）。この1本だけの人は、1つの行にまとめる（同じ文が何行も並ばないように）
+  const once = [];
   for (const name of item.actress.slice(0, FACTS_MAX_CAST)) {
     const info = ctx.cast.get(name);
     if (!info) continue;
-    const text = info.count === 1 ? `${name}さん出演の作品は、掲載中ではこの1本です。` : `${name}さん出演の作品は、掲載中で${info.count}本あります（${rangeText(info)}）。`;
+    if (info.count === 1) {
+      once.push(name);
+      continue;
+    }
+    const text = `${name}さん出演の作品は、掲載中で${info.count}本あります（${rangeText(info)}）。`;
     const href = pages.actress?.get(name) ?? '';
     rows.push({ key: 'actress', label: '出演者', text, ...(href ? { href, linkLabel: `${name}さんの出演作品を見る` } : {}) });
   }
-  if (item.actress.length > FACTS_MAX_CAST) {
-    rows.push({ key: 'cast-more', label: '出演者', text: `ほか${item.actress.length - FACTS_MAX_CAST}名が出演しています。` });
+  const more = Math.max(0, item.actress.length - FACTS_MAX_CAST);
+  if (once.length > 0) {
+    const who = once.map((n) => `${n}さん`).join('・');
+    const text = once.length === 1 ? `${who}出演の作品は、掲載中ではこの1本です。` : `${who}は、出演作品の掲載がどちらもこの1本です。`.replace('どちらも', once.length > 2 ? 'いずれも' : 'どちらも');
+    rows.push({ key: 'actress-once', label: '出演者', text: more ? `${text}ほか${more}名が出演しています。` : text });
+  } else if (more) {
+    rows.push({ key: 'cast-more', label: '出演者', text: `ほか${more}名が出演しています。` });
   }
 
   if (item.duration_min && ctx.durations.length >= MIN_DURATIONS_FOR_RANK) {

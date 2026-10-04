@@ -21,8 +21,8 @@ const outbound = inSite ? {} : { target: '_blank', rel: 'sponsored nofollow noop
     )}
     <span class="rank-badge">{entry.rank}位</span>
   </a>
-  <Heading class="item-title"><a class="item-title-link" href={href} {...outbound}>{entry.title}</a></Heading>
+  <Heading class="item-title"><span class="visually-hidden">{entry.rank}位：</span><a class="item-title-link" href={href} {...outbound}>{entry.title}</a></Heading>
   <p class="item-cast">{entry.actress.length ? entry.actress.join('、') : '出演者の記載なし'}</p>
-  {entry.maker && <p class="rank-maker">{entry.maker}</p>}
+  {entry.maker && entry.maker !== '不明' && <p class="rank-maker">{entry.maker}</p>}
   <a class="btn btn-hot btn-block" href={entry.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで見る</a>
 </article>

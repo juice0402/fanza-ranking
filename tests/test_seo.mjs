@@ -51,7 +51,10 @@ check('先頭の行は「同じ発売日」。その日の本数が、データ�
 check('同じ日・同じメーカーの本数も出す（2本以上のとき）', dayRow.text.includes('そのうちメーカーBの作品は') && dayRow.text.includes('本です。'), dayRow.text);
 check('月のページがあれば、その日の位置（#day-…）へのリンクがつく。無ければリンクなし', dayRow.href === '/month/2026-11/#day-2026-11-01' && !('href' in F.itemFacts(first, ctx, {})[0]));
 const actressRows = rows.filter((r) => r.key === 'actress');
-check('出演者は、先頭から3人まで、1人ずつの行になる。ほかは「ほか○名」', actressRows.length === 3 && rows.some((r) => r.key === 'cast-more' && r.text === 'ほか2名が出演しています。'), JSON.stringify(rows.map((r) => r.key)));
+const onceRow = rows.find((r) => r.key === 'actress-once');
+check('出演者は、先頭から3人まで。掲載が2本以上の人は1人ずつの行、この1本だけの人は1つの行にまとめ、ほかは「ほか○名」', actressRows.length === 2 && onceRow && onceRow.text === '星子さん出演の作品は、掲載中ではこの1本です。ほか2名が出演しています。' && !rows.some((r) => r.key === 'cast-more'), JSON.stringify(rows.map((r) => [r.key, r.text])));
+const twoOnce = F.itemFacts(mk({ cid: 'zz1', date: '2026-11-03', actress: ['一花', '二葉'] }), F.buildFactsContext([...many, mk({ cid: 'zz1', date: '2026-11-03', actress: ['一花', '二葉'] })]), {});
+check('この1本だけの人が2人なら「どちらも」、3人なら「いずれも」の1行', twoOnce.find((r) => r.key === 'actress-once').text === '一花さん・二葉さんは、出演作品の掲載がどちらもこの1本です。', JSON.stringify(twoOnce));
 const hanako = actressRows[0];
 const hanakoCount = many.filter((i) => i.actress.includes('花子')).length;
 check('出演者の行: 掲載本数と発売日の幅が、データを数えた値と同じ。ページがある人だけリンク', hanako.text.includes(`花子さん出演の作品は、掲載中で${hanakoCount}本あります（発売日は2026年11月1日から`) && hanako.href === '/actress/bbb/' && !('href' in actressRows[1]));

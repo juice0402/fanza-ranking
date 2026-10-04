@@ -43,6 +43,11 @@ const trail = [
 ];
 const makerPage = makerByName.get(item.maker)?.path;
 const code = productCode(item.cid); // 品番（作れないときは ''）
+// 出演者が多い作品（6人以上）は、先頭の4人だけを出し、残りは「ほか○人を見る」で開く（ページの上のほうが、名前だけで埋まらないように）
+const CAST_FOLD_AT = 6;
+const CAST_SHOWN = 4;
+const castShown = item.actress.length >= CAST_FOLD_AT ? item.actress.slice(0, CAST_SHOWN) : item.actress;
+const castRest = item.actress.length >= CAST_FOLD_AT ? item.actress.slice(CAST_SHOWN) : [];
 // 「この作品のデータ」欄: 保存してある作品データから数えた事実だけ（リンク先は、ページがあるものだけ）
 const facts = itemFacts(item, factsContext, {
   month: (dateKey) => monthLinkFor(monthByKey, dateKey),
@@ -66,7 +71,7 @@ const facts = itemFacts(item, factsContext, {
     <article class="detail-grid">
       <div class="detail-media">
         {hasMovie
-          ? <SampleMovie src={item.sample_movie} title={truncate(item.title, 60)} fallbackUrl={item.url} />
+          ? <SampleMovie src={item.sample_movie} title={truncate(item.title, 60)} fallbackUrl={item.url} poster={item.image_url} />
           : item.image_url && (
             <img
               class="detail-cover"
@@ -74,13 +79,23 @@ const facts = itemFacts(item, factsContext, {
               alt={`${truncate(item.title, 60)} のパッケージ画像`}
               width="800"
               height="538"
-              decoding="async"
+              fetchpriority="high"
             />
           )}
       </div>
 
       <div class="detail-body">
         <h1 class="detail-title">{item.title}</h1>
+
+        {item.isAi
+          ? (
+            <div class="note-card">
+              <p class="note-card-label">ひとこと</p>
+              <p class="note-card-text">{item.comment}</p>
+            </div>
+          )
+          : item.comment && <p class="plain-comment">{item.comment}</p>}
+
 
         <dl class="spec">
           <dt class="spec-term">発売日</dt>
@@ -101,7 +116,7 @@ const facts = itemFacts(item, factsContext, {
               <dt class="spec-term">出演</dt>
               <dd class="spec-desc">
                 <ul class="cast-list">
-                  {item.actress.map((name) => (
+                  {castShown.map((name) => (
                     <li class="cast-person">
                       <Face name={name} src={faceUrl(profilesByName.get(name))} size="sm" />
                       {actressByName.get(name) ? <a class="spec-link" href={actressByName.get(name).path}>{name}</a> : <span>{name}</span>}
@@ -109,6 +124,20 @@ const facts = itemFacts(item, factsContext, {
                     </li>
                   ))}
                 </ul>
+                {castRest.length > 0 && (
+                  <details class="cast-more">
+                    <summary class="cast-more-toggle">ほか{castRest.length}人を見る</summary>
+                    <ul class="cast-list">
+                      {castRest.map((name) => (
+                        <li class="cast-person">
+                          <Face name={name} src={faceUrl(profilesByName.get(name))} size="sm" />
+                          {actressByName.get(name) ? <a class="spec-link" href={actressByName.get(name).path}>{name}</a> : <span>{name}</span>}
+                          <FavButton type="actress" favKey={name} slug={actressByName.get(name)?.slug ?? ''} size="mini" />
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
               </dd>
             </>
           )}
@@ -130,15 +159,6 @@ const facts = itemFacts(item, factsContext, {
           )}
         </dl>
 
-        {item.isAi
-          ? (
-            <div class="note-card">
-              <p class="note-card-label">ひとこと</p>
-              <p class="note-card-text">{item.comment}</p>
-            </div>
-          )
-          : item.comment && <p class="plain-comment">{item.comment}</p>}
-
         {item.url && (
           <a class="btn btn-hot btn-lg detail-cta" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>
         )}
@@ -146,18 +166,6 @@ const facts = itemFacts(item, factsContext, {
         <FavButton type="work" favKey={item.cid} attrs={workFavoriteAttrs(item)} off="この作品をお気に入りに追加" on="お気に入りに追加済み" />
       </div>
     </article>
-
-    <section class="subsection" aria-labelledby="facts-title">
-      <h2 id="facts-title" class="subsection-title">この作品のデータ</h2>
-      <ul class="facts">
-        {facts.map((row) => (
-          <li class="facts-row">
-            <span class="facts-label">{row.label}</span>
-            <span class="facts-text">{row.text}{row.href && <> <a class="spec-link" href={row.href}>{row.linkLabel}</a></>}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
 
     {gallery.length > 0 && (
       <section class="subsection" aria-labelledby="samples-title">
@@ -191,6 +199,18 @@ const facts = itemFacts(item, factsContext, {
       </section>
     )}
 
+    <section class="subsection" aria-labelledby="facts-title">
+      <h2 id="facts-title" class="subsection-title">この作品のデータ</h2>
+      <ul class="facts">
+        {facts.map((row) => (
+          <li class="facts-row">
+            <span class="facts-label">{row.label}</span>
+            <span class="facts-text">{row.text}{row.href && <> <a class="spec-link" href={row.href}>{row.linkLabel}</a></>}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
     {zoomable && (
       <dialog id="lightbox" class="lightbox" aria-label="画像の拡大表示" tabindex="-1">
         <div class="lightbox-stage">
@@ -204,7 +224,7 @@ const facts = itemFacts(item, factsContext, {
     )}
 
     {related.length > 0 && (
-      <section class="subsection" aria-labelledby="related-title">
+      <section class="subsection" aria-labelledby="related-title" data-vr-group>
         <h2 id="related-title" class="subsection-title">同じ出演者・メーカーの作品</h2>
         <ul class="shelf">
           {related.map((r) => (

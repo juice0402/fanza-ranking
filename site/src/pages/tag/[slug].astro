@@ -50,7 +50,7 @@ const trail = [
           <VrToggle />
         </div>
       )}
-      <DaySection groups={groups} />
+      <DaySection groups={groups} keepVr={isVr} />
       {group.items.length > shown.length && (
         <p class="more"><a class="btn btn-quiet" href={searchPath(group.name)}>ほかの{group.items.length - shown.length}本は、作品検索で探せます</a></p>
       )}
