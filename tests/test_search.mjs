@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as L from '../site/src/lib/search.js';
-import { normalizeItems } from '../site/src/lib/items.js';
+import { normalizeItems, rankHasHero } from '../site/src/lib/items.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -107,6 +107,16 @@ check('保存のキーと、html に付ける印', V.KEY === 'hide-vr' && V.CLAS
 check('日付ごとの本数の文字: 隠さないとき・VRが無いときは元のまま', V.dayCountText('5本', 5, 2, false) === '5本' && V.dayCountText('5本', 5, 0, true) === '5本' && V.dayCountText('3本（全5本）', 3, 0, true) === '3本（全5本）');
 check('日付ごとの本数の文字: 隠すときは、VRを除いた本数（「全◯本」は、VRが分からないので出さない）', V.dayCountText('5本', 5, 2, true) === '3本（VRを除く）' && V.dayCountText('3本（全5本）', 3, 1, true) === '2本（VRを除く）');
 check('全部がVRの日付だけ、隠したときに空になる', V.dayIsEmpty(2, 2, true) && !V.dayIsEmpty(2, 1, true) && !V.dayIsEmpty(2, 2, false) && !V.dayIsEmpty(0, 0, true));
+
+console.log('\n■ 売れ筋TOP3の並べ直し（VR作品を隠して本数が減っても、空白を作らない）');
+const RL = (flags, hide) => plain(V.rankLayout(flags, hide));
+check('隠さないとき: 3本・先頭の1位を大きく（VRが混ざっていても、そのまま）', JSON.stringify(RL([false, false, false], false)) === '{"visible":3,"hero":0}' && JSON.stringify(RL([false, false, true], false)) === '{"visible":3,"hero":0}');
+check('3位がVRで隠すとき: 2本・大きく出す1本は無し（同じ大きさで2つ並べる）', JSON.stringify(RL([false, false, true], true)) === '{"visible":2,"hero":-1}');
+check('1位がVRで隠すとき: 2本・大きく出す1本は無し', JSON.stringify(RL([true, false, false], true)) === '{"visible":2,"hero":-1}');
+check('2つがVRで隠すとき: 残った1本を、横幅いっぱいに大きく出す（何位でも）', JSON.stringify(RL([true, true, false], true)) === '{"visible":1,"hero":2}' && JSON.stringify(RL([false, true, true], true)) === '{"visible":1,"hero":0}' && JSON.stringify(RL([true, false, true], true)) === '{"visible":1,"hero":1}');
+check('全部がVRで隠すとき: 0本（売れ筋の見出しごと隠す）', JSON.stringify(RL([true, true, true], true)) === '{"visible":0,"hero":-1}');
+check('作品が無い・2本だけのときも落ちない', JSON.stringify(RL([], true)) === '{"visible":0,"hero":-1}' && JSON.stringify(RL([false, false], false)) === '{"visible":2,"hero":-1}');
+check('ページを作るときの決め方（rankHasHero）と、ブラウザでの決め方（rankLayout）が、本数ごとに同じ', [0, 1, 2, 3, 4].every((n) => rankHasHero(n) === (RL(Array(n).fill(false), false).hero === 0)));
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

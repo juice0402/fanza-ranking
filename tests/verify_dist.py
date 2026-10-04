@@ -454,6 +454,11 @@ if rk_fresh and rk_items:
     cell_places = [re.search(r"\brank-([0-3])\b", t.get("class", "")) for t in rank_cards]
     check("1〜3位のカードに、順位ごとの大きさの目印（rank-1〜rank-3）が、順番どおりに付いている（表示の順位は、抜けがあっても1,2,3とそろえる）", [m.group(1) if m else None for m in cell_places] == ["1", "2", "3"][: len(rk_items)], [t.get("class") for t in rank_cards])
     check("売れ筋の並びに rank-podium の目印がある（スマホで1位を大きく・広い画面で3本を横いっぱいにする見た目の足がかり）", any(has_class(t, "rank-podium") for t in tags(home_html, "ul")))
+    # 「VR作品を隠す」で本数が減っても空白ができないよう、並べ方の印（data-visible・先頭の .is-hero）を付けている（隠す前は、全部が見えている状態）
+    podium = next((t for t in tags(home_html, "ul") if has_class(t, "rank-podium")), None)
+    podium_cells = [t for t in tags(home_html, "li") if has_class(t, "rank-cell")]
+    hero_expected = [i == 0 and (len(podium_cells) == 1 or len(podium_cells) >= 3) for i in range(len(podium_cells))]
+    check("売れ筋の並びに、見えている本数（data-visible）と、大きく出す1本（先頭の is-hero。3本以上か1本のとき）の印がある", bool(podium) and podium.get("data-visible") == str(len(podium_cells)) and [has_class(t, "is-hero") for t in podium_cells] == hero_expected, (podium.get("data-visible") if podium else None, [t.get("class") for t in podium_cells]))
 else:
     check("ランキングが無い・古い（7日より前）・使える行が無いときは、トップに売れ筋の欄を出さない", not home_sections and not rank_cards and 'href="#ranking"' not in home_html)
 
@@ -682,6 +687,8 @@ check("CSS: お気に入りのサムネ（.fav-thumb）も、表紙の比率に�
 
 # 「VR作品を隠す」の見た目の決まり
 hide_rule = [b for sels, b in css_rules if ".hide-vr [data-vr]" in sels]
+rank_sels = [x for sels, b in css_rules for x in sels]
+check("CSS: 売れ筋は、VRを隠して2本・1本になったときの並べ方（data-visible=2/1）と、全部がVRのとき売れ筋ごと隠す（#ranking.vr-empty）がある", '.rank-podium[data-visible="2"]' in rank_sels and '.rank-podium[data-visible="1"]' in rank_sels and any("#ranking.vr-empty" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules), [x for x in rank_sels if "data-visible" in x or "vr-empty" in x])
 check("CSS: html.hide-vr のとき、VR作品の目印（data-vr）のマスと、全部がVRの日付（.day.vr-empty）を隠す", bool(hide_rule) and all(re.search(r"display\s*:\s*none", b) for b in hide_rule) and any(".day.vr-empty" in sels for sels, b in css_rules if ".hide-vr [data-vr]" in sels), hide_rule[:1])
 hidden_ok = [sels for sels, b in css_rules if ".vr-toggle[hidden]" in sels and re.search(r"display\s*:\s*none", b)]
 check("CSS: 隠れているスイッチ・検索（hidden）が、display の指定に負けずに隠れる", bool(hidden_ok) and any(".work-search[hidden]" in sels for sels in hidden_ok), hidden_ok[:1])

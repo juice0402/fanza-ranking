@@ -11,6 +11,7 @@ import {
   groupByDate,
   countByDate,
   vrAttrs,
+  rankHasHero,
   archivePath,
   websiteLd,
   SITE_NAME,
@@ -26,6 +27,8 @@ const upcomingShown = Math.min(upcoming.length, HOME_UPCOMING_LIMIT); // 「予�
 const hasMore = released.length > HOME_RELEASED_LIMIT;
 const latestRoundup = roundups[0]; // いちばん新しい週のまとめ（無ければ undefined）
 const rankingDay = ranking ? dateParts(ranking.date) : null;
+// 売れ筋の並べ方の印（data-visible = 見えている本数、先頭の .is-hero = 大きく出す1本）。「VR作品を隠す」で本数が変わると、site/public/vr-filter.js が付け直す
+const rankFirstIsHero = ranking ? rankHasHero(ranking.items.length) : false;
 ---
 
 <Base
@@ -61,8 +64,8 @@ const rankingDay = ranking ? dateParts(ranking.date) : null;
           <h2 id="ranking-title" class="section-title">売れ筋TOP3</h2>
           <p class="section-note">FANZAの人気順｜{rankingDay.m}月{rankingDay.d}日時点</p>
         </div>
-        <ul class="shelf rank-podium">
-          {ranking.items.map((entry) => <li class="shelf-cell rank-cell" {...vrAttrs(entry)}><RankCard entry={entry} /></li>)}
+        <ul class="shelf rank-podium" data-visible={ranking.items.length}>
+          {ranking.items.map((entry, i) => <li class={i === 0 && rankFirstIsHero ? 'shelf-cell rank-cell is-hero' : 'shelf-cell rank-cell'} {...vrAttrs(entry)}><RankCard entry={entry} /></li>)}
         </ul>
       </section>
     )}

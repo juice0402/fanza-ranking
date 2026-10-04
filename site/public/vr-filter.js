@@ -2,7 +2,7 @@
 // 状態は、この端末のこのブラウザの localStorage（キー hide-vr）にだけ保存する（サーバーには何も送らない）。
 // 隠す動き自体は CSS（html.hide-vr [data-vr] { display: none }）。ページを開いた瞬間にチラつかないよう、
 // html に hide-vr を付ける処理は、<head> の中の小さなスクリプト（site/src/layouts/Base.astro）が先にやる。
-// ここでは、スイッチの表示と、日付ごとのまとまり（.day）の本数・空の日付の隠し方をやる。
+// ここでは、スイッチの表示と、日付ごとのまとまり（.day）の本数・空の日付の隠し方、売れ筋TOP3の並べ直し（残った本数でちょうど埋まるように）をやる。
 // JavaScript や localStorage が使えないときは、スイッチを出さない（VR作品はそのまま出る）。
 (function () {
   var KEY = 'hide-vr';
@@ -20,8 +20,20 @@
     return Boolean(hide) && shown > 0 && vr >= shown;
   }
 
+  // 売れ筋TOP3の並べ方。flags[i] は、i番目の作品がVRか。hide のとき、VRの作品は見えない。
+  // visible: 見えている本数 / hero: 先頭で大きく出す作品の番号（3本以上か1本のときだけ。2本のときは -1。見えるものが無いときも -1）
+  // site/src/lib/items.js の rankHasHero と同じ決め方（tests/test_search.mjs で突き合わせている）
+  function rankLayout(flags, hide) {
+    var shown = [];
+    for (var i = 0; i < flags.length; i++) {
+      if (!(hide && flags[i])) shown.push(i);
+    }
+    var n = shown.length;
+    return { visible: n, hero: n === 1 || n >= 3 ? shown[0] : -1 };
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { KEY: KEY, CLASS: CLASS, dayCountText: dayCountText, dayIsEmpty: dayIsEmpty }; // tests/test_search.mjs 用
+    module.exports = { KEY: KEY, CLASS: CLASS, dayCountText: dayCountText, dayIsEmpty: dayIsEmpty, rankLayout: rankLayout }; // tests/test_search.mjs 用
     return;
   }
   if (typeof document === 'undefined') return;
@@ -73,10 +85,29 @@
     }
   }
 
+  // 売れ筋TOP3: 見えている本数に合わせて、並べ方の印（data-visible・.is-hero）を付け直す。全部がVRなら、売れ筋の見出しごと隠す
+  function updateRanking(hide) {
+    var lists = document.querySelectorAll('.rank-podium');
+    for (var i = 0; i < lists.length; i++) {
+      var list = lists[i];
+      var cells = list.querySelectorAll('.rank-cell');
+      var flags = [];
+      for (var j = 0; j < cells.length; j++) flags.push(cells[j].hasAttribute('data-vr'));
+      var layout = rankLayout(flags, hide);
+      list.setAttribute('data-visible', String(layout.visible));
+      for (var k = 0; k < cells.length; k++) cells[k].classList.toggle('is-hero', k === layout.hero);
+      var section = list.closest ? list.closest('#ranking') : null;
+      if (section) section.classList.toggle('vr-empty', layout.visible === 0);
+      var jumps = document.querySelectorAll('a[href="#ranking"]');
+      for (var m = 0; m < jumps.length; m++) jumps[m].hidden = layout.visible === 0;
+    }
+  }
+
   function apply(hide) {
     root.classList.toggle(CLASS, hide);
     updateButtons(hide);
     updateDays(hide);
+    updateRanking(hide);
   }
 
   function set(hide) {
