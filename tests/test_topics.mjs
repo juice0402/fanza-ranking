@@ -131,6 +131,22 @@ check('VR作品を隠すときの並び: VR作品を数えない', hotNoVr.map((
 check('人気の作品が無いときは空', T.hotActresses([], TODAY).length === 0 && T.HOT_LIMIT === 3 && T.HOT_MAX_CAST === 4);
 check('顔写真がある人だけ（順位は繰り上がる）', T.hotActresses(hotItems, TODAY, { hasFace: (n) => n !== '月子' }).map((r) => r.name).join() === '花子,星子');
 
+console.log('\n■ 人気のジャンル（hotGenres）');
+const gItems = [
+  it('g1', '2026-10-03', 1, { genres: ['巨乳', '単体作品'], vr: true }),
+  it('g2', '2026-10-03', 2, { genres: ['巨乳', '人妻・主婦'] }),
+  it('g3', '2026-10-02', 3, { genres: ['人妻・主婦', '熟女'] }),
+  it('g4', '2026-10-02', 4, { genres: ['熟女', 'OL'] }),
+  it('g5', '2026-10-01', 90, { genres: ['OL'] }),
+  it('g6', '2026-10-01', 120, { genres: ['痴女'] }), // TOP100の外は数えない
+  it('g7', '2026-09-01', 5, { genres: ['痴女'] }), // 1週間より前は数えない
+];
+const allowed = new Set(['巨乳', '人妻・主婦', '熟女', 'OL', '痴女']);
+const hg = T.hotGenres(gItems, TODAY, { allowed });
+check('いま人気の女優と同じ点（101−順位）をジャンルごとに足して、上から3つ。決めた一覧のジャンルだけ（単体作品などは数えない）', hg.map((g) => g.name).join() === '巨乳,人妻・主婦,熟女' && hg[0].score === 100 + 99 && hg[0].count === 2, JSON.stringify(hg.map((g) => [g.name, g.score])));
+check('表紙は、そのジャンルでいちばん点の高い作品（VRでない作品を先に）', hg[0].top.cid === 'g2' && hg[1].top.cid === 'g2' && hg[2].top.cid === 'g3');
+check('TOP100の外・1週間より前の作品は数えない・人気の作品が無ければ空', !T.hotGenres(gItems, TODAY, { allowed, limit: 10 }).some((g) => g.name === '痴女') && T.hotGenres([], TODAY, { allowed }).length === 0 && T.HOT_GENRE_LIMIT === 3 && T.HOT_GENRE_SKIP.includes('ベスト・総集編'));
+
 console.log('\n■ 今週のデビュー作（weekDebuts）');
 const deb = [
   it('d1', '2026-10-05', 30, { genres: ['デビュー作品'] }), it('d2', '2026-10-01', 5, { genres: ['デビュー作品', '単体作品'] }),

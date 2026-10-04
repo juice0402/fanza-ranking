@@ -777,6 +777,25 @@ if want_hot:
 else:
     check("人気の作品が無いときは、いま人気の女優の欄を出さない", 'id="hot"' not in home_html)
 
+# 人気のジャンル（いま人気の女優の真下）: 同じ数え方を、ジャンルのページの一覧（TAG_PAGE_GENRES。ベスト・総集編は除く）のジャンルごとに足して3つ
+_tag_genres = re.findall(r"'([^']+)'", re.search(r"export const TAG_PAGE_GENRES = \[(.*?)\];", read(os.path.join(ROOT, "site", "src", "config.js")), re.S).group(1))
+_gboard = {}
+for c in sorted((c for c in everything if c in pop_new and pop_new[c] <= 100 and _top_from <= str(everything[c]["date"])[:10] <= JST_TODAY),
+                key=lambda c: (pop_new[c], -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:100]:
+    for g in dict.fromkeys(everything[c].get("genres") or []):
+        if g in _tag_genres and g != "ベスト・総集編":
+            sc, n = _gboard.get(g, (0, 0))
+            _gboard[g] = (sc + 101 - pop_new[c], n + 1)
+want_genres = [g for g, _ in sorted(_gboard.items(), key=lambda kv: (-kv[1][0], -kv[1][1], kv[0]))[:3]]
+genre_m = re.search(r'<ol class="hot-genres">(.*?)</ol>', home_html, re.S)
+got_genres = [htmllib.unescape(re.sub(r"<[^>]+>", "", n)) for n in re.findall(r'<span class="genre-name"><span class="visually-hidden">[^<]*</span>(.*?)</span>', genre_m.group(1), re.S)] if genre_m else []
+if want_genres:
+    check(f"人気のジャンル: {len(want_genres)}つが、いま人気の女優と同じ数え方の順に並ぶ（ジャンルのページの一覧のジャンルだけ）・いま人気の女優の真下", got_genres == want_genres and home_html.find('id="hot"') < home_html.find('id="genres"') < home_html.find('id="topics"'), (got_genres, want_genres))
+    bad_glink = [h for h in re.findall(r'<a class="genre-link" href="([^"]+)"', genre_m.group(1)) if not (h.startswith("/tag/") and os.path.isfile(page_file(h))) and not h.startswith("/search/?tag=")]
+    check("人気のジャンル: タップで、ジャンルのページ（無ければ作品検索のジャンル絞り込み）へ", not bad_glink, bad_glink[:3])
+else:
+    check("人気のジャンルが無いときは、欄を出さない", 'id="genres"' not in home_html)
+
 # 発売中の新作の、きょうの日付のすぐ下のコーナー（運命の作品・今週のデビュー作・誕生日の近い女優。運営者の希望。2026-10-05）
 rel_start = home_html.find('id="released"')
 days_in_rel = [m.start() for m in re.finditer(r'<section class="day"', home_html) if m.start() > rel_start and (home_html.find('id="upcoming"') < 0 or m.start() < home_html.find('id="upcoming"'))]

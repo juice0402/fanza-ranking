@@ -1,0 +1,23 @@
+---
+// 人気のジャンル（トップ。「いま人気の女優」の真下）: この1週間の人気作に多いジャンルを3つ（lib/topics.js の hotGenres）。
+// 1つずつ、そのジャンルでいちばん人気の作品の表紙（四角く切り出す）・順位・ジャンルの名前。タップで、ジャンルのページ（無ければ作品検索のジャンル絞り込み）へ
+import { tagByName } from '../lib/data.js';
+import { searchPath } from '../lib/search.js';
+
+const { list } = Astro.props;
+const hrefOf = (name) => tagByName.get(name)?.path ?? searchPath(name);
+---
+
+<ol class="hot-genres">
+  {list.map((g, i) => (
+    <li class="genre-cell">
+      <a class="genre-link" href={hrefOf(g.name)}>
+        <span class="genre-thumb">
+          <span class="genre-pic">{g.top?.image_url && <img class="genre-img" src={g.top.image_url} alt="" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'" />}</span>
+          <span class="hot-rank" aria-hidden="true">{i + 1}</span>
+        </span>
+        <span class="genre-name"><span class="visually-hidden">{i + 1}位 </span>{g.name}</span>
+      </a>
+    </li>
+  ))}
+</ol>
