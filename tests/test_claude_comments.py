@@ -487,22 +487,26 @@ grn = _ilu.module_from_spec(_spec)
 _spec.loader.exec_module(grn)
 grn.CATALOG_DIR = CAT_DIR
 grn.CATALOG_STATE_PATH = os.path.join(tmp, "catalog_state.json")
+grn.CATALOG_RANK_PATH = os.path.join(tmp, "catalog_rank.json")
 fresh_data()
 base_items = read_data()
-cat_state = {"items": {}, "cursor": 1, "cycle_done": ""}
+cat_state = {"items": {}, "ranks": {}, "cursor": 0, "cycle": 1, "cycle_done": ""}
 for i, x in enumerate(base_items[:6]):
     y = dict(x, cid=f"oldwork{i:03d}", date=f"20{19 + i % 3}-0{1 + i}-15 10:00:00", comment_kind="none", comment="", updated="2026-10-04",
              url=f"https://al.fanza.co.jp/?lurl=x{i}&af_id=x-990")
     cat_state["items"][y["cid"]] = grn.catalog_item(y)
+    cat_state["ranks"][y["cid"]] = [[500, 30, 7000, 2, 9000, None][i], 1] if i != 5 else None
 dup = grn.catalog_item(dict(base_items[0], comment_kind="none", comment=""))  # 毎日の更新の作品と同じ作品（サイトは毎日の更新のほうを使う）
 cat_state["items"][dup["cid"]] = dup
+cat_state["ranks"] = {c: r for c, r in cat_state["ranks"].items() if r}  # oldwork005 は順位が分からない作品
 grn.save_catalog(cat_state)  # 毎日の更新と同じ書き方で作る
 shard_before = {n: open(os.path.join(CAT_DIR, n), encoding="utf-8").read() for n in os.listdir(CAT_DIR)}
 lst = json.loads(run("list", "--limit", "40").stdout)
 cat_rows = [r for r in lst["items"] if r.get("catalog")]
 cur_rows = [r for r in lst["items"] if not r.get("catalog")]
 check("list: 毎日の更新の作品を先に、枠が余ったら過去作品（コメントがまだ無いもの）を出す", len(cur_rows) == len(pending) and len(cat_rows) == 6 and lst["items"].index(cat_rows[0]) == len(cur_rows), (len(cur_rows), len(cat_rows)))
-check("list: 過去作品は reason「過去作品」・catalog: true・発売済み・発売日の新しい順", all(r["reason"] == "過去作品" and r["status"] == "発売済み" for r in cat_rows) and [r["date"] for r in cat_rows] == sorted((r["date"] for r in cat_rows), reverse=True), [(r["cid"], r["date"]) for r in cat_rows])
+check("list: 過去作品は reason「過去作品」・catalog: true・発売済み・FANZAの人気順の順位が上の作品から（順位が分からない作品は最後）・順位そのものは出さない",
+      all(r["reason"] == "過去作品" and r["status"] == "発売済み" and "rank" not in r for r in cat_rows) and [r["cid"] for r in cat_rows] == ["oldwork003", "oldwork001", "oldwork000", "oldwork002", "oldwork004", "oldwork005"], [r["cid"] for r in cat_rows])
 check("list: 毎日の更新の作品と同じ作品は、過去作品として出さない", dup["cid"] not in {r["cid"] for r in cat_rows})
 check("list: total_pending に過去作品も入る・catalog_pending は過去作品の数", lst["total_pending"] == len(pending) + 6 and lst["catalog_pending"] == 6, (lst["total_pending"], lst["catalog_pending"]))
 lst_small = json.loads(run("list", "--limit", str(len(pending) - 1)).stdout)

@@ -1,7 +1,7 @@
 // サイトのファイル数を、Cloudflare Pages の無料プランの上限（2万ファイル）に収める計画（画面に依存しない。tests/test_plan.mjs）。
 // 過去作品（カタログ）を集めていくと、作品ページだけで2万をこえるため、作品ページは、優先順に、残りの枠の数だけ作る。
 //   優先順: ①毎日の更新で載せた作品（新作・予約。コメントがある） ②コメントのある過去作品 ③そのほかの過去作品
-//   同じ順位の中では、発売日の新しい順
+//   同じ中では、過去作品は FANZAの人気順の順位が上の作品から（質の高い作品のページを先に作る。運営者の希望。2026-10-04）、そのあとは発売日の新しい順
 // 作品ページの無い作品は、一覧・出演者/メーカーのページから、FANZAの作品ページへ直接リンクする（itemHref）。
 import { ARCHIVE_PAGE_SIZE, FILE_BUDGET, FIXED_FILES } from '../config.js';
 import { itemPath } from './items.js';
@@ -11,13 +11,22 @@ export function nonItemFileCount({ actress = 0, maker = 0, month = 0, tag = 0, w
   return fixed + actress + maker + month + tag + weekly + ics + Math.max(1, Math.ceil(archiveItems / pageSize));
 }
 
+/** 過去作品の人気順の順位（data/catalog_rank.json の {cid: [順位, 一回りの番号]}）。分からなければ null */
+export function catalogRank(ranks, cid) {
+  const v = ranks && typeof ranks === 'object' ? ranks[cid] : null;
+  return Array.isArray(v) && Number.isInteger(v[0]) && v[0] >= 1 ? v[0] : null;
+}
+
 /** 作品ページの優先順（小さいほど先）: 毎日の更新で載せた作品 → コメントのある過去作品 → そのほかの過去作品 */
 export const pagePriority = (item) => (!item.catalog ? 0 : item.comment ? 1 : 2);
+
+// 同じ優先順の中の並び: 過去作品は、人気順の順位が上の作品から（順位が分からない作品は、そのあと）。そのあとは発売日の新しい順
+const rankOrder = (a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity) || 0;
 
 /** 作品ページを作る作品の cid の集まり。budget: 作品ページに使える数 */
 export function pagedCids(items, budget) {
   const sorted = [...items].sort(
-    (a, b) => pagePriority(a) - pagePriority(b) || b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid),
+    (a, b) => pagePriority(a) - pagePriority(b) || rankOrder(a, b) || b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid),
   );
   return new Set(sorted.slice(0, Math.max(0, Math.floor(budget))).map((i) => i.cid));
 }

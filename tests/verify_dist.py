@@ -19,6 +19,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "site", "dist")
 DATA = os.path.join(ROOT, "site", "src", "data", "new_releases.json")
 CATALOG_DIR = os.path.join(ROOT, "site", "src", "data", "catalog")  # 過去作品（発売月ごとのファイル。まだ無いこともある）
+CATALOG_RANK = os.path.join(ROOT, "site", "src", "data", "catalog_rank.json")  # 過去作品の人気順の順位 {cid: [順位, 一回りの番号]}
 FILE_LIMIT = 20000  # Cloudflare Pages の無料プランの、1つのサイトのファイル数の上限
 ROUNDUPS = os.path.join(ROOT, "site", "src", "data", "roundups.json")
 ACTRESSES = os.path.join(ROOT, "site", "src", "data", "actresses.json")
@@ -136,6 +137,11 @@ for shard in sorted(glob.glob(os.path.join(CATALOG_DIR, "*.json"))):
     catalog_rows.extend(loaded if isinstance(loaded, list) else [])
 catalog = {c: x for c, x in usable_rows(catalog_rows).items() if c not in curated and fanza_https(x.get("url"), ["fanza.co.jp", "dmm.co.jp"])}
 everything = {**curated, **catalog}
+try:
+    _ranks = json.load(open(CATALOG_RANK, encoding="utf-8"))
+except (OSError, ValueError):
+    _ranks = {}
+catalog_rank = {c: v[0] for c, v in (_ranks.items() if isinstance(_ranks, dict) else []) if isinstance(v, list) and v and isinstance(v[0], int) and v[0] >= 1}
 has_comment = lambda x: bool(str(x.get("comment") or "").strip())
 
 print("■ ページが揃っている")
@@ -155,16 +161,18 @@ check(f"サイト全体のファイル数（{dist_files}）が {FILE_LIMIT} 以�
 
 
 def page_rank(cid):
-    """作品ページの優先順（site/src/lib/plan.js と同じ考え方。小さいほど先）: 毎日の更新で載せた作品 → コメントのある過去作品 → そのほか、同じ中では発売日の新しい順"""
+    """作品ページの優先順（site/src/lib/plan.js と同じ考え方。小さいほど先）: 毎日の更新で載せた作品 → コメントのある過去作品 → そのほか、
+    同じ中では、過去作品は人気順の順位が上の作品から（順位が分からない作品はそのあと）、そのあとは発売日の新しい順"""
     x = everything[cid]
-    return (0 if cid in curated else 1 if has_comment(x) else 2, -int(str(x["date"])[:10].replace("-", "")))
+    rank = catalog_rank.get(cid, float("inf")) if cid in catalog else float("inf")
+    return (0 if cid in curated else 1 if has_comment(x) else 2, rank, -int(str(x["date"])[:10].replace("-", "")))
 
 
 unpaged = set(everything) - paged
 if unpaged:
     worst_paged = max((page_rank(c) for c in paged), default=(-1, 0))
     best_unpaged = min(page_rank(c) for c in unpaged)
-    check(f"作品ページの無い作品（{len(unpaged)}本）は、優先順があとのものだけ（毎日の更新で載せた作品→コメントのある過去作品→新しい順）", worst_paged <= best_unpaged, (worst_paged, best_unpaged))
+    check(f"作品ページの無い作品（{len(unpaged)}本）は、優先順があとのものだけ（毎日の更新で載せた作品→コメントのある過去作品→人気順の順位が上の作品）", worst_paged <= best_unpaged, (worst_paged, best_unpaged))
     budget = int(re.search(r"export const FILE_BUDGET = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1))
     fixed = int(re.search(r"export const FIXED_FILES = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1))
     # 作品ページ以外のファイルは見積もり（FIXED_FILES）より少ないので、そのぶん上限より少し下になる。大きく余らせていないことだけを見る

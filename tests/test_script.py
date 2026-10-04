@@ -258,9 +258,14 @@ class Env:
         return FakeResponse({"candidates": [{"content": {"parts": [{"text": "「テスト用のAIコメントです。**上品**に紹介します。」\n"}]}}]})
 
 
-def load_module(data_path, api_id="fake", gemini="fake", max_calls=None, directory_calls=0, catalog_calls=0):
+def load_module(data_path, api_id="fake", gemini="fake", max_calls=None, directory_calls=0, catalog_calls=0, catalog_top=0, catalog_limit=None):
     os.environ["DIRECTORY_CALLS"] = str(directory_calls)  # 女優検索の名簿の一覧取得（ふだんのシナリオでは呼ばない。専用のシナリオで試す）
-    os.environ["CATALOG_CALLS"] = str(catalog_calls)  # 過去作品の一覧取得（同じく、専用のシナリオで試す）
+    os.environ["CATALOG_CALLS"] = str(catalog_calls)  # 過去作品の一覧取得（上位より下を続きから。同じく、専用のシナリオで試す）
+    os.environ["CATALOG_TOP_CALLS"] = str(catalog_top)  # 過去作品: その日の人気順の上位を取り直す回数
+    if catalog_limit is None:
+        os.environ.pop("CATALOG_LIMIT", None)  # 集める深さ（既定の3万本）
+    else:
+        os.environ["CATALOG_LIMIT"] = str(catalog_limit)
     os.environ["API_ID"] = api_id
     os.environ["GEMINI_API_KEY"] = gemini
     os.environ["DATA_PATH"] = data_path
@@ -1102,12 +1107,13 @@ st_old = m_d4.load_directory(TODAY_STR)
 check("古い形のファイル（最後に見かけた日・一回りの始まりが無い）も読める（今日見かけたことにして、まだ誰も外さない）",
       st_old["rows"]["123"]["seen"] == TODAY_STR and st_old["cycle_start"] == TODAY_STR and st_old["prev_cycle_start"] == "" and st_old["cursor"] == {"filter": 1, "offset": 101}, st_old)
 
-print("\n■ 過去作品（FANZAの人気順に、発売済みの作品を毎日少しずつ集める。Gemini は使わない）")
+print("\n■ 過去作品（FANZAの人気順の上位を集める。毎日その日の上位を取り直す。Gemini は使わない）")
 c_dir = scenario_dir("catalog")
 c_seed = json.load(open(SAVED_DATA, encoding="utf-8"))
 c_path = write_archive(c_dir, c_seed)
 cat_dir = os.path.join(c_dir, "catalog")
 cat_state = os.path.join(c_dir, "catalog_state.json")
+cat_rank = os.path.join(c_dir, "catalog_rank.json")
 
 
 def catalog_rows():
@@ -1118,13 +1124,20 @@ def catalog_rows():
     return rows_
 
 
+def cat_offsets(env_):
+    return [q["offset"] for ep, q in env_.queries if ep == "ItemList" and q.get("sort") == "rank" and "offset" in q]
+
+
+def past_item(n, **kw):
+    return make_api_item(f"cat{n:05d}", -(40 + n * 3), actress=(f"昔の人{n % 7}",), maker=f"昔のメーカー{n % 3}", title=f"過去作品 {n}", **kw)
+
+
 env_c = Env()
 env_c.catalog_overrides = {5: make_api_item("bibivr00176", -1, actress=("蓮実クレア",), maker="KMPVR-bibi-")}  # 毎日の更新で載せた作品と同じ作品
-before_c = open(c_path, encoding="utf-8").read()
-m_c = load_module(c_path, catalog_calls=2)
+m_c = load_module(c_path, catalog_calls=1, catalog_top=1)
 code_c, out_c = run_main_capture(m_c, env_c)
 cat_q = [q for ep, q in env_c.queries if ep == "ItemList" and q.get("sort") == "rank" and "offset" in q]
-check("正常終了(0)・一覧は、決めた回数（2回）だけ、人気順・100本ずつ・1本目と101本目から取りに行く",
+check("正常終了(0)・まずその日の人気順の上位（1本目から）、次にその下を続きから（101本目から）。人気順・100本ずつ・発売済みだけ",
       code_c == 0 and [(q["hits"], q["offset"]) for q in cat_q] == [("100", "1"), ("100", "101")], (code_c, cat_q[:2]))
 crow = catalog_rows()
 check("過去作品: 200本のうち、毎日の更新で載せた作品と同じ1本を除いた199本", len(crow) == 199 and "bibivr00176" not in crow, len(crow))
@@ -1132,15 +1145,18 @@ check("過去作品は、発売月ごとのファイル（YYYY-MM.json）に入�
 check("過去作品の形: コメントは無し（comment_kind: none）・更新日は今日・サンプル画像は8枚まで",
       all(r_["comment"] == "" and r_["comment_kind"] == "none" and r_["updated"] == TODAY_STR and len(r_["sample_images"]) <= 8 for _, r_ in crow.values()))
 same_keys = set(m_c.normalize_loaded(c_seed[0]))
-check("過去作品の作品の形（項目）は、毎日の更新の作品と同じ", all(set(r_) == same_keys for _, r_ in crow.values()), sorted(set(next(iter(crow.values()))[1]) ^ same_keys))
+check("過去作品の作品の形（項目）は、毎日の更新の作品と同じ（順位は作品に入れず、別のファイルに）", all(set(r_) == same_keys for _, r_ in crow.values()), sorted(set(next(iter(crow.values()))[1]) ^ same_keys))
 some_file = os.path.join(cat_dir, sorted(os.listdir(cat_dir))[0])
 check("ファイルは1作品1行（毎日の差分が、変わった作品の行だけになるように）", open(some_file, encoding="utf-8").read().count("\n") == len(json.load(open(some_file, encoding="utf-8"))) + 2)
+rk = json.load(open(cat_rank, encoding="utf-8"))
+check("順位（catalog_rank.json）: 作品ごとに [人気順の順位, 見かけた一回りの番号]。1作品1行・cid の順",
+      len(rk) == 199 and rk["cat00010"] == [10, 1] and rk["cat00150"] == [150, 1] and list(rk) == sorted(rk) and open(cat_rank, encoding="utf-8").read().count("\n") == 201, (len(rk), rk.get("cat00010")))
 st_c = json.load(open(cat_state, encoding="utf-8"))
-check("続きの場所（catalog_state.json）: 次は201本目から・まだ一回りしていない・本数", st_c == {"cursor": 201, "cycle_done": "", "items": 199}, st_c)
+check("続きの場所（catalog_state.json）: 次は201本目から・一回り目・まだ一回りしていない・集める深さ・本数", st_c == {"cursor": 201, "cycle": 1, "cycle_done": "", "limit": 30000, "items": 199}, st_c)
 check("毎日の更新のデータ（new_releases.json）には、過去作品を入れない", all(not d["cid"].startswith("cat") for d in json.load(open(c_path, encoding="utf-8"))))
-check("Gemini は使わない（過去作品の分の呼び出しが無い）・画面に結果が出る", "過去作品: 一覧を2回取得" in out_c and "うち新しく199本" in out_c, out_c[-300:])
+check("画面に結果が出る", "過去作品: 一覧を2回取得" in out_c and "うち新しく199本" in out_c and "上位30000本まで" in out_c, out_c[-300:])
 
-# 2回目: 続きから。250本目で終わり（100本より少ない）→ 一回りして1本目へ。Claude のコメント・発売日の変更・毎日の更新に入った作品
+# 2回目: その日の人気順で、上位が入れ替わる（150本目だった作品が1位に・1位だった作品が150本目に）。続きは201本目から → 250本目で終わり → 一回り
 first_name, first_row = crow["cat00010"]
 first_rows = json.load(open(os.path.join(cat_dir, first_name), encoding="utf-8"))
 for r_ in first_rows:
@@ -1153,57 +1169,98 @@ for r_ in first_rows:
 json.dump(first_rows, open(os.path.join(cat_dir, first_name), "w", encoding="utf-8"), ensure_ascii=False)
 moved = make_api_item("cat00220", -(40 + 220 * 3) + 400, actress=("昔の人3",), title="過去作品 220")  # 発売日が変わった（別の月へ）
 env_c2 = Env()
-env_c2.catalog_overrides = {220: moved}
+env_c2.catalog_overrides = {1: past_item(150), 150: past_item(1), 220: moved}
 c_seed2 = c_seed + [dict(c_seed[0], cid="cat00011", title="毎日の更新に入った過去作品")]
 write_archive(c_dir, c_seed2)
-m_c2 = load_module(c_path, catalog_calls=2)
+m_c2 = load_module(c_path, catalog_calls=2, catalog_top=1, catalog_limit=250)  # 集める深さを250本にして、一回りを試す
 code_c2, out_c2 = run_main_capture(m_c2, env_c2)
-cat_q2 = [q["offset"] for ep, q in env_c2.queries if ep == "ItemList" and q.get("sort") == "rank" and "offset" in q]
 st_c2 = json.load(open(cat_state, encoding="utf-8"))
 crow2 = catalog_rows()
-check("2回目は続きから（201本目）。最後（250本目）まで行ったら、一回りして1本目から（その日を cycle_done に）",
-      cat_q2 == ["201", "1"] and st_c2["cursor"] == 101 and st_c2["cycle_done"] == TODAY_STR, (cat_q2, st_c2))
+rk2 = json.load(open(cat_rank, encoding="utf-8"))
+check("2回目: 上位（1本目から）→ 続き（201本目から）→ 250本目で終わり、一回りして上位の下（101本目）へ。一回りした日・一回りの番号が進む",
+      cat_offsets(env_c2) == ["1", "201", "101"] and st_c2["cursor"] == 201 and st_c2["cycle"] == 2 and st_c2["cycle_done"] == TODAY_STR and st_c2["limit"] == 250, (cat_offsets(env_c2), st_c2))
+check("その日の人気順で、順位が入れ替わる（150本目だった作品が1位・1位だった作品が150本目）",
+      rk2["cat00150"][0] == 1 and rk2["cat00001"][0] == 150, (rk2.get("cat00150"), rk2.get("cat00001")))
 check("Claude が書いたコメントは残す・定型文などは空に戻す", crow2["cat00010"][1]["comment_kind"] == "claude" and crow2["cat00012"][1]["comment"] == "" and crow2["cat00012"][1]["comment_kind"] == "none")
 # 1回目の199本 ＋ 201〜250本目の50本 ＋ 5本目（1回目は毎日の更新の作品に差し替えていた）の1本 − 毎日の更新に入った1本 = 249本
-check("毎日の更新に入った作品は、過去作品から外す（毎日の更新のほうを使う）", "cat00011" not in crow2 and "cat00005" in crow2 and len(crow2) == 249, len(crow2))
+check("毎日の更新に入った作品は、過去作品から外す（順位からも外す）", "cat00011" not in crow2 and "cat00011" not in rk2 and "cat00005" in crow2 and len(crow2) == 249 and len(rk2) == 249, len(crow2))
 check("発売日が変わった作品は、新しい発売月のファイルへ移る（前の月のファイルからは消える）",
       crow2["cat00220"][0] == moved["date"][:7] + ".json" and crow2["cat00220"][1]["date"] == moved["date"] and crow2["cat00220"][1]["updated"] == TODAY_STR, crow2["cat00220"][0])
 check("作品が無くなった月のファイルは消す（空のファイルを残さない）", all(json.load(open(os.path.join(cat_dir, n_), encoding="utf-8")) for n_ in os.listdir(cat_dir)))
+
+# 人気の上位から外れた作品を外す（2回続けて一回りで見かけなかった作品。Claude がコメントを書いた作品は残す）
+base_p = {f"cat{n:05d}": dict(crow2[f"cat{n:05d}"][1]) for n in range(20, 40)}  # いまの一回りで見かけた作品（外さない）
+st_p = {"items": {**base_p, **{c: dict(crow2[c][1]) for c in ("cat00002", "cat00003", "cat00010")}},
+        "ranks": {**{c: [50, 3] for c in base_p}, "cat00002": [2, 1], "cat00003": [3, 2], "cat00010": [10, 1]}, "cursor": 101, "cycle": 3, "cycle_done": ""}
+n_p = m_c2.prune_catalog(st_p)
+check("一回りが終わったとき、2回続けて見かけなかった作品だけ外す（1回だけ見かけなかった作品・Claude がコメントを書いた作品は残す）",
+      n_p == 1 and "cat00002" not in st_p["items"] and "cat00002" not in st_p["ranks"] and {"cat00003", "cat00010"} <= set(st_p["items"]) and len(st_p["items"]) == 22, (n_p, len(st_p["items"])))
+st_mass = {"items": {c: dict(crow2[c][1]) for c in list(crow2)[:30]}, "ranks": {c: [1, 1] for c in list(crow2)[:30]}, "cursor": 101, "cycle": 3, "cycle_done": ""}
+for c in list(st_mass["items"])[:5]:
+    st_mass["items"][c]["comment_kind"] = "none"
+buf_m = io.StringIO()
+with contextlib.redirect_stdout(buf_m):
+    n_mass = m_c2.prune_catalog(st_mass)
+check("一度に外れる作品が多すぎる（2割をこえる）ときは、APIの答えがおかしかったものとして、外さない", n_mass == 0 and len(st_mass["items"]) == 30 and "多すぎます" in buf_m.getvalue(), (n_mass, buf_m.getvalue()[-120:]))
 
 # 失敗のとき
 broken_name = sorted(os.listdir(cat_dir))[0]
 open(os.path.join(cat_dir, broken_name), "w", encoding="utf-8").write("[{broken")
 snapshot = {n_: open(os.path.join(cat_dir, n_), encoding="utf-8").read() for n_ in os.listdir(cat_dir)}
 env_c3 = Env()
-m_c3 = load_module(c_path, catalog_calls=2)
+m_c3 = load_module(c_path, catalog_calls=2, catalog_top=1)
 code_c3, out_c3 = run_main_capture(m_c3, env_c3)
 check("過去作品のファイルが壊れていたら、過去作品の更新だけやめる（ほかの更新は続ける・ファイルは上書きしない・一覧も取りに行かない）",
       code_c3 == 0 and {n_: open(os.path.join(cat_dir, n_), encoding="utf-8").read() for n_ in os.listdir(cat_dir)} == snapshot
-      and not any(ep == "ItemList" and "offset" in q for ep, q in env_c3.queries), out_c3[-200:])
+      and not cat_offsets(env_c3), out_c3[-200:])
 os.remove(os.path.join(cat_dir, broken_name))
+rank_text = open(cat_rank, encoding="utf-8").read()
+open(cat_rank, "w", encoding="utf-8").write("{broken")
+env_c3b = Env()
+m_c3b = load_module(c_path, catalog_calls=2, catalog_top=1)
+code_c3b, out_c3b = run_main_capture(m_c3b, env_c3b)
+check("順位のファイルが壊れていても、過去作品の更新だけやめる（上書きしない）", code_c3b == 0 and open(cat_rank, encoding="utf-8").read() == "{broken" and not cat_offsets(env_c3b), out_c3b[-200:])
+open(cat_rank, "w", encoding="utf-8").write(rank_text)
+# 一覧が、決めた深さ（既定の3万本）より手前で終わった（250本しか無い）: 一回りに数えず、続きの場所も進めない
+st_before_short = json.load(open(cat_state, encoding="utf-8"))
+env_cs = Env()
+m_cs = load_module(c_path, catalog_calls=2, catalog_top=1)
+code_cs, out_cs = run_main_capture(m_cs, env_cs)
+st_after_short = json.load(open(cat_state, encoding="utf-8"))
+check("一覧が決めた深さより手前で終わったら（APIの答えがおかしい）、一回りに数えず・外さず・続きの場所も進めない（次の日にもう一度）",
+      code_cs == 0 and cat_offsets(env_cs) == ["1", "201"] and st_after_short["cursor"] == 201 and st_after_short["cycle"] == st_before_short["cycle"] and "手前で終わりました" in out_cs,
+      (cat_offsets(env_cs), st_after_short))
 cursor_before = json.load(open(cat_state, encoding="utf-8"))["cursor"]
 env_c4 = Env()
 env_c4.catalog_fail = True
-m_c4 = load_module(c_path, catalog_calls=10)
+m_c4 = load_module(c_path, catalog_calls=10, catalog_top=1)
 code_c4, out_c4 = run_main_capture(m_c4, env_c4)
 check("一覧の取得が続けて失敗したら、その回はやめる（3回まで。1回につき3回まで試すので、問い合わせは9回）・続きの場所は進めない・ほかの更新は続ける",
-      code_c4 == 0 and sum(1 for ep, q in env_c4.queries if ep == "ItemList" and "offset" in q) == 9 and json.load(open(cat_state, encoding="utf-8"))["cursor"] == cursor_before, out_c4[-300:])
+      code_c4 == 0 and len(cat_offsets(env_c4)) == 9 and json.load(open(cat_state, encoding="utf-8"))["cursor"] == cursor_before, out_c4[-300:])
 env_c5 = Env()
-m_c5, code_c5, out_c5 = run_with(c_path, env_c5, "--refresh-only", catalog_calls=1)
+m_c5, code_c5, out_c5 = run_with(c_path, env_c5, "--refresh-only", catalog_calls=1, catalog_top=1)
 check("取り直しだけ（--refresh-only）のときも、過去作品を集める（Gemini は使わない）",
       code_c5 == 0 and env_c5.gemini_calls == 0 and "過去作品: 一覧を" in out_c5, out_c5[-300:])
-# 人気順の上限（offset は50000まで）
-st_end = {"items": {}, "cursor": 49901, "cycle_done": ""}
+# 集める深さ（CATALOG_LIMIT）と、APIの上限（offset は50000まで）
+st_end = {"items": {}, "ranks": {}, "cursor": 201, "cycle": 1, "cycle_done": ""}
 env_c6 = Env()
 env_c6.catalog_total = 60000
-m_c6 = load_module(c_path, catalog_calls=2)
+m_c6 = load_module(c_path)
 m_c6.urllib.request.urlopen = env_c6.urlopen
-res6 = m_c6.update_catalog(st_end, {}, TODAY)
-offs6 = [q["offset"] for ep, q in env_c6.queries if ep == "ItemList" and "offset" in q]
-check("人気順の5万本目まで行ったら（offset は50000まで）、一回りして1本目へ", offs6 == ["49901", "1"] and st_end["cursor"] == 101 and st_end["cycle_done"] == TODAY_STR, (offs6, st_end["cursor"]))
+m_c6.CATALOG_LIMIT = 300
+m_c6.update_catalog(st_end, {}, TODAY, top_calls=1, calls=2)
+check("集める深さ（上位300本まで）で一回りして、上位の下（101本目）へ戻る", cat_offsets(env_c6) == ["1", "201", "101"] and st_end["cursor"] == 201 and st_end["cycle"] == 2 and len(st_end["items"]) == 300, (cat_offsets(env_c6), st_end["cursor"], len(st_end["items"])))
+st_max = {"items": {}, "ranks": {}, "cursor": 49901, "cycle": 1, "cycle_done": ""}
+env_c7 = Env()
+env_c7.catalog_total = 60000
+m_c6.urllib.request.urlopen = env_c7.urlopen
+m_c6.CATALOG_LIMIT = 50000
+m_c6.update_catalog(st_max, {}, TODAY, top_calls=0, calls=2)
+check("人気順の5万本目まで行ったら（offset は50000まで）、一回りして1本目へ", cat_offsets(env_c7) == ["49901", "1"] and st_max["cursor"] == 101 and st_max["cycle_done"] == TODAY_STR, (cat_offsets(env_c7), st_max["cursor"]))
+check("集める深さの既定は3万本（無料プランの2万ファイルの中で、作品ページを作れる割合を高くするため）・APIの上限をこえない", m_c4.CATALOG_LIMIT == 30000 and m_c4.CATALOG_MAX_OFFSET == 50000)
 check("過去作品の1件: 発売日（YYYY-MM-DD）が無い・タイトルが無い作品は入れない", m_c6.catalog_item(dict(c_seed[0], date="")) is None and m_c6.catalog_item(dict(c_seed[0], title="")) is None and m_c6.catalog_item("x") is None)
 check("過去作品の1件: Gemini の下書き（ai）も、空にする（過去作品のコメントは Claude が書いたものだけ）", m_c6.catalog_item(dict(c_seed[0], comment_kind="ai", comment="下書き"))["comment_kind"] == "none")
-check("CATALOG_CALLS=0 なら、過去作品には触らない（ファイルも作らない）", not os.path.exists(os.path.join(scenario_dir("refetch"), "catalog")))
+check("過去作品を取りに行かない設定（回数が0）なら、過去作品には触らない（ファイルも作らない）", not os.path.exists(os.path.join(scenario_dir("refetch"), "catalog")) and not os.path.exists(os.path.join(scenario_dir("refetch"), "catalog_rank.json")))
 
 print("\n■ ソースの安全チェック")
 src = open(SCRIPT, encoding="utf-8").read()

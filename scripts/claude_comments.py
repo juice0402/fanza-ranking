@@ -11,7 +11,7 @@ Gemini が書けなかった作品は、定型文（comment_kind: template）の
         ・定型文のままの作品（reason: 定型文）
         ・Gemini の下書きのままの作品（reason: 下書きを仕上げる。draft に下書きが入る）
         ・発売日をすぎたのに、コメントに「予約」「発売予定」「発売前」などの言い方が残っている作品（reason: 予約の言い方が残っている）
-        ・枠が余ったら、過去作品（site/src/data/catalog/YYYY-MM.json）のコメントがまだ無い作品を、発売日の新しい順に（reason: 過去作品・catalog: true）
+        ・枠が余ったら、過去作品（site/src/data/catalog/YYYY-MM.json）のコメントがまだ無い作品を、FANZAの人気順の順位が上の作品から（reason: 過去作品・catalog: true）
   python3 scripts/claude_comments.py apply コメント.json [--dry-run]
       {"cid": "コメント", ...} を点検して、問題が無ければ new_releases.json（過去作品なら、その発売月のファイル）に書き込む
       （1件でも問題があれば何も書き込まない）
@@ -34,6 +34,7 @@ DATA_PATH = os.environ.get("DATA_PATH", os.path.join(ROOT, "site", "src", "data"
 # 過去作品（get_new_releases.py が FANZAの人気順に集める。発売月ごとのファイル YYYY-MM.json・1作品1行。コメントは無し（none）か、Claude が書いたもの）
 CATALOG_DIR = os.environ.get("CATALOG_DIR", os.path.join(os.path.dirname(DATA_PATH), "catalog"))
 CATALOG_FILE = re.compile(r"^\d{4}-\d{2}\.json$")
+CATALOG_RANK_PATH = os.environ.get("CATALOG_RANK_PATH", os.path.join(os.path.dirname(DATA_PATH), "catalog_rank.json"))  # 過去作品の人気順の順位
 JST = timezone(timedelta(hours=9))
 
 MIN_LEN = 100           # コメントの文字数の下限（目安は100〜160文字。2〜3文。運営者の希望で、2026-10-04 に長くした。試運転で90字前後が多かったので、下限を100に）
@@ -240,6 +241,18 @@ def save_catalog_shard(name, rows):
     os.replace(path + ".tmp", path)
 
 
+def load_catalog_ranks():
+    """過去作品の人気順の順位 {cid: 順位}（無い・読めないときは空。並べる順に使うだけなので、止めない）"""
+    try:
+        with open(CATALOG_RANK_PATH, encoding="utf-8") as f:
+            raw = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    return {c: v[0] for c, v in raw.items() if isinstance(v, list) and v and isinstance(v[0], int) and not isinstance(v[0], bool) and v[0] >= 1}
+
+
 def catalog_index(shards, curated_cids):
     """過去作品の cid → (ファイル名, 作品)。毎日の更新で載せた作品と同じ作品は除く（サイトは、毎日の更新のほうを使う）"""
     index = {}
@@ -315,13 +328,15 @@ def cmd_list(args):
     urgent = [x for x in todo if pending_reason(x, today) != "下書きを仕上げる"]
     drafts = [x for x in todo if pending_reason(x, today) == "下書きを仕上げる"]
     shown = (ordered(urgent) + ordered(drafts))[: max(args.limit, 0)]
-    # 毎日の更新で載せた作品を先に。枠が余ったら、過去作品（コメントがまだ無いもの）を、発売日の新しい順に
-    # （サイトは、過去作品の作品ページを新しい順に作るので、ページがある作品から書くことになる。コメントが付くと、検索エンジンにも出る）
+    # 毎日の更新で載せた作品を先に。枠が余ったら、過去作品（コメントがまだ無いもの）を、FANZAの人気順の順位が上の作品から
+    # （順位が分からない作品は、そのあとに発売日の新しい順。サイトも、過去作品の作品ページを同じ順に作る。コメントが付くと、検索エンジンにも出る）
     catalog = catalog_index(load_catalog_raw(), {x["cid"] for x in items})
     catalog_todo = pending_items([x for _, x in catalog.values()], today)
+    ranks = load_catalog_ranks()
     room = max(args.limit, 0) - len(shown)
     if room > 0:
-        shown += sorted(catalog_todo, key=lambda x: (x.get("date") or "", x["cid"]), reverse=True)[:room]
+        by_date = sorted(catalog_todo, key=lambda x: (x.get("date") or "", x["cid"]), reverse=True)
+        shown += sorted(by_date, key=lambda x: ranks.get(x["cid"], float("inf")))[:room]  # 安定した並べ替えなので、同じ順位の中は新しい順のまま
 
     allowed = set(safe_genres_from_config()) | set(COMMENT_EXTRA_GENRES)
     rows = []
@@ -344,7 +359,7 @@ def cmd_list(args):
             "sample_images": len(x.get("sample_images") or []),
         }
         if x["cid"] in catalog:
-            row["catalog"] = True  # 過去作品（data/catalog/）。書き方は同じ
+            row["catalog"] = True  # 過去作品（data/catalog/）。書き方は同じ（人気順の順位は、日がたつと変わる・評価になるので出さない）
         # タイトル: 内容にさらっと触れるための手がかり（安全チェックを通ったものだけ。通らなければ title_hidden: true で、内容には触れない）
         title = safe_title(x)
         row["min_len"] = min_length_for(x)  # この作品のコメントの文字数の下限（書ける事実が少ない作品は80）
