@@ -1,31 +1,45 @@
-// 「運命の1本」（トップ）: ボタンを押すと、人気の作品（ひとことコメントのある作品）から1本をえらんで見せる。
-// 候補はページの中の小さなデータ（#gacha-data。site/src/lib/gacha.js が作る）。「VR作品を隠す」を選んでいるときは、VR作品を候補から外す。
-// 直前に出た作品は、しばらく出さない。動きを減らす設定の人には、表紙が入れかわる演出をしない。
+// 「運命の作品」（トップ）: スロットマシンのように、3つの窓で表紙が回って、左から順に止まり、人気の作品（ひとことコメントのある作品）が3本決まる。
+// 候補はページの中の小さなデータ（#gacha-data。site/src/lib/gacha.js が作る）。「VR作品を隠す」のときはVR作品を、「単体作品のみ表示」のときは
+// 単体作品でない作品を、候補から外す。直前に出た作品は、しばらく出さない。動きを減らす設定の人には、回す演出をしない。
 // JavaScript が使えないときは、欄ごと出さない（ボタンが動かないため）。DOM は textContent で作る
 (function () {
-  var RECENT = 6; // 直前に出たこの本数は、続けて出さない
-  var SPINS = 9; // 決まるまでに入れかわる表紙の数
-  var SPIN_MS = 70;
+  var REELS = 3; // 窓の数（決まる作品の数）
+  var RECENT = 9; // 直前に出たこの本数は、続けて出さない
+  var TICK_MS = 80; // 回っているあいだ、表紙が入れかわる間隔
+  var STOP_MS = [700, 1150, 1600]; // 左から順に止まる時刻
 
-  // 候補の番号（0〜count-1）から1つ。recent（直前に出た番号）は、ほかに候補があるあいだは選ばない。rand は 0以上1未満
-  function pick(candidates, recent, rand) {
-    if (!candidates.length) return -1;
-    var fresh = candidates.filter(function (n) {
-      return recent.indexOf(n) < 0;
+  // 候補の番号の中から、重ならない n 本。recent（直前に出た番号）は、ほかに候補があるあいだは選ばない。rand() は 0以上1未満
+  function pickMany(candidates, recent, rand, n) {
+    var fresh = candidates.filter(function (c) {
+      return recent.indexOf(c) < 0;
     });
-    var from = fresh.length ? fresh : candidates;
-    return from[Math.min(from.length - 1, Math.floor(rand * from.length))];
+    var stale = candidates.filter(function (c) {
+      return recent.indexOf(c) >= 0;
+    });
+    var out = [];
+    [fresh, stale].forEach(function (from) {
+      var rest = from.slice();
+      while (out.length < n && rest.length) {
+        var at = Math.min(rest.length - 1, Math.floor(rand() * rest.length));
+        out.push(rest.splice(at, 1)[0]);
+      }
+    });
+    return out;
   }
 
-  // 候補にする番号（VR作品を隠すときは、VRでない作品だけ）
-  function eligible(pool, hideVr) {
+  // 候補にする番号（VR作品を隠すときはVRでない作品、単体作品のみのときは単体作品だけ）
+  function eligible(pool, hideVr, onlySolo) {
     var out = [];
-    for (var i = 0; i < pool.length; i++) if (!(hideVr && pool[i].v === 1)) out.push(i);
+    for (var i = 0; i < pool.length; i++) {
+      if (hideVr && pool[i].v === 1) continue;
+      if (onlySolo && pool[i].o !== 1) continue;
+      out.push(i);
+    }
     return out;
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { pick: pick, eligible: eligible, RECENT: RECENT }; // tests/test_gacha.mjs 用
+    module.exports = { pickMany: pickMany, eligible: eligible, REELS: REELS, RECENT: RECENT }; // tests/test_gacha.mjs 用
     return;
   }
   if (typeof document === 'undefined') return;
@@ -42,15 +56,16 @@
   pool = pool.filter(function (row) {
     return row && typeof row.c === 'string' && /^[A-Za-z0-9_-]+$/.test(row.c) && typeof row.t === 'string' && typeof row.i === 'string' && /^https:\/\/[^/]*dmm\.co\.jp\//.test(row.i);
   });
-  if (!pool.length) return;
-  var stage = section.querySelector('.gacha-stage');
+  if (pool.length < REELS) return;
+  var reels = section.querySelectorAll('.reel');
   var button = section.querySelector('[data-gacha-draw]');
-  if (!stage || !button) return;
+  if (reels.length !== REELS || !button) return;
   section.hidden = false;
 
   var recent = [];
   var busy = false;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var root = document.documentElement;
 
   function el(tag, cls, text) {
     var node = document.createElement(tag);
@@ -59,8 +74,8 @@
     return node;
   }
 
-  function cover(src) {
-    var box = el('span', 'gacha-cover');
+  function windowWith(src) {
+    var win = el('span', 'reel-window');
     var img = el('img', 'item-img');
     img.alt = '';
     img.decoding = 'async';
@@ -68,53 +83,64 @@
       img.style.visibility = 'hidden';
     });
     img.src = src;
-    box.appendChild(img);
-    return box;
+    win.appendChild(img);
+    return win;
   }
 
-  function show(row) {
-    var card = el('a', 'gacha-card');
-    card.href = '/item/' + row.c + '/';
-    card.appendChild(cover(row.i));
-    var body = el('span', 'gacha-body');
-    body.appendChild(el('span', 'gacha-title ph-js', row.t));
-    if (row.a) body.appendChild(el('span', 'gacha-cast', row.a));
-    if (row.x) body.appendChild(el('span', 'gacha-comment ph-js', row.x));
-    body.appendChild(el('span', 'gacha-go', '作品ページを見る'));
-    card.appendChild(body);
-    stage.textContent = '';
-    stage.appendChild(card);
-    stage.classList.add('is-open');
-  }
-
-  function spin(list, left, done) {
-    if (left <= 0) return done();
+  function spinFrame(reel, list) {
     var row = pool[list[Math.floor(Math.random() * list.length)]];
-    stage.textContent = '';
-    var shuffle = el('span', 'gacha-shuffle');
-    shuffle.appendChild(cover(row.i));
-    stage.appendChild(shuffle);
-    setTimeout(function () {
-      spin(list, left - 1, done);
-    }, SPIN_MS);
+    reel.textContent = '';
+    var box = el('span', 'reel-card is-spinning');
+    box.appendChild(windowWith(row.i));
+    reel.appendChild(box);
+  }
+
+  function land(reel, row) {
+    reel.textContent = '';
+    var card = el('a', 'reel-card is-landed');
+    card.href = '/item/' + row.c + '/';
+    card.appendChild(windowWith(row.i));
+    card.appendChild(el('span', 'reel-title ph-js', row.t));
+    if (row.a) card.appendChild(el('span', 'reel-cast', row.a));
+    reel.appendChild(card);
   }
 
   button.addEventListener('click', function () {
     if (busy) return;
-    var list = eligible(pool, document.documentElement.classList.contains('hide-vr'));
-    var n = pick(list, recent, Math.random());
-    if (n < 0) return;
-    recent.push(n);
-    if (recent.length > RECENT) recent.shift();
+    var list = eligible(pool, root.classList.contains('hide-vr'), root.classList.contains('only-solo'));
+    var picks = pickMany(list, recent, Math.random, REELS);
+    if (picks.length < REELS) return;
+    picks.forEach(function (n) {
+      recent.push(n);
+    });
+    while (recent.length > RECENT) recent.shift();
+    if (reduce) {
+      for (var r = 0; r < REELS; r++) land(reels[r], pool[picks[r]]);
+      button.textContent = 'もう1回まわす';
+      return;
+    }
     busy = true;
     button.disabled = true;
-    var finish = function () {
-      show(pool[n]);
-      busy = false;
-      button.disabled = false;
-      button.textContent = 'もう1回ひく';
-    };
-    if (reduce) finish();
-    else spin(list, SPINS, finish);
+    section.classList.add('is-spinning');
+    var stopped = 0;
+    var timers = [];
+    for (var k = 0; k < REELS; k++) {
+      (function (k) {
+        timers[k] = setInterval(function () {
+          spinFrame(reels[k], list);
+        }, TICK_MS);
+        setTimeout(function () {
+          clearInterval(timers[k]);
+          land(reels[k], pool[picks[k]]);
+          stopped++;
+          if (stopped === REELS) {
+            busy = false;
+            button.disabled = false;
+            button.textContent = 'もう1回まわす';
+            section.classList.remove('is-spinning');
+          }
+        }, STOP_MS[k]);
+      })(k);
+    }
   });
 })();

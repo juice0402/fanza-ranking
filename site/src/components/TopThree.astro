@@ -6,7 +6,7 @@
 // 発売日（メダルの横）と、前の日からの順位の動き（▲3・▼1・→・初登場。表紙の右上のふちの小さな札）も出す（毎日見に来たとき、何が変わったかが分かるように）
 import { paged, popularity } from '../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
-import { castLine, dateParts, vrAttrs } from '../lib/items.js';
+import { castLine, dateParts, filterAttrs, isSoloWork } from '../lib/items.js';
 import { TOP_SHOWN, rankMove } from '../lib/topics.js';
 
 // entries: 新着の人気順の作品（作品データの形）か、売れ筋ランキング（ranking.json）の作品
@@ -22,7 +22,7 @@ const shown = Math.min(entries.length, TOP_SHOWN);
     const md = day ? dateParts(day) : null;
     const move = item.popNew ? rankMove(item.cid, item.popNew, popularity.prevRank) : null;
     return (
-      <li class={`medal-cell rank-cell${i >= TOP_SHOWN ? ' rank-off' : ''}`} data-rank={i + 1} data-place={place} {...vrAttrs(item)}>
+      <li class={`medal-cell rank-cell${i >= TOP_SHOWN ? ' rank-off' : ''}`} data-rank={i + 1} data-place={place} {...filterAttrs({ ...item, solo: item.solo ?? isSoloWork(item) })}>
         <a class="medal-card" href={link.href} {...(link.external ? OUTBOUND_ATTRS : {})}>
           <span class="medal-art">
             <span class="medal-cover">

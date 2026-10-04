@@ -1,10 +1,9 @@
 ---
 // いま人気の女優（トップ）: この1週間に発売された作品の、新着の人気TOP100によく出ている女優を3人（lib/topics.js の hotActresses）。
-// 顔写真の丸（無ければ頭文字）・名前・「人気作○本・最高○位」。タップで出演者のページ（無ければ作品検索）へ。
-// 「VR作品を隠す」のときは、VR作品を数えない並び（.hot-novr）に入れかえる（並びが同じなら、1つだけ出す）
+// 顔写真がある人だけ（運営者の希望。2026-10-05）。顔写真の丸・順位・名前（選んだ理由の数字は出さない。運営者の希望）。
+// タップで出演者のページ（無ければ作品検索）へ。「VR作品を隠す」のときは、VR作品を数えない並び（.hot-novr）に入れかえる（並びが同じなら、1つだけ出す）
 import Face from './Face.astro';
-import { actressByName, profilesByName } from '../lib/data.js';
-import { faceUrl } from '../lib/profiles.js';
+import { actressByName, faceOfName } from '../lib/data.js';
 import { SEARCH_PATH } from '../lib/search.js';
 
 const { list, listNoVr } = Astro.props;
@@ -19,11 +18,10 @@ const hrefOf = (name) => actressByName.get(name)?.path ?? `${SEARCH_PATH}?q=${en
       <li class="hot-cell">
         <a class="hot-link" href={hrefOf(r.name)}>
           <span class="hot-face">
-            <Face name={r.name} src={faceUrl(profilesByName.get(r.name), true)} size="lg" />
+            <Face name={r.name} src={faceOfName(r.name, true)} size="lg" />
             <span class="hot-rank" aria-hidden="true">{i + 1}</span>
           </span>
           <span class="hot-name"><span class="visually-hidden">{i + 1}位 </span>{r.name}</span>
-          <span class="hot-note">人気作{r.count}本・最高{r.best}位</span>
         </a>
       </li>
     ))}

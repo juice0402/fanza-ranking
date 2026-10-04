@@ -78,9 +78,10 @@ export function rankMove(cid, now, prevRank) {
  * いま人気の女優（トップ。運営者の希望「きょうの顔」→ 名前は「いま人気の女優」。2026-10-05）:
  * この1週間に発売された作品の、新着の人気TOP100に出ている女優を、作品ごとに「101 − 順位」の点を足して並べる（人気の高い作品に多く出ている人が上）。
  * 出演者が HOT_MAX_CAST 人をこえる作品（オムニバス・総集編）は数えない（1本で何十人もの点が入ってしまうため）。
- * excludeVr: VR作品を数えない（「VR作品を隠す」のときの並び）。[{ name, score, count（本数）, best（いちばん上の順位）, top（いちばん上の作品） }]
+ * excludeVr: VR作品を数えない（「VR作品を隠す」のときの並び）。hasFace(name): 顔写真がある人だけにする（運営者の希望。2026-10-05。順位は変わってよい）。
+ * [{ name, score, count（本数）, best（いちばん上の順位）, top（いちばん上の作品） }]
  */
-export function hotActresses(items, today, { excludeVr = false, limit = HOT_LIMIT } = {}) {
+export function hotActresses(items, today, { excludeVr = false, limit = HOT_LIMIT, hasFace = () => true } = {}) {
   const board = new Map();
   for (const i of newRanking(items, today, 100)) {
     if (i.popNew > 100 || (excludeVr && i.vr)) continue;
@@ -94,13 +95,59 @@ export function hotActresses(items, today, { excludeVr = false, limit = HOT_LIMI
     }
   }
   return [...board.values()]
+    .filter((r) => hasFace(r.name))
     .sort((a, b) => b.score - a.score || a.best - b.best || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
     .slice(0, limit);
 }
 
+export const DEBUT_SHOWN = 3; // 「今週のデビュー作」に出す本数（データは、VR作品を隠す・単体作品のみのときの差し替え用に DEBUT_DATA 本）
+export const DEBUT_DATA = 6;
+export const BIRTHDAY_DAYS = 14; // 「誕生日の近い女優」: きょうから、この日数のうちに誕生日が来る人
+export const BIRTHDAY_LIMIT = 3;
+
+/** 今週のデビュー作（運営者の希望。2026-10-05）: きょうまでの7日間に発売された、ジャンル「デビュー作品」の作品。多ければ新着の人気順の上から（順位が無い作品はあと） */
+export function weekDebuts(items, today, limit = DEBUT_DATA) {
+  const from = addDays(today, -6);
+  return items
+    .filter((i) => i.dateKey >= from && i.dateKey <= today && i.genres?.includes('デビュー作品'))
+    .sort((a, b) => (a.popNew ?? Infinity) - (b.popNew ?? Infinity) || b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid))
+    .slice(0, limit);
+}
+
+/** "MM-DD" の誕生日が、today から何日後に来るか（きょうなら0）。2月29日生まれは、うるう年でない年は2月28日 */
+export function daysUntilBirthday(md, today) {
+  if (!/^\d{2}-\d{2}$/.test(String(md ?? '')) || !isDay(today)) return null;
+  const year = +today.slice(0, 4);
+  const at = (y) => {
+    const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    return `${y}-${md === '02-29' && !leap ? '02-28' : md}`;
+  };
+  const d = daysBetween(at(year), today);
+  return d >= 0 ? d : daysBetween(at(year + 1), today);
+}
+
+/**
+ * 誕生日の近い女優（運営者の希望。2026-10-05）: このサイトに作品がある人で、顔写真と誕生日（FANZA公式のプロフィール）が分かる人のうち、
+ * きょうから BIRTHDAY_DAYS 日のうちに誕生日が来る人を、近い順に（同じ日なら、このサイトの作品が多い人から）。
+ * birthOf(name) → "MM-DD" | ''、hasFace(name) → bool。[{ name, md: "MM-DD", days, works }]
+ */
+export function birthdaySoon(items, today, { birthOf, hasFace, days = BIRTHDAY_DAYS, limit = BIRTHDAY_LIMIT }) {
+  const works = new Map();
+  for (const i of items) for (const n of new Set(i.actress)) works.set(n, (works.get(n) ?? 0) + 1);
+  const rows = [];
+  for (const [name, count] of works) {
+    const md = birthOf(name);
+    if (!md || !hasFace(name)) continue;
+    const until = daysUntilBirthday(md, today);
+    if (until === null || until >= days) continue;
+    rows.push({ name, md, days: until, works: count });
+  }
+  return rows.sort((a, b) => a.days - b.days || b.works - a.works || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)).slice(0, limit);
+}
+
 /**
  * きょうの話題: [{ kind, label, title, text, image, face, href, external, vr, alt? }]（大事な順に、最大 limit 件）。
- *   kind: rise 急上昇 / today きょう発売 / upcoming 予約で人気 / entry 予約に初登場 / debut デビュー作 / weekly 週のまとめ / sale もうすぐ終わるセール
+ *   kind: rise 急上昇 / today きょう発売 / upcoming 予約で人気 / entry 予約に初登場 / weekly 週のまとめ / sale もうすぐ終わるセール
  *   image: 作品の表紙（パッケージ画像。表紙の部分を切り出して見せる）、face: 出演者の顔写真（あるときだけ。image より先に使う）
  *   end: セールの終わりの時刻（sale だけ。ブラウザが、すぎたら隠す /sale.js）
  *   alt: 話題の作品がVR作品のとき、「VR作品を隠す」を選んだ人に代わりに出す、同じ種類のVRでない次の作品の話題（繰り上げ。運営者の希望。2026-10-05）
@@ -133,7 +180,7 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
   };
   const nonVrFirst = (list) => list.find((i) => !i.vr) ?? list[0];
   const ranked = newRanking(items, today, 100); // 新着の人気TOP100（急上昇を探す範囲）
-  const pool = newRanking(items, today, Infinity); // 新着の人気順の全部（きょう発売・デビュー作と、その繰り上げを探す範囲）
+  const pool = newRanking(items, today, Infinity); // 新着の人気順の全部（きょう発売と、その繰り上げを探す範囲）
 
   // 急上昇: 前の日の新着の人気順から、大きく順位を上げた作品（前の日の順位が無い作品は、前の日の圏外から）。2件まで。
   // きょう発売の作品は、前の日にはまだ無いので入れない（「きょう発売」の話題で出す）
@@ -168,12 +215,7 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
     pick(entries, (i) => workTopic(i, 'entry', '予約に初登場', truncate(i.title, 40), upText(i)), (i) => i.rank <= 10);
   }
 
-  // デビュー作: ジャンルに「デビュー作品」がある作品の中で、新着の人気順がいちばん上の作品
-  pick(pool.filter((i) => i.genres?.includes('デビュー作品')), (i) => {
-    const name = i.actress[0];
-    return { ...workTopic(i, 'debut', 'デビュー作', name ? `${name}のデビュー作` : truncate(i.title, 40), `新着の人気順 ${i.popNew}位｜${mdLabel(i.dateKey)}発売`), face: name ? faceOf(name) : '' };
-  });
-
+  // デビュー作は、発売中の新作の中の「今週のデビュー作」の欄で出す（話題には入れない。2026-10-05）
   // 人気の女優は、トップの「いま人気の女優」の欄で出す（話題には入れない。2026-10-05）
 
   // 週のまとめ: 月曜に出た、前の週の新作のまとめ記事（出てから2日のあいだ）

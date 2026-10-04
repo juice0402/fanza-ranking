@@ -48,11 +48,20 @@ check('本数の上限', G.gachaPool(items, paged, '2026-10-05', 2).length === 2
 const json = G.gachaJson([{ c: 'x', t: '</script><b>&', i: '', a: '', x: '' }]);
 check('ページに入れるJSONは、「<」「>」「&」を書きかえる（タグとして読まれない）', !/[<>&]/.test(json) && JSON.parse(json)[0].t === '</script><b>&');
 
-console.log('\n■ 1本ひく（public/gacha.js）');
-check('VR作品を隠すときは、VR作品を候補から外す', JSON.stringify(plain(B.eligible([{}, { v: 1 }, {}], true))) === '[0,2]' && JSON.stringify(plain(B.eligible([{}, { v: 1 }], false))) === '[0,1]');
-check('直前に出た作品は、ほかに候補があるあいだは選ばない', B.pick([0, 1, 2], [0, 1], 0.99) === 2 && B.pick([0, 1, 2], [0, 1], 0) === 2);
-check('全部が直前に出た作品なら、その中から', [0, 1].includes(B.pick([0, 1], [0, 1], 0.5)));
-check('候補が無ければ -1・乱数が1に近くてもはみ出さない', B.pick([], [], 0.5) === -1 && B.pick([3, 4], [], 0.9999999) === 4);
+console.log('\n■ 3本えらぶ（public/gacha.js。スロット）');
+check('窓は3つ', B.REELS === 3);
+check('VR作品を隠すときはVR作品を、単体作品のみのときは単体でない作品を、候補から外す', JSON.stringify(plain(B.eligible([{}, { v: 1 }, { o: 1 }, { v: 1, o: 1 }], true, false))) === '[0,2]' && JSON.stringify(plain(B.eligible([{}, { v: 1 }, { o: 1 }, { v: 1, o: 1 }], false, true))) === '[2,3]' && JSON.stringify(plain(B.eligible([{}, { v: 1 }, { o: 1 }, { v: 1, o: 1 }], true, true))) === '[2]' && JSON.stringify(plain(B.eligible([{}, { v: 1 }], false, false))) === '[0,1]');
+let seed = 0.37;
+const rand = () => { seed = (seed * 9301 + 0.49297) % 1; return seed; };
+const three = plain(B.pickMany([0, 1, 2, 3, 4, 5], [], rand, 3));
+check('重ならない3本', three.length === 3 && new Set(three).size === 3 && three.every((n) => n >= 0 && n <= 5), JSON.stringify(three));
+const fresh = plain(B.pickMany([0, 1, 2, 3, 4], [0, 1], rand, 3));
+check('直前に出た作品は、ほかに候補があるあいだは選ばない', fresh.sort().join() === '2,3,4', JSON.stringify(fresh));
+const fill = plain(B.pickMany([0, 1, 2, 3], [0, 1, 2], rand, 3));
+check('足りないときは、直前に出た作品からも（重ならずに）', fill.length === 3 && fill.includes(3) && new Set(fill).size === 3, JSON.stringify(fill));
+check('候補が3本より少なければ、ある分だけ・候補が無ければ空', plain(B.pickMany([7, 8], [], rand, 3)).length === 2 && plain(B.pickMany([], [], rand, 3)).length === 0);
+const pool2 = G.gachaPool([it('s1', { solo: true }), it('s2')], new Set(['s1', 's2']), '2026-10-05');
+check('候補に、単体作品の印（o:1）が付く', pool2.find((r) => r.c === 's1').o === 1 && !('o' in pool2.find((r) => r.c === 's2')));
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

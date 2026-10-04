@@ -8,7 +8,7 @@ import ItemCard from '../../components/ItemCard.astro';
 import { all, today, sale } from '../../lib/data.js';
 import { SALE_PATH, endIso, endLabel, saleBadge, saleGroups, salePriceNote } from '../../lib/sale.js';
 import { listIndexable } from '../../lib/plan.js';
-import { SITE_NAME, breadcrumbLd, formatDateJp, vrAttrs } from '../../lib/items.js';
+import { SITE_NAME, breadcrumbLd, formatDateJp, filterAttrs } from '../../lib/items.js';
 
 const groups = saleGroups(all, sale, today);
 const shownItems = groups.flatMap((g) => g.items);
@@ -53,7 +53,7 @@ const noindex = shownItems.length === 0 || !listIndexable(shownItems);
               </div>
               <ul class="shelf">
                 {g.items.map((item, i) => (
-                  <li class="shelf-cell" data-sale-end={endIso(g.end)} {...vrAttrs(item)}>
+                  <li class="shelf-cell" data-sale-end={endIso(g.end)} {...filterAttrs(item)}>
                     <ItemCard item={item} level="h3" badge={saleBadge(item.sale)} note={salePriceNote(item.sale)} eager={gi === 0 && i < 4} />
                   </li>
                 ))}

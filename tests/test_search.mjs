@@ -126,11 +126,13 @@ const byCode = (q) => S.filterRows(crow, { terms: S.splitTerms(q), tags: [], sta
 check('品番で探せる（DLDSS-566・dldss566・dldss-566・DLDSS566・作品IDの dldss00566）', ['DLDSS-566', 'dldss566', 'dldss-566', 'DLDSS566', 'dldss00566'].every((q) => byCode(q) === '1dldss00566'), ['DLDSS-566', 'dldss566'].map(byCode).join('/'));
 check('タイトルの言葉で探すとき、文節の区切りがあっても見つかる（「作品です」）', byCode('作品です') === '1dldss00566');
 
-console.log('\n■ 「VR作品を隠す」スイッチ（vr-filter.js）');
-check('保存のキーと、html に付ける印', V.KEY === 'hide-vr' && V.CLASS === 'hide-vr');
-check('日付ごとの本数の文字: 隠さないとき・VRが無いときは元のまま', V.dayCountText('5本', 5, 2, false) === '5本' && V.dayCountText('5本', 5, 0, true) === '5本' && V.dayCountText('3本（全5本）', 3, 0, true) === '3本（全5本）');
-check('日付ごとの本数の文字: 隠すときは、VRを除いた本数（「全◯本」は、VRが分からないので出さない）', V.dayCountText('5本', 5, 2, true) === '3本（VRを除く）' && V.dayCountText('3本（全5本）', 3, 1, true) === '2本（VRを除く）');
-check('全部がVRの日付だけ、隠したときに空になる', V.dayIsEmpty(2, 2, true) && !V.dayIsEmpty(2, 1, true) && !V.dayIsEmpty(2, 2, false) && !V.dayIsEmpty(0, 0, true));
+console.log('\n■ 「VR作品を隠す」「単体作品のみ表示」スイッチ（vr-filter.js）');
+check('保存のキーと、html に付ける印', V.KEY === 'hide-vr' && V.CLASS === 'hide-vr' && V.SOLO_KEY === 'only-solo' && V.SOLO_CLASS === 'only-solo');
+check('本数の注記: VRを隠す・単体作品のみ・両方・どちらも無し', V.filterNote(true, false) === '（VRを除く）' && V.filterNote(false, true) === '（単体作品のみ）' && V.filterNote(true, true) === '（単体作品・VRを除く）' && V.filterNote(false, false) === '');
+check('マスが隠れるか: VRを隠すときはVR作品、単体作品のみのときは単体でない作品', V.cellHidden(true, true, true, false) && !V.cellHidden(false, false, true, false) && V.cellHidden(false, false, false, true) && !V.cellHidden(false, true, false, true) && V.cellHidden(true, true, true, true) && !V.cellHidden(true, false, false, false));
+check('日付ごとの本数の文字: 絞り込まないとき・隠れる作品が無いときは元のまま', V.dayCountText('5本', 5, 2, '') === '5本' && V.dayCountText('5本', 5, 0, '（VRを除く）') === '5本' && V.dayCountText('3本（全5本）', 3, 0, '（単体作品のみ）') === '3本（全5本）');
+check('日付ごとの本数の文字: 絞り込むときは、隠れない本数と注記（「全◯本」は分からないので出さない）', V.dayCountText('5本', 5, 2, '（VRを除く）') === '3本（VRを除く）' && V.dayCountText('3本（全5本）', 3, 1, '（単体作品のみ）') === '2本（単体作品のみ）');
+check('全部が隠れる日付だけ、空になる', V.dayIsEmpty(2, 2) && !V.dayIsEmpty(2, 1) && !V.dayIsEmpty(0, 0));
 
 console.log('\n■ トップの新着人気TOP3の出し方（VR作品を隠すときは、VRを除いて次の順位から差し替え）');
 const RL = (flags, hide, show = 3) => plain(V.rankLayout(flags, hide, show));

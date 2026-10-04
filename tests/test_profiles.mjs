@@ -24,6 +24,8 @@ console.log('■ 年齢（生年月日から計算。範囲外・あり得ない
 check('誕生日の前は1つ若い・当日から上がる', P.ageFromBirthday('1999-10-04', today) === 26 && P.ageFromBirthday('1999-10-03', today) === 27 && P.ageFromBirthday('1999-10-02', today) === 27);
 check('年またぎ・月の前後', P.ageFromBirthday('2000-01-01', '2026-12-31') === 26 && P.ageFromBirthday('2000-12-31', '2026-01-01') === 25);
 check('うるう日の生まれ（2/29）は、平年の2/28 ではまだ誕生日前・3/1 で上がる', P.ageFromBirthday('2000-02-29', '2026-02-28') === 25 && P.ageFromBirthday('2000-02-29', '2026-03-01') === 26);
+check('誕生日の月日（「誕生日の近い女優」用。年は持ち出さない）: 年齢が出せるときだけ "MM-DD"', P.birthMonthDay('1999-10-07', today) === '10-07' && P.birthMonthDay('2015-10-07', today) === '' && P.birthMonthDay('x', today) === '');
+check('プロフィール・名簿を読むとき、誕生日の月日も入る（生年月日そのものは入らない）', P.normalizeProfiles({ actresses: [{ id: '1', name: '花子', birthday: '1999-10-07' }] }, today)[0].birthMD === '10-07' && !('birthday' in P.normalizeProfiles({ actresses: [{ id: '1', name: '花子', birthday: '1999-10-07' }] }, today)[0]) && P.normalizeDirectory({ rows: [{ id: '2', name: '月子', birthday: '2000-01-02' }] }, today)[0].birthMD === '01-02');
 check('18歳ちょうどは出す・18歳未満は null', P.ageFromBirthday('2008-10-03', today) === 18 && P.ageFromBirthday('2008-10-04', today) === null && P.ageFromBirthday('2015-01-01', today) === null);
 check('80歳まで出す・81歳以上は null', P.ageFromBirthday('1946-10-03', today) === 80 && P.ageFromBirthday('1945-10-03', today) === null);
 check('実在しない日付・形が違う値・文字列でない値は null', ['2000-02-30', '2000-13-01', '2000/01/01', '', null, undefined, 19990101, 'abc'].every((v) => P.ageFromBirthday(v, today) === null));

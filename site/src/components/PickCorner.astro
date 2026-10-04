@@ -1,0 +1,81 @@
+---
+// 発売中の新作の、きょうの日付のすぐ下に入れる「おすすめのコーナー」（運営者の希望。2026-10-05）:
+//   運命の作品（スロットで3本。public/gacha.js）→ 今週のデビュー作（人気順に3本）→ 誕生日の近い女優（顔写真があり、このサイトに作品がある人）
+// 上から見ていって、作品が決まらなかった人に、別の入り口を出す
+import Face from './Face.astro';
+import { actressByName, faceOfName, paged } from '../lib/data.js';
+import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
+import { castLine, dateParts, filterAttrs } from '../lib/items.js';
+import { gachaJson } from '../lib/gacha.js';
+import { DEBUT_SHOWN } from '../lib/topics.js';
+import { SEARCH_PATH } from '../lib/search.js';
+
+// gacha: 運命の作品の候補（gachaPool）／ debuts: 今週のデビュー作（weekDebuts）／ birthdays: 誕生日の近い女優（birthdaySoon）
+const { gacha, debuts, birthdays } = Astro.props;
+const hrefOf = (name) => actressByName.get(name)?.path ?? `${SEARCH_PATH}?q=${encodeURIComponent(name)}`;
+const mdText = (md) => `${+md.slice(0, 2)}月${+md.slice(3, 5)}日`;
+const whenText = (b) => (b.days === 0 ? 'きょうが誕生日' : b.days === 1 ? `あす${mdText(b.md)}が誕生日` : `${mdText(b.md)}が誕生日（あと${b.days}日）`);
+---
+
+<div class="corner" aria-label="おすすめ">
+  {gacha.length >= 3 && (
+    <section id="gacha" class="corner-block gacha" aria-labelledby="gacha-title" hidden>
+      <div class="corner-head">
+        <h3 id="gacha-title" class="corner-title">運命の作品</h3>
+        <p class="section-note">まだ決まらない人へ。人気の作品から3本えらびます</p>
+      </div>
+      <div class="slot">
+        <ol class="slot-reels" aria-live="polite">
+          {[0, 1, 2].map(() => (
+            <li class="reel"><span class="reel-card"><span class="reel-window reel-back" aria-hidden="true">?</span></span></li>
+          ))}
+        </ol>
+        <button type="button" class="btn btn-hot gacha-btn" data-gacha-draw>まわす</button>
+      </div>
+      <script is:inline type="application/json" id="gacha-data" set:html={gachaJson(gacha)} />
+    </section>
+  )}
+
+  {debuts.length > 0 && (
+    <section id="debuts" class="corner-block" aria-labelledby="debuts-title" data-rank-section>
+      <div class="corner-head">
+        <h3 id="debuts-title" class="corner-title">今週のデビュー作</h3>
+        <p class="section-note">この7日間に発売・人気順</p>
+      </div>
+      <ol class="debut-list rank-podium" data-show={DEBUT_SHOWN} data-visible={Math.min(debuts.length, DEBUT_SHOWN)}>
+        {debuts.map((item, i) => {
+          const link = itemHref(item, paged);
+          const md = dateParts(item.dateKey);
+          return (
+            <li class={`debut-cell rank-cell${i >= DEBUT_SHOWN ? ' rank-off' : ''}`} data-rank={i + 1} {...filterAttrs(item)}>
+              <a class="debut-card" href={link.href} {...(link.external ? OUTBOUND_ATTRS : {})}>
+                <span class="debut-cover">{item.image_url && <img class="item-img" src={item.image_url} alt="" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'" />}</span>
+                <span class="debut-name">{castLine(item.actress, 1, item.maker !== '不明' ? item.maker : '')}</span>
+                <span class="debut-date">{md.m}/{md.d}発売</span>
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  )}
+
+  {birthdays.length > 0 && (
+    <section id="birthdays" class="corner-block" aria-labelledby="birthdays-title">
+      <div class="corner-head">
+        <h3 id="birthdays-title" class="corner-title">誕生日の近い女優</h3>
+      </div>
+      <ol class="hot bday">
+        {birthdays.map((b) => (
+          <li class="hot-cell">
+            <a class="hot-link" href={hrefOf(b.name)}>
+              <span class="hot-face"><Face name={b.name} src={faceOfName(b.name, true)} size="lg" /></span>
+              <span class="hot-name">{b.name}</span>
+              <span class={b.days === 0 ? 'bday-when is-today' : 'bday-when'}>{whenText(b)}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )}
+</div>

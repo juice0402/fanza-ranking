@@ -1,5 +1,5 @@
-// 「運命の1本」（トップの発売中の新作の下。運営者の希望「上から見ていって、作品が決まらなかった人にオススメしたい」。2026-10-05）の候補づくり。
-// 画面に依存しない（tests/test_gacha.mjs）。ブラウザで1本ひく動きは site/public/gacha.js。
+// 「運命の作品」（トップの発売中の新作の、きょうの日付の下。運営者の希望「上から見ていって、作品が決まらなかった人にオススメしたい」「スロットマシンみたいに3本」。2026-10-05）の候補づくり。
+// 画面に依存しない（tests/test_gacha.mjs）。ブラウザで3本えらぶ動き（スロット）は site/public/gacha.js。
 // 候補は、ひとことコメントのある・作品ページのある・発売済みの作品を、人気の高い順に GACHA_POOL 本まで。
 // 未成年を連想させるタイトルの作品は、候補に入れない（こちらから「おすすめ」として出すため。判定は scripts/claude_comments.py の
 // タイトルの見方（title_block_reason の "minor"）と同じ言葉の一覧。tests/test_gacha.mjs で突き合わせている）
@@ -32,7 +32,7 @@ export function isMinorTitle(title) {
 const rankOf = (i) => bestRank(i.popAll ?? null, i.popNew ?? null) ?? Infinity;
 
 /**
- * 「運命の1本」の候補: [{ c: 作品ID, t: タイトル（文節の区切り U+200B 入り）, i: 画像, a: 出演者の1行, x: ひとこと（短く）, v: VRなら1 }]
+ * 「運命の作品」の候補: [{ c: 作品ID, t: タイトル（文節の区切り U+200B 入り）, i: 画像, a: 出演者の1行, x: ひとこと（短く）, v: VRなら1, o: 単体作品なら1 }]
  * items: このサイトの全作品、paged: 作品ページのある作品ID
  */
 export function gachaPool(items, paged, today, limit = GACHA_POOL) {
@@ -48,6 +48,7 @@ export function gachaPool(items, paged, today, limit = GACHA_POOL) {
     a: castLine(i.actress, 3, ''),
     x: phraseZwsp(truncate(i.comment.trim(), GACHA_COMMENT_MAX), namesRe),
     ...(i.vr ? { v: 1 } : {}),
+    ...(i.solo ? { o: 1 } : {}),
   }));
 }
 

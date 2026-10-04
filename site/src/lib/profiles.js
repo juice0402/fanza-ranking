@@ -28,7 +28,7 @@ export const imageKeyOf = (url) => (IMAGE_KEY.exec(String(url ?? '')) || [])[1] 
 
 /**
  * actress_directory.json（女優検索の名簿。FANZA公式の出演者検索の一覧から、毎日の更新が集める）を、画面で使う形に揃える。
- * 生年月日は年齢にだけ変える（ここから先には持ち出さない）。壊れた値は空にする。ファイルが無い・形が違っても落ちない
+ * 生年月日は、年齢と、誕生日の月日（トップの「誕生日の近い女優」用。年は持ち出さない）にだけ変える。壊れた値は空にする。ファイルが無い・形が違っても落ちない
  */
 export function normalizeDirectory(raw, today) {
   const rows = Array.isArray(raw?.rows) ? raw.rows : [];
@@ -52,9 +52,18 @@ export function normalizeDirectory(raw, today) {
       hip: intIn(r.hip, 50, 160),
       height: intIn(r.height, 120, 210),
       age: ageFromBirthday(r.birthday, today),
+      birthMD: birthMonthDay(r.birthday, today),
     });
   }
   return out;
+}
+
+/**
+ * 生年月日 → 誕生日の月日（"MM-DD"）。トップの「誕生日の近い女優」だけに使う（運営者の希望。2026-10-05。年は出さない）。
+ * 年齢が出せない（18〜80歳の範囲外・日付でない）ものは ''（あり得ない値は表示しない）
+ */
+export function birthMonthDay(birthday, today) {
+  return ageFromBirthday(birthday, today) === null ? '' : birthday.slice(5, 10);
 }
 
 /** 「FANZAで全作品を見る」のURLの形（{ID} のところに女優の id が入る）を、保存済みのプロフィールのURLから作る。作れなければ '' */
@@ -78,7 +87,7 @@ export function ageFromBirthday(birthday, today) {
 
 /**
  * actresses.json の中身を、画面で使う形に揃える（壊れた値は空にする。ファイルが無い・形が違っても落ちない）。
- * 生年月日は年齢にだけ変えて、ここから先には持ち出さない（画面・JSONに生年月日が出ないようにするため）。
+ * 生年月日は、年齢と、誕生日の月日（トップの「誕生日の近い女優」用）にだけ変えて、年は持ち出さない（画面・JSONに生年月日が出ないようにするため）。
  */
 export function normalizeProfiles(raw, today) {
   const rows = Array.isArray(raw?.actresses) ? raw.actresses : [];
@@ -114,6 +123,7 @@ export function normalizeProfiles(raw, today) {
       hip: intIn(r.hip, 50, 160),
       height: intIn(r.height, 120, 210),
       age: ageFromBirthday(r.birthday, today),
+      birthMD: birthMonthDay(r.birthday, today),
       listUrl: safeHttpsUrl(r.list_url, FANZA_LIST_HOSTS),
       fetched: isDay(r.fetched) ? r.fetched : '',
     });

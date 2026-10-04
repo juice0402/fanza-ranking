@@ -83,7 +83,7 @@ const ctx = {
 };
 const topics = T.buildTopics(ctx);
 const kinds = topics.map((t) => t.kind).join();
-check('種類と順番: 急上昇 → きょう発売 → 予約で人気 → 予約に初登場 → デビュー作 → もうすぐ終わるセール（人気の女優は、別の欄）', kinds === 'rise,rise,today,upcoming,entry,debut,sale', kinds);
+check('種類と順番: 急上昇 → きょう発売 → 予約で人気 → 予約に初登場 → もうすぐ終わるセール（人気の女優・デビュー作は、別の欄）', kinds === 'rise,rise,today,upcoming,entry,sale', kinds);
 const rise = topics.filter((t) => t.kind === 'rise');
 check('急上昇: 上がり幅の大きい順・前の日の順位から（圏外からも）。TOP3の作品・上がり幅の小さい作品・きょう発売の作品は入れない',
   rise.map((t) => t.text).join('/') === '新着の人気順 40位 → 4位/新着の人気順 圏外 → 6位', rise.map((t) => t.text).join('/'));
@@ -96,15 +96,13 @@ check('予約で人気: 予約の人気順の順位・発売日・出演者', up
 check('予約で人気の1位がVR作品なら、VRでない次の作品が代わり（繰り上げ）', up.alt?.title === '予約2' && up.alt.text === '予約の人気順 2位｜10月9日発売', JSON.stringify(up.alt));
 const entry = topics.find((t) => t.kind === 'entry');
 check('予約に初登場: 前の日の予約の人気順にいなかった作品（ほかの話題に出した作品・繰り上げに使った作品は出さない）', entry.title === '予約6' && entry.text === '予約の人気順 3位｜10月12日発売', entry.text);
-const debut = topics.find((t) => t.kind === 'debut');
-check('デビュー作: 出演者の名前と、顔写真（あれば）', debut.title === '新人のデビュー作' && debut.face === 'https://pics.dmm.co.jp/face.jpg');
 const sale = topics.find((t) => t.kind === 'sale');
 check('もうすぐ終わるセール: 終わりが2日以内のキャンペーンだけ。セールのページへ・終わりの時刻（ブラウザが、すぎたら隠す）',
   sale.title === '週末セール' && sale.text === '10月6日 23:59まで｜1本がセール中' && sale.href === '/sale/' && sale.end === '2026-10-06T23:59:59+09:00', sale.text);
 const shownTitles = topics.flatMap((t) => [t, ...(t.alt ? [t.alt] : [])]).filter((t) => t.kind !== 'actress' && t.kind !== 'sale').map((t) => t.title);
 check('同じ作品は2回出さない（繰り上げの作品も含めて）', new Set(shownTitles).size === shownTitles.length, shownTitles.join());
-check('人気の女優の話題は出さない（トップの「いま人気の女優」の欄で出す）', !topics.some((t) => t.kind === 'actress'));
-check('数が多いときは、まず2つ目の急上昇を外す', T.buildTopics(ctx, 6).map((t) => t.kind).join() === 'rise,today,upcoming,entry,debut,sale' && T.buildTopics(ctx, 3).length === 3);
+check('人気の女優・デビュー作の話題は出さない（トップの「いま人気の女優」・発売中の新作の「今週のデビュー作」の欄で出す）', !topics.some((t) => t.kind === 'actress' || t.kind === 'debut'));
+check('数が多いときは、まず2つ目の急上昇を外す', T.buildTopics(ctx, 5).map((t) => t.kind).join() === 'rise,today,upcoming,entry,sale' && T.buildTopics(ctx, 3).length === 3);
 
 const withSkipVrOff = T.buildTopics({ ...ctx, skipVrOff: new Set(['r4']) }).find((t) => t.kind === 'rise' && t.vr);
 check('VR作品を隠したときにTOP3に出る作品（skipVrOff）は、繰り上げに使わない', withSkipVrOff && withSkipVrOff.alt?.title !== '作品 r4', JSON.stringify(withSkipVrOff?.alt));
@@ -131,6 +129,26 @@ check('出演者が5人以上の作品・TOP100の外・1週間より前の作�
 const hotNoVr = T.hotActresses(hotItems, TODAY, { excludeVr: true });
 check('VR作品を隠すときの並び: VR作品を数えない', hotNoVr.map((r) => r.name).join() === '花子,星子,月子' && hotNoVr[1].score === 99, JSON.stringify(hotNoVr.map((r) => [r.name, r.score])));
 check('人気の作品が無いときは空', T.hotActresses([], TODAY).length === 0 && T.HOT_LIMIT === 3 && T.HOT_MAX_CAST === 4);
+check('顔写真がある人だけ（順位は繰り上がる）', T.hotActresses(hotItems, TODAY, { hasFace: (n) => n !== '月子' }).map((r) => r.name).join() === '花子,星子');
+
+console.log('\n■ 今週のデビュー作（weekDebuts）');
+const deb = [
+  it('d1', '2026-10-05', 30, { genres: ['デビュー作品'] }), it('d2', '2026-10-01', 5, { genres: ['デビュー作品', '単体作品'] }),
+  it('d3', '2026-09-29', null, { genres: ['デビュー作品'] }), it('d4', '2026-09-28', 1, { genres: ['デビュー作品'] }), // d4 は8日前（入れない）
+  it('d5', '2026-10-06', 2, { genres: ['デビュー作品'] }), // 予約（まだ発売前）は入れない
+  it('d6', '2026-10-04', 3), // デビュー作品でない
+];
+check('きょうまでの7日間に発売された「デビュー作品」を、新着の人気順に（順位の無い作品はあと）', T.weekDebuts(deb, TODAY).map((i) => i.cid).join() === 'd2,d1,d3', T.weekDebuts(deb, TODAY).map((i) => i.cid).join());
+check('出すのは3本・データは差し替え用に6本まで', T.DEBUT_SHOWN === 3 && T.DEBUT_DATA === 6 && T.weekDebuts(deb, TODAY, 1).length === 1);
+
+console.log('\n■ 誕生日の近い女優（birthdaySoon）');
+check('誕生日まで何日か（きょうは0・過ぎていたら来年）', T.daysUntilBirthday('10-07', TODAY) === 2 && T.daysUntilBirthday('10-05', TODAY) === 0 && T.daysUntilBirthday('10-04', TODAY) === 364 && T.daysUntilBirthday('01-02', '2026-12-31') === 2);
+check('2月29日生まれは、うるう年でない年は2月28日・形が違えば null', T.daysUntilBirthday('02-29', '2026-02-27') === 1 && T.daysUntilBirthday('02-29', '2028-02-27') === 2 && T.daysUntilBirthday('', TODAY) === null && T.daysUntilBirthday('1999-10-07', TODAY) === null);
+const bdItems = [it('b1', '2026-09-01', null, { actress: ['花子'] }), it('b2', '2026-09-02', null, { actress: ['花子', '月子'] }), it('b3', '2026-09-03', null, { actress: ['星子'] }), it('b4', '2026-09-04', null, { actress: ['海子'] }), it('b5', '2026-09-05', null, { actress: ['空子'] })];
+const births = { 花子: '10-07', 月子: '10-05', 星子: '10-07', 海子: '10-20', 空子: '10-06', 雪子: '10-05' };
+const bd = T.birthdaySoon(bdItems, TODAY, { birthOf: (n) => births[n] ?? '', hasFace: (n) => n !== '空子' });
+check('このサイトに作品があり・顔写真がある人だけ。近い順（同じ日なら作品の多い人から）・14日のうち', bd.map((r) => `${r.name}${r.days}`).join() === '月子0,花子2,星子2' && !bd.some((r) => ['空子', '海子', '雪子'].includes(r.name)), JSON.stringify(bd));
+check('3人まで・誕生日が分からない人は入れない', T.BIRTHDAY_LIMIT === 3 && T.birthdaySoon(bdItems, TODAY, { birthOf: () => '', hasFace: () => true }).length === 0);
 
 const roundup = { week_start: '2026-09-28', week_end: '2026-10-04', lead: 'まとめの書き出し。'.repeat(10), picks: [{ cid: 'n1', note: 'x' }], written: TODAY };
 const withWeekly = T.buildTopics({ ...ctx, roundup }, 20);

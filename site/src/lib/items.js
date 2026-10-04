@@ -96,8 +96,19 @@ export function isVrWork({ title = '', formats = [], genres = [] } = {}) {
   );
 }
 
-/** 一覧の1マス（li）に付ける目印。VR作品だけに data-vr が付く（「VR作品を隠す」スイッチが、これを目印に隠す） */
-export const vrAttrs = (item) => (item.vr ? { 'data-vr': 'true' } : {});
+/**
+ * 単体作品（出演者が1人の作品）か。FANZAのジャンル「単体作品」があれば単体。ジャンルがまだ載っていない作品（予約など）は、出演者が1人なら単体とみなす
+ * （「単体作品のみ表示」スイッチの目印。運営者の希望。2026-10-05）
+ */
+export function isSoloWork({ genres = [], actress = [] } = {}) {
+  return genres.length > 0 ? genres.includes('単体作品') : actress.length === 1;
+}
+
+/**
+ * 一覧の1マス（li）に付ける目印。VR作品に data-vr、単体作品に data-solo が付く（「VR作品を隠す」「単体作品のみ表示」スイッチが、これを目印に隠す。site/public/vr-filter.js）。
+ * vr: false のときは data-vr を付けない（VR作品のページ。そこで全部が消えて空になるのを防ぐ）
+ */
+export const filterAttrs = (item, { vr = true } = {}) => ({ ...(vr && item.vr ? { 'data-vr': 'true' } : {}), ...(item.solo ? { 'data-solo': 'true' } : {}) });
 
 /** 一覧に出す出演者（先頭から max 人）と、出しきれない人数。オムニバスなど出演者が多い作品で、カードが長くならないように（運営者の希望。2026-10-05） */
 export function castParts(actress, max = CAST_LIMIT) {
@@ -128,6 +139,7 @@ export function normalizeItems(raw) {
     const genres = Array.isArray(r.genres) ? r.genres.filter(Boolean) : [];
     // 形式（VR・8K など）。英数字だけのタグに絞る（日本語のタグは作品の内容を表す言葉が混ざるため使わない）
     const formats = Array.isArray(r.tags) ? r.tags.filter((t) => typeof t === 'string' && /^[0-9A-Za-z]{1,6}$/.test(t)) : [];
+    const actress = Array.isArray(r.actress) ? r.actress.filter(Boolean) : [];
     items.push({
       cid,
       title,
@@ -138,13 +150,14 @@ export function normalizeItems(raw) {
       date,
       dateKey: date.slice(0, 10),
       maker: String(r.maker ?? '') || '不明',
-      actress: Array.isArray(r.actress) ? r.actress.filter(Boolean) : [],
+      actress,
       genres,
       duration_min: Number.isFinite(+r.duration_min) && +r.duration_min > 0 ? +r.duration_min : null,
       // サンプル動画のページURL（FANZAの476x306の再生ページ）。無い・怪しいURLなら ''（その作品は表紙画像のまま）
       sample_movie: safeHttpsUrl(r.sample_movie, FANZA_HOSTS),
       formats,
       vr: isVrWork({ title, formats, genres }),
+      solo: isSoloWork({ genres, actress }),
       comment: String(r.comment ?? ''),
       // 文章のコメントか（ai＝Gemini の下書き、claude＝Claude が仕上げたもの）。定型文（template）なら false
       isAi: r.comment_kind === 'ai' || r.comment_kind === 'claude',

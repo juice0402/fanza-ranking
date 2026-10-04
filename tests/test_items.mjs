@@ -213,7 +213,10 @@ const vrItems = L.normalizeItems([
   { cid: 'v3', title: 'ふつう', date: '2026-10-01', genres: ['中出し'], tags: ['8K'] },
 ]);
 check('normalizeItems が vr を付ける（タイトル・ジャンル・どちらでもVR、VRでなければ false）', vrItems.map((i) => i.vr).join() === 'true,true,false', vrItems.map((i) => i.vr).join());
-check('一覧の1マスの目印（vrAttrs）: VR作品だけ data-vr が付く', L.vrAttrs(vrItems[0])['data-vr'] === 'true' && Object.keys(L.vrAttrs(vrItems[2])).length === 0);
+check('一覧の1マスの目印（filterAttrs）: VR作品だけ data-vr が付く', L.filterAttrs(vrItems[0])['data-vr'] === 'true' && !('data-vr' in L.filterAttrs(vrItems[2])));
+check('単体作品: ジャンル「単体作品」があれば単体。ジャンルがまだ無い作品は、出演者が1人なら単体', L.isSoloWork({ genres: ['単体作品', '巨乳'], actress: ['花子', '月子'] }) && !L.isSoloWork({ genres: ['企画'], actress: ['花子'] }) && L.isSoloWork({ genres: [], actress: ['花子'] }) && !L.isSoloWork({ genres: [], actress: ['花子', '月子'] }) && !L.isSoloWork({}));
+const soloItem = L.normalizeItems([{ cid: 's1', title: 'T', date: '2026-10-01', actress: ['花子'], genres: ['単体作品'] }])[0];
+check('一覧の1マスの目印（filterAttrs）: 単体作品に data-solo。VR作品のページ（vr: false）でも、単体の印は付く', soloItem.solo === true && L.filterAttrs(soloItem)['data-solo'] === 'true' && L.filterAttrs({ ...soloItem, vr: true }, { vr: false })['data-solo'] === 'true' && !('data-vr' in L.filterAttrs({ ...soloItem, vr: true }, { vr: false })));
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);
