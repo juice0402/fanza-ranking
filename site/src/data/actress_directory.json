@@ -1,4 +1,4 @@
-{"cursor": {"filter": 0, "offset": 4701}, "cycle_done": "2026-10-04", "rows": [
+{"cursor": {"filter": 0, "offset": 8701}, "cycle_done": "2026-10-04", "rows": [
 {"id": "3", "name": "北川ゆい", "ruby": "きたがわゆい", "img": "kitagawa_yui", "bust": 95, "cup": "G", "waist": 60, "hip": 88, "height": null, "birthday": "1980-12-14"},
 {"id": "4", "name": "Akira", "ruby": "あきら", "img": "akira", "bust": 90, "cup": "", "waist": 58, "hip": 86, "height": 157, "birthday": "1978-08-15"},
 {"id": "6", "name": "COCOLO", "ruby": "こころ", "img": "cocolo", "bust": 96, "cup": "H", "waist": 55, "hip": 85, "height": 168, "birthday": "1982-07-07"},
