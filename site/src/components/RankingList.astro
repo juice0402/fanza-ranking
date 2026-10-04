@@ -1,0 +1,51 @@
+---
+// 人気ランキングのページの中身（/ranking/ 新着の人気順・/ranking/all/ 全体の人気順。lib/popularity.js）。
+// 順位は、毎日の更新が、その日のFANZAの人気順を取り直したもの。並べるのは、このサイトに載っている作品だけ（1位から順に番号をふり直す）
+import Breadcrumb from './Breadcrumb.astro';
+import VrToggle from './VrToggle.astro';
+import ItemCard from './ItemCard.astro';
+import { formatDateJp, vrAttrs } from '../lib/items.js';
+import { NEW_RANK_DAYS, RANKING_ALL_PATH, RANKING_PATH } from '../lib/popularity.js';
+
+// kind: 'new'（新着の人気順）/ 'all'（全体の人気順）。list: 並べる作品（順位の順）。date: 順位を取った日
+const { kind, list, date, trail } = Astro.props;
+const isNew = kind === 'new';
+---
+
+<div class="wrap">
+  <Breadcrumb trail={trail} />
+
+  <section class="hero">
+    <h1 class="hero-title">{isNew ? '新着の人気ランキング' : '全体の人気ランキング'}</h1>
+    <p class="hero-lead">
+      {isNew
+        ? `最近${NEW_RANK_DAYS}日に発売されたFANZA動画を、その日の人気順に並べています。毎日、日付が変わったあとに入れ替わります。`
+        : 'FANZA動画の発売済みの作品を、その日の人気順に並べています（このサイトに載っている作品だけ）。毎日、日付が変わったあとに入れ替わります。'}
+    </p>
+    <div class="hero-actions">
+      <a class={isNew ? 'btn btn-hot' : 'btn btn-quiet'} href={RANKING_PATH} aria-current={isNew ? 'page' : undefined}>新着の人気順</a>
+      <a class={isNew ? 'btn btn-quiet' : 'btn btn-hot'} href={RANKING_ALL_PATH} aria-current={isNew ? undefined : 'page'}>全体の人気順</a>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ranking-title">
+    <div class="section-head">
+      <h2 id="ranking-title" class="section-title">{isNew ? '新着' : '全体'}の人気順{list.length > 0 && ` TOP${list.length}`}</h2>
+      {date && <p class="section-note">{formatDateJp(date)}のFANZAの人気順</p>}
+    </div>
+    {list.length > 0
+      ? (
+        <>
+          <div class="list-tools">
+            <VrToggle />
+          </div>
+          <ul class="shelf">
+            {list.map((item, i) => (
+              <li class="shelf-cell" {...vrAttrs(item)}><ItemCard item={item} level="h3" badge={`${i + 1}位`} eager={i < 4} /></li>
+            ))}
+          </ul>
+        </>
+      )
+      : <p class="empty">人気順のデータは、毎日の更新（日付が変わった直後）のあとに表示されます。</p>}
+  </section>
+</div>

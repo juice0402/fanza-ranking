@@ -507,6 +507,11 @@ cur_rows = [r for r in lst["items"] if not r.get("catalog")]
 check("list: 毎日の更新の作品を先に、枠が余ったら過去作品（コメントがまだ無いもの）を出す", len(cur_rows) == len(pending) and len(cat_rows) == 6 and lst["items"].index(cat_rows[0]) == len(cur_rows), (len(cur_rows), len(cat_rows)))
 check("list: 過去作品は reason「過去作品」・catalog: true・発売済み・FANZAの人気順の順位が上の作品から（順位が分からない作品は最後）・順位そのものは出さない",
       all(r["reason"] == "過去作品" and r["status"] == "発売済み" and "rank" not in r for r in cat_rows) and [r["cid"] for r in cat_rows] == ["oldwork003", "oldwork001", "oldwork000", "oldwork002", "oldwork004", "oldwork005"], [r["cid"] for r in cat_rows])
+with open(os.path.join(tmp, "popularity.json"), "w", encoding="utf-8") as f:
+    json.dump({"date": "2026-11-03", "new": {"oldwork004": 1, "oldwork005": 40}, "all": {}}, f)
+cat_rows_pop = [r["cid"] for r in json.loads(run("list", "--limit", "40").stdout)["items"] if r.get("catalog")]
+os.remove(os.path.join(tmp, "popularity.json"))
+check("list: 新着の人気順に入っている過去作品は、その順位も使う（全体の順位と、上のほう）", cat_rows_pop[:4] == ["oldwork004", "oldwork003", "oldwork001", "oldwork005"], cat_rows_pop)
 check("list: 毎日の更新の作品と同じ作品は、過去作品として出さない", dup["cid"] not in {r["cid"] for r in cat_rows})
 check("list: total_pending に過去作品も入る・catalog_pending は過去作品の数", lst["total_pending"] == len(pending) + 6 and lst["catalog_pending"] == 6, (lst["total_pending"], lst["catalog_pending"]))
 lst_small = json.loads(run("list", "--limit", str(len(pending) - 1)).stdout)

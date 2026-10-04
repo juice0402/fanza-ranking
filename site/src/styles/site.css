@@ -198,6 +198,14 @@ summary:focus-visible {
   text-underline-offset: 4px;
 }
 
+/* スマホでは、メニューの6つ（発売中・予約・人気順・作品検索・女優検索・★お気に入り）が1行に収まるよう、文字と間を少し小さく（幅360pxでも1行） */
+@media (max-width: 420px) {
+  .site-nav {
+    gap: 0 12px;
+    font-size: 12px;
+  }
+}
+
 /* ---------- トップのヒーロー ---------- */
 
 .hero {

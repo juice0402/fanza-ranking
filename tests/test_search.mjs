@@ -63,6 +63,17 @@ const find = (state, opts = {}) => S.filterRows(rows, { terms: [], tags: [], sta
 check('条件なし: 全部・新しい順', find({}) === 'a003,a001,a002,a005,a004');
 check('古い順', find({ sort: 'old' }) === 'a004,a002,a005,a001,a003');
 check('ジャンル1つ', find({ tags: [gn('人妻')] }) === 'a002,a005,a004');
+{
+  // 人気順（索引の r: 全体の人気順・n: 新着の人気順）。順位の無い作品は、そのあとに新しい順
+  const pr = plain(L.buildItemsIndex(items.map((i) => ({ ...i, popAll: { a004: 3, a002: 10 }[i.cid] ?? null, popNew: { a001: 1, a005: 2 }[i.cid] ?? null })), today).items).map((r) => ({ ...r }));
+  S.prepare(pr, idx.genres);
+  const by = (sort) => S.filterRows(pr, { terms: [], tags: [], status: '', sort }, { today, hideVr: false }).map((r) => r.c).join();
+  check('索引に、全体の人気順（r）・新着の人気順（n）が入る（分からなければ無い）', pr.find((r) => r.c === 'a004').r === 3 && pr.find((r) => r.c === 'a001').n === 1 && !('r' in pr.find((r) => r.c === 'a003')) && !('n' in pr.find((r) => r.c === 'a004')));
+  check('人気順（全体）: 順位の上から・順位の無い作品はそのあと新しい順', by('pop') === 'a004,a002,a003,a001,a005', by('pop'));
+  check('人気順（新着）: 新着の順位の上から・順位の無い作品はそのあと新しい順', by('popnew') === 'a001,a005,a003,a002,a004', by('popnew'));
+  const popIdx = L.buildItemsIndex(items.map((i) => ({ ...i, popAll: i.cid === 'a004' ? 1 : null })), today, 2, 1);
+  check('索引に入れる作品: 全体の人気順の上位は、古くても先に入れる（残りは新しい順）。並びは発売日の新しい順', popIdx.items.map((r) => r.c).join() === 'a003,a004', popIdx.items.map((r) => r.c).join());
+}
 check('ジャンル2つは、両方を持つ作品だけ（AND）', find({ tags: [gn('人妻'), gn('巨乳')] }) === 'a002' && find({ tags: [gn('4K'), gn('巨乳')] }) === '');
 check('発売済みだけ・予約だけ（今日が発売日のものは、発売済み）', find({ status: 'released' }) === 'a001,a002,a005,a004' && find({ status: 'upcoming' }) === 'a003');
 check('VRを隠す: VR作品が消える', find({}, { hideVr: true }) === 'a003,a002,a005,a004' && find({ tags: [gn('巨乳')] }, { hideVr: true }) === 'a002');
@@ -93,6 +104,7 @@ const q1 = plain(S.parseQuery('?q=%E6%A1%9C&tag=%E5%B7%A8%E4%B9%B3&tag=A%26B&tag
 check('読む: キーワード・ジャンル（名前→番号。重複は1つ・記号つきも読める）・発売の状態・並び順', q1.q === '桜' && q1.tags.join() === '1,2' && q1.status === 'released' && q1.sort === 'old', JSON.stringify(q1));
 const q2 = plain(S.parseQuery('?tag=%E5%AD%98%E5%9C%A8%E3%81%97%E3%81%AA%E3%81%84&st=hack&sort=zzz&q=' + 'あ'.repeat(300), genres));
 check('読む: 知らないジャンルは捨てる・変な状態/並び順は既定に戻す・キーワードは100文字まで', q2.tags.length === 0 && q2.status === '' && q2.sort === 'new' && q2.q.length === 100, JSON.stringify(q2).slice(0, 120));
+check('読む・書く: 人気順（新着・全体）も URL に入る', plain(S.parseQuery('?sort=popnew', genres)).sort === 'popnew' && plain(S.parseQuery('?sort=pop', genres)).sort === 'pop' && S.buildQuery({ sort: 'pop' }, genres) === '?sort=pop' && S.buildQuery({ sort: 'popnew' }, genres) === '?sort=popnew' && S.buildQuery({ sort: 'toString' }, genres) === '' && plain(S.parseQuery('?sort=constructor', genres)).sort === 'new');
 check('読む: 空・null でも落ちない', plain(S.parseQuery('', genres)).tags.length === 0 && plain(S.parseQuery(null, genres)).sort === 'new');
 check('書く: 条件が無ければ空文字（URLをきれいに保つ）', S.buildQuery({ q: '', tags: [], status: '', sort: 'new' }, genres) === '' && S.buildQuery({}, genres) === '');
 check('書く: ジャンル名・キーワードは URL 用に変える', S.buildQuery({ q: ' 人妻 ', tags: [2, 0], status: 'upcoming', sort: 'old' }, genres) === '?q=%E4%BA%BA%E5%A6%BB&tag=A%26B&tag=%E4%BA%BA%E5%A6%BB&st=upcoming&sort=old', S.buildQuery({ q: ' 人妻 ', tags: [2, 0], status: 'upcoming', sort: 'old' }, genres));

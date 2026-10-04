@@ -7,6 +7,7 @@ import { productCode } from './facts.js';
 export const SEARCH_PATH = '/search/';
 export const ITEMS_INDEX_PATH = '/data/items-index.json';
 export const ITEMS_INDEX_LIMIT = 3000; // 索引に入れる作品の最大数（新しい順）。毎回ダウンロードされるので、古いものから外す
+export const ITEMS_INDEX_POPULAR = 1000; // そのうち、全体の人気順の上位は、古くてもこの本数まで先に入れる（「人気順（全体）」で並べたときに出るように）
 export const DMM_IMAGE_PREFIX = 'https://pics.dmm.co.jp/'; // 画像のURLの先頭がこれなら、索引では省く（ブラウザ側で付け直す）
 
 /** ジャンル（タグ）で絞り込んだ検索ページへのリンク */
@@ -16,15 +17,18 @@ export const searchPath = (tag = '') => (tag ? `${SEARCH_PATH}?tag=${encodeURICo
  * 作品検索のための索引（/data/items-index.json）。
  *   generated: 作った日 / newDays: 「新作」シールを付ける日数 / genres: ジャンル名の一覧（作品の多い順）
  *   items: 発売日の新しい順に、{ c 作品ID, p 品番（例 DLDSS-566。作れないときは無い）, t タイトル, d 発売日, a 出演者, m メーカー,
- *           g ジャンルの番号（genres の何番目か）, v VRなら 1（VRでなければ無い）, i 画像 }
+ *           g ジャンルの番号（genres の何番目か）, v VRなら 1（VRでなければ無い）, i 画像,
+ *           r 全体の人気順の順位・n 新着の人気順の順位（分からなければ無い。lib/popularity.js） }
+ * 入れる作品: 全体の人気順の上位 ITEMS_INDEX_POPULAR 本と、残りは新しい順に、合わせて limit 本まで（並びは発売日の新しい順）
  * タイトルには、文節の区切りに幅のない空白（U+200B）が入っている（ブラウザで、語の途中で改行しないため。site/src/lib/phrase.js の phraseZwsp）。
  * 出演者・メーカー・ジャンルは、作品ページと同じ名前。メーカーが「不明」のときは ''。
  * 画像は、DMMの画像のURLの先頭（https://pics.dmm.co.jp/）を省いた形（ほかのホストのURLはそのまま）。
  */
-export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT) {
-  const picked = [...items]
-    .sort((a, b) => b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid))
-    .slice(0, limit);
+export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT, popularCount = ITEMS_INDEX_POPULAR) {
+  const newest = (a, b) => b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid);
+  const popular = items.filter((i) => i.popAll).sort((a, b) => a.popAll - b.popAll || newest(a, b)).slice(0, Math.min(popularCount, limit));
+  const chosen = new Set(popular.map((i) => i.cid));
+  const picked = [...popular, ...[...items].sort(newest).filter((i) => !chosen.has(i.cid))].slice(0, limit).sort(newest);
 
   const counts = new Map();
   for (const item of picked) for (const g of new Set(item.genres)) counts.set(g, (counts.get(g) ?? 0) + 1);
@@ -47,6 +51,8 @@ export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT) {
         i: item.image_url.startsWith(DMM_IMAGE_PREFIX) ? item.image_url.slice(DMM_IMAGE_PREFIX.length) : item.image_url,
       };
       if (item.vr) row.v = 1;
+      if (item.popAll) row.r = item.popAll;
+      if (item.popNew) row.n = item.popNew;
       const code = productCode(item.cid);
       if (code) row.p = code;
       return row;

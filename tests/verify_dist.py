@@ -141,7 +141,16 @@ try:
     _ranks = json.load(open(CATALOG_RANK, encoding="utf-8"))
 except (OSError, ValueError):
     _ranks = {}
-catalog_rank = {c: v[0] for c, v in (_ranks.items() if isinstance(_ranks, dict) else []) if isinstance(v, list) and v and isinstance(v[0], int) and v[0] >= 1}
+catalog_rank = {c: v[0] for c, v in (_ranks.items() if isinstance(_ranks, dict) else []) if isinstance(v, list) and v and isinstance(v[0], int) and 1 <= v[0] < 50000}  # 50000 は「まだ分からない」
+POPULARITY = os.path.join(ROOT, "site", "src", "data", "popularity.json")  # 新着の人気順・毎日の更新の作品の全体の順位
+try:
+    _pop = json.load(open(POPULARITY, encoding="utf-8"))
+except (OSError, ValueError):
+    _pop = {}
+_pop = _pop if isinstance(_pop, dict) else {}
+_rank_map = lambda d: {c: v for c, v in (d.items() if isinstance(d, dict) else []) if isinstance(v, int) and not isinstance(v, bool) and 1 <= v < 50000}
+pop_new, pop_all = _rank_map(_pop.get("new")), _rank_map(_pop.get("all"))
+all_rank_of = lambda c: catalog_rank.get(c) if c in catalog else pop_all.get(c)  # 全体の人気順（過去作品は catalog_rank、毎日の更新の作品は popularity.json の all）
 has_comment = lambda x: bool(str(x.get("comment") or "").strip())
 
 print("■ ページが揃っている")
@@ -164,7 +173,8 @@ def page_rank(cid):
     """作品ページの優先順（site/src/lib/plan.js と同じ考え方。小さいほど先）: 毎日の更新で載せた作品 → コメントのある過去作品 → そのほか、
     同じ中では、過去作品は人気順の順位が上の作品から（順位が分からない作品はそのあと）、そのあとは発売日の新しい順"""
     x = everything[cid]
-    rank = catalog_rank.get(cid, float("inf")) if cid in catalog else float("inf")
+    # site/src/lib/data.js の rank と同じ: 全体の人気順と新着の人気順の、上のほう
+    rank = min(catalog_rank.get(cid, float("inf")), pop_new.get(cid, float("inf"))) if cid in catalog else float("inf")
     return (0 if cid in curated else 1 if has_comment(x) else 2, rank, -int(str(x["date"])[:10].replace("-", "")))
 
 
@@ -1091,6 +1101,32 @@ else:
 no_sensitive_tag = [g for g, _ in tag_counts.values() if re.search(r"制服|校生|学生|少女|ロリ|幼|中出|顔射|フェラ|レイプ|痴漢|盗撮|調教|ドラッグ|放尿", g)]
 check("ジャンルのページに、過激な行為・未成年を連想させる名前のものが無い", not no_sensitive_tag, no_sensitive_tag)
 
+# 人気ランキング（/ranking/ 新着の人気順・/ranking/all/ 全体の人気順）
+print("\n■ 人気ランキング")
+JST_DAY = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime("%Y-%m-%d")
+_from = (datetime.date.fromisoformat(JST_DAY) - datetime.timedelta(days=30)).isoformat()
+want_new = sorted((c for c in everything if c in pop_new and _from <= str(everything[c]["date"])[:10] <= JST_DAY),
+                  key=lambda c: (pop_new[c], -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:100]
+want_all = sorted((c for c in everything if all_rank_of(c) and str(everything[c]["date"])[:10] <= JST_DAY),
+                  key=lambda c: (all_rank_of(c), -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:100]
+for path_, want, label in (("ranking/index.html", want_new, "新着の人気順"), ("ranking/all/index.html", want_all, "全体の人気順")):
+    f = os.path.join(DIST, path_)
+    if not os.path.isfile(f):
+        check(f"{label}のページ（/{path_[:-10]}）がある", False)
+        continue
+    html_ = read(f)
+    cells = [m.group(1) for m in re.finditer(r'<li class="shelf-cell"[^>]*>(.*?)</li>', html_, re.S)]
+    badges = [re.search(r'<span class="rank-badge">(\d+)位</span>', c) for c in cells]
+    order = []
+    for c in cells:
+        m_ = re.search(r'href="/item/([^/"]+)/"', c) or re.search(r'cid%3D([A-Za-z0-9_]+)|id%3D([A-Za-z0-9_]+)', c)
+        order.append(next((g for g in (m_.groups() if m_ else ()) if g), None))
+    check(f"{label}: 作品の数（{len(cells)}）と並び（順位の順）が、順位のファイルから決めたものと同じ・札は1位から順に", len(cells) == len(want) and [b.group(1) if b else None for b in badges] == [str(n) for n in range(1, len(cells) + 1)]
+          and all(o is None or o == w for o, w in zip(order, want)), (len(cells), len(want), order[:3], want[:3]))
+    has_noindex = 'name="robots" content="noindex' in read_raw(f)
+    check(f"{label}: 作品が無い・コメントのある作品が1本も無いときだけ noindex", has_noindex == (not want or not any(has_comment(everything[c]) for c in want)))
+check("ヘッダーに人気ランキングへのリンクがある", 'href="/ranking/"' in home_html)
+
 # 検索ページ
 sp = os.path.join(DIST, "search", "index.html")
 check("検索ページ（/search/）がある", os.path.isfile(sp))
@@ -1103,7 +1139,7 @@ if os.path.isfile(sp):
     ids_ = {t.get("id") for tag in ("ul", "p", "button", "section") for t in tags(stext_, tag)}
     check("検索のフォーム（q・status・sort）と、結果の表示先（#ws-tag-list・#ws-tag-more・#ws-count・#ws-list・#ws-more）がある", {"q", "status", "sort"} <= names_ and {"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} <= ids_, (sorted({"q", "status", "sort"} - names_), sorted({"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} - ids_)))
     sel_values = [re.findall(r'<option value="([^"]*)"', blk) for blk in re.findall(r'<select name="(?:status|sort)".*?</select>', stext_, re.S)]
-    check("選択肢の値が、スクリプトの読める形（''・released・upcoming / new・old）だけ", sel_values == [["", "released", "upcoming"], ["new", "old"]], sel_values)
+    check("選択肢の値が、スクリプトの読める形（''・released・upcoming / new・old・popnew・pop）だけ", sel_values == [["", "released", "upcoming"], ["new", "old", "popnew", "pop"]], sel_values)
     fb = next((t for t in tags(stext_, "section") if t.get("id") == "ws-fallback"), None)
     check("JavaScriptが使えないとき用の案内（#ws-fallback）に、過去の作品・出演者・メーカーへのリンクがある", fb is not None and all(f'href="{h}"' in stext_ for h in ("/archive/1/", "/actress/", "/maker/")))
     check("ジャンルが載っていない予約作品がある旨の注意書きが、検索ページにある", "予約中の作品は、ジャンルがまだ載っていないことがあります" in stext_)
@@ -1120,7 +1156,9 @@ if os.path.isfile(ii):
     check("索引が正しいJSONで、generated・newDays・genres・items がある", bool(ok_shape), str(iidx)[:80])
     if ok_shape:
         irows, igenres = iidx["items"], iidx["genres"]
-        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v）だけで、データにある作品・長い文やURLは入っていない", all(isinstance(r, dict) and set(r) <= set("cptdamgiv") and {"c", "t", "d", "a", "m", "g", "i"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("cptdamgiv"))][:1])
+        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v,r,n）だけで、データにある作品・長い文やURLは入っていない", all(isinstance(r, dict) and set(r) <= set("cptdamgivrn") and {"c", "t", "d", "a", "m", "g", "i"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("cptdamgivrn"))][:1])
+        bad_rn = [r["c"] for r in irows if r.get("r") != all_rank_of(r["c"]) or r.get("n") != pop_new.get(r["c"])]
+        check("索引の人気順（r: 全体・n: 新着）が、順位のファイルと同じ（分からない作品には無い）", not bad_rn, bad_rn[:3])
         bad_p = [(r["c"], r.get("p")) for r in irows if (r.get("p") or "") != product_code(r["c"])]
         check("索引の品番（p）が、作品ページと同じ品番（作れない作品には無い）", not bad_p, bad_p[:3])
         bad_t = [r["c"] for r in irows if r["c"] in valid and r["t"].replace("\u200b", "").replace("\u2060", "").replace("\u00a0", " ") != str(valid[r["c"]].get("title", "")).strip()]

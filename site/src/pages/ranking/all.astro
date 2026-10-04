@@ -1,0 +1,27 @@
+---
+// 全体の人気ランキング（/ranking/all/）。発売済みの作品を、その日のFANZAの人気順に（lib/popularity.js）
+import Base from '../../layouts/Base.astro';
+import RankingList from '../../components/RankingList.astro';
+import { all, today, popularity } from '../../lib/data.js';
+import { RANKING_ALL_PATH, RANKING_PATH, allRanking } from '../../lib/popularity.js';
+import { listIndexable } from '../../lib/plan.js';
+import { SITE_NAME, breadcrumbLd } from '../../lib/items.js';
+
+const list = allRanking(all, today);
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '新着の人気ランキング', path: RANKING_PATH },
+  { name: '全体の人気ランキング', path: RANKING_ALL_PATH },
+];
+const noindex = list.length === 0 || !listIndexable(list);
+---
+
+<Base
+  title={`FANZA動画の人気ランキング（全体）｜${SITE_NAME}`}
+  description="FANZA動画の発売済みの作品を、その日の人気順に並べたランキングです。毎日、日付が変わったあとに更新します。"
+  path={RANKING_ALL_PATH}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <RankingList kind="all" list={list} date={popularity.date} trail={trail} />
+</Base>

@@ -233,6 +233,41 @@ else:
         odd = sorted(set(crank) ^ set(ccids))
         print(("  ✅ " if not odd else "  ⚠️ ") + "順位のある作品 = 過去作品" + (f"  → 食い違い {len(odd)}本（次の毎日の更新でそろいます）: {odd[:5]}" if odd else ""))
 
+# ---- 人気順（popularity.json）・セール（sale.json）。毎日の更新が、その日のFANZAの人気順・キャンペーンから作る（まだ無いあいだは点検しない） ----
+print("\n■ 人気順（popularity.json）・セール（sale.json）")
+POPULARITY = os.path.join(ROOT, "site", "src", "data", "popularity.json")
+SALE = os.path.join(ROOT, "site", "src", "data", "sale.json")
+_rank_ok = lambda v: isinstance(v, int) and not isinstance(v, bool) and 1 <= v <= 50000
+if not os.path.exists(POPULARITY):
+    print("  （popularity.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        popj = json.load(open(POPULARITY, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        popj = None
+        check("popularity.json を読める", False, str(e))
+    if popj is not None:
+        check("popularity.json: 日付（空か YYYY-MM-DD）・new と all が {cid: 順位 1〜50000} の形・日付が未来でない",
+              isinstance(popj, dict) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(popj.get("date", ""))) is not None and str(popj.get("date", "")) <= jst_tomorrow
+              and all(isinstance(popj.get(k), dict) and all(_rank_ok(v) for v in popj[k].values()) for k in ("new", "all")), str(popj)[:80])
+if not os.path.exists(SALE):
+    print("  （sale.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        salej = json.load(open(SALE, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        salej = None
+        check("sale.json を読める", False, str(e))
+    if salej is not None:
+        camps = salej.get("campaigns") if isinstance(salej, dict) else None
+        rows = salej.get("items") if isinstance(salej, dict) else None
+        check("sale.json: 日付・キャンペーン（名前・始まり・終わり）・作品（c 作品ID・k キャンペーンの番号・p 価格 < l 定価。価格は無いこともある）",
+              isinstance(camps, list) and isinstance(rows, list) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(salej.get("date", ""))) is not None
+              and all(isinstance(c, dict) and str(c.get("title", "")).strip() and re.match(r"^\d{4}-\d{2}-\d{2}", str(c.get("end", ""))) for c in camps)
+              and all(isinstance(r, dict) and str(r.get("c", "")).strip() and isinstance(r.get("k"), int) and 0 <= r["k"] < len(camps)
+                      and (("p" not in r and "l" not in r) or (isinstance(r.get("p"), int) and isinstance(r.get("l"), int) and 0 < r["p"] < r["l"])) for r in rows),
+              str(salej)[:80])
+
 # ---- 週のまとめ記事（roundups.json）。Claude が毎週書き足すので、壊れていないかを見張る ----
 print("\n■ 週のまとめ記事（roundups.json）")
 sys.path.insert(0, os.path.join(ROOT, "scripts"))

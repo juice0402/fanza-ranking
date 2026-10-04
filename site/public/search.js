@@ -95,7 +95,7 @@
     return rows;
   }
 
-  // 条件: { terms: [語], tags: [ジャンルの番号], status: ''|'released'|'upcoming', sort: 'new'|'old' }
+  // 条件: { terms: [語], tags: [ジャンルの番号], status: ''|'released'|'upcoming', sort: 'new'|'old'|'popnew'|'pop' }
   // opts: { today, hideVr }
   function matches(row, state, opts, ignoreTags) {
     if (opts.hideVr && row.v === 1) return false;
@@ -121,13 +121,28 @@
     return a.d < b.d ? -1 : a.d > b.d ? 1 : a.c < b.c ? -1 : a.c > b.c ? 1 : 0;
   }
 
+  // 人気順（索引の r: 全体の人気順・n: 新着の人気順）。順位の無い作品は、そのあとに新しい順
+  function byRank(key) {
+    return function (a, b) {
+      var x = typeof a[key] === 'number' ? a[key] : Infinity;
+      var y = typeof b[key] === 'number' ? b[key] : Infinity;
+      return x < y ? -1 : x > y ? 1 : newer(a, b);
+    };
+  }
+
+  // 並び順: new 新しい順 / old 古い順 / popnew 人気順（新着）/ pop 人気順（全体）
+  var SORTS = { new: newer, old: older, popnew: byRank('n'), pop: byRank('r') };
+  function sortOf(name) {
+    return Object.prototype.hasOwnProperty.call(SORTS, name) ? name : 'new';
+  }
+
   // 条件に合う作品（並べ替え済み）
   function filterRows(rows, state, opts) {
     return rows
       .filter(function (row) {
         return matches(row, state, opts, false);
       })
-      .sort(state.sort === 'old' ? older : newer);
+      .sort(SORTS[sortOf(state.sort)]);
   }
 
   // ジャンルごとの「それを足したときに残る作品の数」。選んでいるジャンルは、いまの結果の数と同じ（結果は、選んだものを全部含む作品だけのため）
@@ -158,7 +173,7 @@
       q: (params.get('q') || '').slice(0, 100),
       tags: tags,
       status: st === 'released' || st === 'upcoming' ? st : '',
-      sort: params.get('sort') === 'old' ? 'old' : 'new',
+      sort: sortOf(params.get('sort')),
     };
   }
 
@@ -171,7 +186,7 @@
       if (genres[n]) parts.push('tag=' + encodeURIComponent(genres[n]));
     });
     if (form.status === 'released' || form.status === 'upcoming') parts.push('st=' + form.status);
-    if (form.sort === 'old') parts.push('sort=old');
+    if (sortOf(form.sort) !== 'new') parts.push('sort=' + form.sort);
     return parts.length ? '?' + parts.join('&') : '';
   }
 
@@ -355,7 +370,7 @@
     count.textContent = found.length ? found.length + '本が見つかりました' + vrNote : '条件に合う作品がありません。条件をゆるめてみてね。' + (o.hideVr ? 'VR作品は隠しています。' : '');
     more.hidden = found.length <= visible.length;
     if (filterNote) {
-      var active = selected.length + (state.status ? 1 : 0) + (state.sort === 'old' ? 1 : 0);
+      var active = selected.length + (state.status ? 1 : 0) + (state.sort !== 'new' ? 1 : 0);
       filterNote.textContent = active ? '（' + active + '件を指定中）' : '';
     }
     writeUrl();
@@ -432,7 +447,7 @@
       selected = first.tags;
       // 広い画面か、ジャンル・発売・並び順の指定つきで開いたときは、たためる欄を最初から開いておく
       var wide = typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 720px)').matches;
-      if (filters && (wide || first.tags.length || first.status || first.sort === 'old')) filters.open = true;
+      if (filters && (wide || first.tags.length || first.status || first.sort !== 'new')) filters.open = true;
       root.hidden = false;
       if (fallback) fallback.hidden = true;
       render();
