@@ -6,6 +6,8 @@ name: Refresh FANZA Data
 #   ・売れ筋ランキングを取り直す
 #   ・女優検索の名簿（FANZA公式の出演者検索の一覧）を、続きから取る。ふだんは毎日40回ずつ。
 #     「名簿の一覧を取る回数」を増やして実行すると、一気に集められる（全部で約200回。1回100人）
+#   ・過去作品（FANZAの人気順の、発売済みの作品）を、続きから取る。ふだんは毎日30回ずつ（3,000本）。
+#     「過去作品の一覧を取る回数」を増やして実行すると、一気に集められる（全部で500回＝5万本）
 # 新しい機能のブランチで、本物のAPIを使った確認をするときにも使う（Run workflow で、ブランチを選んで実行）。
 # 結果のデータは、実行したブランチに commit する。
 on:
@@ -15,6 +17,10 @@ on:
         description: '女優検索の名簿の一覧を取る回数（1回100人。0〜400。ふだんは40、一気に集めるなら250）'
         required: false
         default: '40'
+      catalog_calls:
+        description: '過去作品の一覧を取る回数（1回100本。0〜500。ふだんは30、一気に5万本集めるなら500）'
+        required: false
+        default: '30'
 
 permissions:
   contents: write
@@ -27,7 +33,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45  # 名簿（最大400回）と過去作品（最大500回）を一度に取ると、20分ほどかかる
     steps:
       - uses: actions/checkout@v4
 
@@ -45,10 +51,13 @@ jobs:
           API_ID: ${{ secrets.API_ID }}
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
           DIRECTORY_CALLS: ${{ inputs.directory_calls || '40' }}
+          CATALOG_CALLS: ${{ inputs.catalog_calls || '30' }}
         run: |
-          # 回数は数字だけ・400回まで（打ちまちがいで、とても長く動かないように）
+          # 回数は数字だけ・名簿は400回まで・過去作品は500回まで（打ちまちがいで、とても長く動かないように）
           case "$DIRECTORY_CALLS" in ''|*[!0-9]*) echo "名簿の一覧を取る回数は、数字で入れてください（いま: $DIRECTORY_CALLS）"; exit 1;; esac
           if [ "$DIRECTORY_CALLS" -gt 400 ]; then echo "名簿の一覧を取る回数は400回までです"; exit 1; fi
+          case "$CATALOG_CALLS" in ''|*[!0-9]*) echo "過去作品の一覧を取る回数は、数字で入れてください（いま: $CATALOG_CALLS）"; exit 1;; esac
+          if [ "$CATALOG_CALLS" -gt 500 ]; then echo "過去作品の一覧を取る回数は500回までです"; exit 1; fi
           python get_new_releases.py --refresh-only
 
       - name: Commit and push if changed

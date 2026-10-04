@@ -22,6 +22,8 @@ GitHub Actions（毎日 0:05 JST。日付が変わった直後）
       女優検索の名簿（FANZA公式の出演者検索の一覧。体型・身長・生年月日が載っている人。毎日40回×100人ずつ続きから、約5日で一回り）
       → site/src/data/actress_directory.json（Geminiは使わない）
       売れ筋ランキング（FANZAの人気順の上位6本。画面に出すのは先頭3本で、VR作品を隠すとき、次の順位から差し替える）→ site/src/data/ranking.json
+      過去作品（FANZAの人気順の、発売済みの作品。毎日30回×100本ずつ続きから、上位5万本で一回り。new_releases.json にある作品は入れない）
+      → site/src/data/catalog/YYYY-MM.json（発売月ごと・1作品1行。続きの場所は catalog_state.json。Geminiは使わない。コメントは無し）
   → main に commit → Cloudflare Pages が自動ビルド（Astro, 静的サイト）→ 公開
 
 Claude の予約タスク（毎日 0:20 JST。手順は docs/claude-comments.md）
@@ -64,12 +66,12 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | `site/src/data/new_releases.json` | **自動更新のデータ。手で編集しない**（作品IDごとに蓄積。`updated` は、その作品のコメントを最後に変えた日で、sitemap の `lastmod` に使う） |
 | `site/src/data/actresses.json` | **自動更新のデータ。手で編集しない**（出演者のプロフィール。`{actresses:[…], unmatched:{名前:探した日}}`。体型は数字・生年月日は年齢の計算用で、画面に出すのは**年齢だけ**。血液型・趣味・出身地は**保存しない**。名前の完全一致が1人だけのときだけ採用し、推測で選ばない） |
 | `site/src/data/actress_directory.json` | **自動更新のデータ。手で編集しない**（女優検索の名簿。FANZA公式の出演者検索の一覧から、`{cursor, cycle_done, cycle_start, prev_cycle_start, rows:[…]}`。1人1行・id の順。持つのは id・名前・読み・顔写真のファイル名・体型・身長・生年月日・最後に見かけた日（seen）だけ。約5日の一回りを2回続けて見かけなかった人（FANZAから消えた・数字が消された人）は外す。体型も身長も生年月日も無い人は入れない。18歳未満・80歳をこえる生年月日は捨てる） |
-| `site/src/data/catalog/YYYY-MM.json` | **過去作品（カタログ）。自動更新のデータ。手で編集しない**（発売月ごとのファイル。作品の形は `new_releases.json` と同じで、コメントは無いか、あとから Claude が書く。まだ無くてもビルドは止まらない。同じ作品が `new_releases.json` にあれば、そちらを使う） |
+| `site/src/data/catalog/YYYY-MM.json` | **過去作品（カタログ）。自動更新のデータ。手で編集しない**（`get_new_releases.py` の `update_catalog`。発売月ごとのファイル・1作品1行。作品の形は `new_releases.json` と同じで、コメントは無し（`comment_kind: "none"`・空）か、あとから Claude が書いたもの（`"claude"`）だけ。サンプル画像は8枚まで。まだ無くてもビルドは止まらない。同じ作品が `new_releases.json` にあれば、そちらを使う（毎日の更新が、過去作品から外す）。続きの場所は `catalog_state.json`（`{cursor, cycle_done, items}`）） |
 | `site/src/data/ranking.json` | **自動更新のデータ。手で編集しない**（売れ筋ランキング上位6本。各行の `vr` は、取得のときにジャンルなどから判定した「VR作品か」。取得に失敗したら前回のものを残す） |
 | `site/src/data/roundups.json` | **Claude が毎週書き足す記事のデータ。手で編集しない**（`claude_roundups.py apply` だけが書く。新しい週が先頭） |
 | `tests/` | テスト一式。`fixtures/` は固定データ（本番データには依存しない） |
 | `scripts/check.sh` | テストをまとめて実行（`--build` でビルドと点検まで） |
-| `.github/workflows/` | `update.yml`（毎日の更新）、`ci.yml`（PRごとの自動確認）、`refresh-data.yml`（取り直しだけを手動で動かす。Geminiは使わない。ブランチを選んで実行すると、本物のAPIでの確認に使える。「名簿の一覧を取る回数」を増やすと、女優検索の名簿を一気に集められる）、`probe-api.yml`（APIの応答の形を調べる道具。`scripts/probe_api.py`。結果は個人情報を伏せて注釈に出す） |
+| `.github/workflows/` | `update.yml`（毎日の更新）、`ci.yml`（PRごとの自動確認）、`refresh-data.yml`（取り直しだけを手動で動かす。Geminiは使わない。ブランチを選んで実行すると、本物のAPIでの確認に使える。「名簿の一覧を取る回数」を増やすと、女優検索の名簿を、「過去作品の一覧を取る回数」（最大500＝5万本）を増やすと、過去作品を一気に集められる）、`probe-api.yml`（APIの応答の形を調べる道具。`scripts/probe_api.py`。結果は個人情報を伏せて注釈に出す） |
 | `docs/claude-comments.md` | 毎日の予約タスク（Claude がコメントを書く）の手順書と書き方のルール |
 | `docs/claude-roundups.md` | 毎週月曜の予約タスク（Claude が週のまとめ記事を書く）の手順書と書き方のルール |
 | `docs/design-notes.md` | デザインの考え方、API/Geminiで学んだ注意点、今後やりたいこと |

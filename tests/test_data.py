@@ -173,6 +173,51 @@ else:
             check("ランキング: 順位は 1,2,3… の順・品番がある", [x.get("rank") for x in rk_items] == list(range(1, len(rk_items) + 1)) and all(str(x.get("cid", "")).strip() for x in rk_items))
             check("ランキング: リンクはFANZAのhttps・画像はFANZA(DMM)のhttps", all(_fanza_https(x.get("url"), ["fanza.co.jp", "dmm.co.jp"]) and (x.get("image_url") == "" or _fanza_https(x.get("image_url"), ["dmm.co.jp"])) for x in rk_items))
 
+# ---- 過去作品（catalog/YYYY-MM.json）。毎日の更新が、FANZAの人気順に少しずつ集める（まだ無いあいだは点検しない） ----
+print("\n■ 過去作品（catalog/YYYY-MM.json・catalog_state.json）")
+CATALOG_DIR = os.path.join(ROOT, "site", "src", "data", "catalog")
+CATALOG_STATE = os.path.join(ROOT, "site", "src", "data", "catalog_state.json")
+if not os.path.isdir(CATALOG_DIR):
+    print("  （過去作品はまだありません。毎日の更新で、少しずつ集まります）")
+else:
+    names = sorted(os.listdir(CATALOG_DIR))
+    check("過去作品のフォルダには、発売月ごとのファイル（YYYY-MM.json）だけがある", all(re.fullmatch(r"\d{4}-\d{2}\.json", n) for n in names), [n for n in names if not re.fullmatch(r"\d{4}-\d{2}\.json", n)][:3])
+    cat_items, bad_files, wrong_month = [], [], []
+    for n in names:
+        try:
+            rows = json.load(open(os.path.join(CATALOG_DIR, n), encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as e:
+            bad_files.append((n, str(e)[:60]))
+            continue
+        if not isinstance(rows, list) or not rows or not all(isinstance(r, dict) for r in rows):
+            bad_files.append((n, "空か、作品の配列ではない"))
+            continue
+        cat_items += rows
+        wrong_month += [r.get("cid") for r in rows if str(r.get("date", ""))[:7] != n[:7]]
+    check("過去作品のファイルが、すべて読めて、作品（辞書）の配列（空のファイルは無い）", not bad_files, bad_files[:3])
+    check("過去作品は、発売月のファイルに入っている", not wrong_month, wrong_month[:5])
+    ccids = [str(x.get("cid", "")).strip() for x in cat_items]
+    check(f"過去作品（{len(cat_items)}本）: cid がすべてあり、重複がない・URLに使える文字だけ", all(ccids) and len(set(ccids)) == len(ccids) and all(re.match(r"^[A-Za-z0-9_\-]+$", c) for c in ccids),
+          [c for c in set(ccids) if ccids.count(c) > 1][:5])
+    check("過去作品に、毎日の更新で載せた作品（new_releases.json）と同じ作品が無い", not (set(ccids) & set(cids)), sorted(set(ccids) & set(cids))[:5])
+    check("過去作品: タイトル・発売日（YYYY-MM-DD）がすべてある", all(str(x.get("title", "")).strip() and re.match(r"^\d{4}-\d{2}-\d{2}", str(x.get("date", ""))) for x in cat_items))
+    check("過去作品のコメントは、無し（none・空）か、Claude が書いたもの（claude・空でない）だけ",
+          all((x.get("comment_kind") == "none" and x.get("comment") == "") or (x.get("comment_kind") == "claude" and str(x.get("comment", "")).strip()) for x in cat_items),
+          [(x.get("cid"), x.get("comment_kind")) for x in cat_items if x.get("comment_kind") not in ("none", "claude")][:5])
+    check("過去作品: 更新日(updated)が YYYY-MM-DD で、未来の日付ではない", all(re.match(r"^\d{4}-\d{2}-\d{2}$", str(x.get("updated", ""))) and str(x.get("updated")) <= jst_tomorrow for x in cat_items))
+    check("過去作品: リンクは FANZA の https・サンプル動画は空かFANZA(DMM)のhttps・動画の取り直し回数は 0 以上の整数",
+          all(_fanza_https(x.get("url"), ["fanza.co.jp", "dmm.co.jp"]) and _ok_movie(x) and isinstance(x.get("movie_tries"), int) and not isinstance(x.get("movie_tries"), bool) and x["movie_tries"] >= 0 for x in cat_items),
+          [x.get("cid") for x in cat_items if not (_fanza_https(x.get("url"), ["fanza.co.jp", "dmm.co.jp"]) and _ok_movie(x))][:5])
+    check("過去作品: サンプル画像は8枚まで", all(isinstance(x.get("sample_images"), list) and len(x["sample_images"]) <= 8 for x in cat_items))
+    check("過去作品のファイルに、APIキーらしき文字列が入っていない", not any(re.search(r"AIza[0-9A-Za-z_\-]{20,}", open(os.path.join(CATALOG_DIR, n), encoding="utf-8").read()) for n in names))
+    try:
+        cst = json.load(open(CATALOG_STATE, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        cst = None
+    check("続きの場所（catalog_state.json）: cursor は 1〜50000・cycle_done は空か日付・items は過去作品の本数",
+          isinstance(cst, dict) and isinstance(cst.get("cursor"), int) and 1 <= cst["cursor"] <= 50000 and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(cst.get("cycle_done", ""))) is not None
+          and cst.get("items") == len(cat_items), cst)
+
 # ---- 週のまとめ記事（roundups.json）。Claude が毎週書き足すので、壊れていないかを見張る ----
 print("\n■ 週のまとめ記事（roundups.json）")
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
