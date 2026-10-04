@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as L from '../site/src/lib/search.js';
-import { normalizeItems, RANKING_SHOWN } from '../site/src/lib/items.js';
+import { normalizeItems, RANKING_SHOWN, CAST_LIMIT, castLine, castParts } from '../site/src/lib/items.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -145,6 +145,14 @@ check('データが3本だけでも動く（3位がVRなら2本）', RLs([0, 0, 
 check('作品が無い・2本だけのときも落ちない', RLs([], true) === '{"shown":[],"visible":0}' && RLs([0, 0], false) === '{"shown":[0,1],"visible":2}');
 check('出す本数（show）を変えても、その本数までで止まる', RLs([0, 0, 0, 0, 0, 0], false, 2) === '{"shown":[0,1],"visible":2}');
 check('出す本数の設定（RANKING_SHOWN）は3', RANKING_SHOWN === 3);
+
+console.log('\n■ 一覧の出演者は3名まで（オムニバスなど、出演者が多い作品で、カードが長くならないように）');
+const many34 = Array.from({ length: 34 }, (_, i) => `出演者${i + 1}`);
+check('一覧の出演者の人数は3（設定）', CAST_LIMIT === 3);
+check('3名まで出して、残りは「ほか○名」', castLine(many34) === '出演者1、出演者2、出演者3 ほか31名' && castParts(many34).more === 31, castLine(many34));
+check('3名以下なら全員・「ほか」は付けない・いなければ「出演者の記載なし」', castLine(['花子', '月子']) === '花子、月子' && castLine(['花子', '月子', '星子']) === '花子、月子、星子' && castLine([]) === '出演者の記載なし' && castLine(undefined, 3, '') === '');
+check('人数を変えられる（トップのTOP3は2名）', castLine(['花子', '月子', '星子'], 2) === '花子、月子 ほか1名');
+check('作品検索の画面（search.js）も、同じ3名まで', S.CAST_LIMIT === CAST_LIMIT && JSON.stringify(plain(S.castShown(many34, S.CAST_LIMIT))) === JSON.stringify({ names: many34.slice(0, 3), more: 31 }) && plain(S.castShown(['花子'], 3)).more === 0);
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

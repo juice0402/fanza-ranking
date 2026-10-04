@@ -159,8 +159,17 @@
     return { upcoming: upcoming, recent: recent };
   }
 
+  // 一覧に出す出演者（先頭から max 人）と、出しきれない人数（オムニバスなど出演者が多い作品で、カードが長くならないように。
+  // max は site/src/config.js の CAST_LIMIT と同じ3人。tests で突き合わせている）
+  var CAST_LIMIT = 3;
+  function castShown(list, max) {
+    var names = list.slice(0, max);
+    return { names: names, more: list.length - names.length };
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
+      castShown: castShown, CAST_LIMIT: CAST_LIMIT,
       emptyStore: emptyStore, parseStore: parseStore, isOn: isOn, toggle: toggle, remove: remove,
       hasPeople: hasPeople, matches: matches, pickNew: pickNew, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT,
     };
@@ -321,10 +330,12 @@
     body.appendChild(el('span', 'fav-row-title ph-js', item.t));
     var cast = Array.isArray(item.a) ? item.a.filter(function (n) { return typeof n === 'string' && n; }) : [];
     var meta = el('span', 'fav-row-meta ph-js', jpDate(item.d) + (cast.length ? '　' : ''));
-    cast.forEach(function (name, i) {
+    var shown = castShown(cast, CAST_LIMIT);
+    shown.names.forEach(function (name, i) {
       if (i > 0) meta.appendChild(document.createTextNode('、'));
       meta.appendChild(el('span', name.length <= 10 ? 'nb' : '', name)); // 短い名前は、途中で改行しない
     });
+    if (shown.more > 0) meta.appendChild(document.createTextNode(' ほか' + shown.more + '名'));
     body.appendChild(meta);
     link.appendChild(body);
     row.appendChild(link);

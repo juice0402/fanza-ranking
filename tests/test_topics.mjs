@@ -83,7 +83,7 @@ const ctx = {
 };
 const topics = T.buildTopics(ctx);
 const kinds = topics.map((t) => t.kind).join();
-check('種類と順番: 急上昇 → きょう発売 → 予約で人気 → 予約に初登場 → デビュー作 → 人気の女優 → もうすぐ終わるセール', kinds === 'rise,rise,today,upcoming,entry,debut,actress,sale', kinds);
+check('種類と順番: 急上昇 → きょう発売 → 予約で人気 → 予約に初登場 → デビュー作 → もうすぐ終わるセール（人気の女優は、別の欄）', kinds === 'rise,rise,today,upcoming,entry,debut,sale', kinds);
 const rise = topics.filter((t) => t.kind === 'rise');
 check('急上昇: 上がり幅の大きい順・前の日の順位から（圏外からも）。TOP3の作品・上がり幅の小さい作品・きょう発売の作品は入れない',
   rise.map((t) => t.text).join('/') === '新着の人気順 40位 → 4位/新着の人気順 圏外 → 6位', rise.map((t) => t.text).join('/'));
@@ -98,23 +98,39 @@ const entry = topics.find((t) => t.kind === 'entry');
 check('予約に初登場: 前の日の予約の人気順にいなかった作品（ほかの話題に出した作品・繰り上げに使った作品は出さない）', entry.title === '予約6' && entry.text === '予約の人気順 3位｜10月12日発売', entry.text);
 const debut = topics.find((t) => t.kind === 'debut');
 check('デビュー作: 出演者の名前と、顔写真（あれば）', debut.title === '新人のデビュー作' && debut.face === 'https://pics.dmm.co.jp/face.jpg');
-const actress = topics.find((t) => t.kind === 'actress');
-check('人気の女優: 新着の人気TOP100に2本以上。女優のページへ', actress.title === '花子' && actress.text === '新着の人気TOP100に出演作が2本｜最高4位' && actress.href === '/actress/hanako/' && actress.external === false, actress.text);
 const sale = topics.find((t) => t.kind === 'sale');
 check('もうすぐ終わるセール: 終わりが2日以内のキャンペーンだけ。セールのページへ・終わりの時刻（ブラウザが、すぎたら隠す）',
   sale.title === '週末セール' && sale.text === '10月6日 23:59まで｜1本がセール中' && sale.href === '/sale/' && sale.end === '2026-10-06T23:59:59+09:00', sale.text);
 const shownTitles = topics.flatMap((t) => [t, ...(t.alt ? [t.alt] : [])]).filter((t) => t.kind !== 'actress' && t.kind !== 'sale').map((t) => t.title);
 check('同じ作品は2回出さない（繰り上げの作品も含めて）', new Set(shownTitles).size === shownTitles.length, shownTitles.join());
-check('数が多いときは、まず2つ目の急上昇を外す', T.buildTopics(ctx, 7).map((t) => t.kind).join() === 'rise,today,upcoming,entry,debut,actress,sale' && T.buildTopics(ctx, 3).length === 3);
+check('人気の女優の話題は出さない（トップの「いま人気の女優」の欄で出す）', !topics.some((t) => t.kind === 'actress'));
+check('数が多いときは、まず2つ目の急上昇を外す', T.buildTopics(ctx, 6).map((t) => t.kind).join() === 'rise,today,upcoming,entry,debut,sale' && T.buildTopics(ctx, 3).length === 3);
 
 const withSkipVrOff = T.buildTopics({ ...ctx, skipVrOff: new Set(['r4']) }).find((t) => t.kind === 'rise' && t.vr);
 check('VR作品を隠したときにTOP3に出る作品（skipVrOff）は、繰り上げに使わない', withSkipVrOff && withSkipVrOff.alt?.title !== '作品 r4', JSON.stringify(withSkipVrOff?.alt));
 const allVr = T.buildTopics({ ...ctx, items: many.map((i) => (i.cid === 'n1' ? i : { ...i, vr: i.cid.startsWith('r') ? true : i.vr })) }).filter((t) => t.kind === 'rise');
 check('代わりになるVRでない作品が無ければ、繰り上げは付かない（VR作品を隠すと、その話題は消える）', allVr.every((t) => t.vr && !t.alt), JSON.stringify(allVr.map((t) => [t.title, t.alt?.title])));
-check('人気の女優: 顔写真が無いときの表紙は、VRでない作品のもの', actress.image === 'https://pics.dmm.co.jp/r1pl.jpg', actress.image);
 
 const lowToday = T.buildTopics({ ...ctx, items: [...many.map((i) => (i.cid === 'n1' ? { ...i, vr: true } : i)), it('n2', TODAY, 160, { actress: ['星子'] })] }).find((t) => t.kind === 'today');
 check('きょう発売の繰り上げは、新着の人気TOP100の外からも探す（きょう発売の上位がVRばかりの日）', lowToday?.vr === true && lowToday.alt?.title === '作品 n2' && lowToday.alt.text === '星子｜M｜新着の人気順 160位', JSON.stringify(lowToday?.alt));
+
+console.log('\n■ いま人気の女優（hotActresses）');
+const hotItems = [
+  it('h1', '2026-10-03', 1, { actress: ['花子'] }),
+  it('h2', '2026-10-03', 2, { actress: ['月子', '星子'] }),
+  it('h3', '2026-10-02', 3, { actress: ['月子'], vr: true }),
+  it('h4', '2026-10-02', 50, { actress: ['花子'] }),
+  it('h5', '2026-10-01', 4, { actress: ['a', 'b', 'c', 'd', 'e'] }), // 5人出ている作品（オムニバス）は数えない
+  it('h6', '2026-10-01', 120, { actress: ['海子'] }), // TOP100の外は数えない
+  it('h7', '2026-09-01', 5, { actress: ['空子'] }), // 1週間より前の発売は数えない
+];
+const hot = T.hotActresses(hotItems, TODAY);
+check('人気の高い作品に多く出ている人が上（101−順位の点を足す）・3人まで', hot.map((r) => r.name).join() === '月子,花子,星子' && hot[0].score === 99 + 98 && hot[1].score === 100 + 51, JSON.stringify(hot.map((r) => [r.name, r.score])));
+check('本数といちばん上の順位', hot[0].count === 2 && hot[0].best === 2 && hot[1].count === 2 && hot[1].best === 1 && hot[2].count === 1);
+check('出演者が5人以上の作品・TOP100の外・1週間より前の作品は数えない', !T.hotActresses(hotItems, TODAY, { limit: 10 }).some((r) => ['a', '海子', '空子'].includes(r.name)));
+const hotNoVr = T.hotActresses(hotItems, TODAY, { excludeVr: true });
+check('VR作品を隠すときの並び: VR作品を数えない', hotNoVr.map((r) => r.name).join() === '花子,星子,月子' && hotNoVr[1].score === 99, JSON.stringify(hotNoVr.map((r) => [r.name, r.score])));
+check('人気の作品が無いときは空', T.hotActresses([], TODAY).length === 0 && T.HOT_LIMIT === 3 && T.HOT_MAX_CAST === 4);
 
 const roundup = { week_start: '2026-09-28', week_end: '2026-10-04', lead: 'まとめの書き出し。'.repeat(10), picks: [{ cid: 'n1', note: 'x' }], written: TODAY };
 const withWeekly = T.buildTopics({ ...ctx, roundup }, 20);

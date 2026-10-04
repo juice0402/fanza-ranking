@@ -4,7 +4,7 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import ItemCard from '../../components/ItemCard.astro';
 import { curated, paged, roundups, actressByName, makerByName } from '../../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../../lib/plan.js';
-import { breadcrumbLd, dateParts, formatDateJp, groupByDate, vrAttrs } from '../../lib/items.js';
+import { breadcrumbLd, dateParts, formatDateJp, groupByDate, vrAttrs, castLine, CAST_LIMIT } from '../../lib/items.js';
 import {
   WEEKLY_INDEX_PATH,
   articleLd,
@@ -130,7 +130,7 @@ const day = (dateKey) => {
                 return (
                   <li>
                     <a class="week-list-link" href={link.href} {...(link.external ? OUTBOUND_ATTRS : {})}>{i.title}</a>
-                    {i.actress.length > 0 && <span class="week-list-cast">{i.actress.join('、')}</span>}
+                    {i.actress.length > 0 && <span class="week-list-cast">{castLine(i.actress, CAST_LIMIT, '')}</span>}
                   </li>
                 );
               })}

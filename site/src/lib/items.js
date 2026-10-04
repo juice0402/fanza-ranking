@@ -11,10 +11,11 @@ import {
   NEW_BADGE_DAYS,
   ENTITY_MIN_ITEMS,
   RANKING_SHOWN,
+  CAST_LIMIT,
 } from '../config.js';
 
 // ページ側が items.js からまとめて読めるように、そのまま出し直しています
-export { SITE_NAME, SITE_URL, HOME_RELEASED_LIMIT, HOME_UPCOMING_LIMIT, ARCHIVE_PAGE_SIZE, NEW_BADGE_DAYS, ENTITY_MIN_ITEMS, RANKING_SHOWN };
+export { SITE_NAME, SITE_URL, HOME_RELEASED_LIMIT, HOME_UPCOMING_LIMIT, ARCHIVE_PAGE_SIZE, NEW_BADGE_DAYS, ENTITY_MIN_ITEMS, RANKING_SHOWN, CAST_LIMIT };
 
 import { createHash } from 'node:crypto';
 
@@ -97,6 +98,20 @@ export function isVrWork({ title = '', formats = [], genres = [] } = {}) {
 
 /** 一覧の1マス（li）に付ける目印。VR作品だけに data-vr が付く（「VR作品を隠す」スイッチが、これを目印に隠す） */
 export const vrAttrs = (item) => (item.vr ? { 'data-vr': 'true' } : {});
+
+/** 一覧に出す出演者（先頭から max 人）と、出しきれない人数。オムニバスなど出演者が多い作品で、カードが長くならないように（運営者の希望。2026-10-05） */
+export function castParts(actress, max = CAST_LIMIT) {
+  const list = Array.isArray(actress) ? actress : [];
+  const names = list.slice(0, Math.max(0, max));
+  return { names, more: list.length - names.length };
+}
+
+/** 一覧の出演者の1行（「花子、月子、星子 ほか31名」）。出演者がいなければ empty */
+export function castLine(actress, max = CAST_LIMIT, empty = '出演者の記載なし') {
+  const { names, more } = castParts(actress, max);
+  if (names.length === 0) return empty;
+  return names.join('、') + (more > 0 ? ` ほか${more}名` : '');
+}
 
 /** JSONの中身を、画面で使いやすい形に揃える（足りない項目があっても落ちない） */
 export function normalizeItems(raw) {

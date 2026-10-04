@@ -21,7 +21,6 @@ export function buildFactsContext(items) {
   const byDateMaker = new Map(); // `発売日|メーカー` → 本数
   const makers = new Map(); // メーカー → { count, first, last }
   const cast = new Map(); // 出演者 → { count, first, last }
-  const durations = [];
   let vrCount = 0;
   const bump = (map, key, day) => {
     const cur = map.get(key);
@@ -40,23 +39,13 @@ export function buildFactsContext(items) {
       bump(makers, item.maker, item.dateKey);
     }
     for (const name of new Set(item.actress)) bump(cast, name, item.dateKey);
-    if (item.duration_min) durations.push(item.duration_min);
     if (item.vr) vrCount++;
   }
-  return { byDate, byDateMaker, makers, cast, durations, vrCount };
-}
-
-/** 収録時間の順位。「長いほうから○番目」か「短いほうから○番目」の、数字が小さいほう（同じ長さは同じ順位） */
-export function durationRank(minutes, durations) {
-  const longer = durations.filter((d) => d > minutes).length + 1;
-  const shorter = durations.filter((d) => d < minutes).length + 1;
-  return longer <= shorter ? { side: '長い', rank: longer } : { side: '短い', rank: shorter };
+  return { byDate, byDateMaker, makers, cast, vrCount };
 }
 
 const rangeText = (info) => (info.first === info.last ? `発売日は${formatDateJp(info.first)}` : `発売日は${formatDateJp(info.first)}から${formatDateJp(info.last)}`);
 
-/** 収録時間の順位を出すのに必要な、収録時間が分かる作品の数（これより少ないと、順位に意味がないので出さない） */
-export const MIN_DURATIONS_FOR_RANK = 10;
 /** 情報欄に出す出演者の最大人数 */
 export const FACTS_MAX_CAST = 3;
 
@@ -106,10 +95,8 @@ export function itemFacts(item, ctx, pages = {}) {
     rows.push({ key: 'cast-more', label: '出演者', text: `ほか${more}名が出演しています。` });
   }
 
-  if (item.duration_min && ctx.durations.length >= MIN_DURATIONS_FOR_RANK) {
-    const { side, rank } = durationRank(item.duration_min, ctx.durations);
-    rows.push({ key: 'duration', label: '収録時間', text: `収録時間は約${item.duration_min}分です。収録時間が分かる掲載作品${ctx.durations.length}本の中では、${side}ほうから${rank}番目です。` });
-  }
+  // 収録時間の長さくらべ（掲載作品の中で長いほうから○番目）は、運営者の判断で出さない（2026-10-05「長さで買っている人はいないと思う」）。
+  // 収録時間そのものは、作品ページの基本情報に出している
 
   if (item.vr) {
     rows.push({ key: 'vr', label: '形式', text: `VR作品です。掲載中のVR作品は${ctx.vrCount}本あります。`, ...(pages.vr ? { href: pages.vr, linkLabel: 'VR作品の一覧を見る' } : {}) });
