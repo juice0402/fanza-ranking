@@ -910,7 +910,7 @@ def update_profiles(state, archive, today_str):
 # ------------------------------------------------------------------
 # 女優検索の名簿（FANZA公式の出演者検索の一覧から。サイトに作品が無い人も、体型・身長・年齢で探せるようにする）
 # ------------------------------------------------------------------
-DIRECTORY_FIELDS = ("id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday")
+DIRECTORY_FIELDS = ("id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday", "seen")  # seen: 一覧で最後に見かけた日
 
 
 def directory_row(raw, today_str):
@@ -930,9 +930,10 @@ def directory_row(raw, today_str):
 
 
 def load_directory(today_str):
-    """名簿 {"cursor": {"filter": 番号, "offset": 何人目から}, "cycle_done": 一回りした日, "rows": {id: 1行}} を読む。
+    """名簿 {"cursor": {"filter": 番号, "offset": 何人目から}, "cycle_done": 一回りした日, "cycle_start": いまの一回りを始めた日,
+    "prev_cycle_start": ひとつ前の一回りを始めた日, "rows": {id: 1行}} を読む。
     壊れていて読めないときは None（名簿の更新だけをやめる。ファイルは上書きしない）"""
-    state = {"cursor": {"filter": 0, "offset": 1}, "cycle_done": "", "rows": {}}
+    state = {"cursor": {"filter": 0, "offset": 1}, "cycle_done": "", "cycle_start": today_str, "prev_cycle_start": "", "rows": {}}
     if not os.path.exists(DIRECTORY_PATH):
         return state
     try:
@@ -951,9 +952,13 @@ def load_directory(today_str):
         fi, off = 0, 1
     state["cursor"] = {"filter": fi if 0 <= fi < len(DIRECTORY_FILTERS) else 0, "offset": off if 1 <= off <= 50001 else 1}
     state["cycle_done"] = day_key(raw.get("cycle_done"))
+    # 一回りの始めた日（古い形のファイルには無い。そのときは今日から数え、ひとつ前は分からないので、最初の一回りでは誰も外さない）
+    state["cycle_start"] = day_key(raw.get("cycle_start")) or today_str
+    state["prev_cycle_start"] = day_key(raw.get("prev_cycle_start"))
     for r in raw["rows"]:
         row = directory_row(dict(r, image_small=f"https://pics.dmm.co.jp/mono/actjpgs/thumbnail/{r.get('img')}.jpg" if isinstance(r, dict) and r.get("img") else ""), today_str) if isinstance(r, dict) else None
         if row:
+            row["seen"] = day_key(r.get("seen")) or today_str  # 古い形のファイルには無い（今日見かけたものとして数える）
             state["rows"].setdefault(row["id"], row)
     return state
 
@@ -964,7 +969,8 @@ def save_directory(state):
     folder = os.path.dirname(DIRECTORY_PATH)
     if folder:
         os.makedirs(folder, exist_ok=True)
-    head = {"cursor": state["cursor"], "cycle_done": state["cycle_done"]}
+    head = {"cursor": state["cursor"], "cycle_done": state["cycle_done"], "cycle_start": state.get("cycle_start", ""),
+            "prev_cycle_start": state.get("prev_cycle_start", "")}
     body = ",\n".join(json.dumps({k: r[k] for k in DIRECTORY_FIELDS}, ensure_ascii=False) for r in rows)
     text = json.dumps(head, ensure_ascii=False)[:-1] + ', "rows": [\n' + body + "\n]}\n"
     tmp_path = DIRECTORY_PATH + ".tmp"
@@ -973,10 +979,27 @@ def save_directory(state):
     os.replace(tmp_path, DIRECTORY_PATH)
 
 
+def prune_directory(state, today_str):
+    """一回りが終わったときに呼ぶ。ひとつ前の一回りを始めた日より前から見かけていない人を外し、外した人数を返す。
+    ひとつ前の一回りの始めた日が分からないうち（古い形のファイルから読んだ直後）は、誰も外さない。
+    毎日の更新が止まっていたあいだは一回りが進まないので、まとめて外れることはない"""
+    prev = state.get("prev_cycle_start") or ""
+    removed = 0
+    if prev:
+        for rid in [rid for rid, r in state["rows"].items() if (r.get("seen") or "") < prev]:
+            del state["rows"][rid]
+            removed += 1
+    state["prev_cycle_start"] = state.get("cycle_start") or today_str
+    state["cycle_start"] = today_str
+    return removed
+
+
 def update_directory(state, today_str, calls=None):
     """出演者検索の一覧（DIRECTORY_FILTERS を順に、id の順に100人ずつ）を、続きから calls 回だけ取って、名簿に足す・更新する。
     一つの絞り込みが終わったら次へ、最後まで行ったら最初に戻る（一回りした日を cycle_done に）。
-    続けて失敗したら、その回はやめる（続きの位置は進めない）。(呼んだ回数, 取れた人数, 新しく足した人数) を返す"""
+    一回りが終わるたびに、ひとつ前の一回りを始めた日より前から見かけていない人（2回続けて一覧に出てこなかった人＝FANZAから消えた・
+    数字が消された人）を名簿から外す（prune_directory）。続けて失敗したら、その回はやめる（続きの位置は進めない）。
+    (呼んだ回数, 取れた人数, 新しく足した人数) を返す。外した人数は state["pruned"]"""
     calls = DIRECTORY_CALLS_PER_RUN if calls is None else calls
     fi, off = state["cursor"]["filter"], state["cursor"]["offset"]
     done = got = added = fails = 0
@@ -1001,11 +1024,13 @@ def update_directory(state, today_str, calls=None):
             got += 1
             if row["id"] not in state["rows"]:
                 added += 1
+            row["seen"] = today_str
             state["rows"][row["id"]] = row
         if len(rows) < DIRECTORY_PAGE or (total is not None and off + DIRECTORY_PAGE > total) or off + DIRECTORY_PAGE > 50001:
             fi, off = (fi + 1) % len(DIRECTORY_FILTERS), 1
             if fi == 0:
                 state["cycle_done"] = today_str
+                state["pruned"] = state.get("pruned", 0) + prune_directory(state, today_str)
         else:
             off += DIRECTORY_PAGE
     state["cursor"] = {"filter": fi, "offset": off}
@@ -1199,7 +1224,7 @@ def main():
 
     directory_result = run_stage("女優検索の名簿の取得", directory_stage) if directory is not None and DIRECTORY_CALLS_PER_RUN > 0 else None
     if directory_result:
-        print(f"📇 女優検索の名簿: 一覧を{directory_result[0]}回取得 / {directory_result[1]}人を確認・うち新しく{directory_result[2]}人（名簿 {len(directory['rows'])}人）")
+        print(f"📇 女優検索の名簿: 一覧を{directory_result[0]}回取得 / {directory_result[1]}人を確認・うち新しく{directory_result[2]}人・見かけなくなって外した{directory.get('pruned', 0)}人（名簿 {len(directory['rows'])}人）")
 
     summary = [
         "### ✅ FANZAデータの取り直しの結果" if refresh_only else "### ✅ FANZA更新の結果",
@@ -1227,7 +1252,7 @@ def main():
     else:
         summary.append("- 出演者プロフィール: 取得できず（前回のまま）")
     if directory_result:
-        summary.append(f"- 女優検索の名簿: {len(directory['rows'])}人（今回 一覧を{directory_result[0]}回取得・新しく{directory_result[2]}人。一回りした日: {directory['cycle_done'] or 'まだ'}）")
+        summary.append(f"- 女優検索の名簿: {len(directory['rows'])}人（今回 一覧を{directory_result[0]}回取得・新しく{directory_result[2]}人・外した{directory.get('pruned', 0)}人。一回りした日: {directory['cycle_done'] or 'まだ'}）")
     elif directory is None:
         summary.append("- 女優検索の名簿: 保存データ（actress_directory.json）が壊れているため、更新をスキップ（ファイルは変更していません）")
     write_step_summary(summary)

@@ -1041,8 +1041,8 @@ check("1回目の一覧: バストありで、id の順・100人ずつ、1人目
 dj = json.load(open(dir_file, encoding="utf-8"))
 ids = [r["id"] for r in dj["rows"]]
 check("名簿に入るのは、体型・身長・生年月日のどれかがある人だけ（250人のうち225人）", len(ids) == 225 and all(r["bust"] or r["height"] or r["birthday"] for r in dj["rows"]), len(ids))
-check("名簿の1行: 決めた項目だけ（id・名前・読み・顔写真のファイル名・体型・身長・生年月日）。血液型・趣味・出身地・URLは保存しない",
-      all(set(r) == {"id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday"} for r in dj["rows"]) and "散歩" not in open(dir_file, encoding="utf-8").read()
+check("名簿の1行: 決めた項目だけ（id・名前・読み・顔写真のファイル名・体型・身長・生年月日・最後に見かけた日）。血液型・趣味・出身地・URLは保存しない",
+      all(set(r) == {"id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday", "seen"} and r["seen"] == TODAY_STR for r in dj["rows"]) and "散歩" not in open(dir_file, encoding="utf-8").read()
       and "東京都" not in open(dir_file, encoding="utf-8").read() and "http" not in open(dir_file, encoding="utf-8").read())
 check("顔写真は、FANZAの画像のファイル名だけ（a100001 など）", dj["rows"][0]["img"] == "a" + dj["rows"][0]["id"], dj["rows"][0])
 check("バストの一覧を最後まで取ったら、次の絞り込み（身長あり）の1人目へ進む", dj["cursor"] == {"filter": 1, "offset": 1} and dj["cycle_done"] == "", dj["cursor"])
@@ -1070,6 +1070,22 @@ row_ok = m_d4.directory_row({"id": "123", "name": "テスト", "ruby": "てす�
 check("名簿の1行: 変な値（数字でない身長・ありえない生年月日）は捨てる。http の画像も、ファイル名だけ取り出す", row_ok == {"id": "123", "name": "テスト", "ruby": "てすと", "img": "test_a", "bust": 86, "cup": "", "waist": None, "hip": None, "height": None, "birthday": ""}, row_ok)
 check("名簿の1行: 体型・身長・生年月日がどれも無い人・id が数字でない人は入れない", m_d4.directory_row({"id": "5", "name": "x", "imageURL": {"small": "http://pics.dmm.co.jp/mono/actjpgs/thumbnail/x.jpg"}}, TODAY_STR) is None and m_d4.directory_row({"id": "abc", "name": "x", "bust": "80"}, TODAY_STR) is None)
 check("名簿の1行: FANZAの画像でないURLは使わない", m_d4.directory_row({"id": "7", "name": "x", "bust": "80", "imageURL": {"small": "https://evil.example/mono/actjpgs/thumbnail/x.jpg"}}, TODAY_STR)["img"] == "")
+
+print("\n■ 女優検索の名簿: FANZAから消えた人・数字が消された人を外す（2回続けて一回りで見かけなかった人）")
+check("名簿のファイルに、一回りを始めた日（cycle_start・prev_cycle_start）が入る", "cycle_start" in dj2 and "prev_cycle_start" in dj2, {k: dj2.get(k) for k in ("cycle_start", "prev_cycle_start", "cycle_done")})
+row_a = dict(row_ok, id="1", seen="2026-10-05")
+row_b = dict(row_ok, id="2", seen="2026-10-10")
+st = {"cursor": {"filter": 0, "offset": 1}, "cycle_done": "", "cycle_start": "2026-10-09", "prev_cycle_start": "", "rows": {"1": dict(row_a), "2": dict(row_b)}}
+n0 = m_d4.prune_directory(st, "2026-10-14")
+check("ひとつ前の一回りの始まりが分からないうちは、誰も外さない（古い形のファイルから読んだ直後）", n0 == 0 and len(st["rows"]) == 2 and st["prev_cycle_start"] == "2026-10-09" and st["cycle_start"] == "2026-10-14", st)
+n1 = m_d4.prune_directory(st, "2026-10-19")
+check("2回続けて一回りで見かけなかった人（ひとつ前の一回りの始まり 10/9 より前に見たきり）だけ外す", n1 == 1 and set(st["rows"]) == {"2"} and st["prev_cycle_start"] == "2026-10-14", st)
+old_form = os.path.join(d_dir, "old_dir.json")
+json.dump({"cursor": {"filter": 1, "offset": 101}, "cycle_done": "2026-10-04", "rows": [{k: v for k, v in row_ok.items()}]}, open(old_form, "w", encoding="utf-8"), ensure_ascii=False)
+m_d4.DIRECTORY_PATH = old_form
+st_old = m_d4.load_directory(TODAY_STR)
+check("古い形のファイル（最後に見かけた日・一回りの始まりが無い）も読める（今日見かけたことにして、まだ誰も外さない）",
+      st_old["rows"]["123"]["seen"] == TODAY_STR and st_old["cycle_start"] == TODAY_STR and st_old["prev_cycle_start"] == "" and st_old["cursor"] == {"filter": 1, "offset": 101}, st_old)
 
 print("\n■ ソースの安全チェック")
 src = open(SCRIPT, encoding="utf-8").read()
