@@ -18,6 +18,8 @@ GitHub Actions から毎日自動で実行されます。
 保存先（女優検索の名簿）: site/src/data/actress_directory.json … FANZA公式の出演者検索の一覧（体型・身長・生年月日が載っている人）
 保存先（過去作品）: site/src/data/catalog/YYYY-MM.json … FANZAの人気順の上位（CATALOG_LIMIT 本まで）の、発売済みの作品。
   毎日、その日の上位1,000本を取り直し、その下を続きから3,000本ずつ。順位は catalog_rank.json、続きの場所は catalog_state.json。
+保存先（人気順）: site/src/data/popularity.json … 新着の人気順（最近30日の発売の、その日の上位500本）と、毎日の更新の作品の全体の人気順の順位
+保存先（セール）: site/src/data/sale.json … その日に見かけた、セール・キャンペーン中の作品（キャンペーンの名前・期間・価格。FANZA公式のAPIから）
   コメントは無し（"none"）か、Claude が書いたもの（"claude"）
 
   python3 get_new_releases.py --refresh-only
@@ -83,9 +85,14 @@ CATALOG_TOP_CALLS = int(os.environ.get("CATALOG_TOP_CALLS", "10"))  # 毎日、�
 CATALOG_CALLS_PER_RUN = int(os.environ.get("CATALOG_CALLS", "30"))  # 上位より下を、続きから取る回数（1回100本。30回で3,000本 → 上位3万本は10日ほどで一回り）
 CATALOG_PAGE = 100          # 一覧の1回の本数（APIの上限）
 CATALOG_MAX_OFFSET = 50000  # 一覧の offset の上限（APIの決まり。人気順の上位5万本まで。2026-10-04 に本物のAPIで確認）
-# 集める深さ（人気順の上位何本までを過去作品にするか）。5万本だと、無料プランの2万ファイルの中で作品ページを作れるのは2割ほどなので、
-# 運営者と相談して3万本にした（作品ページは4割ほど。人気の高い作品から作る。2026-10-04）
-CATALOG_LIMIT = min(CATALOG_MAX_OFFSET, int(os.environ.get("CATALOG_LIMIT", "30000")))
+# 集める深さ（人気順の上位何本までを過去作品にするか）。運営者の希望で、質の高い作品だけを、ほぼ全部に作品ページを付けて持つ（2026-10-04 夜）:
+# 5万本だと作品ページは2割・3万本だと4割だが、1.5万本なら、無料プランの2万ファイルの中で、ほぼ全部（99%）に作品ページを作れる
+CATALOG_LIMIT = min(CATALOG_MAX_OFFSET, int(os.environ.get("CATALOG_LIMIT", "15000")))
+# 新着の人気順（最近 NEW_RANK_DAYS 日に発売された作品の、その日の人気順の上位 NEW_RANK_CALLS×100本）。「新着の人気順」のランキングに使う
+NEW_RANK_CALLS = int(os.environ.get("NEW_RANK_CALLS", "5"))
+NEW_RANK_DAYS = 30
+POPULARITY_PATH = os.environ.get("POPULARITY_PATH", os.path.join(os.path.dirname(DATA_PATH), "popularity.json"))  # 新着の人気順と、毎日の更新の作品の全体の順位
+SALE_PATH = os.environ.get("SALE_PATH", os.path.join(os.path.dirname(DATA_PATH), "sale.json"))  # その日に見かけたセール・キャンペーン（FANZA公式のAPIの campaign・prices）
 CATALOG_PRUNE_MAX_SHARE = 0.2  # 一回りで外す作品が、過去作品のこの割合をこえたら、念のため外さない（APIの答えがおかしかったときに、まとめて消さないため）
 CATALOG_SAMPLE_IMAGES = 8   # 過去作品のサンプル画像は8枚まで（作品ページに出すのは8枚まで。ファイルを小さくする）
 CATALOG_FILE = re.compile(r"^\d{4}-\d{2}\.json$")
@@ -1084,6 +1091,36 @@ def catalog_item(item):
     return norm
 
 
+def parse_yen(value):
+    """APIの価格（"1884~" や "2,692" の形）→ 整数の円。読めなければ None"""
+    m = re.match(r"^\s*([0-9][0-9,]*)", str(value or ""))
+    try:
+        return int(m.group(1).replace(",", "")) if m else None
+    except ValueError:
+        return None
+
+
+def sale_of(raw, today_str):
+    """APIの1件 → セール・キャンペーンの情報 (キャンペーン {title, begin, end}, 価格, 定価)。セール中でなければ None。
+    キャンペーンは、今日がその期間に入っているものだけ（いちばん早く終わるもの1つ）。価格は、いちばん安い配信形式のもの（「〜円から」）"""
+    camps = []
+    for c in raw.get("campaign") or []:
+        if not isinstance(c, dict):
+            continue
+        title = str(c.get("title") or "").strip()[:60]
+        begin, end = str(c.get("date_begin") or "")[:16], str(c.get("date_end") or "")[:16]
+        if title and re.match(r"^\d{4}-\d{2}-\d{2}", end) and end[:10] >= today_str and (not begin or begin[:10] <= today_str):
+            camps.append({"title": title, "begin": begin, "end": end})
+    if not camps:
+        return None
+    prices = raw.get("prices") if isinstance(raw.get("prices"), dict) else {}
+    price, list_price = parse_yen(prices.get("price")), parse_yen(prices.get("list_price"))
+    camp = min(camps, key=lambda c: c["end"])
+    if price is None or list_price is None or not 0 < price < list_price:
+        price = list_price = None  # 値引きが確かめられないときは、価格は出さない（キャンペーンの名前と期間だけ）
+    return camp, price, list_price
+
+
 def read_json_file(path):
     """JSONを読む。無ければ None。壊れていれば ValueError"""
     if not os.path.exists(path):
@@ -1097,15 +1134,21 @@ def read_json_file(path):
 
 def load_catalog(today_str):
     """過去作品 {"items": {cid: 作品}, "ranks": {cid: [順位, 最後に見かけた一回りの番号]}, "cursor": 続きの場所（1から）,
-    "cycle": いまの一回りの番号, "cycle_done": 最後に一回りした日} を読む。
+    "cycle": いまの一回りの番号, "cycle_done": 最後に一回りした日, "popular_all": {毎日の更新の作品の cid: 全体の人気順の順位}} を読む。
     ファイルが壊れていて読めないときは None（過去作品の更新だけをやめる。ファイルは上書きしない）"""
-    state = {"items": {}, "ranks": {}, "cursor": 0, "cycle": 1, "cycle_done": ""}
+    state = {"items": {}, "ranks": {}, "cursor": 0, "cycle": 1, "cycle_done": "", "popular_all": {}}
     try:
         head = read_json_file(CATALOG_STATE_PATH)
         ranks = read_json_file(CATALOG_RANK_PATH)
     except ValueError as e:
         print(f"⚠️ 過去作品の{e}。上書きを防ぐため、過去作品の更新はやめます")
         return None
+    try:
+        popular = read_json_file(POPULARITY_PATH)
+    except ValueError:
+        popular = None  # 人気順のファイルは、毎日まるごと作り直すので、壊れていても読み直さずに作り直す
+    old_all = popular.get("all") if isinstance(popular, dict) and isinstance(popular.get("all"), dict) else {}
+    state["popular_all"] = {str(c): v for c, v in old_all.items() if isinstance(v, int) and not isinstance(v, bool) and 1 <= v <= CATALOG_MAX_OFFSET}
     head = head if isinstance(head, dict) else {}
     try:
         cur, cycle = int(head.get("cursor", 0)), int(head.get("cycle", 1))
@@ -1166,6 +1209,28 @@ def save_catalog(state):
     with open(CATALOG_RANK_PATH + ".tmp", "w", encoding="utf-8") as f:
         f.write("{\n" + body + "\n}\n" if body else "{}\n")
     os.replace(CATALOG_RANK_PATH + ".tmp", CATALOG_RANK_PATH)
+    if "popular_new" in state:  # 今回、人気順を取れたときだけ書く（取れなかった日は、前の日のまま）
+        def lines(mapping):
+            return ",\n".join(f"{json.dumps(c)}:{r}" for c, r in sorted(mapping.items(), key=lambda kv: (kv[1], kv[0])))
+        text = (f'{{"date":{json.dumps(state.get("popular_date", ""))},\n"new":{{\n{lines(state["popular_new"])}\n}},\n'
+                f'"all":{{\n{lines(state["popular_all"])}\n}}}}\n')
+        with open(POPULARITY_PATH + ".tmp", "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(POPULARITY_PATH + ".tmp", POPULARITY_PATH)
+    if "sales" in state:
+        camps, rows = [], []
+        for cid, (camp, price, list_price) in sorted(state["sales"].items()):
+            if camp not in camps:
+                camps.append(camp)
+            row = {"c": cid, "k": camps.index(camp)}
+            if price:
+                row.update(p=price, l=list_price)
+            rows.append(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+        text = (f'{{"date":{json.dumps(state.get("sales_date", ""))},\n"campaigns":{json.dumps(camps, ensure_ascii=False)},\n"items":[\n'
+                + ",\n".join(rows) + "\n]}\n")
+        with open(SALE_PATH + ".tmp", "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(SALE_PATH + ".tmp", SALE_PATH)
     head = {"cursor": state["cursor"], "cycle": state["cycle"], "cycle_done": state["cycle_done"], "limit": CATALOG_LIMIT, "items": len(state["items"])}
     with open(CATALOG_STATE_PATH + ".tmp", "w", encoding="utf-8") as f:
         json.dump(head, f, ensure_ascii=False)
@@ -1191,15 +1256,19 @@ def prune_catalog(state):
     return len(gone)
 
 
-def update_catalog(state, archive, today, top_calls=None, calls=None):
+def update_catalog(state, archive, today, top_calls=None, calls=None, new_calls=None):
     """FANZAの人気順（発売済みだけ）の一覧を取って、過去作品に足す・順位を入れ替える・空だった項目を補う。
     ・まず、その日の上位 top_calls×100本（毎日取り直す。その日の人気順）
+    ・次に、新着の人気順（最近 NEW_RANK_DAYS 日の発売の、その日の人気順の上位 new_calls×100本）。順位は popularity.json の new に。
+      過去作品に無い作品は足す（「新着の人気順」のランキングに、人気の新作がそろうように）
+    ・毎日の更新の作品（archive）が全体の人気順に出てきたら、その順位を popularity.json の all に（全体の人気順のランキング・並べ替えに使う）
     ・次に、その下（上位の下〜CATALOG_LIMIT本目）を、続きから calls×100本。最後まで行ったら、上位の下に戻る（一回り。cycle を1つ進め、
       2回続けて見かけなかった作品を外す）
     毎日の更新で載せた作品（archive）と同じ作品は入れない（入っていたら外す）。続けて失敗したら、その回はやめる（続きの場所は、取れたところまで進める）。
     {"calls", "got", "added", "filled", "removed", "pruned"} を返す"""
     top_calls = CATALOG_TOP_CALLS if top_calls is None else top_calls
     calls = CATALOG_CALLS_PER_RUN if calls is None else calls
+    new_calls = NEW_RANK_CALLS if new_calls is None else new_calls
     today_str = today.strftime("%Y-%m-%d")
     lte = iso(today.replace(hour=23, minute=59, second=59))
     items, ranks = state["items"], state["ranks"]
@@ -1210,38 +1279,62 @@ def update_catalog(state, archive, today, top_calls=None, calls=None):
         stats["removed"] += 1
     fails = 0
     seen_now = {}  # 今回見かけた作品の、いちばん上の順位（順位が入れ替わって、同じ作品が2回出てきたとき用）
+    popular_all = {c: r for c, r in state.get("popular_all", {}).items() if c in archive}  # 毎日の更新の作品の、全体の人気順の順位（見かけなかった日は前のまま）
+    popular_new = {}
+    new_ok = False
+    sales = {}  # 今日見かけた、セール中の作品 {cid: (キャンペーン, 価格, 定価)}
 
-    def fetch(off):
-        """人気順の off 本目から100本を取って取り込む。取れたら行数、失敗したら None"""
+    def take(fresh, rank_all=None):
+        """1作品を過去作品に取り込む（無ければ足す・あれば空だった項目を補う）。rank_all: 全体の人気順の順位（新着の一覧から来たときは None）"""
+        cid = fresh["cid"]
+        if rank_all is not None:
+            seen_now[cid] = min(rank_all, seen_now.get(cid, rank_all))
+            ranks[cid] = [seen_now[cid], state["cycle"]]  # その日の順位（1から）と、見かけた一回り
+        else:
+            ranks[cid] = [ranks.get(cid, [CATALOG_MAX_OFFSET])[0], state["cycle"]]  # 全体の順位は分からないまま。見かけた一回りだけ進める
+        old = items.get(cid)
+        if old is None:
+            fresh["updated"] = today_str
+            item = catalog_item(fresh)
+            if item:
+                items[cid] = item
+                stats["added"] += 1
+            else:
+                ranks.pop(cid, None)
+            return
+        if apply_fresh(old, fresh, today_str):
+            stats["filled"] += 1
+            items[cid] = catalog_item(old) or old  # 発売日が変わって定型文に戻ったコメントは、空に戻す
+
+    def fetch(off, extra=None):
+        """人気順の off 本目から100本を取って取り込む（extra があれば、新着の人気順）。取れたら行数、失敗したら None"""
         nonlocal fails
         stats["calls"] += 1
         try:
-            rows = call_item_list({"sort": "rank", "hits": CATALOG_PAGE, "offset": off, "lte_date": lte})
+            rows = call_item_list(dict({"sort": "rank", "hits": CATALOG_PAGE, "offset": off, "lte_date": lte}, **(extra or {})))
             fails = 0
         except RuntimeError as e:
             fails += 1
-            print(f"  ⚠️ 過去作品の一覧（人気順の{off}本目から）を取れませんでした: {e}")
+            print(f"  ⚠️ 過去作品の一覧（{'新着の' if extra else ''}人気順の{off}本目から）を取れませんでした: {e}")
             return None
         time.sleep(DMM_INTERVAL_SEC)
-        for pos, fresh in enumerate(map(parse_api_item, rows)):
-            if not fresh or fresh["cid"] in archive or day_key(fresh["date"]) > today_str:
+        for pos, (raw, fresh) in enumerate((r, parse_api_item(r)) for r in rows):
+            if not fresh or day_key(fresh["date"]) > today_str:
                 continue
             stats["got"] += 1
-            seen_now[fresh["cid"]] = min(off + pos, seen_now.get(fresh["cid"], off + pos))
-            ranks[fresh["cid"]] = [seen_now[fresh["cid"]], state["cycle"]]  # その日の順位（1から）と、見かけた一回り
-            old = items.get(fresh["cid"])
-            if old is None:
-                fresh["updated"] = today_str
-                item = catalog_item(fresh)
-                if item:
-                    items[item["cid"]] = item
-                    stats["added"] += 1
-                else:
-                    ranks.pop(fresh["cid"], None)
-                continue
-            if apply_fresh(old, fresh, today_str):
-                stats["filled"] += 1
-                items[old["cid"]] = catalog_item(old) or old  # 発売日が変わって定型文に戻ったコメントは、空に戻す
+            cid, rank = fresh["cid"], off + pos
+            sale = sale_of(raw, today_str)
+            if sale:
+                sales[cid] = sale
+            if extra:
+                popular_new.setdefault(cid, rank)
+                if cid not in archive:
+                    take(fresh)
+            elif cid in archive:
+                popular_all[cid] = min(rank, popular_all[cid]) if cid in seen_now else rank
+                seen_now[cid] = popular_all[cid]
+            else:
+                take(fresh, rank)
         return len(rows)
 
     top_end = min(top_calls * CATALOG_PAGE, CATALOG_LIMIT)  # 毎日取り直す上位の本数
@@ -1255,6 +1348,23 @@ def update_catalog(state, archive, today, top_calls=None, calls=None):
             short = True
             break
         off += CATALOG_PAGE
+    # 新着の人気順（最近 NEW_RANK_DAYS 日に発売された作品の、その日の人気順）
+    new_extra = {"gte_date": iso(today - timedelta(days=NEW_RANK_DAYS))}
+    off = 1
+    while new_calls > 0 and off <= new_calls * CATALOG_PAGE and fails < MAX_API_FAILS_IN_ROW:
+        got = fetch(off, new_extra)
+        if got is None:
+            continue
+        new_ok = True
+        if got < CATALOG_PAGE:
+            break
+        off += CATALOG_PAGE
+    if new_ok:
+        state["popular_new"] = popular_new
+        state["popular_date"] = today_str
+    state["popular_all"] = popular_all
+    if new_ok or not new_calls:
+        state.setdefault("popular_new", {})
     walk_start = top_end + 1
     cur = state["cursor"] if walk_start <= state["cursor"] <= CATALOG_LIMIT else walk_start
     done = 0
@@ -1277,6 +1387,10 @@ def update_catalog(state, archive, today, top_calls=None, calls=None):
     if fails >= MAX_API_FAILS_IN_ROW:
         print("  ⏸ 続けて失敗したので、今回の過去作品の取得はやめます")
     state["cursor"] = cur
+    if stats["calls"] > fails:  # 少しでも取れたら、今日のセールとして書く（取れなかった日は、前の日のまま）
+        state["sales"] = {c: v for c, v in sales.items() if c in items or c in archive}
+        state["sales_date"] = today_str
+    stats["sales"] = len(state.get("sales", {}))
     return stats
 
 
@@ -1484,6 +1598,8 @@ def main():
     if catalog_result:
         print(f"🗂️ 過去作品: 一覧を{catalog_result['calls']}回取得 / {catalog_result['got']}本を確認・うち新しく{catalog_result['added']}本・空だった項目を補った{catalog_result['filled']}本・"
               f"人気の上位から外れて外した{catalog_result['pruned']}本（過去作品 {len(catalog['items'])}本。人気順の上位{CATALOG_LIMIT}本まで。次は{catalog['cursor']}本目から）")
+        print(f"🔥 新着の人気順: {len(catalog.get('popular_new', {}))}本" + ("" if catalog.get("popular_date") == today_str else "（取れなかったので、前の日のまま）")
+              + f" / セール中の作品: {catalog_result.get('sales', 0)}本")
 
     summary = [
         "### ✅ FANZAデータの取り直しの結果" if refresh_only else "### ✅ FANZA更新の結果",
@@ -1517,6 +1633,8 @@ def main():
     if catalog_result:
         summary.append(f"- 過去作品: {len(catalog['items'])}本（人気順の上位{CATALOG_LIMIT}本まで。今回 一覧を{catalog_result['calls']}回取得・新しく{catalog_result['added']}本・"
                        f"補った{catalog_result['filled']}本・人気の上位から外れて外した{catalog_result['pruned']}本。次は{catalog['cursor']}本目から。一回りした日: {catalog['cycle_done'] or 'まだ'}）")
+        summary.append(f"- 新着の人気順（最近{NEW_RANK_DAYS}日の発売）: {len(catalog.get('popular_new', {}))}本" + ("" if catalog.get("popular_date") == today_str else "（取れなかったので、前の日のまま）")
+                       + f" / セール中の作品: {catalog_result.get('sales', 0)}本")
     elif catalog_on and catalog is None:
         summary.append("- 過去作品: ファイル（site/src/data/catalog）が壊れているため、更新をスキップ（ファイルは変更していません）")
     write_step_summary(summary)

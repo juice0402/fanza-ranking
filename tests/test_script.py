@@ -135,6 +135,8 @@ class Env:
         self.catalog_total = 250        # 過去作品（人気順の一覧）の本数
         self.catalog_fail = False       # 過去作品の一覧の取得を失敗させる
         self.catalog_overrides = {}     # 過去作品の一覧の n 本目を、この作品に差し替える（n → APIの1件）
+        self.new_total = 150            # 新着の人気順（最近30日の発売）の本数
+        self.new_overrides = {}         # 新着の人気順の n 本目を差し替える
 
     def urlopen(self, req, timeout=None):
         url = req.full_url if hasattr(req, "full_url") else req
@@ -203,6 +205,11 @@ class Env:
                 raise urllib.error.URLError("catalog api down")
             assert q.get("lte_date", [""])[0][:10] == TODAY.strftime("%Y-%m-%d"), "過去作品は、発売済みだけ（lte_date が今日）"
             start = int(q["offset"][0])
+            if "gte_date" in q:  # 新着の人気順（最近30日の発売）: 新作 new0001〜（new_total 本）。self.new_overrides で差し替え
+                assert q["gte_date"][0][:10] == (TODAY - timedelta(days=30)).strftime("%Y-%m-%d"), "新着の人気順は、最近30日の発売"
+                rows = [self.new_overrides.get(n) or make_api_item(f"new{n:04d}", -(n % 25), actress=(f"新しい人{n % 5}",), title=f"人気の新作 {n}")
+                        for n in range(start, min(self.new_total, start + int(q["hits"][0]) - 1) + 1)]
+                return FakeResponse({"result": {"status": 200, "items": rows}})
             rows = []
             for n in range(start, min(self.catalog_total, start + int(q["hits"][0]) - 1) + 1):
                 rows.append(self.catalog_overrides.get(n) or make_api_item(
@@ -258,10 +265,11 @@ class Env:
         return FakeResponse({"candidates": [{"content": {"parts": [{"text": "「テスト用のAIコメントです。**上品**に紹介します。」\n"}]}}]})
 
 
-def load_module(data_path, api_id="fake", gemini="fake", max_calls=None, directory_calls=0, catalog_calls=0, catalog_top=0, catalog_limit=None):
+def load_module(data_path, api_id="fake", gemini="fake", max_calls=None, directory_calls=0, catalog_calls=0, catalog_top=0, catalog_limit=None, new_rank=0):
     os.environ["DIRECTORY_CALLS"] = str(directory_calls)  # 女優検索の名簿の一覧取得（ふだんのシナリオでは呼ばない。専用のシナリオで試す）
     os.environ["CATALOG_CALLS"] = str(catalog_calls)  # 過去作品の一覧取得（上位より下を続きから。同じく、専用のシナリオで試す）
     os.environ["CATALOG_TOP_CALLS"] = str(catalog_top)  # 過去作品: その日の人気順の上位を取り直す回数
+    os.environ["NEW_RANK_CALLS"] = str(new_rank)  # 新着の人気順を取る回数
     if catalog_limit is None:
         os.environ.pop("CATALOG_LIMIT", None)  # 集める深さ（既定の3万本）
     else:
@@ -1152,9 +1160,11 @@ rk = json.load(open(cat_rank, encoding="utf-8"))
 check("順位（catalog_rank.json）: 作品ごとに [人気順の順位, 見かけた一回りの番号]。1作品1行・cid の順",
       len(rk) == 199 and rk["cat00010"] == [10, 1] and rk["cat00150"] == [150, 1] and list(rk) == sorted(rk) and open(cat_rank, encoding="utf-8").read().count("\n") == 201, (len(rk), rk.get("cat00010")))
 st_c = json.load(open(cat_state, encoding="utf-8"))
-check("続きの場所（catalog_state.json）: 次は201本目から・一回り目・まだ一回りしていない・集める深さ・本数", st_c == {"cursor": 201, "cycle": 1, "cycle_done": "", "limit": 30000, "items": 199}, st_c)
+check("続きの場所（catalog_state.json）: 次は201本目から・一回り目・まだ一回りしていない・集める深さ・本数", st_c == {"cursor": 201, "cycle": 1, "cycle_done": "", "limit": 15000, "items": 199}, st_c)
 check("毎日の更新のデータ（new_releases.json）には、過去作品を入れない", all(not d["cid"].startswith("cat") for d in json.load(open(c_path, encoding="utf-8"))))
-check("画面に結果が出る", "過去作品: 一覧を2回取得" in out_c and "うち新しく199本" in out_c and "上位30000本まで" in out_c, out_c[-300:])
+check("画面に結果が出る", "過去作品: 一覧を2回取得" in out_c and "うち新しく199本" in out_c and "上位15000本まで" in out_c, out_c[-300:])
+pop1 = json.load(open(os.path.join(c_dir, "popularity.json"), encoding="utf-8"))
+check("毎日の更新の作品が全体の人気順に出てきたら、その順位を popularity.json の all に（5本目）", pop1["all"] == {"bibivr00176": 5} and pop1["new"] == {}, pop1)
 
 # 2回目: その日の人気順で、上位が入れ替わる（150本目だった作品が1位に・1位だった作品が150本目に）。続きは201本目から → 250本目で終わり → 一回り
 first_name, first_row = crow["cat00010"]
@@ -1257,7 +1267,74 @@ m_c6.urllib.request.urlopen = env_c7.urlopen
 m_c6.CATALOG_LIMIT = 50000
 m_c6.update_catalog(st_max, {}, TODAY, top_calls=0, calls=2)
 check("人気順の5万本目まで行ったら（offset は50000まで）、一回りして1本目へ", cat_offsets(env_c7) == ["49901", "1"] and st_max["cursor"] == 101 and st_max["cycle_done"] == TODAY_STR, (cat_offsets(env_c7), st_max["cursor"]))
-check("集める深さの既定は3万本（無料プランの2万ファイルの中で、作品ページを作れる割合を高くするため）・APIの上限をこえない", m_c4.CATALOG_LIMIT == 30000 and m_c4.CATALOG_MAX_OFFSET == 50000)
+check("集める深さの既定は1.5万本（質の高い作品だけを、ほぼ全部に作品ページを付けて持つ）・APIの上限をこえない", m_c4.CATALOG_LIMIT == 15000 and m_c4.CATALOG_MAX_OFFSET == 50000)
+
+print("\n■ セール・キャンペーン（FANZA公式のAPIの campaign・prices。その日に見かけたものだけ）")
+s_dir = scenario_dir("sale")
+s_path = write_archive(s_dir, c_seed)
+day = lambda d: (TODAY + timedelta(days=d)).strftime("%Y-%m-%d")
+
+
+def on_sale(n, camps, price="1884~", list_price="2692~"):
+    it_ = past_item(n)
+    it_["campaign"] = camps
+    it_["prices"] = {"price": price, "list_price": list_price, "deliveries": {"delivery": []}}
+    return it_
+
+
+camp_a = {"date_begin": day(-2) + " 10:00:00", "date_end": day(1) + " 09:59:59", "title": "メーカーA30％OFF"}
+camp_b = {"date_begin": day(-1) + " 00:10:00", "date_end": day(3) + " 23:59:59", "title": "日替わりセール★"}
+env_s = Env()
+env_s.catalog_overrides = {
+    3: on_sale(3, [camp_a]),
+    4: on_sale(4, [{"date_begin": day(-9) + " 00:00:00", "date_end": day(-1) + " 23:59:59", "title": "終わったセール"}]),  # 昨日で終わった
+    6: on_sale(6, [camp_b, camp_a]),  # 2つ重なっている → 早く終わるほう
+    7: on_sale(7, [camp_b], price="2180~", list_price="2180~"),  # 値引きが確かめられない → 価格は出さない
+    8: on_sale(8, [{"date_begin": day(2) + " 00:00:00", "date_end": day(5) + " 23:59:59", "title": "まだ始まっていないセール"}]),
+}
+m_s = load_module(s_path, catalog_calls=0, catalog_top=1)
+code_s, out_s = run_main_capture(m_s, env_s)
+sale = json.load(open(os.path.join(s_dir, "sale.json"), encoding="utf-8"))
+by_c = {r["c"]: r for r in sale["items"]}
+camp_of = lambda c: sale["campaigns"][by_c[c]["k"]]
+check("sale.json: 日付と、セール中の作品（今日が期間に入っているキャンペーンだけ）", code_s == 0 and sale["date"] == TODAY_STR and set(by_c) == {"cat00003", "cat00006", "cat00007"}, sorted(by_c))
+check("キャンペーンは名前・始まり・終わり（分まで）。重なっていたら、早く終わるほう", camp_of("cat00003") == {"title": "メーカーA30％OFF", "begin": day(-2) + " 10:00", "end": day(1) + " 09:59"} and camp_of("cat00006")["title"] == "メーカーA30％OFF", camp_of("cat00006"))
+check("価格は「〜円から」の数字（値引きが確かめられるときだけ）", by_c["cat00003"].get("p") == 1884 and by_c["cat00003"].get("l") == 2692 and "p" not in by_c["cat00007"], by_c["cat00007"])
+check("同じキャンペーンは1つにまとめる", len(sale["campaigns"]) == 2, sale["campaigns"])
+check("価格の読み方: 「1,884~」→ 1884・読めなければ None", m_s.parse_yen("1,884~") == 1884 and m_s.parse_yen("2180") == 2180 and m_s.parse_yen("") is None and m_s.parse_yen(None) is None and m_s.parse_yen("abc") is None)
+env_s2 = Env()
+env_s2.catalog_fail = True
+before_sale = open(os.path.join(s_dir, "sale.json"), encoding="utf-8").read()
+m_s2 = load_module(s_path, catalog_calls=0, catalog_top=1)
+run_main_capture(m_s2, env_s2)
+check("一覧が取れなかった日は、セールの情報を書きかえない（前の日のまま）", open(os.path.join(s_dir, "sale.json"), encoding="utf-8").read() == before_sale)
+
+print("\n■ 新着の人気順（最近30日の発売の、その日の人気順）")
+n_dir = scenario_dir("newrank")
+n_path = write_archive(n_dir, c_seed)
+env_n = Env()
+env_n.new_overrides = {2: make_api_item("bibivr00176", -1, actress=("蓮実クレア",), maker="KMPVR-bibi-")}  # 毎日の更新の作品も、新着の人気順に出る
+m_n = load_module(n_path, catalog_calls=0, catalog_top=1, new_rank=2)
+code_n, out_n = run_main_capture(m_n, env_n)
+new_q = [(q["offset"], q.get("gte_date", "")[:10]) for ep, q in env_n.queries if ep == "ItemList" and q.get("sort") == "rank" and "gte_date" in q and "offset" in q]
+pop = json.load(open(os.path.join(n_dir, "popularity.json"), encoding="utf-8"))
+check("新着の人気順: 最近30日の発売を、人気順に100本ずつ（決めた回数）取る", code_n == 0 and [o for o, _ in new_q] == ["1", "101"], new_q)
+check("popularity.json: 日付・新着の人気順（150本。毎日の更新の作品も含む）", pop["date"] == TODAY_STR and len(pop["new"]) == 150 and pop["new"]["bibivr00176"] == 2 and pop["new"]["new0001"] == 1 and pop["new"]["new0150"] == 150, (pop["date"], len(pop["new"])))
+ncat = {}
+for name_ in os.listdir(os.path.join(n_dir, "catalog")):
+    for r_ in json.load(open(os.path.join(n_dir, "catalog", name_), encoding="utf-8")):
+        ncat[r_["cid"]] = r_
+nrank = json.load(open(os.path.join(n_dir, "catalog_rank.json"), encoding="utf-8"))
+check("新着の人気順に出た作品で、まだ持っていないものは過去作品に足す（毎日の更新の作品は足さない）", all(f"new{n:04d}" in ncat for n in range(1, 151) if n != 2) and "bibivr00176" not in ncat, len(ncat))
+check("新着の人気順だけで見つけた作品の全体の順位は、まだ分からない（後ろに回す）。全体の人気順にも出た作品は、その順位", nrank["new0010"] == [50000, 1] and nrank["cat00010"] == [10, 1], (nrank.get("new0010"), nrank.get("cat00010")))
+check("popularity.json は1作品1行（順位の順）", open(os.path.join(n_dir, "popularity.json"), encoding="utf-8").read().count("\n") >= 150 + 4)
+check("画面に結果が出る", "新着の人気順: 150本" in out_n, out_n[-200:])
+env_n2 = Env()
+env_n2.catalog_fail = True
+before_pop = open(os.path.join(n_dir, "popularity.json"), encoding="utf-8").read()
+m_n2 = load_module(n_path, catalog_calls=0, catalog_top=0, new_rank=2)
+code_n2, out_n2 = run_main_capture(m_n2, env_n2)
+check("新着の人気順が取れなかった日は、前の日のまま（popularity.json を書きかえない）", code_n2 == 0 and open(os.path.join(n_dir, "popularity.json"), encoding="utf-8").read() == before_pop, out_n2[-200:])
 check("過去作品の1件: 発売日（YYYY-MM-DD）が無い・タイトルが無い作品は入れない", m_c6.catalog_item(dict(c_seed[0], date="")) is None and m_c6.catalog_item(dict(c_seed[0], title="")) is None and m_c6.catalog_item("x") is None)
 check("過去作品の1件: Gemini の下書き（ai）も、空にする（過去作品のコメントは Claude が書いたものだけ）", m_c6.catalog_item(dict(c_seed[0], comment_kind="ai", comment="下書き"))["comment_kind"] == "none")
 check("過去作品を取りに行かない設定（回数が0）なら、過去作品には触らない（ファイルも作らない）", not os.path.exists(os.path.join(scenario_dir("refetch"), "catalog")) and not os.path.exists(os.path.join(scenario_dir("refetch"), "catalog_rank.json")))

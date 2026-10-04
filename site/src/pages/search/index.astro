@@ -57,10 +57,12 @@ const hasWorks = all.some((i) => paged.has(i.cid));
               </select>
             </label>
             <label class="as-field">
-              並び順（発売日）
+              並び順
               <select name="sort">
                 <option value="new">新しい順</option>
                 <option value="old">古い順</option>
+                <option value="popnew">人気順（新着）</option>
+                <option value="pop">人気順（全体）</option>
               </select>
             </label>
           </div>

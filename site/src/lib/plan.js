@@ -11,12 +11,6 @@ export function nonItemFileCount({ actress = 0, maker = 0, month = 0, tag = 0, w
   return fixed + actress + maker + month + tag + weekly + ics + Math.max(1, Math.ceil(archiveItems / pageSize));
 }
 
-/** 過去作品の人気順の順位（data/catalog_rank.json の {cid: [順位, 一回りの番号]}）。分からなければ null */
-export function catalogRank(ranks, cid) {
-  const v = ranks && typeof ranks === 'object' ? ranks[cid] : null;
-  return Array.isArray(v) && Number.isInteger(v[0]) && v[0] >= 1 ? v[0] : null;
-}
-
 /** 作品ページの優先順（小さいほど先）: 毎日の更新で載せた作品 → コメントのある過去作品 → そのほかの過去作品 */
 export const pagePriority = (item) => (!item.catalog ? 0 : item.comment ? 1 : 2);
 

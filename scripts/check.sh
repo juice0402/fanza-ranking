@@ -56,6 +56,9 @@ node tests/test_phrase.mjs || failed=1
 step "サイトのファイル数の計画（過去作品が増えても2万ファイル以内） (Node.js)"
 node tests/test_plan.mjs || failed=1
 
+step "人気順（新着の人気順・全体の人気順）の部品 (Node.js)"
+node tests/test_popularity.mjs || failed=1
+
 if [ "${1:-}" = "--build" ]; then
   step "サイトのビルド"
   if (cd site && npm ci --no-audit --no-fund && npm run build); then

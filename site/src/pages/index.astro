@@ -4,6 +4,7 @@ import DaySection from '../components/DaySection.astro';
 import RankCard from '../components/RankCard.astro';
 import VrToggle from '../components/VrToggle.astro';
 import { released, upcoming, roundups, ranking, monthGroups, tagGroups } from '../lib/data.js';
+import { RANKING_PATH } from '../lib/popularity.js';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import { weeklyPath } from '../lib/roundups.js';
 import { SEARCH_PATH } from '../lib/search.js';
@@ -80,6 +81,7 @@ const rankFirstIsHero = rankHasHero(rankShownCount);
             </li>
           ))}
         </ul>
+        <p class="more"><a class="btn btn-quiet" href={RANKING_PATH}>人気ランキングをもっと見る（新着・全体）</a></p>
       </section>
     )}
 

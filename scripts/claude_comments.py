@@ -35,6 +35,7 @@ DATA_PATH = os.environ.get("DATA_PATH", os.path.join(ROOT, "site", "src", "data"
 CATALOG_DIR = os.environ.get("CATALOG_DIR", os.path.join(os.path.dirname(DATA_PATH), "catalog"))
 CATALOG_FILE = re.compile(r"^\d{4}-\d{2}\.json$")
 CATALOG_RANK_PATH = os.environ.get("CATALOG_RANK_PATH", os.path.join(os.path.dirname(DATA_PATH), "catalog_rank.json"))  # 過去作品の人気順の順位
+POPULARITY_PATH = os.environ.get("POPULARITY_PATH", os.path.join(os.path.dirname(DATA_PATH), "popularity.json"))  # 新着の人気順
 JST = timezone(timedelta(hours=9))
 
 MIN_LEN = 100           # コメントの文字数の下限（目安は100〜160文字。2〜3文。運営者の希望で、2026-10-04 に長くした。試運転で90字前後が多かったので、下限を100に）
@@ -241,16 +242,25 @@ def save_catalog_shard(name, rows):
     os.replace(path + ".tmp", path)
 
 
-def load_catalog_ranks():
-    """過去作品の人気順の順位 {cid: 順位}（無い・読めないときは空。並べる順に使うだけなので、止めない）"""
+def _read_dict(path):
     try:
-        with open(CATALOG_RANK_PATH, encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             raw = json.load(f)
     except (OSError, json.JSONDecodeError):
         return {}
-    if not isinstance(raw, dict):
-        return {}
-    return {c: v[0] for c, v in raw.items() if isinstance(v, list) and v and isinstance(v[0], int) and not isinstance(v[0], bool) and v[0] >= 1}
+    return raw if isinstance(raw, dict) else {}
+
+
+def load_catalog_ranks():
+    """過去作品の人気の順位 {cid: 順位}: 全体の人気順（catalog_rank.json）と新着の人気順（popularity.json の new）の、上のほう。
+    サイトが作品ページを作る順（site/src/lib/data.js の rank）と同じ。無い・読めないときは空（並べる順に使うだけなので、止めない）"""
+    ok = lambda v: isinstance(v, int) and not isinstance(v, bool) and 1 <= v < 50000  # 50000 は「まだ分からない」
+    ranks = {c: v[0] for c, v in _read_dict(CATALOG_RANK_PATH).items() if isinstance(v, list) and v and ok(v[0])}
+    new = _read_dict(POPULARITY_PATH).get("new")
+    for c, v in (new.items() if isinstance(new, dict) else []):
+        if ok(v):
+            ranks[c] = min(v, ranks.get(c, v))
+    return ranks
 
 
 def catalog_index(shards, curated_cids):
