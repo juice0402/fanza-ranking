@@ -63,12 +63,12 @@ def write_comments(name, payload):
 
 
 def good_comment(item, n=0):
-    """条件を満たす（40文字以上・出演者名1回・絵文字なし・確かめられない評価や古くなる言い方なし）コメントを、作品ごとに違う文で作る"""
+    """条件を満たす（80文字以上・出演者名1回・絵文字なし・確かめられない評価や古くなる言い方なし）コメントを、作品ごとに違う文で作る"""
     who = (item.get("actress") or ["出演者"])[0]
     bodies = [
-        f"{who}が出演する、発売日の決まっている新作です。作品の情報は、詳細のページに載っています。",
-        f"{who}の出演作が、新作の棚に並びました。メーカーのページから、ほかの作品もたどれます。",
-        f"新作の棚にまた一本。出演は{who}で、くわしい内容はFANZAのページで確かめられます。",
+        f"{who}が出演する、発売日の決まっている新作です。作品の情報は、この詳細のページに載っていて、サンプル画像やメーカーの一覧からも、ほかの作品をたどれます。",
+        f"{who}の出演作が、新作の棚に並びました。メーカーのページからは、同じメーカーのほかの作品もたどれます。くわしい内容はFANZAのページで確かめてください。",
+        f"新作の棚にまた一本。出演は{who}で、収録時間や形式は、上の表にまとめて載せてあります。くわしい内容は、FANZAのページとサンプル画像で確かめられます。",
     ]
     return bodies[n % len(bodies)] + f"（その{n}）"  # 末尾の数字で、1件ごとに別の文になる
 
@@ -92,10 +92,13 @@ out = json.loads(r.stdout)
 cids = [x["cid"] for x in out["items"]]
 check("対象は、定型文とGeminiの下書き（Claudeが仕上げたものは出ない）", set(cids) == {x["cid"] for x in pending} and not (set(cids) & {x["cid"] for x in finals}), cids)
 check("total_pending が、定型文と下書きの件数と同じ", out["total_pending"] == len(pending) == out["shown"])
-check("作品タイトルは出力しない", "title" not in r.stdout and not any(x["title"] in r.stdout for x in original))
+check("タイトルは、安全チェックを通ったものだけ title に出す（それ以外は title_hidden: true で、タイトルを出さない）",
+      all(("title" in x) != bool(x.get("title_hidden")) for x in out["items"])
+      and all(x["title"] == next(o["title"] for o in original if o["cid"] == x["cid"]) for x in out["items"] if "title" in x)
+      and all(next(o["title"] for o in original if o["cid"] == x["cid"]) not in r.stdout for x in out["items"] if x.get("title_hidden")))
 BASE_KEYS = {"cid", "reason", "status", "date", "actress", "maker", "tags", "duration_min", "genres", "sample_movie", "sample_images"}
 check("画像やURLなど、不要な項目も出さない（サンプル動画・画像は、有無と枚数だけ）",
-      all(set(x) == BASE_KEYS | ({"draft"} if x["reason"] == "下書きを仕上げる" else set()) for x in out["items"]) and "http" not in r.stdout,
+      all(set(x) - {"title", "title_hidden"} == BASE_KEYS | ({"draft"} if x["reason"] == "下書きを仕上げる" else set()) for x in out["items"]) and "http" not in r.stdout,
       [sorted(set(x) - BASE_KEYS) for x in out["items"]])
 check("下書きの作品には、いまの文（draft）を出す。定型文には出さない",
       all(x["draft"] == next(o["comment"] for o in original if o["cid"] == x["cid"]) for x in out["items"] if x["reason"] == "下書きを仕上げる")
@@ -143,7 +146,7 @@ with open(DATA, "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=1)
     f.write("\n")
 g_out = {x["cid"]: x["genres"] for x in json.loads(run("list", "--limit", "100").stdout)["items"]}
-check("ジャンルは決めた一覧のものだけ（過激な言葉・未成年を連想させる言葉・技術的な区分は出さない）", g_out.get(target["cid"]) == ["巨乳", "OL"], g_out.get(target["cid"]))
+check("ジャンルは決めた一覧のものだけ（過激な言葉・未成年を連想させる言葉は出さない）", g_out.get(target["cid"]) == ["巨乳", "ハイビジョン", "OL"], g_out.get(target["cid"]))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import claude_comments as cc_mod  # noqa: E402
 check("ジャンルの一覧を config.js から読める（10個以上）", len(cc_mod.safe_genres_from_config()) >= 10, cc_mod.safe_genres_from_config())
@@ -216,7 +219,7 @@ def rejected(label, comments, expect=None):
 
 ok_text = good_comment(t1, 1)
 rejected("短すぎるコメント", {t0["cid"]: "短い文です。"}, "文字数")
-rejected("長すぎるコメント", {t0["cid"]: "あ" * 121}, "文字数")
+rejected("長すぎるコメント", {t0["cid"]: "あ" * 201}, "文字数")
 rejected("改行が入っている", {t0["cid"]: good_comment(t0)[:30] + "\n" + good_comment(t0)[30:]}, "改行")
 rejected("URLが入っている", {t0["cid"]: good_comment(t0) + " https://example.com/"}, "URL")
 rejected("絵文字が入っている", {t0["cid"]: good_comment(t0) + "😊"}, "絵文字")
@@ -228,6 +231,9 @@ rejected("「今日」など、日がたつと古くなる言い方が入って�
 rejected("確かめられない評価（待望・話題・注目の・ファンの…）が入っている", {t0["cid"]: good_comment(t0) + "待望の話題作で、ファンの期待も高い注目の一本です"}, "確かめられない評価")
 rejected("発売日をすぎると古くなる言い方（予約受付中）が入っている", {t0["cid"]: good_comment(t0) + "いまなら予約受付中です"}, "古くなる言い方")
 rejected("発売日をすぎると古くなる言い方（発売予定）が入っている", {t0["cid"]: good_comment(t0) + "11月1日に発売予定です"}, "古くなる言い方")
+rejected("タイトルの言葉を、そのまま長く写している", {t0["cid"]: good_comment(t0) + t0["title"][-12:] if len(t0["title"]) >= 12 else good_comment(t0) + "あ" * 200}, None)
+rejected("直接的な言葉（増やした一覧）が入っている", {t0["cid"]: good_comment(t0) + "セックス"}, "使えない言葉")
+rejected("伏せ字（●）が入っている", {t0["cid"]: good_comment(t0) + "チ●"}, "使えない言葉")
 rejected("出演者名が2回入っている", {t0["cid"]: good_comment(t0) + t0["actress"][0]}, "2回以上")
 rejected("同じ文章を複数の作品に使い回している", {t0["cid"]: ok_text, t1["cid"]: ok_text}, "同じ文章")
 rejected("保存データにない cid", {"no-such-cid": ok_text}, "ない cid")
@@ -242,6 +248,17 @@ same = {drafts[0]["cid"]: drafts[0]["comment"]}
 path = write_comments("same.json", same)
 r = run("apply", path)
 check("いまのコメント（下書き）と同じ文は断る（仕上げになっていない）", r.returncode == 1 and "いまのコメントと同じ" in r.stdout and read_text() == base, r.stdout)
+
+print("\n■ タイトルを見せるかどうか（safe_title）・タイトルの写し（copied_from_title）")
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import claude_comments as ccm  # noqa: E402
+check("ふつうのタイトルは見せる", ccm.safe_title({"title": "会社の先輩とドライブデートに出かける一本"}) == "会社の先輩とドライブデートに出かける一本")
+check("未成年を連想させる言葉・同意の無い行為・薬・伏せ字があるタイトルは見せない",
+      all(ccm.safe_title({"title": t}) == "" for t in ("女子校生の放課後", "小生意気な妹2人", "痴漢電車", "媚薬で", "拘束されて", "優しく犯してあげる", "J●と", "レ○プ", "")))
+check("タイトルから10文字以上そのまま写したら見つける（出演者名・メーカー名の部分は除く）",
+      ccm.copied_from_title("会社の先輩とドライブデートに出かける作品です", "会社の先輩とドライブデートに出かける一本") != ""
+      and ccm.copied_from_title("先輩と出かけるドライブが舞台の作品です", "会社の先輩とドライブデートに出かける一本") == ""
+      and ccm.copied_from_title("出演はとても長い名前の女優さんです", "とても長い名前の女優", ["とても長い名前の女優"]) == "")
 
 print("\n■ apply の入力の形・特別な場合")
 fresh_data()

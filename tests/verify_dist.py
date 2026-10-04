@@ -283,13 +283,6 @@ for cid, x in valid.items():
         problems_here = []
         if len(iframes) != 1 or frame.get("src") != movie:
             problems_here.append("動画の枠(iframe)が1つで、動画のURLと同じではない")
-        # 開いた時点では、重いFANZAの再生ページを読み込まない（再生ボタンを押すと movie.js が入れる。iframe は JavaScript が無いとき用の <noscript> の中だけ）
-        outside = re.sub(r"<noscript>[\s\S]*?</noscript>", "", text)
-        if tags(outside, "iframe"):
-            problems_here.append("ページを開いた時点で、再生ページ(iframe)を読み込んでいる（<noscript> の外に iframe がある）")
-        plays = [t for t in tags(text, "button") if has_class(t, "movie-play")]
-        if len(plays) != 1 or plays[0].get("data-movie-src") != movie:
-            problems_here.append("再生ボタン（.movie-play）が1つで、動画のURL（data-movie-src）と同じではない")
         if frame.get("width") != "476" or frame.get("height") != "306":
             problems_here.append("枠のサイズが 476x306 ではない")
         if 'src="/movie.js"' not in text:
@@ -322,17 +315,16 @@ for cid, x in valid.items():
             problems_here.append("動画が無いのに movie.js を読み込んでいる")
         if problems_here:
             bad_movie.append((cid, problems_here))
-# 表示の速さ: 最初の画面の主な画像（動画が無い作品の表紙・動画の再生ボタンの画像）は、優先して読む（fetchpriority="high"）
+# 表示の速さ: 動画が無い作品の、最初の画面の表紙は、優先して読む（fetchpriority="high"）
 slow_lcp = []
 for cid, x in valid.items():
     page = os.path.join(DIST, "item", cid, "index.html")
-    if not os.path.isfile(page) or not str(x.get("image_url") or "").strip():
+    if not os.path.isfile(page) or not str(x.get("image_url") or "").strip() or fanza_https(str(x.get("sample_movie") or ""), DMM):
         continue
-    imgs = tags(read(page), "img")
-    main_img = next((t for t in imgs if has_class(t, "detail-cover") or has_class(t, "movie-poster")), None)
+    main_img = next((t for t in tags(read(page), "img") if has_class(t, "detail-cover")), None)
     if not main_img or main_img.get("fetchpriority") != "high" or main_img.get("loading") == "lazy":
         slow_lcp.append(cid)
-check("作品ページの最初の画面の画像（表紙・動画の再生ボタンの画像）を、優先して読む（fetchpriority=high・lazy にしない）", not slow_lcp, slow_lcp[:3])
+check("動画が無い作品ページの表紙を、優先して読む（fetchpriority=high・lazy にしない）", not slow_lcp, slow_lcp[:3])
 check(f"動画がある作品（{movie_count}件）は動画を表紙の場所に出し、パッケージ写真をサンプル画像の下の別の欄に大きく出している／動画が無い作品は、これまでどおり表紙", not bad_movie, bad_movie[:3])
 foreign_frames = []
 for pth in all_html:

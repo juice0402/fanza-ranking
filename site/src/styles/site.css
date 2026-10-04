@@ -1749,68 +1749,6 @@ html.lightbox-open {
   transform: scale(var(--movie-scale, 1));
 }
 
-/* 再生ボタン（パッケージ画像の上に、丸い再生マーク）。押すと movie.js が再生ページ（iframe）に入れ替える */
-.movie-play {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  background: #000;
-  color: #fff;
-  font: 700 14px/1.2 var(--font-body);
-  cursor: pointer;
-}
-
-.movie-poster {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.72;
-}
-
-.movie-play-icon {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  background: var(--hot);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-}
-
-.movie-play-icon svg {
-  width: 30px;
-  height: 30px;
-  margin-left: 4px; /* 三角形の見た目の重心を、丸の真ん中に */
-  fill: #fff;
-}
-
-.movie-play-label {
-  position: relative;
-  padding: 4px 10px;
-  border-radius: var(--r-pill);
-  background: rgba(0, 0, 0, 0.6);
-}
-
-.movie-play:hover .movie-play-icon {
-  background: var(--hot-hover);
-}
-
-.movie-play:focus-visible {
-  outline: 3px solid var(--pop);
-  outline-offset: -3px;
-}
-
 .movie-note {
   margin: 8px 0 0;
   color: var(--paper-dim);
