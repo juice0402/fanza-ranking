@@ -441,7 +441,7 @@ if isinstance(rk_raw, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(rk_raw.ge
     for r in rk_raw["items"]:
         if isinstance(r, dict) and re.fullmatch(r"[A-Za-z0-9_\-]+", str(r.get("cid", ""))) and str(r.get("title", "")).strip() and fanza_https(r.get("url"), FANZA_LINK):
             rk_items.append(r)
-    rk_items = rk_items[:3]
+    rk_items = rk_items[:6]  # 売れ筋は、VR作品を隠したときの差し替え用に、6本まで持つ（画面に出すのは先頭の3本）
 home_sections = [t for t in tags(home_html, "section") if t.get("id") == "ranking"]
 rank_cards = [t for t in tags(home_html, "article") if has_class(t, "rank-item")]
 if rk_fresh and rk_items:
@@ -452,8 +452,16 @@ if rk_fresh and rk_items:
     check("「人気順」と書いてある（FANZAのデイリーランキングと同じとは書かない）", "人気順" in home_html and "デイリーランキング" not in home_html)
     check("ページ内の移動に「売れ筋TOP3」がある", 'href="#ranking"' in home_html)
     cell_places = [re.search(r"\brank-([0-3])\b", t.get("class", "")) for t in rank_cards]
-    check("1〜3位のカードに、順位ごとの大きさの目印（rank-1〜rank-3）が、順番どおりに付いている（表示の順位は、抜けがあっても1,2,3とそろえる）", [m.group(1) if m else None for m in cell_places] == ["1", "2", "3"][: len(rk_items)], [t.get("class") for t in rank_cards])
+    check("1〜3位のカードに、順位ごとの大きさの目印（rank-1〜rank-3。4位以降は rank-0）が、順番どおりに付いている（表示の順位は、抜けがあっても1,2,3…とそろえる）", [m.group(1) if m else None for m in cell_places] == [str(i) if i <= 3 else "0" for i in range(1, len(rk_items) + 1)], [t.get("class") for t in rank_cards])
     check("売れ筋の並びに rank-podium の目印がある（スマホで1位を大きく・広い画面で3本を横いっぱいにする見た目の足がかり）", any(has_class(t, "rank-podium") for t in tags(home_html, "ul")))
+    # 「VR作品を隠す」で本数が減っても空白ができないよう、並べ方の印（data-visible・先頭の .is-hero）を付けている（隠す前は、全部が見えている状態）
+    podium = next((t for t in tags(home_html, "ul") if has_class(t, "rank-podium")), None)
+    podium_cells = [t for t in tags(home_html, "li") if has_class(t, "rank-cell")]
+    shown_n = min(len(podium_cells), 3)
+    hero_expected = [i == 0 and (shown_n == 1 or shown_n >= 3) for i in range(len(podium_cells))]
+    check("売れ筋の並びに、出す本数（data-show=3）・見えている本数（data-visible）・大きく出す1本（先頭の is-hero。3本以上か1本のとき）の印がある", bool(podium) and podium.get("data-show") == "3" and podium.get("data-visible") == str(shown_n) and [has_class(t, "is-hero") for t in podium_cells] == hero_expected, (podium.get("data-show") if podium else None, podium.get("data-visible") if podium else None, [t.get("class") for t in podium_cells]))
+    check("売れ筋: 先頭の3本だけが見えていて、4位以降は rank-off（VR作品を隠したとき、差し替えに使う）。各マスに元の順位（data-rank）が入っている", [has_class(t, "rank-off") for t in podium_cells] == [i >= 3 for i in range(len(podium_cells))] and [t.get("data-rank") for t in podium_cells] == [str(i) for i in range(1, len(podium_cells) + 1)], [(t.get("class"), t.get("data-rank")) for t in podium_cells])
+    check("売れ筋の見出しの横に、「VRを除く」の注記（最初は隠れている。VR作品を隠したとき、JavaScriptが出す）がある", re.search(r'<span class="rank-vr-note" hidden>｜VRを除く</span>', home_html) is not None)
 else:
     check("ランキングが無い・古い（7日より前）・使える行が無いときは、トップに売れ筋の欄を出さない", not home_sections and not rank_cards and 'href="#ranking"' not in home_html)
 
@@ -645,6 +653,36 @@ chip_hidden = [b for b in chip_rules if re.search(r"display\s*:\s*none|visibilit
 chip_small = [b for b in chip_rules for m in [re.search(r"font-size\s*:\s*(\d+(?:\.\d+)?)px", b)] if m and float(m.group(1)) < 11]
 check("CSS: 広告ラベル（.pr-chip）が、隠されていない・小さすぎない（11px以上）", bool(chip_rules) and not chip_hidden and not chip_small, (len(chip_rules), chip_hidden[:1], chip_small[:1]))
 check("CSS: 動画の枠（.movie-box）に contain: paint と isolation: isolate がある（枠の外に出ない）", movie_clip)
+# 18歳確認の背景: 真っ黒ではなく濃い曇りガラス（ぼかし）。ぼかしが弱すぎると後ろが読める・強すぎると画面のふちが逆にぼけない（Chromiumで確認済み）ので、10〜30pxに収める
+gate_rules = [body for sels, body in css_rules if ".gate" in sels]
+gate_blur = [float(m.group(1)) for b in gate_rules for m in [re.search(r"(?<![-\w])backdrop-filter\s*:\s*blur\(\s*(\d+(?:\.\d+)?)px", b)] if m]
+
+
+def css_alpha(body):
+    """background: の色の透明度（0〜1）。ビルドで rgba(…) が #rrggbbaa に縮められても読めるようにしてある。読めなければ None"""
+    m = re.search(r"(?<![-\w])background\s*:\s*(rgba?\([^)]*\)|#[0-9a-fA-F]{3,8})", body)
+    if not m:
+        return None
+    v = m.group(1)
+    if v.startswith("#"):
+        h = v[1:]
+        if len(h) == 8:
+            return int(h[6:8], 16) / 255
+        if len(h) == 4:
+            return int(h[3] * 2, 16) / 255
+        return 1.0
+    parts = [x.strip() for x in re.split(r"[,/\s]+", v[v.index("(") + 1:-1]) if x.strip()]
+    return float(parts[3]) if len(parts) >= 4 else 1.0
+
+
+gate_tint = [a for a in (css_alpha(b) for b in gate_rules) if a is not None]
+gate_fixed = any(re.search(r"position\s*:\s*fixed", b) and re.search(r"touch-action\s*:\s*none", b) for b in gate_rules)
+gate_lock = any(("html.gate-open" in sels or "html.gate-open body" in sels) and re.search(r"overflow\s*:\s*hidden", body) for sels, body in css_rules)
+gate_vignette = any(sels in ([".gate::before"], [".gate:before"]) and "gradient" in body for sels, body in css_rules)  # ビルドで ::before が :before に縮められることがある
+check("CSS: 18歳確認の背景は、ぼかし（backdrop-filter: blur 10〜30px）で、色の重ねは真っ黒でない（透明度0.5〜0.75）。-webkit- は、ビルドの道具が消すことがあるので問わない（その代わり、ぼかしの条件は @supports の無印だけ）", bool(gate_blur) and 10 <= gate_blur[0] <= 30 and any(0.5 <= a <= 0.75 for a in gate_tint), (gate_blur, gate_tint))
+check("CSS: 18歳確認は画面に固定（position: fixed）・指でなぞっても動かない（touch-action: none）・開いている間は後ろのページをスクロールさせない（html.gate-open の overflow: hidden）", gate_fixed and gate_lock, (gate_fixed, gate_lock))
+check("CSS: 18歳確認の画面のふちを暗くする覆い（.gate::before）がある（ふちでぼかしが弱くなるブラウザ向け）", gate_vignette)
+check("CSS: ふだん（ぼかしが使えない古いブラウザ）と「透明さを減らす」設定のときは、ほぼ真っ黒（透明度0.9以上）にする（ぼかしだけが効かず、薄い色だけが残るのを防ぐ）", sum(1 for a in gate_tint if a >= 0.9) >= 2 and any(sels == [".gate"] and "position" in body and (css_alpha(body) or 0) >= 0.9 for sels, body in css_rules), gate_tint)
 hdr = os.path.join(DIST, "_headers")
 htext = read(hdr) if os.path.isfile(hdr) else ""
 check("応答ヘッダーの設定（_headers）がある: nosniff・フレームへの埋め込み禁止（frame-ancestors）", "X-Content-Type-Options: nosniff" in htext and "frame-ancestors 'self'" in htext and re.search(r"^/\*\s*$", htext, re.M) is not None)
@@ -682,6 +720,8 @@ check("CSS: お気に入りのサムネ（.fav-thumb）も、表紙の比率に�
 
 # 「VR作品を隠す」の見た目の決まり
 hide_rule = [b for sels, b in css_rules if ".hide-vr [data-vr]" in sels]
+rank_sels = [x for sels, b in css_rules for x in sels]
+check("CSS: 売れ筋は、VRを隠して2本・1本になったときの並べ方（data-visible=2/1）と、全部がVRのとき売れ筋ごと隠す（#ranking.vr-empty）がある", '.rank-podium[data-visible="2"]' in rank_sels and '.rank-podium[data-visible="1"]' in rank_sels and any("#ranking.vr-empty" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules), [x for x in rank_sels if "data-visible" in x or "vr-empty" in x])
 check("CSS: html.hide-vr のとき、VR作品の目印（data-vr）のマスと、全部がVRの日付（.day.vr-empty）を隠す", bool(hide_rule) and all(re.search(r"display\s*:\s*none", b) for b in hide_rule) and any(".day.vr-empty" in sels for sels, b in css_rules if ".hide-vr [data-vr]" in sels), hide_rule[:1])
 hidden_ok = [sels for sels, b in css_rules if ".vr-toggle[hidden]" in sels and re.search(r"display\s*:\s*none", b)]
 check("CSS: 隠れているスイッチ・検索（hidden）が、display の指定に負けずに隠れる", bool(hidden_ok) and any(".work-search[hidden]" in sels for sels in hidden_ok), hidden_ok[:1])
@@ -735,10 +775,10 @@ for cls, attrs, cid, inner in shelf_cells(home_html):
     rk = next((r for r in rk_items if htmllib.unescape(rank_title) == str(r.get("title", "")).strip()), None)
     if rk is None:
         continue
-    expect = bool(re.search(r"【[^】]*VR[^】]*】", str(rk["title"]), re.I)) or (str(rk["cid"]) in valid and is_vr_raw(valid[str(rk["cid"])]))
+    expect = rk.get("vr") is True or bool(re.search(r"【[^】]*VR[^】]*】", str(rk["title"]), re.I)) or (str(rk["cid"]) in valid and is_vr_raw(valid[str(rk["cid"])]))
     if ('data-vr="true"' in attrs) != expect:
         rank_wrong.append((rk["cid"], 'data-vr="true"' in attrs, expect))
-check("売れ筋TOP3: VR作品（題名の【VR】か、当サイトの作品のジャンル）にだけ data-vr が付いている", not rank_wrong, rank_wrong[:3])
+check("売れ筋: VR作品（データの vr・題名の【VR】・当サイトの作品のジャンル）にだけ data-vr が付いている", not rank_wrong, rank_wrong[:3])
 
 # スイッチ（VR作品を隠す）の置き場所: 最初は隠れていて、JavaScriptが出す
 toggle_pages = [index_path, os.path.join(DIST, "search", "index.html")] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html")))[:1] + sorted(glob.glob(os.path.join(DIST, "actress", "*", "index.html")))[:1] + sorted(glob.glob(os.path.join(DIST, "maker", "*", "index.html")))[:1]

@@ -13,7 +13,7 @@ GitHub Actions から毎日自動で実行されます。
   - updated は、その作品のデータ（コメント）を最後に変えた日（日本時間 YYYY-MM-DD）。sitemap の lastmod に使います。
   - sample_movie は、FANZAのサンプル動画のURL（無ければ空）。movie_tries は、品番で取り直しても見つからなかった回数。
 保存先（出演者）: site/src/data/actresses.json … 出演者ごとの顔写真・体型・年齢の元データ・FANZAの全作品リンク（FANZA公式のデータ）
-保存先（売れ筋）: site/src/data/ranking.json … FANZAの人気順（売れ筋）の上位3本
+保存先（売れ筋）: site/src/data/ranking.json … FANZAの人気順（売れ筋）の上位6本（画面に出すのは先頭の3本。「VR作品を隠す」ときは、VRを除いて、次の順位から差し替える）
 
   python3 get_new_releases.py --refresh-only
       新しい作品の追加とAIコメントはせず、保存済みデータの取り直し（出演者・サンプル動画・プロフィール・ランキング）だけをする（Geminiは使わない）
@@ -60,7 +60,7 @@ MAX_MOVIE_TRIES = 3         # サンプル動画を品番で取り直す回数�
 PROFILE_PER_RUN = 30        # 出演者のプロフィールを取りに行く最大数
 PROFILE_RECHECK_DAYS = 30   # 取得済みのプロフィールを、取り直すまでの日数（体型などはあとから載ることがある）
 MAX_API_FAILS_IN_ROW = 3    # 取り直し・プロフィールの取得で、連続で失敗したら、その回はやめる
-RANKING_ITEMS = 3           # 売れ筋ランキングの本数
+RANKING_ITEMS = 6           # 売れ筋ランキングの本数（画面に出すのは先頭3本。VR作品を隠したとき、次の順位から差し替えるために、多めに取っておく）
 ACTRESSES_PATH = os.environ.get("ACTRESSES_PATH", os.path.join(os.path.dirname(DATA_PATH), "actresses.json"))
 RANKING_PATH = os.environ.get("RANKING_PATH", os.path.join(os.path.dirname(DATA_PATH), "ranking.json"))
 
@@ -109,6 +109,15 @@ def clean_tags(tags):
 def title_tags(title):
     """タイトルの【VR】【8K】のような括弧書きから、形式タグだけを取り出す"""
     return clean_tags(re.findall(r"【([^】]{1,10})】", title or ""))
+
+
+def is_vr_item(item):
+    """VR作品か。タイトルの【…VR…】・形式タグ・ジャンル（VR専用・ハイクオリティVR など）のどれかに VR が入っていれば VR。
+    site/src/lib/items.js の isVrWork と同じ決まり（画面の「VR作品を隠す」の判定。売れ筋は、ここで印を付けて保存する）"""
+    title = item.get("title") or ""
+    if re.search(r"【[^】]*VR[^】]*】", title, re.I):
+        return True
+    return any("VR" in str(x).upper() for x in (item.get("tags") or []) + (item.get("genres") or []))
 
 
 # ------------------------------------------------------------------
@@ -776,13 +785,13 @@ def update_profiles(state, archive, today_str):
 # 売れ筋ランキング（FANZAの人気順の上位）
 # ------------------------------------------------------------------
 def fetch_ranking_from(raw_items):
-    """FANZAの人気順（sort=rank）の応答から、上位 RANKING_ITEMS 本の表示用データを作る。1本も無ければ RuntimeError"""
+    """FANZAの人気順（sort=rank）の応答から、上位 RANKING_ITEMS 本の表示用データを作る（vr = VR作品か）。1本も無ければ RuntimeError"""
     rows = [p for p in map(parse_api_item, raw_items) if p][:RANKING_ITEMS]
     if not rows:
         raise RuntimeError("ランキングが空でした")
     return [
         {"rank": i, "cid": p["cid"], "title": p["title"], "url": p["url"], "image_url": p["image_url"], "date": day_key(p["date"]),
-         "maker": p["maker"], "actress": p["actress"]}
+         "maker": p["maker"], "actress": p["actress"], "vr": is_vr_item(p)}
         for i, p in enumerate(rows, 1)
     ]
 

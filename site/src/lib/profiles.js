@@ -5,6 +5,7 @@ import { FANZA_HOSTS, daysBetween, isDay, isVrWork, safeHttpsUrl } from './items
 
 export const ACTRESS_SEARCH_INDEX_PATH = '/data/actresses-index.json';
 export const FANZA_LIST_HOSTS = ['fanza.co.jp', 'dmm.co.jp']; // 「FANZAで全作品を見る」のリンクとして通してよいホスト
+export const RANKING_MAX = 6; // 売れ筋ランキングの、取っておく本数の上限（画面に出すのは先頭の RANKING_SHOWN 本。VR作品を隠すとき、次の順位から差し替えるため、多めに持つ）
 export const RANKING_STALE_DAYS = 7; // 売れ筋ランキングが、これより古い日付になったら、画面には出さない（更新が止まっているときに、古い順位を出し続けない）
 
 /** 整数で、範囲内のときだけその値（そうでなければ null） */
@@ -164,9 +165,9 @@ export function profileCoverage(profiles) {
 
 /**
  * 売れ筋ランキングの表示用の形。画面に出せないとき（無い・古い・壊れている）は null。
- * 出せるときは { date, items }（items は 1〜3本。順位・品番・題名・リンク・画像・メーカー・出演者・VRか）
- * vrCids: 当サイトの作品のうち VR のものの品番の集まり（Set）。ランキングのデータにはジャンルが無いので、題名の【VR】のほか、
- *   当サイトに同じ品番の作品があれば、そのジャンルからも VR かどうかを判断する
+ * 出せるときは { date, items }（items は 1〜RANKING_MAX 本。順位・品番・題名・リンク・画像・メーカー・出演者・VRか）
+ * VRか（vr）: データの vr（取得のときにジャンルなどから判定したもの）が true、または、題名の【VR】、
+ *   または、当サイトに同じ品番の作品があって、そのジャンルなどからVRと分かるもの（vrCids: そうした品番の集まり（Set））
  */
 export function rankingForDisplay(raw, today, vrCids = new Set()) {
   if (!raw || typeof raw !== 'object' || !isRealDay(raw.date) || !Array.isArray(raw.items)) return null;
@@ -187,9 +188,9 @@ export function rankingForDisplay(raw, today, vrCids = new Set()) {
       date: isDay(String(r.date ?? '').slice(0, 10)) ? String(r.date).slice(0, 10) : '',
       maker: String(r.maker ?? ''),
       actress: Array.isArray(r.actress) ? r.actress.filter((a) => typeof a === 'string' && a).slice(0, 6) : [],
-      vr: isVrWork({ title }) || vrCids.has(cid),
+      vr: r.vr === true || isVrWork({ title }) || vrCids.has(cid),
     });
-    if (items.length >= 3) break;
+    if (items.length >= RANKING_MAX) break;
   }
   return items.length ? { date: raw.date, items } : null;
 }
