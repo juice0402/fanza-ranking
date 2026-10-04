@@ -769,7 +769,8 @@ button:focus-visible {
 /* ---------- 18歳以上の確認 ---------- */
 
 /* 後ろは、真っ黒ではなく、濃い曇りガラスのように強くぼかす（何が書いてあるか・写っているか分からない強さ）。
-   色をほんの少し暗く重ねて、ぼかしを助ける。ぼかしが使えない・「透明さを減らす」設定のときは、ほぼ真っ黒にする */
+   まず「ほぼ真っ黒」にしておき、ぼかしが使えるブラウザだけ、下の @supports で曇りガラスにする
+   （ぼかしが効かないのに、薄い色だけが残って、後ろが読めてしまうことが無いように） */
 .gate {
   position: fixed;
   inset: 0;
@@ -778,9 +779,17 @@ button:focus-visible {
   padding: 20px;
   touch-action: none; /* 指でなぞっても、後ろのページが動かない */
   overscroll-behavior: none;
-  background: rgba(14, 10, 20, 0.66);
-  -webkit-backdrop-filter: blur(18px) saturate(1.2);
-  backdrop-filter: blur(18px) saturate(1.2);
+  background: rgba(10, 7, 15, 0.97);
+}
+
+/* 条件は、プレフィックス無しの backdrop-filter だけにしてある（ビルドの道具が、不要な -webkit- を消すことがあるため。
+   古いSafariでは、ぼかしの代わりに、ほぼ真っ黒のまま） */
+@supports (backdrop-filter: blur(1px)) {
+  .gate {
+    background: rgba(14, 10, 20, 0.66);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    backdrop-filter: blur(18px) saturate(1.2);
+  }
 }
 
 /* 画面のふち（上下左右の約110px）は、ブラウザによって、ぼかしが弱くなって文字が読めてしまうことがある。
@@ -793,12 +802,6 @@ button:focus-visible {
   background:
     linear-gradient(to bottom, rgba(10, 7, 15, 0.97), rgba(10, 7, 15, 0.8) 40px, rgba(10, 7, 15, 0) 110px, rgba(10, 7, 15, 0) calc(100% - 110px), rgba(10, 7, 15, 0.8) calc(100% - 40px), rgba(10, 7, 15, 0.97)),
     linear-gradient(to right, rgba(10, 7, 15, 0.97), rgba(10, 7, 15, 0.8) 40px, rgba(10, 7, 15, 0) 110px, rgba(10, 7, 15, 0) calc(100% - 110px), rgba(10, 7, 15, 0.8) calc(100% - 40px), rgba(10, 7, 15, 0.97));
-}
-
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .gate {
-    background: rgba(10, 7, 15, 0.97);
-  }
 }
 
 @media (prefers-reduced-transparency: reduce) {
