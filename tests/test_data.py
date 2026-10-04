@@ -135,7 +135,7 @@ else:
         check("名簿: id は数字だけで重複がない・名前がある・id の順", all(re.fullmatch(r"\d{1,12}", i) for i in dids) and len(set(dids)) == len(dids)
               and all(str(r.get("name", "")).strip() for r in drows) and dids == sorted(dids, key=int))
         check("名簿: 使う項目だけを持つ（血液型・趣味・出身地・URLなどは持たない）",
-              all(set(r) == {"id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday"} for r in drows),
+              all(set(r) == {"id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday", "seen"} for r in drows),
               sorted({k for r in drows for k in r})[:20])
         check("名簿: 顔写真は、FANZAの画像のファイル名（英小文字・数字・_）か空", all(re.fullmatch(r"[a-z0-9_]{0,60}", str(r.get("img", "x"))) for r in drows))
         check("名簿: 体型は、空か範囲内の整数・カップは英字1文字か空",
@@ -151,6 +151,9 @@ else:
             now = datetime.now(timezone(timedelta(hours=9)))
             return now.year - y - ((now.month, now.day) < (mo, d)) >= 18
 
+        check("名簿: 最後に見かけた日（seen）・一回りを始めた日は YYYY-MM-DD（一回りの始まりは、ひとつ前の分だけ空でもよい）",
+              all(re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("seen", ""))) for r in drows)
+              and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(dir_raw.get("cycle_start", ""))) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(dir_raw.get("prev_cycle_start", "x"))))
         check("名簿: 生年月日は空か、18歳以上になる日付", all(_adult_birthday(r.get("birthday", "")) for r in drows), [r.get("id") for r in drows if not _adult_birthday(r.get("birthday", ""))][:5])
         check("名簿: どの人にも、検索に使える項目（体型・身長・生年月日）がある", all(any(r.get(k) for k in ("bust", "waist", "hip", "height", "birthday")) for r in drows))
         check("名簿に、APIのIDらしき文字列が入っていない", "api_id" not in open(DIRECTORY, encoding="utf-8").read())

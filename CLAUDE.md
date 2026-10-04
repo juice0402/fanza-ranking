@@ -62,7 +62,7 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | `site/src/pages/` | トップ、`item/[cid]`（作品）、`archive/[page]`（過去作品）、`actress/`（出演者別。2本以上の人だけ）、`maker/`（メーカー別。2本以上だけ）、`month/`（月ごと）、`tag/`（ジャンルごと）、`weekly/`（週のまとめ記事。1本も無いあいだは一覧が noindex・sitemap にも入らず、リンクも出さない）、`favorites`（お気に入り。noindex）、`calendar/`（使い方のページ＋購読用の `.ics`。使い方は noindex）、`data/favorites-index.json.js`、`data/actresses-index.json.js`（出演者検索の索引）、404、`sitemap.xml.js`、`robots.txt.js` |
 | `site/src/data/new_releases.json` | **自動更新のデータ。手で編集しない**（作品IDごとに蓄積。`updated` は、その作品のコメントを最後に変えた日で、sitemap の `lastmod` に使う） |
 | `site/src/data/actresses.json` | **自動更新のデータ。手で編集しない**（出演者のプロフィール。`{actresses:[…], unmatched:{名前:探した日}}`。体型は数字・生年月日は年齢の計算用で、画面に出すのは**年齢だけ**。血液型・趣味・出身地は**保存しない**。名前の完全一致が1人だけのときだけ採用し、推測で選ばない） |
-| `site/src/data/actress_directory.json` | **自動更新のデータ。手で編集しない**（女優検索の名簿。FANZA公式の出演者検索の一覧から、`{cursor, cycle_done, rows:[…]}`。1人1行・id の順。持つのは id・名前・読み・顔写真のファイル名・体型・身長・生年月日だけ。体型も身長も生年月日も無い人は入れない。18歳未満・80歳をこえる生年月日は捨てる） |
+| `site/src/data/actress_directory.json` | **自動更新のデータ。手で編集しない**（女優検索の名簿。FANZA公式の出演者検索の一覧から、`{cursor, cycle_done, cycle_start, prev_cycle_start, rows:[…]}`。1人1行・id の順。持つのは id・名前・読み・顔写真のファイル名・体型・身長・生年月日・最後に見かけた日（seen）だけ。約5日の一回りを2回続けて見かけなかった人（FANZAから消えた・数字が消された人）は外す。体型も身長も生年月日も無い人は入れない。18歳未満・80歳をこえる生年月日は捨てる） |
 | `site/src/data/ranking.json` | **自動更新のデータ。手で編集しない**（売れ筋ランキング上位6本。各行の `vr` は、取得のときにジャンルなどから判定した「VR作品か」。取得に失敗したら前回のものを残す） |
 | `site/src/data/roundups.json` | **Claude が毎週書き足す記事のデータ。手で編集しない**（`claude_roundups.py apply` だけが書く。新しい週が先頭） |
 | `tests/` | テスト一式。`fixtures/` は固定データ（本番データには依存しない） |
