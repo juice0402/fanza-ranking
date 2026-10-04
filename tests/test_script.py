@@ -137,6 +137,8 @@ class Env:
         self.catalog_overrides = {}     # 過去作品の一覧の n 本目を、この作品に差し替える（n → APIの1件）
         self.new_total = 150            # 新着の人気順（最近30日の発売）の本数
         self.new_overrides = {}         # 新着の人気順の n 本目を差し替える
+        self.count_fail = False         # 本数の問い合わせを失敗させる
+        self.upcoming_rank_ids = None   # 予約の人気順に答える作品ID（None なら soon001〜soon040）
 
     def urlopen(self, req, timeout=None):
         url = req.full_url if hasattr(req, "full_url") else req
@@ -200,13 +202,22 @@ class Env:
                 raise urllib.error.URLError("cid api down")
             item = self.by_cid.get(q["cid"][0])
             return FakeResponse({"result": {"status": 200, "items": [item] if item else []}})
+        if q.get("hits") == ["1"] and "gte_date" in q and "lte_date" in q and "cid" not in q:  # きょうの数字: その日の発売本数
+            if self.count_fail:
+                raise urllib.error.URLError("count api down")
+            day_ = q["gte_date"][0][:10]
+            return FakeResponse({"result": {"status": 200, "items": [], "total_count": str(100 + int(day_[8:10])), "result_count": 0}})
+        if q.get("sort", [""])[0] == "rank" and "gte_date" in q and "offset" not in q and q["gte_date"][0][:10] > TODAY.strftime("%Y-%m-%d"):  # 予約の人気順
+            ids = self.upcoming_rank_ids or [f"soon{n:03d}" for n in range(1, 41)]
+            rows = [make_api_item(c, 2 + n % 20, actress=(f"予約の人{n % 4}",), title=("【VR】" if n == 3 else "") + f"予約の人気作 {n}") for n, c in enumerate(ids, 1)]
+            return FakeResponse({"result": {"status": 200, "items": rows[: int(q["hits"][0])], "total_count": "4321"}})
         if q.get("sort", [""])[0] == "rank" and "offset" in q:  # 過去作品（人気順の一覧。発売済みだけ・100本ずつ）
             if self.catalog_fail:
                 raise urllib.error.URLError("catalog api down")
             assert q.get("lte_date", [""])[0][:10] == TODAY.strftime("%Y-%m-%d"), "過去作品は、発売済みだけ（lte_date が今日）"
             start = int(q["offset"][0])
             if "gte_date" in q:  # 新着の人気順（最近30日の発売）: 新作 new0001〜（new_total 本）。self.new_overrides で差し替え
-                assert q["gte_date"][0][:10] == (TODAY - timedelta(days=30)).strftime("%Y-%m-%d"), "新着の人気順は、最近30日の発売"
+                assert q["gte_date"][0][:10] == (TODAY - timedelta(days=7)).strftime("%Y-%m-%d"), "新着の人気順は、最近1週間の発売"
                 rows = [self.new_overrides.get(n) or make_api_item(f"new{n:04d}", -(n % 25), actress=(f"新しい人{n % 5}",), title=f"人気の新作 {n}")
                         for n in range(start, min(self.new_total, start + int(q["hits"][0]) - 1) + 1)]
                 return FakeResponse({"result": {"status": 200, "items": rows}})
@@ -265,11 +276,12 @@ class Env:
         return FakeResponse({"candidates": [{"content": {"parts": [{"text": "「テスト用のAIコメントです。**上品**に紹介します。」\n"}]}}]})
 
 
-def load_module(data_path, api_id="fake", gemini="fake", max_calls=None, directory_calls=0, catalog_calls=0, catalog_top=0, catalog_limit=None, new_rank=0):
+def load_module(data_path, api_id="fake", gemini="fake", max_calls=None, directory_calls=0, catalog_calls=0, catalog_top=0, catalog_limit=None, new_rank=0, today_stats=False):
     os.environ["DIRECTORY_CALLS"] = str(directory_calls)  # 女優検索の名簿の一覧取得（ふだんのシナリオでは呼ばない。専用のシナリオで試す）
     os.environ["CATALOG_CALLS"] = str(catalog_calls)  # 過去作品の一覧取得（上位より下を続きから。同じく、専用のシナリオで試す）
     os.environ["CATALOG_TOP_CALLS"] = str(catalog_top)  # 過去作品: その日の人気順の上位を取り直す回数
     os.environ["NEW_RANK_CALLS"] = str(new_rank)  # 新着の人気順を取る回数
+    os.environ["TODAY_STATS"] = "1" if today_stats else "0"  # きょうの数字（専用のシナリオで試す）
     if catalog_limit is None:
         os.environ.pop("CATALOG_LIMIT", None)  # 集める深さ（既定の3万本）
     else:
@@ -1309,7 +1321,40 @@ m_s2 = load_module(s_path, catalog_calls=0, catalog_top=1)
 run_main_capture(m_s2, env_s2)
 check("一覧が取れなかった日は、セールの情報を書きかえない（前の日のまま）", open(os.path.join(s_dir, "sale.json"), encoding="utf-8").read() == before_sale)
 
-print("\n■ 新着の人気順（最近30日の発売の、その日の人気順）")
+print("\n■ きょうの数字（FANZA動画の日ごとの発売本数・予約受付中の本数）と、予約の人気順")
+t_dir = scenario_dir("today")
+t_path = write_archive(t_dir, c_seed)
+env_t = Env()
+m_t = load_module(t_path, today_stats=True)
+code_t, out_t = run_main_capture(m_t, env_t)
+tj = json.load(open(os.path.join(t_dir, "today.json"), encoding="utf-8"))
+days7 = [(TODAY - timedelta(days=k)).strftime("%Y-%m-%d") for k in range(6, -1, -1)]
+check("today.json: 日付・きょうを含む7日分の発売本数（古い日から）", code_t == 0 and tj["date"] == TODAY_STR and [d["d"] for d in tj["daily"]] == days7 and all(d["n"] == 100 + int(d["d"][8:10]) for d in tj["daily"]), tj.get("daily"))
+check("予約受付中の本数・予約の人気順の上位30本（順位・発売日・出演者・画像・リンク。VRには印）", tj["upcoming_total"] == 4321 and len(tj["upcoming"]) == 30 and tj["upcoming"][0]["c"] == "soon001" and tj["upcoming"][0]["r"] == 1
+      and tj["upcoming"][0]["d"] > TODAY_STR and tj["upcoming"][0]["a"] == ["予約の人1"] and tj["upcoming"][0]["i"].startswith("https://pics.dmm.co.jp/") and tj["upcoming"][0]["u"].startswith("https://al.fanza.co.jp/")
+      and tj["upcoming"][2].get("v") == 1 and "v" not in tj["upcoming"][0], tj["upcoming"][:1])
+check("最初の日は、前の日の予約の人気順が無い（空）・画面に結果が出る", tj["prev_upcoming"] == [] and "きょうの数字: きょうの発売" in out_t, out_t[-200:])
+check("予約の人気順は1本1行", open(os.path.join(t_dir, "today.json"), encoding="utf-8").read().count("\n") >= 30 + 5)
+# 次の日（日付を1日前にずらしたファイルで試す）: 前の日の予約の人気順を prev_upcoming に
+tj_old = dict(tj, date=(TODAY - timedelta(days=1)).strftime("%Y-%m-%d"))
+json.dump(tj_old, open(os.path.join(t_dir, "today.json"), "w", encoding="utf-8"), ensure_ascii=False)
+env_t2 = Env()
+env_t2.upcoming_rank_ids = ["soonNEW"] + [f"soon{n:03d}" for n in range(1, 40)]
+m_t2 = load_module(t_path, today_stats=True)
+run_main_capture(m_t2, env_t2)
+tj2 = json.load(open(os.path.join(t_dir, "today.json"), encoding="utf-8"))
+check("次の日: 前の日の予約の人気順の作品IDが prev_upcoming に（新しく入った作品が分かる）", tj2["prev_upcoming"] == [r["c"] for r in tj["upcoming"]] and tj2["upcoming"][0]["c"] == "soonNEW", tj2["prev_upcoming"][:3])
+m_t3 = load_module(t_path, today_stats=True)
+run_main_capture(m_t3, Env())
+check("同じ日に2回動いても、前の日の予約の人気順はそのまま", json.load(open(os.path.join(t_dir, "today.json"), encoding="utf-8"))["prev_upcoming"] == tj2["prev_upcoming"])
+before_t = open(os.path.join(t_dir, "today.json"), encoding="utf-8").read()
+env_t4 = Env()
+env_t4.count_fail = True
+m_t4 = load_module(t_path, today_stats=True)
+code_t4, out_t4 = run_main_capture(m_t4, env_t4)
+check("本数が取れなかったら、きょうの数字だけやめる（ほかの更新は続ける・ファイルは前のまま）", code_t4 == 0 and open(os.path.join(t_dir, "today.json"), encoding="utf-8").read() == before_t and "きょうの数字の取得に失敗" in out_t4, out_t4[-200:])
+
+print("\n■ 新着の人気順（最近1週間の発売の、その日の人気順）")
 n_dir = scenario_dir("newrank")
 n_path = write_archive(n_dir, c_seed)
 env_n = Env()
@@ -1328,6 +1373,16 @@ nrank = json.load(open(os.path.join(n_dir, "catalog_rank.json"), encoding="utf-8
 check("新着の人気順に出た作品で、まだ持っていないものは過去作品に足す（毎日の更新の作品は足さない）", all(f"new{n:04d}" in ncat for n in range(1, 151) if n != 2) and "bibivr00176" not in ncat, len(ncat))
 check("新着の人気順だけで見つけた作品の全体の順位は、まだ分からない（後ろに回す）。全体の人気順にも出た作品は、その順位", nrank["new0010"] == [50000, 1] and nrank["cat00010"] == [10, 1], (nrank.get("new0010"), nrank.get("cat00010")))
 check("popularity.json は1作品1行（順位の順）", open(os.path.join(n_dir, "popularity.json"), encoding="utf-8").read().count("\n") >= 150 + 4)
+check("最初の日は、前の日の新着の人気順（prev）が空", pop["prev"] == {} and pop["prev_date"] == "", (pop.get("prev_date"), len(pop.get("prev", {}))))
+pop_y = dict(pop, date=(TODAY - timedelta(days=1)).strftime("%Y-%m-%d"))
+open(os.path.join(n_dir, "popularity.json"), "w", encoding="utf-8").write(json.dumps(pop_y, ensure_ascii=False))
+m_ny = load_module(n_path, catalog_calls=0, catalog_top=1, new_rank=2)
+run_main_capture(m_ny, Env())
+pop2 = json.load(open(os.path.join(n_dir, "popularity.json"), encoding="utf-8"))
+check("次の日: 前の日の新着の人気順が prev に（上位200本まで。「急上昇」を見つける用）・その日付", pop2["prev_date"] == pop_y["date"] and pop2["prev"] == dict(sorted(pop["new"].items(), key=lambda kv: kv[1])[:200]), (pop2.get("prev_date"), len(pop2.get("prev", {}))))
+m_ny2 = load_module(n_path, catalog_calls=0, catalog_top=1, new_rank=2)
+run_main_capture(m_ny2, Env())
+check("同じ日に2回動いても、前の日の新着の人気順はそのまま", json.load(open(os.path.join(n_dir, "popularity.json"), encoding="utf-8"))["prev"] == pop2["prev"])
 check("画面に結果が出る", "新着の人気順: 150本" in out_n, out_n[-200:])
 env_n2 = Env()
 env_n2.catalog_fail = True

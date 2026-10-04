@@ -19,7 +19,7 @@ const isNew = kind === 'new';
     <h1 class="hero-title">{isNew ? '新着の人気ランキング' : '全体の人気ランキング'}</h1>
     <p class="hero-lead">
       {isNew
-        ? `最近${NEW_RANK_DAYS}日に発売されたFANZA動画を、その日の人気順に並べています。毎日、日付が変わったあとに入れ替わります。`
+        ? `最近${NEW_RANK_DAYS === 7 ? '1週間' : `${NEW_RANK_DAYS}日`}に発売されたFANZA動画を、その日の人気順に並べています。毎日、日付が変わったあとに入れ替わります。`
         : 'FANZA動画の発売済みの作品を、その日の人気順に並べています（このサイトに載っている作品だけ）。毎日、日付が変わったあとに入れ替わります。'}
     </p>
     <div class="hero-actions">
