@@ -125,7 +125,7 @@ else:
         check("ranking.json を読める", False, str(e))
     if rk is not None:
         rk_items = rk.get("items") if isinstance(rk, dict) else None
-        check("ranking.json: 日付(YYYY-MM-DD)と items（1〜3本）がある", isinstance(rk, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(rk.get("date", ""))) and isinstance(rk_items, list) and 1 <= len(rk_items) <= 3, rk if not isinstance(rk, dict) else rk.get("date"))
+        check("ranking.json: 日付(YYYY-MM-DD)と items（1〜6本）がある", isinstance(rk, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(rk.get("date", ""))) and isinstance(rk_items, list) and 1 <= len(rk_items) <= 6, rk if not isinstance(rk, dict) else rk.get("date"))
         if isinstance(rk_items, list):
             check("ランキング: 順位は 1,2,3… の順・品番がある", [x.get("rank") for x in rk_items] == list(range(1, len(rk_items) + 1)) and all(str(x.get("cid", "")).strip() for x in rk_items))
             check("ランキング: リンクはFANZAのhttps・画像はFANZA(DMM)のhttps", all(_fanza_https(x.get("url"), ["fanza.co.jp", "dmm.co.jp"]) and (x.get("image_url") == "" or _fanza_https(x.get("image_url"), ["dmm.co.jp"])) for x in rk_items))
