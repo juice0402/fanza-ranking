@@ -253,7 +253,8 @@ def main():
         report, rows = collect_site(site, table)
         result["sites"].append(report)
         result["rows"].extend(rows)
-        print(f"{site['name']}: 一覧{report['roster_pages']} プロフィール{report['profiles_read']}/{report['profiles_found']} 一致{sum(1 for r in rows if r['fanza_name'])} エラー{len(report['errors'])}")
+        line = f"{site['name']}: 一覧{report['roster_pages']} プロフィール{report['profiles_read']}/{report['profiles_found']} 一致{sum(1 for r in rows if r['fanza_name'])} エラー{len(report['errors'])}"
+        print(f"::notice title={site['key']}::{line}" if os.environ.get("GITHUB_ACTIONS") else line)
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=1)
