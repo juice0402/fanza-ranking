@@ -4,7 +4,7 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import Face from '../../components/Face.astro';
 import { actressGroups, actressSearchIndex, actressIndexCoverage, profilesByName } from '../../lib/data.js';
 import { ACTRESS_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
-import { ACTRESS_SEARCH_INDEX_PATH, compactSpec, faceUrl } from '../../lib/profiles.js';
+import { ACTRESS_SEARCH_INDEX_PATH, SIZE_BUCKETS, commonSizeBucket, compactSpec, faceUrl, sizeBucketLabel } from '../../lib/profiles.js';
 import { INDEX_LIST_LIMIT } from '../../config.js';
 
 const trail = [
@@ -22,10 +22,13 @@ const staticShown = actressGroups.slice(0, INDEX_LIST_LIMIT);
 const RANGES = [
   { name: 'age', label: '年齢', unit: '歳', min: 18, max: 80 },
   { name: 'height', label: '身長', unit: 'cm', min: 120, max: 210 },
-  { name: 'bust', label: 'バスト', unit: 'cm', min: 50, max: 160 },
-  { name: 'waist', label: 'ウエスト', unit: 'cm', min: 40, max: 130 },
-  { name: 'hip', label: 'ヒップ', unit: 'cm', min: 50, max: 160 },
 ];
+// スリーサイズ: 幅（cm）をタップで選ぶ（いくつでも）。サイズ感が分かるよう、いちばん人数の多い幅を添える（索引の人数から数えた事実）
+const SIZES = [
+  { name: 'bust', key: 'b', label: 'バスト' },
+  { name: 'waist', key: 'wa', label: 'ウエスト' },
+  { name: 'hip', key: 'hi', label: 'ヒップ' },
+].map((s) => ({ ...s, buckets: SIZE_BUCKETS[s.name], common: commonSizeBucket(actressSearchIndex.actresses, s.key, SIZE_BUCKETS[s.name]) }));
 const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
 const SORTS = [
   ['works', 'このサイトの作品の多い順'],
@@ -84,6 +87,18 @@ const SORTS = [
                 </fieldset>
               ))}
             </div>
+            {SIZES.map((sz) => (
+              <fieldset class="as-cups as-sizes">
+                <legend class="as-range-label">
+                  {sz.label}（cm・いくつでも選べます）{sz.common && <span class="as-size-hint">いちばん多いのは{sizeBucketLabel(sz.common)}cm</span>}
+                </legend>
+                <div class="as-cup-list">
+                  {sz.buckets.map((b) => (
+                    <label class="as-cup"><input type="checkbox" name={sz.name} value={b} /><span>{sizeBucketLabel(b)}</span></label>
+                  ))}
+                </div>
+              </fieldset>
+            ))}
             <fieldset class="as-cups">
               <legend class="as-range-label">カップ（いくつでも選べます）</legend>
               <div class="as-cup-list">

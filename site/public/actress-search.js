@@ -1,7 +1,7 @@
-// 女優検索（/actress/）。名前・年齢・身長・バスト・ウエスト・ヒップ（それぞれ下限〜上限）・カップ（いくつでも）で絞り込み、並べ替える。
+// 女優検索（/actress/）。名前・年齢・身長（下限〜上限の数字）・バスト・ウエスト・ヒップ（「80〜84cm」のような幅を、いくつでも）・カップ（いくつでも）で絞り込み、並べ替える。
 // 検索のもとになるデータは /data/actresses-index.json（ビルドごとに作る。項目は site/src/lib/profiles.js の buildActressSearchIndex の説明を参照）。
 //   FANZA公式の出演者検索で、体型・身長・生年月日が載っている人（約1万人）と、このサイトの作品の出演者が入っている。
-// 条件は URL（?q=&age=20-25&cup=E,F&sort=…）にも書くので、その条件のまま、ほかの人に送ったり、あとで開き直したりできる。
+// 条件は URL（?q=&age=20-25&bust=85-89,90-94&cup=E,F&sort=…）にも書くので、その条件のまま、ほかの人に送ったり、あとで開き直したりできる。
 // JavaScript が使えないときは、ページに最初から載っている「作品が2本以上の出演者」の一覧がそのまま使える。
 (function () {
   var PAGE_SIZE = 60; // 1回に出す人数（「もっと見る」で増やす）
@@ -14,6 +14,13 @@
     { name: 'waist', key: 'wa', lo: 40, hi: 130 },
     { name: 'hip', key: 'hi', lo: 50, hi: 160 },
   ];
+  // スリーサイズは、数字を入れる代わりに、幅（cm）をタップで選ぶ（運営者の希望「何センチと言われてもサイズ感が分からないので、何センチ〜何センチの選択肢に」。2026-10-05）。
+  // いくつでも選べて、どれかに入る人が出る。幅は site/src/lib/profiles.js の SIZE_BUCKETS と同じ（tests/test_profiles.mjs で突き合わせている）
+  var BUCKETS = {
+    bust: ['-79', '80-84', '85-89', '90-94', '95-99', '100-'],
+    waist: ['-55', '56-58', '59-61', '62-64', '65-'],
+    hip: ['-79', '80-84', '85-89', '90-94', '95-'],
+  };
   // 並び順（値 → 並べ方）。値が無い人は、いつも後ろ
   var SORTS = {
     works: { key: 'k', dir: -1 }, // このサイトの作品の多い順
@@ -59,6 +66,29 @@
     return { min: min, max: max };
   }
 
+  // 幅のならび: "80-84,90-"（80〜84 と 90以上）→ [{ min, max }, …]。読めない幅は捨てる
+  function parseRanges(text, lo, hi) {
+    var out = [];
+    String(text == null ? '' : text)
+      .split(',')
+      .forEach(function (part) {
+        var range = parseRange(part.trim(), lo, hi);
+        if (range) out.push(range);
+      });
+    return out;
+  }
+
+  // スリーサイズの幅（URL・フォームの値）: 決まった幅だけを、決まった順に残す（"85-89,-79,xx" → "-79,85-89"）
+  function parseBuckets(text, name) {
+    var allowed = BUCKETS[name] || [];
+    var picked = String(text == null ? '' : text).split(',').map(function (v) {
+      return v.trim();
+    });
+    return allowed.filter(function (v) {
+      return picked.indexOf(v) >= 0;
+    });
+  }
+
   // カップ: "E,F,L+"（E と F と L以上）→ ['E','F','L+']。知らない値は捨てる
   function parseCups(text) {
     var out = [];
@@ -71,13 +101,13 @@
     return out;
   }
 
-  // 値が範囲に入るか。値が無い人は、絞り込みをしているときは入らない（載っていない値を、条件に合うとは言えないため）
-  function inRange(value, range) {
-    if (!range) return true;
+  // 値が、幅のどれかに入るか（幅が無ければ、絞り込まない）。値が無い人は、絞り込みをしているときは入らない（載っていない値を、条件に合うとは言えないため）
+  function inRanges(value, ranges) {
+    if (!ranges.length) return true;
     if (typeof value !== 'number') return false;
-    if (range.min !== null && value < range.min) return false;
-    if (range.max !== null && value > range.max) return false;
-    return true;
+    return ranges.some(function (range) {
+      return (range.min === null || value >= range.min) && (range.max === null || value <= range.max);
+    });
   }
 
   function cupMatches(cup, cups) {
@@ -117,12 +147,12 @@
     };
   }
 
-  // 条件: { q 名前, age/height/bust/waist/hip "下限-上限", cup "E,F,L+", sort, site "1"（このサイトに作品がある人だけ）, face "1"（顔写真がある人だけ） }
+  // 条件: { q 名前, age/height "下限-上限", bust/waist/hip "幅,幅"（どれかに入る人。"80-84,90-"）, cup "E,F,L+", sort, site "1"（このサイトに作品がある人だけ）, face "1"（顔写真がある人だけ） }
   function filterRows(rows, query) {
     var q = query || {};
     var text = normalizeText(q.q);
     var ranges = RANGES.map(function (r) {
-      return { key: r.key, range: parseRange(q[r.name], r.lo, r.hi) };
+      return { key: r.key, ranges: parseRanges(q[r.name], r.lo, r.hi) };
     });
     var cups = parseCups(q.cup);
     var onlySite = q.site === '1';
@@ -131,7 +161,7 @@
       if (text && normalizeText(row.n).indexOf(text) < 0 && normalizeText(row.r).indexOf(text) < 0) return false;
       if (onlySite && !(row.k > 0)) return false;
       if (onlyFace && !row.i) return false;
-      for (var i = 0; i < ranges.length; i++) if (!inRange(row[ranges[i].key], ranges[i].range)) return false;
+      for (var i = 0; i < ranges.length; i++) if (!inRanges(row[ranges[i].key], ranges[i].ranges)) return false;
       return cupMatches(row.c, cups);
     });
     return out.sort(compareBy(q.sort));
@@ -142,7 +172,7 @@
     if (!q) return false;
     if (parseCups(q.cup).length) return true;
     return RANGES.some(function (r) {
-      return parseRange(q[r.name], r.lo, r.hi) !== null;
+      return parseRanges(q[r.name], r.lo, r.hi).length > 0;
     });
   }
 
@@ -152,6 +182,10 @@
     var q = { q: (params.get('q') || '').slice(0, 50), cup: parseCups(params.get('cup')).join(','), sort: params.get('sort') || 'works' };
     if (!Object.prototype.hasOwnProperty.call(SORTS, q.sort)) q.sort = 'works';
     RANGES.forEach(function (r) {
+      if (BUCKETS[r.name]) {
+        q[r.name] = parseBuckets(params.get(r.name), r.name).join(',');
+        return;
+      }
       var range = parseRange(params.get(r.name), r.lo, r.hi);
       q[r.name] = range ? (range.min === null ? '' : range.min) + '-' + (range.max === null ? '' : range.max) : '';
     });
@@ -225,6 +259,8 @@
     module.exports = {
       normalizeText: normalizeText,
       parseRange: parseRange,
+      parseRanges: parseRanges,
+      parseBuckets: parseBuckets,
       parseCups: parseCups,
       filterRows: filterRows,
       hasNumericFilter: hasNumericFilter,
@@ -237,6 +273,7 @@
       pagePath: pagePath,
       PAGE_SIZE: PAGE_SIZE,
       CUPS: CUPS,
+      BUCKETS: BUCKETS,
       SORTS: Object.keys(SORTS),
       RANGES: RANGES.map(function (r) {
         return r.name;
@@ -272,6 +309,14 @@
   function readQuery() {
     var q = { q: field('q') ? String(field('q').value || '').trim() : '', sort: field('sort') ? field('sort').value : 'works' };
     RANGES.forEach(function (r) {
+      if (BUCKETS[r.name]) {
+        var picked = [];
+        Array.prototype.forEach.call(form.querySelectorAll('input[name="' + r.name + '"]:checked'), function (box) {
+          picked.push(box.value);
+        });
+        q[r.name] = parseBuckets(picked.join(','), r.name).join(',');
+        return;
+      }
       var lo = field(r.name + '_min');
       var hi = field(r.name + '_max');
       var a = lo ? String(lo.value || '').trim() : '';
@@ -293,6 +338,13 @@
     if (field('q')) field('q').value = q.q;
     if (field('sort')) field('sort').value = q.sort;
     RANGES.forEach(function (r) {
+      if (BUCKETS[r.name]) {
+        var picked = parseBuckets(q[r.name], r.name);
+        Array.prototype.forEach.call(form.querySelectorAll('input[name="' + r.name + '"]'), function (box) {
+          box.checked = picked.indexOf(box.value) >= 0;
+        });
+        return;
+      }
       var range = parseRange(q[r.name], r.lo, r.hi);
       if (field(r.name + '_min')) field(r.name + '_min').value = range && range.min !== null ? String(range.min) : '';
       if (field(r.name + '_max')) field(r.name + '_max').value = range && range.max !== null ? String(range.max) : '';

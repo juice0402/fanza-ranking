@@ -4,6 +4,34 @@
 import { FANZA_HOSTS, daysBetween, isDay, isVrWork, safeHttpsUrl } from './items.js';
 
 export const ACTRESS_SEARCH_INDEX_PATH = '/data/actresses-index.json';
+
+// 女優検索の、スリーサイズの幅（cm。数字を入れる代わりにタップで選ぶ。運営者の希望「何センチと言われてもサイズ感が分からない」。2026-10-05）。
+// FANZA公式の名簿の分かれ方（バスト・ヒップは80〜89cm、ウエストは56〜61cmの人が多い）に合わせた区切り。
+// "-79" は79cmまで、"100-" は100cm以上。site/public/actress-search.js の BUCKETS と同じ（tests/test_profiles.mjs で突き合わせている）
+export const SIZE_BUCKETS = {
+  bust: ['-79', '80-84', '85-89', '90-94', '95-99', '100-'],
+  waist: ['-55', '56-58', '59-61', '62-64', '65-'],
+  hip: ['-79', '80-84', '85-89', '90-94', '95-'],
+};
+
+/** 幅の表示（"-79" → "〜79"、"80-84" → "80〜84"、"100-" → "100〜"） */
+export const sizeBucketLabel = (bucket) => String(bucket).replace('-', '〜');
+
+/** 幅ごとの人数（索引の行から。値が無い人は数えない）→ [{ bucket, count }] */
+export function sizeBucketCounts(rows, key, buckets) {
+  return buckets.map((bucket) => {
+    const [lo, hi] = bucket.split('-').map((v) => (v === '' ? null : Number(v)));
+    const count = rows.filter((r) => typeof r[key] === 'number' && (lo === null || r[key] >= lo) && (hi === null || r[key] <= hi)).length;
+    return { bucket, count };
+  });
+}
+
+/** いちばん人数の多い幅（同じなら先の幅。だれも数字が無ければ ''） */
+export function commonSizeBucket(rows, key, buckets) {
+  const counts = sizeBucketCounts(rows, key, buckets);
+  const top = counts.reduce((best, c) => (c.count > best.count ? c : best), { bucket: '', count: 0 });
+  return top.bucket;
+}
 export const FANZA_LIST_HOSTS = ['fanza.co.jp', 'dmm.co.jp']; // 「FANZAで全作品を見る」のリンクとして通してよいホスト
 export const RANKING_MAX = 6; // 売れ筋ランキングの、取っておく本数の上限（画面に出すのは先頭の RANKING_SHOWN 本。VR作品を隠すとき、次の順位から差し替えるため、多めに持つ）
 export const RANKING_STALE_DAYS = 7;
