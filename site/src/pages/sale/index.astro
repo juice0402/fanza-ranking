@@ -1,0 +1,70 @@
+---
+// セール・キャンペーン中の作品（/sale/）。FANZA公式のAPIの campaign・prices から、毎日の更新が保存したもの（lib/sale.js）。
+// キャンペーンは終わりが近い順、それぞれ人気の高い作品から SALE_GROUP_LIMIT 本まで。終わった時刻をすぎたものは、ブラウザで隠す（/sale.js）
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import VrToggle from '../../components/VrToggle.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import { all, today, sale } from '../../lib/data.js';
+import { SALE_PATH, endIso, endLabel, saleBadge, saleGroups, salePriceNote } from '../../lib/sale.js';
+import { listIndexable } from '../../lib/plan.js';
+import { SITE_NAME, breadcrumbLd, formatDateJp, vrAttrs } from '../../lib/items.js';
+
+const groups = saleGroups(all, sale, today);
+const shownItems = groups.flatMap((g) => g.items);
+const total = groups.reduce((n, g) => n + g.total, 0);
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: 'セール・キャンペーン', path: SALE_PATH },
+];
+// 作品が無い・コメントのある作品が1本も無いあいだは、検索エンジンに出さない
+const noindex = shownItems.length === 0 || !listIndexable(shownItems);
+---
+
+<Base
+  title={`FANZA動画のセール・キャンペーン中の作品｜${SITE_NAME}`}
+  description="FANZA動画で、いまセール・キャンペーン中の人気作品を、キャンペーンごとに、終わりが近い順にまとめています。毎日、日付が変わったあとに更新します。"
+  path={SALE_PATH}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">セール・キャンペーン</h1>
+      <p class="hero-lead">
+        FANZA動画で、いまセール・キャンペーン中の作品を、終わりが近い順にまとめています（このサイトに載っている人気作品だけ）。
+        {sale.date && `${formatDateJp(sale.date)}の時点の、FANZA公式の情報です。価格や期間は変わることがあるので、くわしくはFANZAの作品ページで確かめてください。`}
+      </p>
+    </section>
+
+    {groups.length > 0
+      ? (
+        <>
+          <div class="list-tools">
+            <VrToggle />
+          </div>
+          {groups.map((g, gi) => (
+            <section class="section" aria-labelledby={`sale-${gi}`} data-sale-group data-vr-group>
+              <div class="section-head">
+                <h2 id={`sale-${gi}`} class="section-title">{g.title}</h2>
+                <p class="section-note">{endLabel(g.end)}まで・{g.total}本{g.total > g.items.length && `（人気の高い${g.items.length}本）`}</p>
+              </div>
+              <ul class="shelf">
+                {g.items.map((item, i) => (
+                  <li class="shelf-cell" data-sale-end={endIso(g.end)} {...vrAttrs(item)}>
+                    <ItemCard item={item} level="h3" badge={saleBadge(item.sale)} note={salePriceNote(item.sale)} eager={gi === 0 && i < 4} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+          <p class="section-note">セール中の作品は、ぜんぶで{total}本です（FANZAのキャンペーンのうち、このサイトに載っている作品だけ）。</p>
+        </>
+      )
+      : <p class="empty">いま、このサイトに載っている作品で、セール・キャンペーン中のものはありません。毎日、日付が変わったあとに更新します。</p>}
+  </div>
+
+  {groups.length > 0 && <script is:inline src="/sale.js" defer></script>}
+</Base>

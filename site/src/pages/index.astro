@@ -3,8 +3,10 @@ import Base from '../layouts/Base.astro';
 import DaySection from '../components/DaySection.astro';
 import RankCard from '../components/RankCard.astro';
 import VrToggle from '../components/VrToggle.astro';
-import { released, upcoming, roundups, ranking, monthGroups, tagGroups } from '../lib/data.js';
+import { all, sale, today, released, upcoming, roundups, ranking, monthGroups, tagGroups } from '../lib/data.js';
 import { RANKING_PATH } from '../lib/popularity.js';
+import { SALE_PATH, endIso, saleBadge, saleCount, saleHighlights, salePriceNote } from '../lib/sale.js';
+import ItemCard from '../components/ItemCard.astro';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import { weeklyPath } from '../lib/roundups.js';
 import { SEARCH_PATH } from '../lib/search.js';
@@ -30,6 +32,9 @@ const upcomingShown = Math.min(upcoming.length, HOME_UPCOMING_LIMIT); // 「予�
 const hasMore = released.length > HOME_RELEASED_LIMIT;
 const latestRoundup = roundups[0]; // いちばん新しい週のまとめ（無ければ undefined）
 const rankingDay = ranking ? dateParts(ranking.date) : null;
+// セール中（FANZAのキャンペーン。人気の高い作品から数本。終わった時刻をすぎたものは、ブラウザで隠す /sale.js）
+const saleShown = saleHighlights(all, sale, today);
+const saleTotal = saleCount(all, sale, today);
 // 売れ筋は、データに多め（最大6本）に入っていて、画面に出すのは先頭の RANKING_SHOWN 本（残りは rank-off で隠しておく）。
 // 「VR作品を隠す」を押すと、VRを除いた先頭の RANKING_SHOWN 本に差し替える（site/public/vr-filter.js の rankLayout）。
 // 並べ方の印（data-visible = 見えている本数、先頭の .is-hero = 大きく出す1本）も、そのとき付け直す
@@ -85,6 +90,23 @@ const rankFirstIsHero = rankHasHero(rankShownCount);
       </section>
     )}
 
+    {saleShown.length > 0 && (
+      <section id="sale" class="section" aria-labelledby="sale-title" data-sale-group data-vr-group>
+        <div class="section-head">
+          <h2 id="sale-title" class="section-title">セール中</h2>
+          <p class="section-note">FANZAのキャンペーン｜人気の高い作品から</p>
+        </div>
+        <ul class="shelf">
+          {saleShown.map((item) => (
+            <li class="shelf-cell" data-sale-end={endIso(sale.campaigns[item.sale.k].end)} {...vrAttrs(item)}>
+              <ItemCard item={item} level="h3" badge={saleBadge(item.sale)} note={salePriceNote(item.sale)} />
+            </li>
+          ))}
+        </ul>
+        <p class="more"><a class="btn btn-quiet" href={SALE_PATH}>セール・キャンペーンをすべて見る（{saleTotal}本）</a></p>
+      </section>
+    )}
+
     <section id="released" class="section" aria-labelledby="released-title">
       <div class="section-head">
         <h2 id="released-title" class="section-title">発売中の新作</h2>
@@ -108,4 +130,5 @@ const rankFirstIsHero = rankHasHero(rankShownCount);
       </section>
     )}
   </div>
+  {saleShown.length > 0 && <script is:inline src="/sale.js" defer></script>}
 </Base>
