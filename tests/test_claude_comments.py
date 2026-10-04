@@ -96,9 +96,9 @@ check("タイトルは、安全チェックを通ったものだけ title に出
       all(("title" in x) != bool(x.get("title_hidden")) for x in out["items"])
       and all(x["title"] == next(o["title"] for o in original if o["cid"] == x["cid"]) for x in out["items"] if "title" in x)
       and all(next(o["title"] for o in original if o["cid"] == x["cid"]) not in r.stdout for x in out["items"] if x.get("title_hidden")))
-BASE_KEYS = {"cid", "reason", "status", "date", "actress", "maker", "tags", "duration_min", "genres", "sample_movie", "sample_images"}
+BASE_KEYS = {"cid", "reason", "status", "date", "actress", "maker", "tags", "duration_min", "genres", "sample_movie", "sample_images", "min_len"}
 check("画像やURLなど、不要な項目も出さない（サンプル動画・画像は、有無と枚数だけ）",
-      all(set(x) - {"title", "title_hidden"} == BASE_KEYS | ({"draft"} if x["reason"] == "下書きを仕上げる" else set()) for x in out["items"]) and "http" not in r.stdout,
+      all(set(x) - {"title", "title_hidden", "content_off"} == BASE_KEYS | ({"draft"} if x["reason"] == "下書きを仕上げる" else set()) for x in out["items"]) and "http" not in r.stdout,
       [sorted(set(x) - BASE_KEYS) for x in out["items"]])
 check("下書きの作品には、いまの文（draft）を出す。定型文には出さない",
       all(x["draft"] == next(o["comment"] for o in original if o["cid"] == x["cid"]) for x in out["items"] if x["reason"] == "下書きを仕上げる")
@@ -374,7 +374,48 @@ r = subprocess.run([sys.executable, "-c", code, write_comments("day1b.json", res
 check("上限をこえる分は断る（上限6・今日4件済み・今回3件 → 断る。残りの数を出す）", r.returncode == 1 and "1日に仕上げるのは 6 件まで" in r.stdout and "今回は 2 件まで" in r.stdout, r.stdout + r.stderr)
 r = subprocess.run([sys.executable, "-c", code.replace("'--today', '2026-11-05'", "'--today', '2026-11-06'"), write_comments("day2.json", rest)], capture_output=True, text=True, env=dict(env_limit, PYTHONPATH=os.path.join(ROOT, "scripts")), encoding="utf-8")
 check("次の日なら、また書ける", r.returncode == 0, r.stdout + r.stderr)
-check("--rewrite は数えない（仕上げ済みを直すとき）", "if not args.rewrite:" in open(SCRIPT, encoding="utf-8").read())
+check("--rewrite・--no-daily-limit は数えない（仕上げ済みを直すとき・運営者に頼まれて会話の中で書くとき）", "if not args.rewrite and not args.no_daily_limit:" in open(SCRIPT, encoding="utf-8").read())
+
+print("\n■ 全作品の点検（2026-10-04 夕方）: 伏せ字・「×」の見分け、同意の無い場面の言葉、事実が少ない作品の文字数")
+st = lambda t: cc_mod.safe_title({"title": t})
+check("行為・体の言葉の伏せ字（中●し・チ○ポ・マ●コ）だけなら、タイトルを見せる", all(st(t) == t for t in ("お姉さん10人！思わず中●ししちゃいました", "撮影会に潜入！チ○ポ中毒", "作業員が性処理エコマ●コに再利用")))
+check("「A×B」の区切りの×は伏せ字として数えない", st("金玉からっぽにしてあげる 逢沢みゆ×幸村泉希") != "" and st("JOI×射精管理×ご褒美") != "")
+check("未成年・同意の無い行為を伏せた形（J× J〇 女子○生 ●学生 レ●プ 痴● 強●）は見せない",
+      all(st(t) == "" for t in ("巨乳ギャルJ×。留年回避と", "ウブJ〇", "アヘ顔女子○生下品", "パイパン●学生いおり", "校内1週間レ●プ！", "潜入！【痴●団地】", "強●クスリ漬け")))
+check("全角の英字（ＪＫ）も見分ける・タイトルもコメントも", st("ＪＫと放課後") == "" and st("ｊｋ") == "")
+check("嫌がらせ・制裁・連れ去りなどの言葉があれば見せない", all(st(t) == "" for t in ("【授乳手コキセクハラ】残業中のオフィス", "電車生姦制裁 ＃014", "家出少女を", "人妻寝取られ", "母の筆おろし")))
+fresh_data()
+one = templates[0]
+r = run("apply", write_comments("fw.json", {one["cid"]: "ＪＫ風の衣装で登場する一本です。" + good_comment(one, 0)}), "--dry-run")
+check("コメントの全角の英字（ＪＫ）も断る", r.returncode == 1 and "JK" in r.stdout, r.stdout)
+rich = dict(one, title="職場の先輩とのドライブデート", duration_min=120, genres=["OL"])
+sparse = dict(one, title="職場の先輩とのドライブデート", duration_min=None, genres=[])
+hidden = dict(one, title="痴漢電車", duration_min=120, genres=[])
+check("事実が少ない作品（予約で収録時間もジャンルも無い・タイトルを見せずジャンルも無い）は80文字から、ほかは100文字から",
+      cc_mod.min_length_for(rich) == 100 and cc_mod.min_length_for(sparse) == 80 and cc_mod.min_length_for(hidden) == 80)
+r = run("list", "--today", "2026-11-03", "--limit", "100")
+check("list に、作品ごとの文字数の下限（min_len）が出る", all(x.get("min_len") in (80, 100) for x in json.loads(r.stdout)["items"]))
+code = ("import sys; sys.argv = ['claude_comments.py', 'apply', sys.argv[1], '--today', '2026-11-05', '--dry-run'] + sys.argv[2:]; "
+        "import claude_comments as m; m.DAILY_LIMIT = 2; m.main()")
+many3 = {x["cid"]: good_comment(x, i) for i, x in enumerate(pending[:3])}
+envp = dict(os.environ, DATA_PATH=DATA, PYTHONPATH=os.path.join(ROOT, "scripts"))
+r1 = subprocess.run([sys.executable, "-c", code, write_comments("lim.json", many3)], capture_output=True, text=True, env=envp, encoding="utf-8")
+r2 = subprocess.run([sys.executable, "-c", code, write_comments("lim.json", many3), "--no-daily-limit"], capture_output=True, text=True, env=envp, encoding="utf-8")
+check("--no-daily-limit なら、1日の上限を数えない（ふだんは断る）", r1.returncode == 1 and "1日に仕上げるのは" in r1.stdout and r2.returncode == 0, r1.stdout + r2.stdout + r2.stderr)
+
+print("\n■ 未成年を連想させるタイトルの作品は、場面のジャンルにも触れない（content_off）")
+fresh_data()
+minor_item = dict(templates[0], title="制服の美少女と", genres=["ハイビジョン", "OL", "コスプレ"], duration_min=120)
+check("title_block_reason: 未成年は minor・同意の無い行為は other・ふつうは空",
+      cc_mod.title_block_reason(minor_item) == "minor" and cc_mod.title_block_reason(dict(minor_item, title="痴漢電車")) == "other"
+      and cc_mod.title_block_reason(dict(minor_item, title="職場の先輩とのドライブ")) == "")
+check("未成年を連想させる作品には、形式のジャンルだけを渡し、文字数の下限は80", cc_mod.genres_for_comment(minor_item, {"ハイビジョン", "OL", "コスプレ"}) == ["ハイビジョン"] and cc_mod.min_length_for(minor_item) == 80)
+check("その作品のコメントに場面のジャンル（コスプレ）が入っていれば断る", any("場面・関係のジャンル" in p for p in cc_mod.comment_problems("コスプレのジャンルに入る一本です。" + good_comment(minor_item, 0), dict(minor_item, comment="")))
+      and cc_mod.comment_genres(minor_item) != [])
+r = run("list", "--today", "2026-11-03", "--limit", "100")
+outl = json.loads(r.stdout)["items"]
+check("list: content_off の作品は、タイトルを出さず（title_hidden）、形式以外のジャンルも出さない",
+      all(x.get("title_hidden") and set(x["genres"]) <= set(cc_mod.FORMAT_GENRES) for x in outl if x.get("content_off")))
 
 print("\n■ 学校・子どもの生活を連想させる場面の言葉（試運転で「職業体験」「学園」「家庭教師」に触れたコメントがあったため）")
 fresh_data()

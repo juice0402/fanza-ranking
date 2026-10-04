@@ -33,6 +33,7 @@ DATA_PATH = os.environ.get("DATA_PATH", os.path.join(ROOT, "site", "src", "data"
 JST = timezone(timedelta(hours=9))
 
 MIN_LEN = 100           # コメントの文字数の下限（目安は100〜160文字。2〜3文。運営者の希望で、2026-10-04 に長くした。試運転で90字前後が多かったので、下限を100に）
+MIN_LEN_SPARSE = 80     # 書ける事実が少ない作品（タイトルを見せない・収録時間もジャンルもまだ無い予約）の下限。100文字に届かせるための水増しをさせないため
 MAX_LEN = 200           # 上限
 DEFAULT_LIMIT = 30      # list で一度に出す件数
 DAILY_LIMIT = 40        # 1日に仕上げる件数の上限（試運転で、1回の予約タスクが40件を2回続けて書いたため。--rewrite は数えない）
@@ -43,12 +44,12 @@ EXPLICIT_WORDS = ["中出", "射精", "精液", "挿入", "フェラ", "レイ�
                   "セックス", "SEX", "性交", "膣", "精子", "ザーメン", "絶頂", "潮吹", "乳首", "巨根", "デカチン", "チンポ", "ちんぽ",
                   "マンコ", "まんこ", "手コキ", "パイズリ", "クンニ", "アナル", "淫語", "淫乱", "ハメ", "オナニー", "イラマ", "顔射",
                   "ぶっかけ", "ごっくん", "放尿", "失禁", "催眠", "媚薬", "監禁", "拘束", "寝取", "NTR", "犯さ", "犯す", "便器", "奴隷",
-                  "鬼畜", "エロ", "●"]
+                  "鬼畜", "エロ", "●", "セクハラ", "拉致", "夜這", "拷問", "制裁"]
 MINOR_WORDS = ["未成年", "少女", "ロリ", "児童", "幼", "女子高生", "女子校生", "女子中", "中学生", "高校生", "小学生",
                "JK", "JC", "JS", "制服", "校生", "学生", "生徒", "教え子", "園児", "子供", "子ども", "妹", "娘", "童顔", "貧乳",
                "つるぺた", "パイパン", "処女",
                # 学校・子どもの生活を連想させる場面の言葉（2026-10-04 の試運転で、「職業体験」「学園」「家庭教師」に触れたコメントがあったため）
-               "学園", "職業体験", "家庭教師", "放課後", "部活", "修学旅行", "体操着", "ブルマ", "スク水", "ランドセル", "保健室", "通学", "登校", "下校", "塾", "女の子"]
+               "学園", "職業体験", "家庭教師", "放課後", "部活", "修学旅行", "体操着", "ブルマ", "スク水", "ランドセル", "保健室", "通学", "登校", "下校", "塾", "女の子", "いじめっ子"]
 FORBIDDEN_CHARS = "<>*#"
 # コメントは保存したままずっと表示されるので、日がたつと古くなる言い方は使わない（日付で書く）
 RELATIVE_TIME_WORDS = ["今日", "本日", "明日", "昨日", "今週", "来週", "先週", "今夜", "今朝", "今月", "来月"]
@@ -70,8 +71,18 @@ STALE_STATUS = re.compile(r"予約|発売予定|発売前|発売を前に|発売
 # タイトルを Claude に見せない作品（内容に触れない）: 未成年を連想させる言葉・同意の無い行為・薬などの言葉や、伏せ字（●○）があるもの。
 # それ以外のタイトルは、内容に「さらっと」触れるための手がかりとして見せる（Gemini には、どの作品のタイトルも渡さない）
 TITLE_BLOCK = MINOR_WORDS + ["レイプ", "強姦", "凌辱", "陵辱", "輪姦", "痴漢", "盗撮", "催眠", "媚薬", "薬", "泥酔", "睡眠", "昏睡", "監禁",
-                             "拘束", "調教", "奴隷", "鬼畜", "無理やり", "無理矢理", "強制", "脅", "犯", "洗脳", "便器", "姪"]
-CENSOR_CHARS = "●○◯×＊"
+                             "拘束", "調教", "奴隷", "鬼畜", "無理やり", "無理矢理", "強制", "脅", "犯", "洗脳", "便器", "姪",
+                             # 全作品の点検（2026-10-04 夕方）で見つかった、同意の無い場面・嫌がらせ・制裁を表す言葉
+                             "セクハラ", "制裁", "拉致", "連れ去", "連れ込", "騙", "嫌なのに", "復讐", "いいなり", "言いなり", "寝取",
+                             "家出", "理解らせ", "わからせ", "夜這", "人質", "拷問", "朦朧", "酩酊", "筆おろし"]
+# 伏せ字（中●し・チ○ポ など）。多くは行為・体の言葉を伏せたもので、そのタイトルも見せる（コメントには伏せ字も行為の言葉も書けない）。
+# ただし、伏せた言葉が未成年（J● 女子○生 ●学生 など）・同意の無い行為（レ●プ 痴● 強● など）のときは、タイトルごと見せない（RISKY_CENSORED）。
+# 「×」は「A×B」の区切りにも使うので、伏せ字としては「J×」のような危ない形のときだけ数える（2026-10-04 夕方まで、×・伏せ字があるだけで隠していた）
+CENSOR_CHARS = "●○◯〇＊*×"
+_C = "[●○◯〇＊*×]"
+MINOR_CENSORED = re.compile(rf"[JＪjｊ]{_C}|女子{_C}{{1,2}}生|{_C}{{1,2}}[学校]生|[中小高]{_C}生|ロ{_C}")
+RISKY_CENSORED = re.compile(rf"[JＪjｊ]{_C}|女子{_C}{{1,2}}生|{_C}{{1,2}}[学校]生|[中小高]{_C}生|ロ{_C}|レ{_C}|強{_C}|痴{_C}|輪{_C}|犯{_C}|"
+                            rf"催{_C}|睡{_C}|盗{_C}|媚{_C}|拉{_C}|監{_C}|凌{_C}|陵{_C}|鬼{_C}|{_C}{{3,}}")
 # コメントの手がかりに出すジャンル（決めた一覧だけ）: サイトの「ジャンルのページ」の一覧（config.js の TAG_PAGE_GENRES）と、ここに足した、
 # 作品の舞台・関係・形式を表す、おだやかなもの。過激な行為・未成年を連想させるもの（学校・体操着・小柄など）・同意の無い行為・薬は入れない
 COMMENT_EXTRA_GENRES = ["ドラマ", "企画", "ドキュメンタリー", "恋愛", "デート", "不倫", "未亡人", "看護婦・ナース", "職業色々", "部下・同僚",
@@ -94,13 +105,33 @@ def jst_today():
     return datetime.now(JST).strftime("%Y-%m-%d")
 
 
-def safe_title(item):
-    """Claude に見せてよいタイトル（見せないときは ""）。TITLE_BLOCK の言葉・伏せ字があれば見せない"""
+# 作品の形式を表すジャンル（場面・関係を表さないもの）。未成年を連想させるタイトルの作品では、これ以外のジャンルにも触れない
+FORMAT_GENRES = ["VR専用", "ハイクオリティVR", "8KVR", "4K", "ハイビジョン", "独占配信", "単体作品", "4時間以上作品", "複数話", "ベスト・総集編"]
+
+
+def title_block_reason(item):
+    """タイトルを見せない理由: "minor"（未成年を連想させる）・"other"（同意の無い行為・薬・嫌がらせなど）・""（見せてよい）。
+    全角の英数字（ＪＫ など）も半角にそろえてから調べる"""
     title = str(item.get("title") or "").strip()
-    if not title or any(c in title for c in CENSOR_CHARS):
-        return ""
-    low = title.lower()
-    return "" if any(w.lower() in low for w in TITLE_BLOCK) else title
+    norm = unicodedata.normalize("NFKC", title)
+    low = norm.lower()
+    if any(w.lower() in low for w in MINOR_WORDS) or MINOR_CENSORED.search(norm) or MINOR_CENSORED.search(title):
+        return "minor"
+    if any(w.lower() in low for w in TITLE_BLOCK) or RISKY_CENSORED.search(norm) or RISKY_CENSORED.search(title):
+        return "other"
+    return ""
+
+
+def safe_title(item):
+    """Claude に見せてよいタイトル（見せないときは ""）。TITLE_BLOCK の言葉や、未成年・同意の無い行為を伏せた伏せ字があれば見せない"""
+    title = str(item.get("title") or "").strip()
+    return title if title and not title_block_reason(item) else ""
+
+
+def genres_for_comment(item, allowed=None):
+    """コメントに使ってよいジャンル。未成年を連想させるタイトルの作品は、形式のジャンル（FORMAT_GENRES）だけ"""
+    genres = comment_genres(item, allowed)
+    return [g for g in genres if g in FORMAT_GENRES] if title_block_reason(item) == "minor" else genres
 
 
 def comment_genres(item, allowed=None):
@@ -228,16 +259,19 @@ def cmd_list(args):
             "tags": [t for t in (x.get("tags") or []) if isinstance(t, str) and FORMAT_TAG.match(t)],
             "duration_min": minutes if isinstance(minutes, int) and not isinstance(minutes, bool) and minutes > 0 else None,
             # ジャンルは、決めた一覧（ジャンルのページの一覧＋COMMENT_EXTRA_GENRES）にあるものだけ
-            "genres": comment_genres(x, allowed),
+            "genres": genres_for_comment(x, allowed),
             "sample_movie": bool(x.get("sample_movie")),
             "sample_images": len(x.get("sample_images") or []),
         }
         # タイトル: 内容にさらっと触れるための手がかり（安全チェックを通ったものだけ。通らなければ title_hidden: true で、内容には触れない）
         title = safe_title(x)
+        row["min_len"] = min_length_for(x)  # この作品のコメントの文字数の下限（書ける事実が少ない作品は80）
         if title:
             row["title"] = title
         else:
             row["title_hidden"] = True
+            if title_block_reason(x) == "minor":
+                row["content_off"] = True  # 未成年を連想させるタイトル: 内容にも場面のジャンルにも触れず、出演者・メーカー・形式・日付・収録時間だけで書く
         if x.get("comment_kind") in (DRAFT_KIND, FINAL_KIND):
             row["draft"] = x.get("comment") or ""  # 仕上げる前の文（Gemini の下書きなど）。そのまま使わず、書き直す
         rows.append(row)
@@ -266,10 +300,24 @@ def text_problems(text, min_len, max_len, allow_newlines=False):
     stale = [w for w in RELATIVE_TIME_WORDS if w in text]
     if stale:
         problems.append("日がたつと古くなる言い方があります（日付で書いてください）: " + "、".join(stale))
-    hit = [w for w in EXPLICIT_WORDS + MINOR_WORDS if w.lower() in text.lower()]
+    low = unicodedata.normalize("NFKC", text).lower()  # 全角の英数字（ＪＫ など）も半角にそろえて調べる
+    hit = [w for w in EXPLICIT_WORDS + MINOR_WORDS if w.lower() in low]
     if hit:
         problems.append("使えない言葉があります: " + "、".join(hit))
     return problems
+
+
+def is_sparse(item):
+    """書ける事実が少ない作品か: 収録時間もジャンルもまだ無い（予約）、または、タイトルを見せないうえに収録時間かジャンルが無い"""
+    has_minutes, has_genres = bool(item.get("duration_min")), bool(comment_genres(item))
+    if safe_title(item):
+        return not (has_minutes or has_genres)
+    return not (has_minutes and has_genres)
+
+
+def min_length_for(item):
+    """その作品のコメントの文字数の下限（未成年を連想させるタイトルの作品は、書ける事実が少ないので80）"""
+    return MIN_LEN_SPARSE if is_sparse(item) or title_block_reason(item) == "minor" else MIN_LEN
 
 
 def comment_problems(comment, item):
@@ -277,7 +325,7 @@ def comment_problems(comment, item):
     if not isinstance(comment, str):
         return ["文字列ではありません"]
     text = comment.strip()
-    problems = text_problems(text, MIN_LEN, MAX_LEN)
+    problems = text_problems(text, min_length_for(item), MAX_LEN)
     hype = [w for w in HYPE_WORDS if w in text]
     if hype:
         problems.append("確かめられない評価・大げさな言い方があります（事実だけで書いてください）: " + "、".join(hype))
@@ -292,6 +340,10 @@ def comment_problems(comment, item):
         problems.append(f"タイトルの言葉をそのまま写しています（「{copied}」。内容は、自分の言葉で、やわらかく言いかえてください）")
     if text == (item.get("comment") or "").strip():
         problems.append("いまのコメントと同じです")
+    if title_block_reason(item) == "minor":
+        scenes = [g for g in comment_genres(item) if g not in FORMAT_GENRES and g in text]
+        if scenes:
+            problems.append("未成年を連想させるタイトルの作品なので、場面・関係のジャンルにも触れないでください（出演者・メーカー・形式・日付・収録時間だけで書く）: " + "、".join(scenes))
     repeated = repeated_sentence(text)
     if repeated:
         problems.append(f"同じ内容の文が2回入っています（「{repeated}」）。言い直して文字数を増やさず、事実（ジャンル・形式・発売日・収録時間など）を1つ足してください")
@@ -372,7 +424,7 @@ def cmd_apply(args):
                 errors.append((cid, ["同じ文章が他の作品にも使われています: " + "、".join(c for c in cids if c != cid)]))
 
     # 1日に仕上げるのは DAILY_LIMIT 件まで（急いで大量に書くと、型どおりの文になりやすい。残りは次の日に回す）
-    if not args.rewrite:
+    if not args.rewrite and not args.no_daily_limit:
         done_today = sum(1 for x in items if x.get("comment_kind") == FINAL_KIND and x.get("updated") == stamp and x["cid"] not in texts)
         if done_today + len(texts) > DAILY_LIMIT:
             errors.append(("(まとめて)", [f"今日（{stamp}）はもう {done_today} 件を仕上げています。1日に仕上げるのは {DAILY_LIMIT} 件までです"
@@ -440,6 +492,8 @@ def main():
     p_apply = sub.add_parser("apply", help="コメントを点検して書き込む")
     p_apply.add_argument("file", help='{"cid": "コメント"} の形のJSONファイル')
     p_apply.add_argument("--dry-run", action="store_true", help="点検だけして書き込まない")
+    p_apply.add_argument("--no-daily-limit", action="store_true",
+                         help="1日の上限（DAILY_LIMIT）を数えない（運営者に頼まれて、会話の中で1本ずつ書くときだけ。毎日の予約タスクでは使わない）")
     p_apply.add_argument("--rewrite", action="store_true",
                          help="Claude が仕上げたコメントも書き直す（運営者に頼まれたときや、見直しで問題が見つかった文を直すときだけ。毎日の予約タスクでは使わない）")
     p_apply.add_argument("--today", help="更新日に入れる日付 YYYY-MM-DD（テスト用。省略すると日本時間の今日）")
