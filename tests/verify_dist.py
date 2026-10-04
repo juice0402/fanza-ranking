@@ -792,6 +792,18 @@ if vr_tag:
     check("VR作品のページでは、「VR作品を隠す」を選んでいても作品を隠さない（data-vr を付けない。全部が消えて空になるため）", "data-vr" not in re.sub(r"data-vr-(toggle|group)", "", read(vr_tag)), os.path.relpath(vr_tag, DIST))
 related_pages = [p for p in glob.glob(os.path.join(DIST, "item", "*", "index.html")) if 'id="related-title"' in read(p)]
 check("作品ページの「同じ出演者・メーカーの作品」は、VRを隠して全部が消えたら見出しごと隠せる（data-vr-group）", related_pages and all(re.search(r'<section[^>]*aria-labelledby="related-title"[^>]*data-vr-group', read(p)) for p in related_pages), len(related_pages))
+# 見た目の統一: 角の丸みは3つの決まった値（--r-pill / --r-panel / --r-media）だけ。丸（50%）は顔写真・丸ボタン用
+css_src = read(os.path.join(ROOT, "site", "src", "styles", "site.css"))
+odd_radius = [m.group(0) for m in re.finditer(r"border-radius\s*:\s*([^;]+);", css_src) if not re.fullmatch(r"(var\(--r-(pill|panel|media)\)\s*)+0?\s*0?|50%", m.group(1).strip().replace(" 0 0", ""))]
+check("CSS: 角の丸みは、決めた3つ（押せるもの・枠・画像）と丸（50%）だけ（サイト全体の見た目をそろえる）", not odd_radius, odd_radius[:3])
+# 一覧のカードの「FANZAで見る」は控えめなボタン（.btn-card）。赤いボタン（.btn-hot）は、ページごとの一番の行き先だけ
+hot_in_cards = []
+for p in pages:
+    for card_ in re.finditer(r'<article class="item[^"]*">[\s\S]*?</article>', read(p)):
+        if "btn-hot" in card_.group(0) or "btn-card" not in card_.group(0) and "FANZAで見る" in card_.group(0):
+            hot_in_cards.append(os.path.relpath(p, DIST))
+            break
+check("一覧のカードの「FANZAで見る」は、控えめなボタン（.btn-card）。赤いボタンは使わない", not hot_in_cards, hot_in_cards[:3])
 check("CSS: 全部がVRのまとまり（[data-vr-group].vr-empty）を隠す", any("[data-vr-group].vr-empty" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules))
 check("CSS: html.hide-vr のとき、VR作品の目印（data-vr）のマスと、全部がVRの日付（.day.vr-empty）を隠す", bool(hide_rule) and all(re.search(r"display\s*:\s*none", b) for b in hide_rule) and any(".day.vr-empty" in sels for sels, b in css_rules if ".hide-vr [data-vr]" in sels), hide_rule[:1])
 hidden_ok = [sels for sels, b in css_rules if ".vr-toggle[hidden]" in sels and re.search(r"display\s*:\s*none", b)]

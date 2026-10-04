@@ -23,6 +23,14 @@
   --gutter: 16px;
   --maxw: 1180px;
 
+  /* 角の丸みは、この3つだけを使う（サイト全体の見た目をそろえるため）
+     ・押せるもの（ボタン・チップ・切り替え・ページ送り）… 丸い端（--r-pill）
+     ・枠（パネル・入力欄・一覧の箱・ひとこと）… --r-panel
+     ・画像（表紙・サンプル・動画の枠）… --r-media */
+  --r-pill: 999px;
+  --r-panel: 10px;
+  --r-media: 4px;
+
   /* パッケージ画像（800×538）の「表紙」だけを切り出す比率。表紙は右端の約379px（高さ538）で、左にある背表紙の分を含めない。
      7:10 は表紙（379:538）より少しだけ細く、背表紙を絶対に入れない。サムネはすべてこの比率にそろえる */
   --cover-ratio: 7 / 10;
@@ -133,7 +141,7 @@ summary:focus-visible {
   height: 17px;
   padding: 1px 6px 0;
   border: 1px solid var(--paper);
-  border-radius: 3px;
+  border-radius: var(--r-media);
   color: var(--paper);
   font-size: 12px;
   font-weight: 700;
@@ -244,7 +252,7 @@ summary:focus-visible {
   min-height: 48px;
   padding: 0 16px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--r-panel);
   background: var(--board);
   color: var(--paper);
   font: 400 16px/1.3 var(--font-body); /* 16px 未満だと、iPhone で入力欄に触れたとき画面が拡大されてしまう */
@@ -265,7 +273,7 @@ summary:focus-visible {
   min-height: 48px;
   padding: 0 22px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--paper);
   color: var(--ink);
   font: 700 15px/1 var(--font-body);
@@ -305,7 +313,7 @@ summary:focus-visible {
   min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
@@ -367,7 +375,7 @@ summary:focus-visible {
   gap: 8px;
   margin: 0;
   padding: 6px 14px 4px;
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--r-panel) var(--r-panel) 0 0;
   background: var(--paper);
   color: var(--ink);
   font: 400 22px/1.2 var(--font-display);
@@ -434,7 +442,7 @@ summary:focus-visible {
   display: block;
   aspect-ratio: var(--cover-ratio);
   overflow: hidden;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: var(--board);
 }
 
@@ -521,7 +529,7 @@ summary:focus-visible {
   min-height: 44px;
   padding: 0 18px;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--r-pill);
   font: 700 14px/1.2 var(--font-body);
   text-align: center;
   text-decoration: none;
@@ -549,6 +557,27 @@ summary:focus-visible {
 
 .btn-quiet:hover {
   border-color: var(--paper);
+}
+
+/* 一覧のカードの「FANZAで見る」。赤い大きなボタンは、ページごとの一番の行き先（作品ページの「FANZAで詳細を見る」など）だけにして、
+   カードのほうは控えめな枠のボタンにする（たくさん並ぶので、赤が続いて見づらくならないように）。外のサイトへ行く印（↗）を添える */
+.btn-card {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--paper);
+  font-size: 13px;
+}
+
+.btn-card::after {
+  content: '↗';
+  margin-left: 6px;
+  color: var(--paper-dim);
+  font-weight: 400;
+}
+
+.btn-card:hover {
+  border-color: var(--hot);
+  background: rgba(217, 18, 63, 0.14);
 }
 
 .btn-lg {
@@ -582,7 +611,7 @@ summary:focus-visible {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--r-pill);
   font-weight: 700;
   text-decoration: none;
 }
@@ -665,7 +694,7 @@ summary:focus-visible {
 .detail-cover {
   width: 100%;
   height: auto;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: var(--board);
 }
 
@@ -709,7 +738,7 @@ summary:focus-visible {
 .chip {
   padding: 1px 10px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font-size: 12px;
 }
 
@@ -735,7 +764,7 @@ summary:focus-visible {
   position: relative;
   margin: 0 0 20px;
   padding: 16px 18px;
-  border-radius: 4px;
+  border-radius: var(--r-panel);
   background: var(--paper);
   color: var(--ink);
 }
@@ -744,7 +773,7 @@ summary:focus-visible {
   display: inline-block;
   margin: 0 0 8px;
   padding: 2px 10px;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: var(--ink);
   color: var(--paper);
   font: 400 12px/1.5 var(--font-display);
@@ -818,7 +847,7 @@ summary:focus-visible {
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--r-panel);
   background: var(--board);
   list-style: none;
 }
@@ -933,7 +962,7 @@ summary:focus-visible {
   width: 100%;
   aspect-ratio: 3 / 2;
   object-fit: cover;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: var(--board);
 }
 
@@ -1030,7 +1059,7 @@ summary:focus-visible {
   margin: auto;
   padding: 28px 24px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--r-panel);
   background: var(--board);
 }
 
@@ -1136,6 +1165,7 @@ summary:focus-visible {
   border: 1px solid var(--line);
   background: var(--board);
   text-decoration: none;
+  border-radius: var(--r-panel);
 }
 
 .name-link:hover {
@@ -1249,7 +1279,7 @@ summary:focus-visible {
   width: 100%;
   height: auto;
   aspect-ratio: 800 / 538;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: var(--board);
   object-fit: contain;
 }
@@ -1359,7 +1389,7 @@ html.lightbox-open {
   left: 50%;
   margin: 0;
   padding: 3px 12px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: rgba(36, 27, 48, 0.85);
   font-size: 13px;
   transform: translateX(-50%);
@@ -1374,7 +1404,7 @@ html.lightbox-open {
   min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--r-pill);
   background: transparent;
   color: var(--paper);
   font: 700 14px/1.2 var(--font-body);
@@ -1461,7 +1491,7 @@ html.lightbox-open {
   margin-top: 14px;
   padding: 12px 14px;
   border: 1px solid var(--pop);
-  border-radius: 4px;
+  border-radius: var(--r-panel);
   background: var(--board);
   font-size: 13px;
   font-weight: 700;
@@ -1502,7 +1532,7 @@ html.lightbox-open {
   flex: none;
   width: 60px;
   height: 86px; /* 表紙の比率（--cover-ratio）に合わせる */
-  border-radius: 2px;
+  border-radius: var(--r-media);
   background: var(--ink);
   object-fit: cover;
   object-position: 100% 50%;
@@ -1535,7 +1565,7 @@ html.lightbox-open {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--r-pill);
   background: transparent;
   color: var(--paper-dim);
   font: 700 12px/1 var(--font-body);
@@ -1582,7 +1612,7 @@ html.lightbox-open {
   min-width: 0;
   padding: 10px 12px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--r-panel);
   background: var(--board);
   font-size: 13px;
   line-height: 1.5;
@@ -1703,7 +1733,7 @@ html.lightbox-open {
   max-width: 640px;
   aspect-ratio: 476 / 306;
   overflow: hidden;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: #000;
 }
 
@@ -1768,7 +1798,7 @@ html.lightbox-open {
 .movie-play-label {
   position: relative;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: rgba(0, 0, 0, 0.6);
 }
 
@@ -1818,7 +1848,7 @@ html.lightbox-open {
   margin: 18px 0 0;
   padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--r-panel);
   background: var(--board);
 }
 
@@ -1850,9 +1880,9 @@ html.lightbox-open {
 .as-field select {
   width: 100%;
   min-height: 44px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--r-panel);
   background: var(--ink);
   color: var(--paper);
   font: inherit;
@@ -1898,6 +1928,7 @@ html.lightbox-open {
   border: 1px solid var(--line);
   background: var(--board);
   text-decoration: none;
+  border-radius: var(--r-panel);
 }
 
 .actress-row-link:hover {
@@ -2094,7 +2125,7 @@ html.lightbox-open {
   min-height: 44px;
   padding: 0 16px 0 12px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: transparent;
   color: var(--paper);
   font: 700 13px/1.2 var(--font-body);
@@ -2111,7 +2142,7 @@ html.lightbox-open {
   width: 18px;
   height: 18px;
   border: 2px solid var(--paper-dim);
-  border-radius: 4px;
+  border-radius: var(--r-media);
 }
 
 .vr-toggle[aria-pressed='true'] {
@@ -2203,7 +2234,7 @@ html.lightbox-open {
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: transparent;
   color: var(--paper);
   font: 700 13px/1.2 var(--font-body);
