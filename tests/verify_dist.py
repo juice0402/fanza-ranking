@@ -1127,6 +1127,30 @@ for path_, want, label in (("ranking/index.html", want_new, "新着の人気順"
     check(f"{label}: 作品が無い・コメントのある作品が1本も無いときだけ noindex", has_noindex == (not want or not any(has_comment(everything[c]) for c in want)))
 check("ヘッダーに人気ランキングへのリンクがある", 'href="/ranking/"' in home_html)
 
+# セール・キャンペーン（/sale/。sale.json から。キャンペーンは終わりが近い順・終わったものはブラウザで隠す）
+print("\n■ セール・キャンペーン")
+SALE = os.path.join(ROOT, "site", "src", "data", "sale.json")
+try:
+    _sale = json.load(open(SALE, encoding="utf-8"))
+except (OSError, ValueError):
+    _sale = {}
+_camps = _sale.get("campaigns") if isinstance(_sale, dict) and isinstance(_sale.get("campaigns"), list) else []
+_sale_rows = [r for r in (_sale.get("items") if isinstance(_sale, dict) and isinstance(_sale.get("items"), list) else []) if isinstance(r, dict) and isinstance(r.get("k"), int) and 0 <= r["k"] < len(_camps)]
+want_camps = sorted({r["k"] for r in _sale_rows if r.get("c") in everything and str(_camps[r["k"]].get("title", "")).strip() and str(_camps[r["k"]].get("end", ""))[:10] >= JST_DAY})
+sale_page = os.path.join(DIST, "sale", "index.html")
+check("セール・キャンペーンのページ（/sale/）と、終わったものを隠すスクリプト（sale.js）がある", os.path.isfile(sale_page) and os.path.isfile(os.path.join(DIST, "sale.js")))
+if os.path.isfile(sale_page):
+    sh = read(sale_page)
+    heads = re.findall(r'<h2 id="sale-\d+" class="section-title">(.*?)</h2>', sh)
+    check(f"キャンペーンのまとまりの数（{len(heads)}）が、データ（今日より前に終わったものを除く・このサイトの作品があるもの）と同じ", len(heads) == len(want_camps), (len(heads), len(want_camps)))
+    if heads:
+        check("セールのページに「○日の時点」「くわしくはFANZAで確かめて」の注意書き・終わりの時刻の印（data-sale-end）・sale.js がある", "時点" in sh and "FANZAの作品ページで確かめてください" in sh and "data-sale-end=" in sh and 'src="/sale.js"' in sh)
+        bad_badge = [b for b in re.findall(r'<span class="rank-badge">([^<]*)</span>', sh) if not re.fullmatch(r"\d{1,2}%OFF|セール", b)]
+        check("セールの札は「○%OFF」か「セール」だけ", not bad_badge, bad_badge[:3])
+    else:
+        check("セール中の作品が無いときは、その旨を出す", "セール・キャンペーン中のものはありません" in sh)
+check("フッターにセール・キャンペーンへのリンクがある", 'href="/sale/"' in home_html)
+
 # 検索ページ
 sp = os.path.join(DIST, "search", "index.html")
 check("検索ページ（/search/）がある", os.path.isfile(sp))

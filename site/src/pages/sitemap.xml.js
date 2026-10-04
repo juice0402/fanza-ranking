@@ -1,9 +1,10 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
-import { all, allReleased, paged, popularity, released, today, upcoming, actressGroups, makerGroups, roundups, monthGroups, tagGroups } from '../lib/data.js';
+import { all, allReleased, paged, popularity, sale, released, today, upcoming, actressGroups, makerGroups, roundups, monthGroups, tagGroups } from '../lib/data.js';
 import { itemIndexable, listIndexable } from '../lib/plan.js';
 import { RANKING_ALL_PATH, RANKING_PATH, allRanking, newRanking } from '../lib/popularity.js';
+import { SALE_PATH, saleGroups } from '../lib/sale.js';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import {
   ACTRESS_INDEX_PATH,
@@ -29,6 +30,9 @@ export function GET() {
     [RANKING_PATH, newRanking(all, today)],
     [RANKING_ALL_PATH, allRanking(all, today)],
   ].filter(([, list]) => list.length > 0 && listIndexable(list)).map(([path]) => ({ path, lastmod: popularity.date || today }));
+  // セール・キャンペーン（作品が無い・コメントのある作品が1本も無いあいだは、ページが noindex なので入れない）
+  const saleItems = saleGroups(all, sale, today).flatMap((g) => g.items);
+  if (saleItems.length > 0 && listIndexable(saleItems)) rankingPages.push({ path: SALE_PATH, lastmod: sale.date || today });
   const groupPages = (groups) => groups.filter((g) => listIndexable(g.items)).map((g) => ({ path: g.path, lastmod: listLastmod(g.items, today) }));
   const entries = [
     { path: '/', lastmod: listLastmod(home, today) },

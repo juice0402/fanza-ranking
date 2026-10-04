@@ -8,6 +8,7 @@ import { buildFactsContext } from './facts.js';
 import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay } from './profiles.js';
 import { hasCalendar, planPages } from './plan.js';
 import { bestRank, catalogAllRank, normalizePopularity } from './popularity.js';
+import { normalizeSale } from './sale.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
@@ -22,6 +23,8 @@ const catalogRaw = Object.keys(catalogShards).sort().flatMap((k) => (Array.isArr
 export const today = jstToday();
 // 人気順（毎日の更新が、その日のFANZAの人気順を取り直したもの）。popNew: 新着の人気順 / popAll: 全体の人気順（分からなければ null）
 export const popularity = normalizePopularity(optionalData('popularity'));
+// セール・キャンペーン（毎日の更新が、FANZA公式のAPIから、その日に見かけたセール中の作品を保存したもの。lib/sale.js）
+export const sale = normalizeSale(optionalData('sale'));
 const catalogRanks = optionalData('catalog_rank');
 // 毎日の更新で載せた作品（新作・予約。コメントがある）。トップ・月ごと/ジャンルごとのページ・お気に入り・カレンダー・まとめ記事は、これだけを使う
 export const curated = normalizeItems(raw).map((i) => ({ ...i, popAll: popularity.allRank.get(i.cid) ?? null, popNew: popularity.newRank.get(i.cid) ?? null }));

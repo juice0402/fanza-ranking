@@ -2356,3 +2356,18 @@ html.lightbox-open {
   padding: 0;
   list-style: none;
 }
+
+/* ---------- セール（/sale/・トップの「セール中」） ---------- */
+
+/* カードの出演者の下の、セールの価格（「1,884円〜（通常2,692円〜）」） */
+.item-note {
+  margin: 2px 0 0;
+  color: var(--hot);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* 終わったキャンペーン（ブラウザの時計で、終わりの時刻をすぎたもの。/sale.js が付ける） */
+.sale-ended {
+  display: none;
+}
