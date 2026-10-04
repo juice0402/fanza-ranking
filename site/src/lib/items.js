@@ -98,12 +98,6 @@ export function isVrWork({ title = '', formats = [], genres = [] } = {}) {
 /** 一覧の1マス（li）に付ける目印。VR作品だけに data-vr が付く（「VR作品を隠す」スイッチが、これを目印に隠す） */
 export const vrAttrs = (item) => (item.vr ? { 'data-vr': 'true' } : {});
 
-/**
- * 売れ筋TOP3で、先頭の1本を大きく出す（横幅いっぱい・.is-hero）か。見えている本数が 3本以上か 1本のとき。2本のときは、同じ大きさで2つ並べる。
- * 「VR作品を隠す」で本数が変わったときの決め方（site/public/vr-filter.js の rankLayout）と同じ（tests/test_search.mjs で突き合わせている）
- */
-export const rankHasHero = (visibleCount) => visibleCount === 1 || visibleCount >= 3;
-
 /** JSONの中身を、画面で使いやすい形に揃える（足りない項目があっても落ちない） */
 export function normalizeItems(raw) {
   const list = Array.isArray(raw) ? raw : [];

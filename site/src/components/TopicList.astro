@@ -1,0 +1,24 @@
+---
+// きょうの話題（トップ）: 急上昇・きょう発売・予約の人気1位・予約に初登場・デビュー作・人気の女優・週のまとめ・もうすぐ終わるセール（lib/topics.js の buildTopics）。
+// 1つずつ、画像（作品の表紙か、出演者の顔）・札・見出し・ひとことの1行。タップで、作品ページ（無ければFANZA）・女優のページ・まとめ記事・セールのページへ
+import { OUTBOUND_ATTRS } from '../lib/plan.js';
+
+const { topics } = Astro.props;
+---
+
+<ul class="topics">
+  {topics.map((t) => (
+    <li class={`topic topic-${t.kind}`} {...(t.vr ? { 'data-vr': 'true' } : {})} {...(t.end ? { 'data-sale-end': t.end } : {})}>
+      <a class="topic-link" href={t.href} {...(t.external ? OUTBOUND_ATTRS : {})}>
+        <span class={t.face ? 'topic-thumb is-face' : 'topic-thumb'}>
+          {(t.face || t.image) && <img class={t.face ? 'topic-face' : 'item-img'} src={t.face || t.image} alt="" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'" />}
+        </span>
+        <span class="topic-body">
+          <span class="topic-tag">{t.label}</span>
+          <span class="topic-title">{t.title}</span>
+          <span class="topic-text">{t.text}</span>
+        </span>
+      </a>
+    </li>
+  ))}
+</ul>
