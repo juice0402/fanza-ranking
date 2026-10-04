@@ -12,7 +12,58 @@
    "site_wide": {
     "x": [],
     "instagram": []
-   }
+   },
+   "other_links": [
+    "https://www.t-powers.co.jp/",
+    "https://www.t-powers.co.jp/column/",
+    "https://www.t-powers.co.jp/talent/",
+    "https://www.t-powers.co.jp/topics/",
+    "https://www.t-powers.co.jp/blog/",
+    "https://www.t-powers.co.jp/company/",
+    "https://www.t-powers.co.jp/release/",
+    "https://www.t-powers.co.jp/contact/",
+    "https://www.t-powers.co.jp/event/",
+    "https://www.t-powers.co.jp/link/",
+    "https://www.t-powers.co.jp/recruit/",
+    "https://client.t-powers.co.jp/",
+    "https://www.t-powers.co.jp/talent/%e8%92%bc%e9%87%8e%e7%be%8e%e6%9c%88/",
+    "https://www.t-powers.co.jp/talent/%e6%99%b6%e3%82%a8%e3%83%aa%e3%83%bc/",
+    "https://www.t-powers.co.jp/talent/%e3%81%82%e3%81%95%e3%81%bf%e3%82%93/",
+    "https://www.t-powers.co.jp/talent/%e6%98%8e%e6%97%a5%e8%91%89%e3%81%bf%e3%81%a4%e3%81%af/",
+    "https://www.t-powers.co.jp/talent/%e8%b6%b3%e7%ab%8b%e3%82%81%e3%82%8b/",
+    "https://www.t-powers.co.jp/talent/%e5%a4%a9%e6%b5%b7%e3%81%a4%e3%81%b0%e3%81%95/",
+    "https://www.t-powers.co.jp/talent/%e5%a4%a9%e5%ae%ae%e8%8a%b1%e5%8d%97/",
+    "https://www.t-powers.co.jp/talent/%e9%9b%a8%e5%ae%ae%e3%81%b2%e3%81%b3%e3%81%8d/",
+    "https://www.t-powers.co.jp/talent/%e6%9c%89%e5%b2%a1%e3%81%bf%e3%81%86/",
+    "https://www.t-powers.co.jp/talent/%e5%ae%89%e8%97%a4%e3%82%82%e3%81%82/",
+    "https://www.t-powers.co.jp/talent/%e6%b3%89%e3%82%82%e3%82%82%e3%81%8b/",
+    "https://www.t-powers.co.jp/talent/%e5%b8%82%e5%b7%9d%e3%81%be%e3%81%95%e3%81%bf/",
+    "https://www.t-powers.co.jp/talent/%e4%bb%8a%e4%ba%95%e6%a0%9e%e8%8f%9c/",
+    "https://www.t-powers.co.jp/talent/%e7%be%bd%e5%92%b2%e3%81%bf%e3%81%af%e3%82%8b/",
+    "https://www.t-powers.co.jp/talent/%e7%be%bd%e4%bd%90%e7%be%8e%e3%82%81%e3%81%84/",
+    "https://www.t-powers.co.jp/talent/%e7%a2%93%e4%ba%95%e3%81%9b%e3%82%8a%e3%81%aa/",
+    "https://www.t-powers.co.jp/talent/%e5%a4%a7%e6%b5%a6%e7%9c%9f%e5%a5%88%e7%be%8e/",
+    "https://www.t-powers.co.jp/talent/%e5%a4%a7%e6%a7%bb%e3%81%b2%e3%81%b3%e3%81%8d/",
+    "https://www.t-powers.co.jp/talent/%e5%b0%8f%e7%ac%a0%e5%8e%9f%e8%8f%9c%e4%b9%83/",
+    "https://www.t-powers.co.jp/talent/%e6%8e%a8%e5%b7%9d%e3%82%86%e3%81%86%e3%82%8a/",
+    "https://www.t-powers.co.jp/talent/%e7%b9%94%e7%94%b0%e7%9c%9f%e5%ad%90/",
+    "https://www.t-powers.co.jp/talent/%e5%b0%8f%e9%87%8e%e5%9d%82-%e3%82%86%e3%81%84%e3%81%8b/",
+    "https://www.t-powers.co.jp/talent/%e3%81%8b%e3%81%99%e3%81%bf%e3%82%8a%e3%81%95/",
+    "https://www.t-powers.co.jp/talent/%e4%bd%b3%e8%8b%97%e3%82%8b%e3%81%8b/",
+    "https://www.t-powers.co.jp/talent/%e7%a5%9e%e8%8f%9c%e7%be%8e%e3%81%be%e3%81%84/",
+    "https://www.t-powers.co.jp/talent/%e9%b9%bf%e9%87%8e%e3%81%82%e3%82%82/",
+    "https://www.t-powers.co.jp/talent/%e6%b2%b3%e5%90%88%e3%81%82%e3%81%99%e3%81%aa/",
+    "https://www.t-powers.co.jp/talent/%e8%8f%8a%e4%b9%83%e3%82%89%e3%82%93/"
+   ],
+   "site_wide_text": [
+    "AVプロダクション",
+    "EVENT",
+    "MEDIAイベントメディア情報",
+    "NEWRELEASE新着リリース情報",
+    "TALENTタレント詳細",
+    "ティーパワーズ",
+    "公式サイト"
+   ]
   },
   {
    "key": "mines",
@@ -26,7 +77,34 @@
      "mines_pro"
     ],
     "instagram": []
-   }
+   },
+   "other_links": [
+    "https://mines-pro.jp/",
+    "https://mines-pro.jp/model/",
+    "https://mines-pro.jp/works/content.html",
+    "https://mines-pro.jp/works/",
+    "https://mines-pro.jp/works/flow.html",
+    "https://mines-pro.jp/works/support.html",
+    "https://mines-pro.jp/works/q_a.html",
+    "https://mines-pro.jp/moremines/model_interview/index.html",
+    "https://mines-pro.jp/moremines/",
+    "https://mines-pro.jp/moremines/girlstalk.html",
+    "https://mines-pro.jp/moremines/officeguide.html",
+    "https://mines-pro.jp/about_us/",
+    "https://mines-pro.jp/about_us/message.html",
+    "https://mines-pro.jp/about_us/privacy_policy.html",
+    "https://mines-pro.jp/fanclub/",
+    "https://mines-pro.jp/contact/",
+    "https://mines-pro.jp/navi.html",
+    "https://mines-pro.jp/moremines/model_interview/",
+    "https://mines-pro.jp/moremines/model_intevew/",
+    "http://mines-pro.jp/mines-musume/"
+   ],
+   "site_wide_text": [
+    "ENTRY",
+    "マインズの求人募集サイトです。",
+    "モデルプロダクションマインズ"
+   ]
   },
   {
    "key": "bambi",
@@ -43,7 +121,23 @@
     "instagram": [
      "bambi.hajimero"
     ]
-   }
+   },
+   "other_links": [
+    "https://bambi.ne.jp/index.html",
+    "https://bambi.ne.jp/models.html",
+    "https://bambi.ne.jp/information.html",
+    "https://bambi.ne.jp/album.html",
+    "https://bambi.ne.jp/company.html",
+    "https://bambi.ne.jp/model_work/"
+   ],
+   "site_wide_text": [
+    "AVプロダクション",
+    "AVプロダクションバンビプロモーション",
+    "association女性を守る第三者委員会",
+    "models所属モデル",
+    "バンビプロモーション",
+    "公式サイト"
+   ]
   },
   {
    "key": "soagent",
@@ -59,7 +153,18 @@
     "instagram": [
      "so_modelagent"
     ]
-   }
+   },
+   "other_links": [
+    "https://so-agent.jp/",
+    "https://so-agent.jp/model.php",
+    "https://so-agent.jp/news.php",
+    "https://so-agent.jp/company.php",
+    "https://so-agent.jp/recruit.php"
+   ],
+   "site_wide_text": [
+    "MODELS",
+    "ソウモデルエージェントSOMODELAGENT"
+   ]
   },
   {
    "key": "alive",
@@ -73,7 +178,26 @@
      "alive_manager"
     ],
     "instagram": []
-   }
+   },
+   "other_links": [
+    "https://alive-pro.tokyo/",
+    "https://alive-pro.tokyo/model",
+    "https://alive-pro.tokyo/about",
+    "https://alive-pro.tokyo/flow",
+    "https://alive-pro.tokyo/qa",
+    "https://alive-pro.tokyo/contact",
+    "https://alive-pro.tokyo/client",
+    "https://alive-pro.tokyo/model/%e8%a5%bf%e7%94%b0-%e3%82%ab%e3%83%aa%e3%83%8a",
+    "https://alive-pro.tokyo/model/%e5%b0%8f%e5%ae%ae-%e6%b6%bc%e6%ad%8c"
+   ],
+   "site_wide_text": [
+    "アライブ",
+    "モデルプロダクションALIVE",
+    "公式サイト",
+    "応募方法は3パターン",
+    "所属女優募集中!",
+    "新人女優募集中!私たちと一緒に働きませんか"
+   ]
   }
  ],
  "rows": [
@@ -82,12 +206,12 @@
    "profile": "https://www.t-powers.co.jp/talent/aika/",
    "label": "AIKA",
    "candidates": [
-    "AIKA",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "NEW RELEASE 新着リリース情報"
+    "AIKA",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "上の階に引っ越してきたSっ気が強すぎるギャル痴女妻"
    ],
    "x": [
     "aika_honmono"
@@ -104,12 +228,12 @@
    "profile": "https://www.t-powers.co.jp/talent/asahinasara/",
    "label": "朝比奈 紗良",
    "candidates": [
-    "朝比奈 紗良",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "NEW RELEASE 新着リリース情報"
+    "朝比奈 紗良",
+    "NEW RELEASE 新着リリース情報",
+    "Asahina Sara",
+    "AVプロダクション",
+    "ティーパワーズ"
    ],
    "x": [
     "sara_asahina"
@@ -124,12 +248,12 @@
    "profile": "https://www.t-powers.co.jp/talent/kanamoriseira/",
    "label": "金森 聖良",
    "candidates": [
-    "金森 聖良",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "NEW RELEASE 新着リリース情報"
+    "金森 聖良",
+    "NEW RELEASE 新着リリース情報",
+    "Kanamori Seira",
+    "AVプロダクション",
+    "ティーパワーズ"
    ],
    "x": [
     "seira_kanamori"
@@ -146,12 +270,12 @@
    "profile": "https://www.t-powers.co.jp/talent/kawakitasaika/",
    "label": "河北 彩花",
    "candidates": [
-    "河北 彩花",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "NEW RELEASE 新着リリース情報"
+    "河北 彩花",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "母の幸せを守るため今日も私は義父に舐め犯●れる 河北彩花"
    ],
    "x": [
     "Saika_Kawakita"
@@ -159,21 +283,21 @@
    "instagram": [
     "saika_kawakita__official"
    ],
-   "fanza_name": "彩花",
-   "fanza_id": "6443",
-   "match": "一致"
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
   },
   {
    "agency": "ティーパワーズ",
    "profile": "https://www.t-powers.co.jp/talent/kizukiamane/",
    "label": "希月あまね",
    "candidates": [
-    "希月あまね",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "NEW RELEASE 新着リリース情報"
+    "希月あまね",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "FIRST IMPRESSION 194 K103"
    ],
    "x": [
     "Kizukiamane"
@@ -188,12 +312,12 @@
    "profile": "https://www.t-powers.co.jp/talent/komuraerika/",
    "label": "古村 えりか",
    "candidates": [
-    "古村 えりか",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "NEW RELEASE 新着リリース情報"
+    "古村 えりか",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "初めてがおばさんと生じゃいやかしら？"
    ],
    "x": [
     "Erika_Komura"
@@ -210,12 +334,12 @@
    "profile": "https://www.t-powers.co.jp/talent/shiraishiruna/",
    "label": "白石 るな",
    "candidates": [
-    "白石 るな",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "NEW RELEASE 新着リリース情報"
+    "白石 るな",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "先生のこと卒業まで恋人だと思っていいよ？"
    ],
    "x": [
     "shira_runa119"
@@ -230,11 +354,12 @@
    "profile": "https://www.t-powers.co.jp/talent/tsukiseriria/",
    "label": "月瀬 りりあ",
    "candidates": [
+    "TALENT タレント詳細",
     "月瀬 りりあ",
+    "Tsukise Riria",
     "AVプロダクション",
     "ティーパワーズ",
-    "公式サイト",
-    "TALENT タレント詳細"
+    "公式サイト"
    ],
    "x": [
     "Tsukise_Riria"
@@ -251,11 +376,12 @@
    "profile": "https://www.t-powers.co.jp/talent/nagisaaika/",
    "label": "渚あいか",
    "candidates": [
+    "TALENT タレント詳細",
     "渚あいか",
+    "Nagisa Aika",
     "AVプロダクション",
     "ティーパワーズ",
-    "公式サイト",
-    "TALENT タレント詳細"
+    "公式サイト"
    ],
    "x": [
     "Nagisa_Aika"
@@ -272,12 +398,12 @@
    "profile": "https://www.t-powers.co.jp/talent/himemoriamu/",
    "label": "姫森 あむ",
    "candidates": [
-    "姫森 あむ",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "NEW RELEASE 新着リリース情報"
+    "姫森 あむ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "VR"
    ],
    "x": [
     "himemori_amu"
@@ -292,12 +418,12 @@
    "profile": "https://www.t-powers.co.jp/talent/homuraaine/",
    "label": "穂村 あいね",
    "candidates": [
-    "穂村 あいね",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "NEW RELEASE 新着リリース情報"
+    "穂村 あいね",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "18歳おじさん性交 スレンダーな"
    ],
    "x": [
     "aine_homura"
@@ -312,12 +438,12 @@
    "profile": "https://www.t-powers.co.jp/talent/minamo/",
    "label": "MINAMO",
    "candidates": [
-    "MINAMO",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "NEW RELEASE 新着リリース情報"
+    "MINAMO",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "VR"
    ],
    "x": [
     "M_I_N_A_M_O_"
@@ -334,12 +460,12 @@
    "profile": "https://www.t-powers.co.jp/talent/morinoitsuha/",
    "label": "杜乃 いつは",
    "candidates": [
-    "杜乃 いつは",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "EVENT"
+    "杜乃 いつは",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "杜乃いつは",
+    "五芭"
    ],
    "x": [
     "itsuha_1004"
@@ -356,12 +482,12 @@
    "profile": "https://www.t-powers.co.jp/talent/yoshitakanene/",
    "label": "吉高 寧々",
    "candidates": [
-    "吉高 寧々",
-    "AVプロダクション",
-    "ティーパワーズ",
-    "公式サイト",
     "TALENT タレント詳細",
-    "EVENT"
+    "吉高 寧々",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "26",
+    "吉高寧々 ブックレット撮影現場体験イベント"
    ],
    "x": [
     "yoshitakanene"
@@ -381,6 +507,7 @@
     "相月 菜緒",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "相月 菜緒 Nao Aizuki",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -399,6 +526,7 @@
     "青坂あおい",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "青坂あおい Aoi Aosaka",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -417,6 +545,7 @@
     "明里ともか",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "明里ともか Tomoka Akari",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -437,6 +566,7 @@
     "朝比奈柚羽",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "朝比奈柚羽 Yuzuha Asahina",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -453,6 +583,7 @@
     "浅海なみ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "浅海なみ Nami Asami",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -471,6 +602,7 @@
     "雨宮あや花",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "雨宮あや花 Ayaka Amamiya",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -489,6 +621,7 @@
     "絢瀬りく",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "絢瀬りく Riku Ayase",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -505,6 +638,7 @@
     "泡白さな",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "泡白さな Sana Awashiro",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -525,6 +659,7 @@
     "いいなり なお",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "いいなり なお Nao Iinari",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -543,6 +678,7 @@
     "一ノ瀬 恋",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "一ノ瀬 恋 Ren Ichinose",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -561,6 +697,7 @@
     "一宮るい",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "一宮るい Rui Ichimiya",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -581,6 +718,7 @@
     "入田真綾",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "入田真綾 Maaya Irita",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -601,6 +739,7 @@
     "浦上 ひのり",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "浦上 ひのり Hinori Uragami",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -619,6 +758,7 @@
     "うんぱい",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "うんぱい unpai",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -639,6 +779,7 @@
     "江戸川もなか",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "江戸川もなか Monaka Edogawa",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -659,6 +800,7 @@
     "小倉由菜",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "小倉由菜 Yuna Ogura",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -679,6 +821,7 @@
     "音羽美鈴",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "音羽美鈴 Misuzu Otoha",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -699,6 +842,7 @@
     "川崎あいり",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "川崎あいり Airi Kawasaki",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -715,6 +859,7 @@
     "希咲那奈",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "希咲那奈 Nana Kisaki",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -733,6 +878,7 @@
     "岸 亜沙美",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "岸 亜沙美 Asami Kishi",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -749,6 +895,7 @@
     "北岡果林",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "北岡果林 Karin Kitaoka",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -767,6 +914,7 @@
     "北乃衣織",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "北乃衣織 Iori Kitano",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -783,6 +931,7 @@
     "きみと歩実",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "きみと歩実 Ayumi Kimito",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -803,6 +952,7 @@
     "熊野あゆ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "熊野あゆ Ayu Kumano",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -823,6 +973,7 @@
     "栗山莉緒",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "栗山莉緒 Rio Kuriyama",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -843,6 +994,7 @@
     "黒川すみれ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "黒川すみれ Sumire Kurokawa",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -861,6 +1013,7 @@
     "黒木歩",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "黒木歩 Ayumi Kuroki",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -879,6 +1032,7 @@
     "久和原せいら",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "久和原せいら Seira Kuwahara",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -897,6 +1051,7 @@
     "小島 みなみ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "小島 みなみ Minami Kojima",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -917,6 +1072,7 @@
     "早乙女ちか",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "早乙女ちか Chika Saotome",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -935,6 +1091,7 @@
     "桜木かおり",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "桜木かおり Kaori Sakuragi",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -953,6 +1110,7 @@
     "桜庭えま",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "桜庭えま Ema Sakuraba",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -969,6 +1127,7 @@
     "紗倉まな",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "紗倉まな Mana Sakura",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -989,6 +1148,7 @@
     "さつき芽衣",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "さつき芽衣 Mei Satsuki",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1009,6 +1169,7 @@
     "宍戸里帆",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "宍戸里帆 Riho Shishido",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1029,6 +1190,7 @@
     "紫月ゆかり",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "紫月ゆかり Yukari Shizuki",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1047,6 +1209,7 @@
     "東雲はる",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "東雲はる Haru Shinonome",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1067,6 +1230,7 @@
     "白河 ことの",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "白河 ことの Kotono Shirakawa",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -1083,6 +1247,7 @@
     "鈴北梨乃",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "鈴北梨乃 Rino Suzukita",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -1099,6 +1264,7 @@
     "涼宮ましろ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "涼宮ましろ Mashiro Suzumiya",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1117,6 +1283,7 @@
     "角 奈保",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "角 奈保 Naho Sumi",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1135,6 +1302,7 @@
     "清野咲",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "清野咲 Saki Seino",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1155,6 +1323,7 @@
     "善場まみ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "善場まみ Mami Zenba",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1175,6 +1344,7 @@
     "唯井まひろ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "唯井まひろ Mahiro Tadai",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1195,6 +1365,7 @@
     "田野 憂",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "田野 憂 Yu Tano",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1215,6 +1386,7 @@
     "東峯日奈子",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "東峯日奈子 Hinako Tomine",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1233,6 +1405,7 @@
     "高山エミリ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "高山エミリ Emiri Takayama",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -1249,6 +1422,7 @@
     "永澤ゆきの",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "永澤ゆきの Yukino Nagasawa",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1269,6 +1443,7 @@
     "那津乃ちなみ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "那津乃ちなみ Chinami Natsuno",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1287,6 +1462,7 @@
     "夏目れみ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "夏目れみ Remi Natsume",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1307,6 +1483,7 @@
     "七瀬アリス",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "七瀬アリス Arisu Nanase",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1327,6 +1504,7 @@
     "成宮 楓",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "成宮 楓 Kaede Narimiya",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -1343,6 +1521,7 @@
     "花守 夏歩",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "花守 夏歩 Kaho Hanamori",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1361,6 +1540,7 @@
     "樋口みつは",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "樋口みつは Mitsuha Higuchi",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1381,6 +1561,7 @@
     "日向かのん",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "日向かのん Kanon Hinata",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -1397,6 +1578,7 @@
     "ひなちゆん",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "ひなちゆん Yun Hinachi",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1417,6 +1599,7 @@
     "Himari",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "Himari Himari",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1437,6 +1620,7 @@
     "氷堂うる",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "氷堂うる Uru Hyodo",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -1453,6 +1637,7 @@
     "深田えいみ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "深田えいみ Eimi Fukada",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1473,6 +1658,7 @@
     "福田もも",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "福田もも Momo Fukuda",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1493,6 +1679,7 @@
     "福原みな",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "福原みな Mina Fukuhara",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1511,6 +1698,7 @@
     "福山いろは",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "福山いろは Iroha Fukuyama",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1529,6 +1717,7 @@
     "本城 はな",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "本城 はな Hana Honjo",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1547,6 +1736,7 @@
     "三比菜々美",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "三比菜々美 みひ ななみ",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1565,6 +1755,7 @@
     "前田のの",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "前田のの Nono Maeda",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1585,6 +1776,7 @@
     "真白みのり",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "真白みのり Minori Mashiro",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1605,6 +1797,7 @@
     "松岡 美桜",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "松岡 美桜 Miou Matsuoka",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1623,6 +1816,7 @@
     "茉宮なぎ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "茉宮なぎ Nagi Mamiya",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1643,6 +1837,7 @@
     "丸最レア",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "丸最レア Rea Marumo",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1663,6 +1858,7 @@
     "水樹つくし",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "水樹つくし Tsukushi Mizuki",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -1679,6 +1875,7 @@
     "水瀬りた",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "水瀬りた Rita Minase",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1699,6 +1896,7 @@
     "南まゆ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "南まゆ Mayu Minami",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1719,6 +1917,7 @@
     "宮瀬夏純",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "宮瀬夏純 Kasumi Miyase",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1737,6 +1936,7 @@
     "三佳詩",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "三佳詩 Uta Miyoshi",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1757,6 +1957,7 @@
     "武藤つぐみ",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "武藤つぐみ Tsugumi Mutou",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1777,6 +1978,7 @@
     "桃園怜奈",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "桃園怜奈 Rena Momozono",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1797,6 +1999,7 @@
     "百田あかり",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "百田あかり Akari Momota",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -1813,6 +2016,7 @@
     "八木奈々",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "八木奈々 Nana Yagi",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1833,6 +2037,7 @@
     "山口由愛",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "山口由愛 Yua Yamaguchi",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1853,6 +2058,7 @@
     "山田 鈴奈",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "山田 鈴奈 Suzuna Yamada",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1873,6 +2079,7 @@
     "八森わか菜",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "八森わか菜 Wakana Yamori",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1893,6 +2100,7 @@
     "幸村 泉希",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "幸村 泉希 Itsuki Yukimura",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1913,6 +2121,7 @@
     "Lisa",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "Lisa Lisa",
     "モデルプロダクション マインズ"
    ],
    "x": [],
@@ -1929,6 +2138,7 @@
     "RUU",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "RUU Ruu",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1949,6 +2159,7 @@
     "和久井美兎",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "和久井美兎 Mito Wakui",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1969,6 +2180,7 @@
     "渡部ほの",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "渡部ほの Hono Watanabe",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -1987,6 +2199,7 @@
     "渡来ふう",
     "マインズの求人募集サイトです。",
     "ENTRY",
+    "渡来ふう Watarai Fu",
     "モデルプロダクション マインズ"
    ],
    "x": [
@@ -2002,13 +2215,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=347",
-   "label": "",
+   "label": "白上咲花",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2025,13 +2238,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=346",
-   "label": "",
+   "label": "清宮仁愛",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2047,13 +2260,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=355",
-   "label": "",
+   "label": "みなみ羽琉",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2067,13 +2280,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=480",
-   "label": "",
+   "label": "福田ゆあ",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2089,33 +2302,33 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=145",
-   "label": "",
+   "label": "皆月ひかる",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
     "hikaru_emo"
    ],
    "instagram": [],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "皆月ひかる",
+   "fanza_id": "1046723",
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=233",
-   "label": "",
+   "label": "本田もも",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2125,20 +2338,20 @@
    "instagram": [
     "momohonda1"
    ],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "本田もも",
+   "fanza_id": "1067531",
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=306",
-   "label": "",
+   "label": "有栖舞衣",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2154,13 +2367,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=153",
-   "label": "",
+   "label": "西村ニーナ",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2169,20 +2382,20 @@
    "instagram": [
     "nishimura_nina"
    ],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "西村ニーナ",
+   "fanza_id": "1032236",
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=134",
-   "label": "",
+   "label": "跡美しゅり",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2191,20 +2404,20 @@
    "instagram": [
     "at0mi_shuri"
    ],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "跡美しゅり",
+   "fanza_id": "1031482",
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=97",
-   "label": "",
+   "label": "羽生アリサ",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2220,13 +2433,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=345",
-   "label": "",
+   "label": "五十嵐清華",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2242,13 +2455,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=351",
-   "label": "",
+   "label": "天沢りん",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [],
@@ -2260,13 +2473,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=360",
-   "label": "",
+   "label": "花里アカリ",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2280,13 +2493,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=328",
-   "label": "",
+   "label": "菊池はる",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2302,13 +2515,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=343",
-   "label": "",
+   "label": "小坂ひまり",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2324,13 +2537,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=312",
-   "label": "",
+   "label": "夏川あゆみ",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2344,13 +2557,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=330",
-   "label": "",
+   "label": "まなみ静奈",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2364,13 +2577,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=238",
-   "label": "",
+   "label": "辻さくら",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2379,58 +2592,58 @@
    "instagram": [
     "_tsuji_sakura_"
    ],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "辻さくら",
+   "fanza_id": "1068193",
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=246",
-   "label": "",
+   "label": "藤井レイラ",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
     "fujii_reira2"
    ],
    "instagram": [],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "藤井レイラ",
+   "fanza_id": "1070578",
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=352",
-   "label": "",
+   "label": "羽月果音",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [],
    "instagram": [],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "羽月果音",
+   "fanza_id": "1094004",
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=274",
-   "label": "",
+   "label": "天咲ひめの",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [],
@@ -2442,13 +2655,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=279",
-   "label": "",
+   "label": "朝海凪咲",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2462,13 +2675,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=273",
-   "label": "",
+   "label": "彩川ゆめ",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2482,13 +2695,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=207",
-   "label": "",
+   "label": "星仲ここみ",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2497,40 +2710,40 @@
    "instagram": [
     "coco3hoshinaka"
    ],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "星仲ここみ",
+   "fanza_id": "1059800",
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=222",
-   "label": "",
+   "label": "涼花くるみ",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
     "ganmenmeikiyade"
    ],
    "instagram": [],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "涼花くるみ",
+   "fanza_id": "1060676",
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=284",
-   "label": "",
+   "label": "花井しずく",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2545,13 +2758,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=361",
-   "label": "",
+   "label": "成望るか",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2567,13 +2780,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=362",
-   "label": "",
+   "label": "永瀬かれん",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [],
@@ -2587,13 +2800,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=336",
-   "label": "",
+   "label": "花芽ありす",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [],
@@ -2605,13 +2818,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=400",
-   "label": "",
+   "label": "湊波琉",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [],
@@ -2623,13 +2836,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=399",
-   "label": "",
+   "label": "葉月保奈美",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [],
@@ -2641,13 +2854,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=408",
-   "label": "",
+   "label": "櫻木みなと",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [
@@ -2663,13 +2876,13 @@
   {
    "agency": "バンビプロモーション",
    "profile": "https://bambi.ne.jp/model.php?id=410",
-   "label": "",
+   "label": "新垣まりん",
    "candidates": [
+    "models 所属モデル",
+    "association 女性を守る第三者委員会",
     "AVプロダクション",
     "バンビプロモーション",
     "公式サイト",
-    "models 所属モデル",
-    "association 女性を守る第三者委員会",
     "AVプロダクションバンビプロモーション"
    ],
    "x": [],
@@ -2685,6 +2898,7 @@
    "candidates": [
     "MODELS",
     "美乃すずめ",
+    "Suzume Mino",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2704,6 +2918,7 @@
    "candidates": [
     "MODELS",
     "つばさ舞",
+    "Mai Tsubasa",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2722,6 +2937,8 @@
    "label": "凪ひかる Hikaru Nagi",
    "candidates": [
     "MODELS",
+    "凪ひかる",
+    "Hikaru Nagi",
     "凪 ひかる",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
@@ -2740,6 +2957,7 @@
    "candidates": [
     "MODELS",
     "八蜜 凛",
+    "Rin Hachimitsu",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2759,6 +2977,7 @@
    "candidates": [
     "MODELS",
     "藤井 蘭々",
+    "Ranran Fujii",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2778,6 +2997,7 @@
    "candidates": [
     "MODELS",
     "藤かんな",
+    "Kanna Fuji",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2797,6 +3017,7 @@
    "candidates": [
     "MODELS",
     "女神ジュン",
+    "Jun Megami",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2816,6 +3037,7 @@
    "candidates": [
     "MODELS",
     "七海ティナ",
+    "Tina Nanami",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2833,6 +3055,7 @@
    "candidates": [
     "MODELS",
     "一色桃子",
+    "Momoko Isshiki",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2850,6 +3073,7 @@
    "candidates": [
     "MODELS",
     "鳳みゆ",
+    "Miyu Ootori",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2869,6 +3093,7 @@
    "candidates": [
     "MODELS",
     "中森ななみ",
+    "Nananami Nakamori",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2888,6 +3113,7 @@
    "candidates": [
     "MODELS",
     "与田りん",
+    "Rin Yoda",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2905,6 +3131,7 @@
    "candidates": [
     "MODELS",
     "月乃ルナ",
+    "Luna Tsukino",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2922,6 +3149,7 @@
    "candidates": [
     "MODELS",
     "星まりあ",
+    "Maria Hoshi",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2939,6 +3167,7 @@
    "candidates": [
     "MODELS",
     "三浦奈々",
+    "Nana Miura",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2958,6 +3187,7 @@
    "candidates": [
     "MODELS",
     "恋れん",
+    "Ren Ren",
     "ソウ モデルエージェント SO MODEL AGENT"
    ],
    "x": [
@@ -2975,12 +3205,12 @@
    "profile": "https://alive-pro.tokyo/model/mio_ishikawa",
    "label": "MIO ISHIKAWA",
    "candidates": [
-    "石川 澪",
-    "モデルプロダクション ALIVE",
-    "アライブ",
     "アライブ所属のモデル 石川 澪",
     "いしかわ みお",
-    "MIO ISHIKAWA"
+    "MIO ISHIKAWA",
+    "石川 澪 いしかわ みお",
+    "新人女優募集中！ 私たちと一緒に働きませんか",
+    "所属女優募集中！"
    ],
    "x": [
     "_ishikawamio_"
@@ -2997,12 +3227,12 @@
    "profile": "https://alive-pro.tokyo/model/chihiro_konoha",
    "label": "CHIHIRO KONOHA",
    "candidates": [
-    "木葉 ちひろ",
-    "モデルプロダクション ALIVE",
-    "アライブ",
     "アライブ所属のモデル 木葉 ちひろ",
     "このは ちひろ",
-    "CHIHIRO KONOHA"
+    "CHIHIRO KONOHA",
+    "木葉 ちひろ このは ちひろ",
+    "新人女優募集中！ 私たちと一緒に働きませんか",
+    "所属女優募集中！"
    ],
    "x": [
     "Konoha_chihiro"
@@ -3019,48 +3249,48 @@
    "profile": "https://alive-pro.tokyo/model/aoi_nakajo",
    "label": "AOI NAKAJO",
    "candidates": [
-    "中城 葵",
-    "モデルプロダクション ALIVE",
-    "アライブ",
     "アライブ所属のモデル 中城 葵",
     "なかじょう あおい",
-    "AOI NAKAJO"
+    "AOI NAKAJO",
+    "中城 葵 なかじょう あおい",
+    "新人女優募集中！ 私たちと一緒に働きませんか",
+    "所属女優募集中！"
    ],
    "x": [],
    "instagram": [],
-   "fanza_name": "AOI",
-   "fanza_id": "21701",
-   "match": "一致"
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
   },
   {
    "agency": "プロダクションALIVE",
    "profile": "https://alive-pro.tokyo/model/miku_arima",
    "label": "MIKU ARIMA",
    "candidates": [
-    "有馬 美玖",
-    "モデルプロダクション ALIVE",
-    "アライブ",
     "アライブ所属のモデル 有馬 美玖",
     "ありま みく",
-    "MIKU ARIMA"
+    "MIKU ARIMA",
+    "有馬 美玖 ありま みく",
+    "新人女優募集中！ 私たちと一緒に働きませんか",
+    "所属女優募集中！"
    ],
    "x": [],
    "instagram": [],
-   "fanza_name": "MIKU",
-   "fanza_id": "20519",
-   "match": "一致"
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
   },
   {
    "agency": "プロダクションALIVE",
    "profile": "https://alive-pro.tokyo/model/minami_matsuyama",
    "label": "MINAMI MATSUYAMA",
    "candidates": [
-    "松山 みなみ",
-    "モデルプロダクション ALIVE",
-    "アライブ",
     "アライブ所属のモデル 松山 みなみ",
     "まつやまみなみ",
-    "MINAMI MATSUYAMA"
+    "MINAMI MATSUYAMA",
+    "松山 みなみ まつやまみなみ",
+    "新人女優募集中！ 私たちと一緒に働きませんか",
+    "所属女優募集中！"
    ],
    "x": [
     "matuyama_minami"
@@ -3075,20 +3305,20 @@
    "profile": "https://alive-pro.tokyo/model/331",
    "label": "MOMO INOUE",
    "candidates": [
-    "井上 もも",
-    "モデルプロダクション ALIVE",
-    "アライブ",
     "アライブ所属のモデル 井上 もも",
     "いのうえもも",
-    "MOMO INOUE"
+    "MOMO INOUE",
+    "井上 もも いのうえもも",
+    "新人女優募集中！ 私たちと一緒に働きませんか",
+    "所属女優募集中！"
    ],
    "x": [
     "momoinoue99"
    ],
    "instagram": [],
-   "fanza_name": "MOMO",
-   "fanza_id": "18821",
-   "match": "一致"
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
   }
  ]
 }
