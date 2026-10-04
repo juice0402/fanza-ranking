@@ -222,6 +222,15 @@ for cid, x in valid.items():
             bad_lb_focus.append(cid)
 lb_js = read(os.path.join(DIST, "lightbox.js")) if os.path.isfile(os.path.join(DIST, "lightbox.js")) else ""
 check("拡大表示: 枠に tabindex=-1・開いた直後は枠にフォーカス（lightbox.js の dialog.focus）で、前へボタンに輪が付かない", not bad_lb_focus and "dialog.focus(" in lb_js, bad_lb_focus[:3])
+# 拡大表示の矢印（前・次）と×は、文字（‹ › ×）ではなく図形（SVG）。文字だと、丸の中心より下にずれて見える（本物のフォントで4〜5px）
+bad_lb_icon = []
+for cid, x in valid.items():
+    page = os.path.join(DIST, "item", cid, "index.html")
+    if os.path.isfile(page) and 'id="lightbox"' in read(page):
+        btns = re.findall(r'<button\b[^>]*class="[^"]*lightbox-btn[^"]*"[^>]*>(.*?)</button>', read(page), re.S)
+        if len(btns) != 3 or any('<svg' not in b or re.search(r'[‹›×]', re.sub(r'<svg.*?</svg>', '', b, flags=re.S)) for b in btns):
+            bad_lb_icon.append(cid)
+check("拡大表示: 前・次・閉じるのボタンは、図形（SVG）の矢印・×で、文字ではない（丸の真ん中にそろえるため）", not bad_lb_icon, bad_lb_icon[:3])
 with_spine = [os.path.relpath(p, DIST) for p in glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True) if 'class="spine"' in read(p)]
 check("カードに、画像をさえぎるメーカーの縦帯（spine）が出ていない", not with_spine, with_spine[:3])
 

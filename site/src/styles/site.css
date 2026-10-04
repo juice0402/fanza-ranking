@@ -1057,8 +1057,20 @@ html.lightbox-open {
   border-radius: 50%;
   background: rgba(36, 27, 48, 0.85);
   color: var(--paper);
-  font: 400 30px/1 var(--font-body);
   cursor: pointer;
+}
+
+/* 矢印と×は、文字ではなく図形（SVG）。文字だと、行の高さの関係で、丸の中心より下にずれる（本物のフォントで測ると4〜5px） */
+.lightbox-btn svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
 }
 
 .lightbox-btn:hover {
