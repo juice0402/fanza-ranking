@@ -30,7 +30,7 @@ const isNew = kind === 'new';
 
   <section class="section" aria-labelledby="ranking-title">
     <div class="section-head">
-      <h2 id="ranking-title" class="section-title">{isNew ? '新着' : '全体'}の人気順 TOP{list.length}</h2>
+      <h2 id="ranking-title" class="section-title">{isNew ? '新着' : '全体'}の人気順{list.length > 0 && ` TOP${list.length}`}</h2>
       {date && <p class="section-note">{formatDateJp(date)}のFANZAの人気順</p>}
     </div>
     {list.length > 0
