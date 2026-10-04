@@ -360,8 +360,25 @@ check("--rewrite なら書き直せる（点検は同じ・更新日も進む）
 r = run("apply", write_comments("fix_bad.json", {final["cid"]: "短い文です。"}), "--rewrite", "--dry-run")
 check("--rewrite でも、点検に通らない文は書き込まない", r.returncode == 1 and "文字数" in r.stdout, r.stdout)
 
+print("\n■ 1日に仕上げるのは40件まで（試運転で、1回の予約タスクが40件を2回続けて書いたため）")
+fresh_data()
+first = {x["cid"]: good_comment(x, i) for i, x in enumerate(pending[:4])}
+r = run("apply", write_comments("day1.json", first), "--today", "2026-11-05")
+check("同じ日の1回目は書ける", r.returncode == 0, r.stdout + r.stderr)
+saved_limit = cc_mod.DAILY_LIMIT
+env_limit = dict(os.environ, DATA_PATH=DATA)
+rest = {x["cid"]: good_comment(x, i + 4) for i, x in enumerate(pending[4:7])}
+code = ("import sys, runpy; sys.argv = ['claude_comments.py', 'apply', sys.argv[1], '--today', '2026-11-05', '--dry-run']; "
+        "import claude_comments as m; m.DAILY_LIMIT = 6; m.main()")
+r = subprocess.run([sys.executable, "-c", code, write_comments("day1b.json", rest)], capture_output=True, text=True, env=dict(env_limit, PYTHONPATH=os.path.join(ROOT, "scripts")), encoding="utf-8")
+check("上限をこえる分は断る（上限6・今日4件済み・今回3件 → 断る。残りの数を出す）", r.returncode == 1 and "1日に仕上げるのは 6 件まで" in r.stdout and "今回は 2 件まで" in r.stdout, r.stdout + r.stderr)
+r = subprocess.run([sys.executable, "-c", code.replace("'--today', '2026-11-05'", "'--today', '2026-11-06'"), write_comments("day2.json", rest)], capture_output=True, text=True, env=dict(env_limit, PYTHONPATH=os.path.join(ROOT, "scripts")), encoding="utf-8")
+check("次の日なら、また書ける", r.returncode == 0, r.stdout + r.stderr)
+check("--rewrite は数えない（仕上げ済みを直すとき）", "if not args.rewrite:" in open(SCRIPT, encoding="utf-8").read())
+
 print("\n■ 学校・子どもの生活を連想させる場面の言葉（試運転で「職業体験」「学園」「家庭教師」に触れたコメントがあったため）")
-for word in ("学園", "職業体験", "家庭教師", "放課後", "部活"):
+fresh_data()
+for word in ("学園", "職業体験", "家庭教師", "放課後", "部活", "女の子"):
     one = templates[0]
     r = run("apply", write_comments("minor_ctx.json", {one["cid"]: f"{word}を舞台にした一本です。" + good_comment(one, 0)}), "--dry-run")
     check(f"コメントに「{word}」があると断る", r.returncode == 1 and word in r.stdout, r.stdout)
