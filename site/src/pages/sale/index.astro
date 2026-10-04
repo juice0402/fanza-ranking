@@ -1,16 +1,23 @@
 ---
 // セール・キャンペーン中の作品（/sale/）。FANZA公式のAPIの campaign・prices から、毎日の更新が保存したもの（lib/sale.js）。
 // キャンペーンは終わりが近い順、それぞれ人気の高い作品から SALE_GROUP_LIMIT 本まで。終わった時刻をすぎたものは、ブラウザで隠す（/sale.js）
+// 特集ごとに、このサイトの作品から数えた「おもなメーカー・よく出ている女優・多いジャンル」も添える（どんな作品の特集か分かるように。運営者の希望。2026-10-05）
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import VrToggle from '../../components/VrToggle.astro';
 import ItemCard from '../../components/ItemCard.astro';
-import { all, today, sale } from '../../lib/data.js';
-import { SALE_PATH, endIso, endLabel, saleBadge, saleGroups, salePriceNote } from '../../lib/sale.js';
+import { all, today, sale, actressByName, contentGenres, makerByName, tagByName } from '../../lib/data.js';
+import { SALE_PATH, endIso, endLabel, endSoonTag, saleAnchor, saleBadge, saleGroups, salePriceNote } from '../../lib/sale.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, breadcrumbLd, formatDateJp, filterAttrs } from '../../lib/items.js';
 
-const groups = saleGroups(all, sale, today);
+const groups = saleGroups(all, sale, today, undefined, { genres: contentGenres });
+// 特集の中身の行（このサイトのページがあれば、リンクにする）
+const factRows = (g) => [
+  { label: 'おもなメーカー', rows: g.makers, pageOf: (n) => makerByName.get(n)?.path },
+  { label: 'よく出ている女優', rows: g.actresses, pageOf: (n) => actressByName.get(n)?.path },
+  { label: '多いジャンル', rows: g.genres, pageOf: (n) => tagByName.get(n)?.path },
+].filter((f) => f.rows.length > 0);
 const shownItems = groups.flatMap((g) => g.items);
 const total = groups.reduce((n, g) => n + g.total, 0);
 const trail = [
@@ -23,7 +30,7 @@ const noindex = shownItems.length === 0 || !listIndexable(shownItems);
 
 <Base
   title={`FANZA動画のセール・キャンペーン中の作品｜${SITE_NAME}`}
-  description="FANZA動画で、いまセール・キャンペーン中の人気作品を、キャンペーンごとに、終わりが近い順にまとめています。毎日、日付が変わったあとに更新します。"
+  description="FANZA動画で、いまセール・キャンペーン中の人気作品を、特集（キャンペーン）ごとに、終わりが近い順にまとめています。特集ごとの、おもなメーカー・よく出ている女優・多いジャンルも。毎日、日付が変わったあとに更新します。"
   path={SALE_PATH}
   noindex={noindex}
   jsonLd={[breadcrumbLd(trail)]}
@@ -42,15 +49,40 @@ const noindex = shownItems.length === 0 || !listIndexable(shownItems);
     {groups.length > 0
       ? (
         <>
+          <nav class="sale-jump" aria-label="特集">
+            {groups.map((g) => (
+              <a class="chip-link" href={`#${saleAnchor(g.k)}`} data-sale-end={endIso(g.end)}>{g.title}</a>
+            ))}
+          </nav>
           <div class="list-tools">
             <VrToggle />
           </div>
           {groups.map((g, gi) => (
-            <section class="section" aria-labelledby={`sale-${gi}`} data-sale-group data-vr-group>
+            <section class="section sale-camp" aria-labelledby={saleAnchor(g.k)} data-sale-group data-vr-group>
               <div class="section-head">
-                <h2 id={`sale-${gi}`} class="section-title">{g.title}</h2>
-                <p class="section-note">{endLabel(g.end)}まで・{g.total}本{g.total > g.items.length && `（人気の高い${g.items.length}本）`}</p>
+                <h2 id={saleAnchor(g.k)} class="section-title">{g.title}</h2>
+                <p class="section-note">
+                  {endSoonTag(g.end, today) && <span class="camp-soon">{endSoonTag(g.end, today)}</span>}
+                  {endLabel(g.end)}まで・{g.total}本{g.total > g.items.length && `（人気の高い${g.items.length}本）`}
+                </p>
               </div>
+              {factRows(g).length > 0 && (
+                <dl class="camp-facts">
+                  {factRows(g).map((f) => (
+                    <div class="camp-fact">
+                      <dt>{f.label}</dt>
+                      <dd>
+                        {f.rows.map((r, ri) => (
+                          <>
+                            {ri > 0 && '・'}
+                            {f.pageOf(r.name) ? <a class="spec-link" href={f.pageOf(r.name)}>{r.name}</a> : r.name}<span class="camp-count">（{r.count}本）</span>
+                          </>
+                        ))}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
               <ul class="shelf">
                 {g.items.map((item, i) => (
                   <li class="shelf-cell" data-sale-end={endIso(g.end)} {...filterAttrs(item)}>
@@ -60,7 +92,7 @@ const noindex = shownItems.length === 0 || !listIndexable(shownItems);
               </ul>
             </section>
           ))}
-          <p class="section-note">セール中の作品は、ぜんぶで{total}本です（FANZAのキャンペーンのうち、このサイトに載っている作品だけ）。</p>
+          <p class="section-note">セール中の作品は、ぜんぶで{total}本です（FANZAのキャンペーンのうち、このサイトに載っている作品だけ。メーカー・女優・ジャンルの本数も、このサイトの作品から数えています）。</p>
         </>
       )
       : <p class="empty">いま、このサイトに載っている作品で、セール・キャンペーン中のものはありません。毎日、日付が変わったあとに更新します。</p>}

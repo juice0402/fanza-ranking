@@ -6,7 +6,7 @@ import TopicList from '../components/TopicList.astro';
 import HotActresses from '../components/HotActresses.astro';
 import HotGenres from '../components/HotGenres.astro';
 import VrToggle from '../components/VrToggle.astro';
-import ItemCard from '../components/ItemCard.astro';
+import SaleCampaigns from '../components/SaleCampaigns.astro';
 import {
   all,
   sale,
@@ -22,12 +22,12 @@ import {
   todayData,
   faceOfName,
   birthOfName,
+  contentGenres,
 } from '../lib/data.js';
 import { itemHref } from '../lib/plan.js';
 import { RANKING_ALL_PATH, RANKING_PATH } from '../lib/popularity.js';
-import { SALE_PATH, endIso, saleBadge, saleCount, saleHighlights, salePriceNote } from '../lib/sale.js';
-import { HOT_GENRE_SKIP, TOP_SHOWN, birthdaySoon, buildTopics, hotActresses, hotGenres, topEntries, weekDebuts } from '../lib/topics.js';
-import { TAG_PAGE_GENRES } from '../config.js';
+import { SALE_PATH, saleGroups } from '../lib/sale.js';
+import { TOP_SHOWN, birthdaySoon, buildTopics, hotActresses, hotGenres, topEntries, weekDebuts } from '../lib/topics.js';
 import { gachaPool } from '../lib/gacha.js';
 import PickCorner from '../components/PickCorner.astro';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
@@ -37,7 +37,6 @@ import {
   dateParts,
   groupByDate,
   countByDate,
-  filterAttrs,
   archivePath,
   websiteLd,
   SITE_NAME,
@@ -82,7 +81,7 @@ const hasFace = (name) => Boolean(faceOfName(name));
 const hot = hotActresses(all, today, { hasFace });
 const hotNoVr = hotActresses(all, today, { excludeVr: true, hasFace });
 // 人気のジャンル（いま人気の女優の真下。ジャンルのページの一覧から、同じ数え方で3つ）
-const genres = hotGenres(all, today, { allowed: new Set(TAG_PAGE_GENRES.filter((g) => !HOT_GENRE_SKIP.includes(g))) });
+const genres = hotGenres(all, today, { allowed: contentGenres });
 
 // 発売中の新作の、きょうの日付のすぐ下のコーナー（運営者の希望。2026-10-05）: 運命の作品（スロットで3本。public/gacha.js）・今週のデビュー作・誕生日の近い女優
 const gacha = gachaPool(all, paged, today);
@@ -90,9 +89,10 @@ const debuts = weekDebuts(all, today);
 const birthdays = birthdaySoon(all, today, { birthOf: birthOfName, hasFace });
 const hasCorner = gacha.length >= 3 || debuts.length > 0 || birthdays.length > 0;
 
-// セール中（FANZAのキャンペーン。人気の高い作品から数本。終わった時刻をすぎたものは、ブラウザで隠す /sale.js）
-const saleShown = saleHighlights(all, sale, today);
-const saleTotal = saleCount(all, sale, today);
+// セール中の特集（FANZAのキャンペーンごとのカード。終わりが近い順。終わった時刻をすぎたものは、ブラウザで隠して次を繰り上げる /sale.js）
+const saleCamps = saleGroups(all, sale, today, 0, { genres: contentGenres });
+const saleTotal = saleCamps.reduce((n, g) => n + g.total, 0);
+const saleDay = sale.date ? dateParts(sale.date) : null;
 ---
 
 <Base
@@ -176,20 +176,14 @@ const saleTotal = saleCount(all, sale, today);
       </section>
     </div>
 
-    {saleShown.length > 0 && (
-      <section id="sale" class="section" aria-labelledby="sale-title" data-sale-group data-vr-group>
+    {saleCamps.length > 0 && (
+      <section id="sale" class="section" aria-labelledby="sale-title" data-sale-group>
         <div class="section-head">
-          <h2 id="sale-title" class="section-title">セール中</h2>
-          <p class="section-note">FANZAのキャンペーン｜人気の高い作品から</p>
+          <h2 id="sale-title" class="section-title">セール中の特集</h2>
+          <p class="section-note">FANZAのキャンペーン{saleDay && `｜${saleDay.m}月${saleDay.d}日時点`}</p>
         </div>
-        <ul class="shelf">
-          {saleShown.map((item) => (
-            <li class="shelf-cell" data-sale-end={endIso(sale.campaigns[item.sale.k].end)} {...filterAttrs(item)}>
-              <ItemCard item={item} level="h3" badge={saleBadge(item.sale)} note={salePriceNote(item.sale)} />
-            </li>
-          ))}
-        </ul>
-        <p class="more"><a class="btn btn-quiet" href={SALE_PATH}>セール・キャンペーンをすべて見る（{saleTotal}本）</a></p>
+        <SaleCampaigns groups={saleCamps} />
+        <p class="more"><a class="btn btn-quiet" href={SALE_PATH}>セール・キャンペーンをすべて見る（{saleTotal.toLocaleString('ja-JP')}本）</a></p>
       </section>
     )}
 
@@ -220,6 +214,6 @@ const saleTotal = saleCount(all, sale, today);
       </section>
     )}
   </div>
-  {saleShown.length > 0 && <script is:inline src="/sale.js" defer></script>}
+  {saleCamps.length > 0 && <script is:inline src="/sale.js" defer></script>}
   {gacha.length >= 3 && releasedGroups.length > 0 && <script is:inline src="/gacha.js" defer></script>}
 </Base>

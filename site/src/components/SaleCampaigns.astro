@@ -1,0 +1,51 @@
+---
+// トップの「セール中の特集」: FANZAのキャンペーン（特集）ごとのカード（運営者の希望「何の特集で、どういう関連作品がセールなのか知りたい」。2026-10-05）。
+// 1枚に、特集の名前・いつまで（きょう・あすなら札）・このサイトの本数・おもなメーカー・人気作品の表紙（重ねて3枚）と、名前にある「○%OFF」の札。
+// タップで、セールのページの、その特集の見出しへ。見せるのは先頭の SALE_HOME_CAMPAIGNS 枚（5枚目からは sale-more で隠しておき、
+// 終わりの時刻をすぎた特集が隠れたら、次の特集が繰り上がる。/sale.js）
+import { SALE_HOME_CAMPAIGNS, endIso, endLabel, endSoonTag, saleHref } from '../lib/sale.js';
+import { today } from '../lib/data.js';
+
+const { groups } = Astro.props;
+// 特集の名前にある値引き（「SODグループ30％OFF第2弾」→「30%OFF」）。名前に無ければ札は出さない
+const offOf = (title) => {
+  const m = /(\d{1,2})\s*[％%]\s*OFF/i.exec(title);
+  return m ? `${m[1]}%OFF` : '';
+};
+// おもなメーカーで、その特集の全部の作品になっていなければ「など」を付ける
+const makerLine = (g) => {
+  if (g.makers.length === 0) return '';
+  const covered = g.makers.reduce((n, m) => n + m.count, 0);
+  return `${g.makers.map((m) => m.name).join('・')}${covered < g.total ? ' など' : ''}`;
+};
+---
+
+<ul class="camps" data-sale-show={SALE_HOME_CAMPAIGNS}>
+  {groups.map((g, i) => {
+    const off = offOf(g.title);
+    const soon = endSoonTag(g.end, today);
+    const makers = makerLine(g);
+    return (
+      <li class={i < SALE_HOME_CAMPAIGNS ? 'camp' : 'camp sale-more'} data-sale-end={endIso(g.end)}>
+        <a class="camp-link" href={saleHref(g.k)}>
+          <span class="camp-art" aria-hidden="true">
+            {g.covers.map((w) => (
+              <span class="camp-cover" {...(w.vr ? { 'data-vr': 'true' } : {})}>
+                <img class="item-img" src={w.image_url} alt="" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'" />
+              </span>
+            ))}
+            {off && <span class="camp-off">{off}</span>}
+          </span>
+          <span class="camp-body">
+            <span class="camp-title">{g.title}</span>
+            <span class="camp-when">
+              {soon && <span class="camp-soon">{soon}</span>}
+              <span>{endLabel(g.end)}まで・{g.total.toLocaleString('ja-JP')}本</span>
+            </span>
+            {makers && <span class="camp-makers">メーカー：{makers}</span>}
+          </span>
+        </a>
+      </li>
+    );
+  })}
+</ul>

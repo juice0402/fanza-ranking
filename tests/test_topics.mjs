@@ -73,8 +73,12 @@ const many = [
 const pop = normalizePopularity({ date: TODAY, new: {}, prev_date: '2026-10-04', prev: { t1: 1, t2: 2, t3: 3, r1: 40, r3: 35, r4: 30, db: 10 } });
 const saleData = normalizeSale({
   date: TODAY,
-  campaigns: [{ title: '週末セール', begin: '2026-10-01 00:00', end: '2026-10-06 23:59' }, { title: '長いセール', begin: '2026-10-01', end: '2026-10-30' }],
-  items: [{ c: 's1', k: 0 }, { c: 'r3', k: 1 }],
+  campaigns: [
+    { title: '週末セール', begin: '2026-10-01 00:00', end: '2026-10-06 23:59' },
+    { title: '長いセール', begin: '2026-10-01', end: '2026-10-30' },
+    { title: '秋の新作セール', begin: '2026-10-04 10:00', end: '2026-10-10 23:59' },
+  ],
+  items: [{ c: 's1', k: 0 }, { c: 'r3', k: 1 }, { c: 't1', k: 2 }, { c: 't2', k: 2 }, { c: 't3', k: 2 }],
 });
 const ctx = {
   items: many, today: TODAY, popularity: pop, todayData: td, sale: saleData, linkOf,
@@ -83,7 +87,7 @@ const ctx = {
 };
 const topics = T.buildTopics(ctx);
 const kinds = topics.map((t) => t.kind).join();
-check('種類と順番: 急上昇 → きょう発売 → 予約で人気 → 予約に初登場 → もうすぐ終わるセール（人気の女優・デビュー作は、別の欄）', kinds === 'rise,rise,today,upcoming,entry,sale', kinds);
+check('種類と順番: 急上昇 → きょう発売 → 予約で人気 → 予約に初登場 → セール開始 → もうすぐ終わるセール（人気の女優・デビュー作は、別の欄）', kinds === 'rise,rise,today,upcoming,entry,salenew,sale', kinds);
 const rise = topics.filter((t) => t.kind === 'rise');
 check('急上昇: 上がり幅の大きい順・前の日の順位から（圏外からも）。TOP3の作品・上がり幅の小さい作品・きょう発売の作品は入れない',
   rise.map((t) => t.text).join('/') === '新着の人気順 40位 → 4位/新着の人気順 圏外 → 6位', rise.map((t) => t.text).join('/'));
@@ -98,11 +102,19 @@ const entry = topics.find((t) => t.kind === 'entry');
 check('予約に初登場: 前の日の予約の人気順にいなかった作品（ほかの話題に出した作品・繰り上げに使った作品は出さない）', entry.title === '予約6' && entry.text === '予約の人気順 3位｜10月12日発売', entry.text);
 const sale = topics.find((t) => t.kind === 'sale');
 check('もうすぐ終わるセール: 終わりが2日以内のキャンペーンだけ。セールのページへ・終わりの時刻（ブラウザが、すぎたら隠す）',
-  sale.title === '週末セール' && sale.text === '10月6日 23:59まで｜1本がセール中' && sale.href === '/sale/' && sale.end === '2026-10-06T23:59:59+09:00', sale.text);
-const shownTitles = topics.flatMap((t) => [t, ...(t.alt ? [t.alt] : [])]).filter((t) => t.kind !== 'actress' && t.kind !== 'sale').map((t) => t.title);
+  sale.title === '週末セール' && sale.text === '10月6日 23:59まで｜1本がセール中' && sale.href === '/sale/#sale-0' && sale.end === '2026-10-06T23:59:59+09:00', sale.text);
+const salenew = topics.find((t) => t.kind === 'salenew');
+check('セール開始: きのう・きょう始まったキャンペーン（このサイトの作品が3本以上）。始まりと終わり・本数・その特集の見出しへ・表紙',
+  salenew.label === 'セール開始' && salenew.title === '秋の新作セール' && salenew.text === '10月4日から10月10日 23:59まで｜3本がセール中' && salenew.href === '/sale/#sale-2' && salenew.end === '2026-10-10T23:59:59+09:00' && salenew.image === 'https://pics.dmm.co.jp/t1pl.jpg', JSON.stringify(salenew));
+const saleWith = (campaigns, rows) => T.buildTopics({ ...ctx, sale: normalizeSale({ date: TODAY, campaigns, items: rows }) }).filter((t) => t.kind === 'salenew' || t.kind === 'sale').map((t) => `${t.kind}:${t.title}`).join();
+check('始まって2日以上たったキャンペーン・このサイトの作品が3本より少ないキャンペーンは、セール開始にしない',
+  saleWith([{ title: '前からのセール', begin: '2026-10-03 00:00', end: '2026-10-20 23:59' }, { title: '小さなセール', begin: TODAY, end: '2026-10-20 23:59' }], [{ c: 't1', k: 0 }, { c: 't2', k: 0 }, { c: 't3', k: 0 }, { c: 's1', k: 1 }, { c: 'r3', k: 1 }]) === '');
+check('始まったばかりで、もうすぐ終わるキャンペーンは、セール開始にだけ出す（もうすぐ終わるは、次のキャンペーン）',
+  saleWith([{ title: '1日だけ', begin: TODAY, end: '2026-10-05 23:59' }, { title: '週末セール', begin: '2026-10-01', end: '2026-10-06 23:59' }], [{ c: 't1', k: 0 }, { c: 't2', k: 0 }, { c: 't3', k: 0 }, { c: 's1', k: 1 }]) === 'salenew:1日だけ,sale:週末セール');
+const shownTitles = topics.flatMap((t) => [t, ...(t.alt ? [t.alt] : [])]).filter((t) => t.kind !== 'actress' && t.kind !== 'sale' && t.kind !== 'salenew').map((t) => t.title);
 check('同じ作品は2回出さない（繰り上げの作品も含めて）', new Set(shownTitles).size === shownTitles.length, shownTitles.join());
 check('人気の女優・デビュー作の話題は出さない（トップの「いま人気の女優」・発売中の新作の「今週のデビュー作」の欄で出す）', !topics.some((t) => t.kind === 'actress' || t.kind === 'debut'));
-check('数が多いときは、まず2つ目の急上昇を外す', T.buildTopics(ctx, 5).map((t) => t.kind).join() === 'rise,today,upcoming,entry,sale' && T.buildTopics(ctx, 3).length === 3);
+check('数が多いときは、まず2つ目の急上昇を外す', T.buildTopics(ctx, 5).map((t) => t.kind).join() === 'rise,today,upcoming,entry,salenew' && T.buildTopics(ctx, 3).length === 3);
 
 const withSkipVrOff = T.buildTopics({ ...ctx, skipVrOff: new Set(['r4']) }).find((t) => t.kind === 'rise' && t.vr);
 check('VR作品を隠したときにTOP3に出る作品（skipVrOff）は、繰り上げに使わない', withSkipVrOff && withSkipVrOff.alt?.title !== '作品 r4', JSON.stringify(withSkipVrOff?.alt));
