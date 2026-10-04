@@ -11,8 +11,9 @@ Gemini が書けなかった作品は、定型文（comment_kind: template）の
         ・定型文のままの作品（reason: 定型文）
         ・Gemini の下書きのままの作品（reason: 下書きを仕上げる。draft に下書きが入る）
         ・発売日をすぎたのに、コメントに「予約」「発売予定」「発売前」などの言い方が残っている作品（reason: 予約の言い方が残っている）
+        ・枠が余ったら、過去作品（site/src/data/catalog/YYYY-MM.json）のコメントがまだ無い作品を、発売日の新しい順に（reason: 過去作品・catalog: true）
   python3 scripts/claude_comments.py apply コメント.json [--dry-run]
-      {"cid": "コメント", ...} を点検して、問題が無ければ new_releases.json に書き込む
+      {"cid": "コメント", ...} を点検して、問題が無ければ new_releases.json（過去作品なら、その発売月のファイル）に書き込む
       （1件でも問題があれば何も書き込まない）
 
 書き込んだコメントは comment_kind を "claude" にし、その作品の updated（更新日）を今日（日本時間）にします
@@ -30,6 +31,9 @@ from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.environ.get("DATA_PATH", os.path.join(ROOT, "site", "src", "data", "new_releases.json"))
+# 過去作品（get_new_releases.py が FANZAの人気順に集める。発売月ごとのファイル YYYY-MM.json・1作品1行。コメントは無し（none）か、Claude が書いたもの）
+CATALOG_DIR = os.environ.get("CATALOG_DIR", os.path.join(os.path.dirname(DATA_PATH), "catalog"))
+CATALOG_FILE = re.compile(r"^\d{4}-\d{2}\.json$")
 JST = timezone(timedelta(hours=9))
 
 MIN_LEN = 100           # コメントの文字数の下限（目安は100〜160文字。2〜3文。運営者の希望で、2026-10-04 に長くした。試運転で90字前後が多かったので、下限を100に）
@@ -100,6 +104,7 @@ COPY_RUN = 10           # タイトルの文字を、これより長く続けて
 # コメントの種類（get_new_releases.py と同じ）: template＝定型文、ai＝Gemini の下書き、claude＝Claude が仕上げたもの
 FINAL_KIND = "claude"
 DRAFT_KIND = "ai"
+NONE_KIND = "none"      # 過去作品の、コメントがまだ無い作品
 CONFIG_JS = os.path.join(ROOT, "site", "src", "config.js")
 
 # list に出す形式タグは、VR / 8K のような英数字だけのものに絞る。
@@ -206,6 +211,45 @@ def save_raw(items):
     os.replace(tmp_path, DATA_PATH)  # 書き込み途中で止まってもデータが壊れないように
 
 
+def load_catalog_raw():
+    """過去作品のファイルを {ファイル名: 作品のリスト（そのままの並び）} で読む。フォルダが無ければ {}。
+    読めないファイルがあれば止める（書き戻して壊さないように）"""
+    shards = {}
+    if not os.path.isdir(CATALOG_DIR):
+        return shards
+    for name in sorted(os.listdir(CATALOG_DIR)):
+        if not CATALOG_FILE.match(name):
+            continue
+        try:
+            with open(os.path.join(CATALOG_DIR, name), encoding="utf-8") as f:
+                rows = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            sys.exit(f"❌ 過去作品のファイル {name} を読めませんでした（{e}）")
+        if not isinstance(rows, list) or not all(isinstance(x, dict) and x.get("cid") for x in rows):
+            sys.exit(f"❌ 過去作品のファイル {name} の形が違います（cid のある作品のリストではありません）")
+        shards[name] = rows
+    return shards
+
+
+def save_catalog_shard(name, rows):
+    """get_new_releases.py の save_catalog と同じ書き方（1作品1行。毎日の差分が、変わった作品の行だけになるように）"""
+    path = os.path.join(CATALOG_DIR, name)
+    body = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in rows)
+    with open(path + ".tmp", "w", encoding="utf-8") as f:
+        f.write("[\n" + body + "\n]\n")
+    os.replace(path + ".tmp", path)
+
+
+def catalog_index(shards, curated_cids):
+    """過去作品の cid → (ファイル名, 作品)。毎日の更新で載せた作品と同じ作品は除く（サイトは、毎日の更新のほうを使う）"""
+    index = {}
+    for name, rows in shards.items():
+        for x in rows:
+            if x["cid"] not in curated_cids:
+                index.setdefault(x["cid"], (name, x))
+    return index
+
+
 # ------------------------------------------------------------------
 # list: コメントを書く対象を出す
 # ------------------------------------------------------------------
@@ -244,6 +288,8 @@ def info_added(item):
 
 
 def pending_reason(item, today):
+    if item.get("comment_kind") == NONE_KIND:
+        return "過去作品"
     if stale_status_word(item, today):
         return "予約の言い方が残っている"
     added = info_added(item)
@@ -269,6 +315,13 @@ def cmd_list(args):
     urgent = [x for x in todo if pending_reason(x, today) != "下書きを仕上げる"]
     drafts = [x for x in todo if pending_reason(x, today) == "下書きを仕上げる"]
     shown = (ordered(urgent) + ordered(drafts))[: max(args.limit, 0)]
+    # 毎日の更新で載せた作品を先に。枠が余ったら、過去作品（コメントがまだ無いもの）を、発売日の新しい順に
+    # （サイトは、過去作品の作品ページを新しい順に作るので、ページがある作品から書くことになる。コメントが付くと、検索エンジンにも出る）
+    catalog = catalog_index(load_catalog_raw(), {x["cid"] for x in items})
+    catalog_todo = pending_items([x for _, x in catalog.values()], today)
+    room = max(args.limit, 0) - len(shown)
+    if room > 0:
+        shown += sorted(catalog_todo, key=lambda x: (x.get("date") or "", x["cid"]), reverse=True)[:room]
 
     allowed = set(safe_genres_from_config()) | set(COMMENT_EXTRA_GENRES)
     rows = []
@@ -290,6 +343,8 @@ def cmd_list(args):
             "sample_movie": bool(x.get("sample_movie")),
             "sample_images": len(x.get("sample_images") or []),
         }
+        if x["cid"] in catalog:
+            row["catalog"] = True  # 過去作品（data/catalog/）。書き方は同じ
         # タイトル: 内容にさらっと触れるための手がかり（安全チェックを通ったものだけ。通らなければ title_hidden: true で、内容には触れない）
         title = safe_title(x)
         row["min_len"] = min_length_for(x)  # この作品のコメントの文字数の下限（書ける事実が少ない作品は80）
@@ -304,7 +359,7 @@ def cmd_list(args):
         if x.get("comment_kind") in (DRAFT_KIND, FINAL_KIND):
             row["draft"] = x.get("comment") or ""  # 仕上げる前の文（Gemini の下書きなど）。そのまま使わず、書き直す
         rows.append(row)
-    print(json.dumps({"today": today, "total_pending": len(todo), "shown": len(rows), "items": rows},
+    print(json.dumps({"today": today, "total_pending": len(todo) + len(catalog_todo), "catalog_pending": len(catalog_todo), "shown": len(rows), "items": rows},
                      ensure_ascii=False, indent=1))
 
 
@@ -427,12 +482,14 @@ def cmd_apply(args):
 
     items = load_raw()
     by_cid = {x["cid"]: x for x in items}
+    shards = load_catalog_raw()
+    catalog = catalog_index(shards, set(by_cid))  # 過去作品（cid → (ファイル名, 作品)）
     errors = []
     texts = {}
     for cid, comment in mapping.items():
-        item = by_cid.get(cid)
+        item = by_cid.get(cid) or (catalog[cid][1] if cid in catalog else None)
         if item is None:
-            errors.append((cid, ["保存データにない cid です"]))
+            errors.append((cid, ["保存データ（毎日の更新の作品・過去作品）にない cid です"]))
             continue
         if item.get("comment_kind") == FINAL_KIND and not stale_status_word(item, stamp) and not info_added(item) and not args.rewrite:
             errors.append((cid, ["Claude が仕上げたコメントが、すでに付いています（上書きしません。書き直せるのは、定型文・Gemini の下書き・発売日をすぎて予約やこれから先の言い方が残っているもの・仕上げたあとに出演者や情報が増えたものだけ）"]))
@@ -454,7 +511,8 @@ def cmd_apply(args):
 
     # 1日に仕上げるのは DAILY_LIMIT 件まで（急いで大量に書くと、型どおりの文になりやすい。残りは次の日に回す）
     if not args.rewrite and not args.no_daily_limit:
-        done_today = sum(1 for x in items if x.get("comment_kind") == FINAL_KIND and x.get("updated") == stamp and x["cid"] not in texts)
+        done_today = sum(1 for x in [*items, *(row for _, row in catalog.values())]
+                         if x.get("comment_kind") == FINAL_KIND and x.get("updated") == stamp and x["cid"] not in texts)
         if done_today + len(texts) > DAILY_LIMIT:
             errors.append(("(まとめて)", [f"今日（{stamp}）はもう {done_today} 件を仕上げています。1日に仕上げるのは {DAILY_LIMIT} 件までです"
                                           f"（今回は {max(0, DAILY_LIMIT - done_today)} 件まで。残りは次の日に回してください）"]))
@@ -493,20 +551,31 @@ def cmd_apply(args):
         print(f"✅ {len(texts)}件、問題ありません（--dry-run のため書き込んでいません）")
         return
 
+    changed_shards = set()
     for cid, text in texts.items():
-        by_cid[cid]["comment"] = text
-        by_cid[cid]["comment_kind"] = FINAL_KIND
-        by_cid[cid]["updated"] = stamp  # コメントを変えた日（sitemap の lastmod に使う）
-    save_raw(items)
+        target = by_cid.get(cid)
+        if target is None:  # 過去作品
+            name, target = catalog[cid]
+            changed_shards.add(name)
+        target["comment"] = text
+        target["comment_kind"] = FINAL_KIND
+        target["updated"] = stamp  # コメントを変えた日（sitemap の lastmod に使う）
+    if any(cid in by_cid for cid in texts):
+        save_raw(items)
+    for name in sorted(changed_shards):
+        save_catalog_shard(name, shards[name])
     # 書いたものを読み直して確かめる
     check = load_raw()
     ok = len(check) == len(items) and all(x["cid"] == y["cid"] for x, y in zip(check, items))
+    check_shards = load_catalog_raw()
+    ok = ok and all(len(check_shards.get(n, [])) == len(shards[n]) and all(x["cid"] == y["cid"] for x, y in zip(check_shards[n], shards[n])) for n in changed_shards)
     if not ok:
         sys.exit("❌ 書き込み後の確認に失敗しました。git で変更を取り消してください")
     left = len(pending_items(check, stamp))
     kinds = [x.get("comment_kind") for x in pending_items(check, stamp)]
-    print(f"✅ {len(texts)}件のコメントを書き込みました（まだ仕上げていない作品: 残り{left}件。"
-          f"うち定型文 {kinds.count('template')}件・Gemini の下書き {kinds.count(DRAFT_KIND)}件）")
+    catalog_left = len(pending_items([x for _, x in catalog_index(check_shards, {x["cid"] for x in check}).values()], stamp))
+    print(f"✅ {len(texts)}件のコメントを書き込みました（うち過去作品 {sum(1 for c in texts if c not in by_cid)}件。まだ仕上げていない作品: 残り{left}件。"
+          f"うち定型文 {kinds.count('template')}件・Gemini の下書き {kinds.count(DRAFT_KIND)}件。コメントがまだ無い過去作品: {catalog_left}本）")
 
 
 def main():
