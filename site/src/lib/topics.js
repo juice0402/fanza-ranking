@@ -100,6 +100,34 @@ export function hotActresses(items, today, { excludeVr = false, limit = HOT_LIMI
     .slice(0, limit);
 }
 
+export const HOT_GENRE_LIMIT = 3; // 「人気のジャンル」に出す数
+export const HOT_GENRE_SKIP = ['ベスト・総集編']; // ジャンルのページの一覧のうち、「人気のジャンル」に入れないもの（作品の内容ではなく、まとめ方のため）
+
+/**
+ * 人気のジャンル（トップ。「いま人気の女優」の真下。運営者の希望。2026-10-05）: いま人気の女優と同じ数え方（この1週間の発売で新着の人気順100位までの
+ * 作品に「101−順位」の点）を、ジャンルごとに足して、上から3つ。数えるのは allowed のジャンルだけ（サイトの「ジャンルのページ」の一覧
+ * config.js の TAG_PAGE_GENRES から HOT_GENRE_SKIP を除いたもの。過激・未成年を連想させる名前は入っていない）。
+ * [{ name, score, count（本数）, top（いちばん点の高い作品。VRでない作品を先に） }]
+ */
+export function hotGenres(items, today, { allowed, limit = HOT_GENRE_LIMIT }) {
+  const board = new Map();
+  for (const i of newRanking(items, today, 100)) {
+    if (i.popNew > 100) continue;
+    for (const g of new Set(i.genres ?? [])) {
+      if (!allowed.has(g)) continue;
+      const row = board.get(g) ?? { name: g, score: 0, count: 0, works: [] };
+      row.score += 101 - i.popNew;
+      row.count += 1;
+      row.works.push(i);
+      board.set(g, row);
+    }
+  }
+  return [...board.values()]
+    .sort((a, b) => b.score - a.score || b.count - a.count || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    .slice(0, limit)
+    .map(({ works, ...r }) => ({ ...r, top: works.find((w) => !w.vr) ?? works[0] }));
+}
+
 export const DEBUT_SHOWN = 3; // 「今週のデビュー作」に出す本数（データは、VR作品を隠す・単体作品のみのときの差し替え用に DEBUT_DATA 本）
 export const DEBUT_DATA = 6;
 export const BIRTHDAY_DAYS = 14; // 「誕生日の近い女優」: きょうから、この日数のうちに誕生日が来る人

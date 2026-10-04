@@ -4,6 +4,7 @@ import DaySection from '../components/DaySection.astro';
 import TopThree from '../components/TopThree.astro';
 import TopicList from '../components/TopicList.astro';
 import HotActresses from '../components/HotActresses.astro';
+import HotGenres from '../components/HotGenres.astro';
 import VrToggle from '../components/VrToggle.astro';
 import ItemCard from '../components/ItemCard.astro';
 import {
@@ -25,7 +26,8 @@ import {
 import { itemHref } from '../lib/plan.js';
 import { RANKING_ALL_PATH, RANKING_PATH } from '../lib/popularity.js';
 import { SALE_PATH, endIso, saleBadge, saleCount, saleHighlights, salePriceNote } from '../lib/sale.js';
-import { TOP_SHOWN, birthdaySoon, buildTopics, hotActresses, topEntries, weekDebuts } from '../lib/topics.js';
+import { HOT_GENRE_SKIP, TOP_SHOWN, birthdaySoon, buildTopics, hotActresses, hotGenres, topEntries, weekDebuts } from '../lib/topics.js';
+import { TAG_PAGE_GENRES } from '../config.js';
 import { gachaPool } from '../lib/gacha.js';
 import PickCorner from '../components/PickCorner.astro';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
@@ -79,6 +81,8 @@ const topics = buildTopics({
 const hasFace = (name) => Boolean(faceOfName(name));
 const hot = hotActresses(all, today, { hasFace });
 const hotNoVr = hotActresses(all, today, { excludeVr: true, hasFace });
+// 人気のジャンル（いま人気の女優の真下。ジャンルのページの一覧から、同じ数え方で3つ）
+const genres = hotGenres(all, today, { allowed: new Set(TAG_PAGE_GENRES.filter((g) => !HOT_GENRE_SKIP.includes(g))) });
 
 // 発売中の新作の、きょうの日付のすぐ下のコーナー（運営者の希望。2026-10-05）: 運命の作品（スロットで3本。public/gacha.js）・今週のデビュー作・誕生日の近い女優
 const gacha = gachaPool(all, paged, today);
@@ -132,6 +136,15 @@ const saleTotal = saleCount(all, sale, today);
             <h2 id="hot-title" class="today-sec-title">いま人気の女優</h2>
           </div>
           <HotActresses list={hot} listNoVr={hotNoVr} />
+        </section>
+      )}
+
+      {genres.length > 0 && (
+        <section id="genres" class="today-genres" aria-labelledby="genres-title">
+          <div class="today-sec-head">
+            <h2 id="genres-title" class="today-sec-title">人気のジャンル</h2>
+          </div>
+          <HotGenres list={genres} />
         </section>
       )}
 
