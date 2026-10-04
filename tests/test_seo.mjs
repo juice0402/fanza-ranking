@@ -32,6 +32,13 @@ const named = mk({ cid: 'a1', title: '新作 小泉玖美 デビュー', actress
 check('タイトルに名前が入っている出演者は、かっこの中にくり返さない', L.itemPageTitle(named, 'ABC-123') === `ABC-123 新作 小泉玖美 デビュー（月子）｜${L.SITE_NAME}` && L.itemPageTitle(mk({ cid: 'a1', title: '小泉玖美 新作', actress: ['小泉玖美'] })) === `小泉玖美 新作｜${L.SITE_NAME}`, L.itemPageTitle(named, 'ABC-123'));
 const desc = L.itemPageDescription(mk({ cid: 'a1', comment: 'コメントです。' }), 'DLDSS-566');
 check('説明文に品番が入り、120文字を超えない', desc.includes('品番 DLDSS-566') && [...desc].length <= 120 && !L.itemPageDescription(mk({ cid: 'a1', comment: 'コメント' })).includes('品番'), desc);
+// コメントが長くても（Claude の仕上げは100〜160文字）、品番・発売日は切れずに残り、コメントのほうが「…」で縮む
+const longComment = 'あ'.repeat(70) + '。' + 'い'.repeat(70) + '。';
+const descLong = L.itemPageDescription(mk({ cid: 'a1', comment: longComment }), 'DLDSS-566');
+check('説明文: コメントが長くても品番・発売日が残り、120文字を超えない', descLong.includes('（品番 DLDSS-566）。') && descLong.endsWith('発売作品（品番 DLDSS-566）。') && descLong.includes('…') && [...descLong].length <= 120, descLong);
+const descShort = L.itemPageDescription(mk({ cid: 'a1', comment: '短いコメントです。' }), 'DLDSS-566');
+check('説明文: 短いコメントは縮めずに、そのまま入る', descShort.startsWith('短いコメントです。 ') && !descShort.includes('…'), descShort);
+check('説明文: コメントが空なら、メーカー・発売日・品番だけ', L.itemPageDescription(mk({ cid: 'a1', comment: '' }), 'DLDSS-566').startsWith(mk({ cid: 'a1' }).maker + 'の'));
 
 console.log('\n■ 「この作品のデータ」欄');
 const raw = JSON.parse(fs.readFileSync(new URL('./fixtures/items.json', import.meta.url), 'utf-8'));
