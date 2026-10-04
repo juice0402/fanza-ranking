@@ -260,7 +260,10 @@ export function itemPageTitle(item, code = '') {
 /** 作品ページの説明文（コメント＋メーカー・発売日・品番） */
 export function itemPageDescription(item, code = '') {
   const base = `${item.maker}の${formatDateJp(item.dateKey)}発売作品${code ? `（品番 ${code}）` : ''}。`;
-  return truncate(`${item.comment} ${base}`.trim(), 120);
+  // メーカー・発売日・品番は、必ず最後まで残す（コメントが長いと、後ろに付けた品番が切れてしまうため。コメントのほうを縮める）
+  const room = 120 - Array.from(base).length - 1;
+  const comment = String(item.comment ?? '').trim();
+  return comment && room >= 20 ? `${truncate(comment, room)} ${base}` : truncate(base, 120);
 }
 
 // ------------------------------------------------------------------
