@@ -37,7 +37,11 @@ check('枠が3なら、毎日の更新で載せた作品の3本', [...set3].sort
 const set4 = P.pagedCids(items, 4);
 check('枠が4なら、次はコメントのある過去作品（発売が古くても、コメントの無い新しい過去作品より先）', set4.has('cat01') && !set4.has('cat02'), [...set4].join());
 const set5 = P.pagedCids(items, 5);
-check('同じ順位の中では、発売日の新しい順', set5.has('cat02') && !set5.has('cat03'), [...set5].join());
+check('同じ順位の中では、発売日の新しい順（人気順の順位が分からないとき）', set5.has('cat02') && !set5.has('cat03'), [...set5].join());
+const ranked = [it('r1', '2015-01-01', { catalog: true, rank: 3 }), it('r2', '2026-09-01', { catalog: true, rank: 900 }), it('r3', '2026-09-02', { catalog: true }), it('r4', '2010-01-01', { catalog: true, rank: 1 })];
+check('過去作品は、人気順の順位が上の作品から（発売日が古くても）。順位が分からない作品は、そのあと', [...P.pagedCids(ranked, 3)].sort().join() === 'r1,r2,r4' && P.pagedCids(ranked, 1).has('r4'), [...P.pagedCids(ranked, 3)].join());
+check('コメントのある過去作品は、順位が低くても、コメントの無い作品より先', P.pagedCids([...ranked, it('r5', '2012-01-01', { catalog: true, rank: 29000, comment: 'こめんと' })], 1).has('r5'));
+check('順位の読み方（{cid: [順位, 一回りの番号]}）。形が違えば null', P.catalogRank({ a: [12, 3] }, 'a') === 12 && P.catalogRank({ a: [0, 1] }, 'a') === null && P.catalogRank({ a: 'x' }, 'a') === null && P.catalogRank(null, 'a') === null && P.catalogRank({}, 'constructor') === null);
 check('枠が作品数より多くても、全部（重複なし）', P.pagedCids(items, 100).size === items.length);
 check('枠が0・負・小数でも落ちない', P.pagedCids(items, 0).size === 0 && P.pagedCids(items, -5).size === 0 && P.pagedCids(items, 2.7).size === 2);
 check('元の並びは変えない', items[0] === catOld && items[5] === curatedNew);

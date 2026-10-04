@@ -216,9 +216,22 @@ else:
         cst = json.load(open(CATALOG_STATE, encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as e:
         cst = None
-    check("続きの場所（catalog_state.json）: cursor は 1〜50000・cycle_done は空か日付・items は過去作品の本数",
-          isinstance(cst, dict) and isinstance(cst.get("cursor"), int) and 1 <= cst["cursor"] <= 50000 and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(cst.get("cycle_done", ""))) is not None
-          and cst.get("items") == len(cat_items), cst)
+    check("続きの場所（catalog_state.json）: cursor は 1〜50000・cycle（一回りの番号）は1以上・cycle_done は空か日付・limit は5万まで・items は過去作品の本数",
+          isinstance(cst, dict) and isinstance(cst.get("cursor"), int) and 1 <= cst["cursor"] <= 50000 and isinstance(cst.get("cycle"), int) and cst["cycle"] >= 1
+          and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(cst.get("cycle_done", ""))) is not None
+          and isinstance(cst.get("limit"), int) and 1 <= cst["limit"] <= 50000 and cst.get("items") == len(cat_items), cst)
+    CATALOG_RANK = os.path.join(ROOT, "site", "src", "data", "catalog_rank.json")
+    try:
+        crank = json.load(open(CATALOG_RANK, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        crank = None
+    check("人気順の順位（catalog_rank.json）: {cid: [順位 1〜50000, 一回りの番号 1以上]} の形",
+          isinstance(crank, dict) and all(isinstance(v, list) and len(v) == 2 and all(isinstance(n, int) and not isinstance(n, bool) for n in v) and 1 <= v[0] <= 50000 and 1 <= v[1] for v in crank.values()),
+          str(crank)[:80])
+    if isinstance(crank, dict):
+        # 順位と作品が食い違っても、サイトは順位の無い作品を後ろに回すだけで、次の毎日の更新がそろえるので、失敗にはしない（知らせるだけ）
+        odd = sorted(set(crank) ^ set(ccids))
+        print(("  ✅ " if not odd else "  ⚠️ ") + "順位のある作品 = 過去作品" + (f"  → 食い違い {len(odd)}本（次の毎日の更新でそろいます）: {odd[:5]}" if odd else ""))
 
 # ---- 週のまとめ記事（roundups.json）。Claude が毎週書き足すので、壊れていないかを見張る ----
 print("\n■ 週のまとめ記事（roundups.json）")

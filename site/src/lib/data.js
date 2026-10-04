@@ -6,11 +6,11 @@ import { normalizeRoundups } from './roundups.js';
 import { groupByMonth, groupByTag, monthPathByKey } from './collections.js';
 import { buildFactsContext } from './facts.js';
 import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay } from './profiles.js';
-import { hasCalendar, planPages } from './plan.js';
+import { catalogRank, hasCalendar, planPages } from './plan.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -23,7 +23,10 @@ export const today = jstToday();
 export const curated = normalizeItems(raw);
 const curatedCids = new Set(curated.map((i) => i.cid));
 // （FANZAのURLが無い過去作品は、作品ページが無いときのリンク先が無いので、載せない）
-export const catalog = normalizeItems(catalogRaw).filter((i) => !curatedCids.has(i.cid) && i.url).map((i) => ({ ...i, catalog: true }));
+// rank: FANZAの人気順の順位（data/catalog_rank.json。毎日の更新が、その日の順位に入れ替える）。作品ページ・コメントは、人気の高い作品から
+export const catalog = normalizeItems(catalogRaw)
+  .filter((i) => !curatedCids.has(i.cid) && i.url)
+  .map((i) => ({ ...i, catalog: true, rank: catalogRank(optionalData('catalog_rank'), i.cid) }));
 // すべての作品（毎日の更新で載せた作品＋過去作品）。作品ページ・過去の作品の一覧・出演者/メーカーのページ・「この作品のデータ」欄は、これを使う
 export const all = [...curated, ...catalog];
 export const { released, upcoming } = splitByRelease(curated, today);

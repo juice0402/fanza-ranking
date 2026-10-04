@@ -16,8 +16,9 @@ GitHub Actions から毎日自動で実行されます。
 保存先（出演者）: site/src/data/actresses.json … 出演者ごとの顔写真・体型・年齢の元データ・FANZAの全作品リンク（FANZA公式のデータ）
 保存先（売れ筋）: site/src/data/ranking.json … FANZAの人気順（売れ筋）の上位6本（画面に出すのは先頭の3本。「VR作品を隠す」ときは、VRを除いて、次の順位から差し替える）
 保存先（女優検索の名簿）: site/src/data/actress_directory.json … FANZA公式の出演者検索の一覧（体型・身長・生年月日が載っている人）
-保存先（過去作品）: site/src/data/catalog/YYYY-MM.json … FANZAの人気順に、発売済みの作品を毎日少しずつ（1回100本×CATALOG_CALLS回）。
-  続きの場所は site/src/data/catalog_state.json。コメントは無し（"none"）か、Claude が書いたもの（"claude"）
+保存先（過去作品）: site/src/data/catalog/YYYY-MM.json … FANZAの人気順の上位（CATALOG_LIMIT 本まで）の、発売済みの作品。
+  毎日、その日の上位1,000本を取り直し、その下を続きから3,000本ずつ。順位は catalog_rank.json、続きの場所は catalog_state.json。
+  コメントは無し（"none"）か、Claude が書いたもの（"claude"）
 
   python3 get_new_releases.py --refresh-only
       新しい作品の追加とAIコメントはせず、保存済みデータの取り直し（出演者・サンプル動画・プロフィール・ランキング・名簿・過去作品）だけをする（Geminiは使わない）
@@ -77,9 +78,15 @@ ACTRESS_IMAGE_KEY = re.compile(r"^https://pics\.dmm\.co\.jp/mono/actjpgs/(?:thum
 # --- 過去作品（カタログ。FANZAの人気順に、発売済みの作品を毎日少しずつ集める。Gemini は使わない）---
 CATALOG_DIR = os.environ.get("CATALOG_DIR", os.path.join(os.path.dirname(DATA_PATH), "catalog"))  # 発売月ごとのファイル（YYYY-MM.json）
 CATALOG_STATE_PATH = os.environ.get("CATALOG_STATE_PATH", os.path.join(os.path.dirname(DATA_PATH), "catalog_state.json"))  # 続きの場所
-CATALOG_CALLS_PER_RUN = int(os.environ.get("CATALOG_CALLS", "30"))  # 1回の実行で一覧を取りに行く回数（1回100本。30回で3,000本 → 5万本は17日ほど）
+CATALOG_RANK_PATH = os.environ.get("CATALOG_RANK_PATH", os.path.join(os.path.dirname(DATA_PATH), "catalog_rank.json"))  # 作品ごとの人気順位（作品ページ・コメントの優先順に使う）
+CATALOG_TOP_CALLS = int(os.environ.get("CATALOG_TOP_CALLS", "10"))  # 毎日、その日の人気順の上位を取り直す回数（10回＝上位1,000本。毎日の順位で入れ替える）
+CATALOG_CALLS_PER_RUN = int(os.environ.get("CATALOG_CALLS", "30"))  # 上位より下を、続きから取る回数（1回100本。30回で3,000本 → 上位3万本は10日ほどで一回り）
 CATALOG_PAGE = 100          # 一覧の1回の本数（APIの上限）
-CATALOG_MAX_OFFSET = 50000  # 一覧の offset の上限（APIの決まり。人気順の上位5万本まで）
+CATALOG_MAX_OFFSET = 50000  # 一覧の offset の上限（APIの決まり。人気順の上位5万本まで。2026-10-04 に本物のAPIで確認）
+# 集める深さ（人気順の上位何本までを過去作品にするか）。5万本だと、無料プランの2万ファイルの中で作品ページを作れるのは2割ほどなので、
+# 運営者と相談して3万本にした（作品ページは4割ほど。人気の高い作品から作る。2026-10-04）
+CATALOG_LIMIT = min(CATALOG_MAX_OFFSET, int(os.environ.get("CATALOG_LIMIT", "30000")))
+CATALOG_PRUNE_MAX_SHARE = 0.2  # 一回りで外す作品が、過去作品のこの割合をこえたら、念のため外さない（APIの答えがおかしかったときに、まとめて消さないため）
 CATALOG_SAMPLE_IMAGES = 8   # 過去作品のサンプル画像は8枚まで（作品ページに出すのは8枚まで。ファイルを小さくする）
 CATALOG_FILE = re.compile(r"^\d{4}-\d{2}\.json$")
 
@@ -1049,11 +1056,14 @@ def update_directory(state, today_str, calls=None):
 
 
 # ------------------------------------------------------------------
-# 過去作品（カタログ）: FANZAの人気順（sort=rank）に、発売済みの作品を毎日少しずつ集める（Gemini は使わない）
+# 過去作品（カタログ）: FANZAの人気順（sort=rank）の、発売済みの作品を集める（Gemini は使わない）
+#   ・毎日、その日の人気順の上位 CATALOG_TOP_CALLS×100本（1,000本）を取り直し、順位を入れ替える（その日の人気を反映）
+#   ・それより下（1,001本目〜CATALOG_LIMIT本目）は、毎日 CATALOG_CALLS×100本ずつ続きから取る（一回り＝cycle）
+#   ・作品ごとの順位と、最後に見かけた一回りの番号は catalog_rank.json に（作品のファイルは、毎日書きかえない）
+#   ・2回続けて一回りで見かけなかった作品（人気の上位から外れた作品）は外す。ただし、Claude がコメントを書いた作品は残す
 #   ・発売月ごとのファイル site/src/data/catalog/YYYY-MM.json に、1作品1行で保存する（毎日の差分を小さくするため）
 #   ・作品の形は new_releases.json と同じ。コメントは無し（comment_kind: "none"）か、あとから Claude が書いたもの（"claude"）だけ
 #   ・毎日の更新で載せた作品（new_releases.json）と同じ作品は入れない（入っていたら外す）
-#   ・人気順の上位 約5万本まで行ったら、最初から取り直す（一回り。発売日の変更・空だった項目を補う）
 # ------------------------------------------------------------------
 def catalog_item(item):
     """過去作品の1件を、保存する形に揃える（読めなければ None）。発売日（YYYY-MM-DD）が無い作品は、ファイルを決められないので入れない。
@@ -1074,24 +1084,39 @@ def catalog_item(item):
     return norm
 
 
+def read_json_file(path):
+    """JSONを読む。無ければ None。壊れていれば ValueError"""
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        raise ValueError(f"{os.path.basename(path)} を読めませんでした（{e}）") from e
+
+
 def load_catalog(today_str):
-    """過去作品 {"items": {cid: 作品}, "cursor": 続きの場所（1から）, "cycle_done": 一回りした日} を読む。
+    """過去作品 {"items": {cid: 作品}, "ranks": {cid: [順位, 最後に見かけた一回りの番号]}, "cursor": 続きの場所（1から）,
+    "cycle": いまの一回りの番号, "cycle_done": 最後に一回りした日} を読む。
     ファイルが壊れていて読めないときは None（過去作品の更新だけをやめる。ファイルは上書きしない）"""
-    state = {"items": {}, "cursor": 1, "cycle_done": ""}
-    if os.path.exists(CATALOG_STATE_PATH):
-        try:
-            with open(CATALOG_STATE_PATH, encoding="utf-8") as f:
-                head = json.load(f)
-        except (OSError, json.JSONDecodeError) as e:
-            print(f"⚠️ 過去作品の続きの場所（{os.path.basename(CATALOG_STATE_PATH)}）を読めませんでした（{e}）。上書きを防ぐため、過去作品の更新はやめます")
-            return None
-        head = head if isinstance(head, dict) else {}
-        try:
-            cur = int(head.get("cursor", 1))
-        except (TypeError, ValueError):
-            cur = 1
-        state["cursor"] = cur if 1 <= cur <= CATALOG_MAX_OFFSET else 1
-        state["cycle_done"] = day_key(head.get("cycle_done"))
+    state = {"items": {}, "ranks": {}, "cursor": 0, "cycle": 1, "cycle_done": ""}
+    try:
+        head = read_json_file(CATALOG_STATE_PATH)
+        ranks = read_json_file(CATALOG_RANK_PATH)
+    except ValueError as e:
+        print(f"⚠️ 過去作品の{e}。上書きを防ぐため、過去作品の更新はやめます")
+        return None
+    head = head if isinstance(head, dict) else {}
+    try:
+        cur, cycle = int(head.get("cursor", 0)), int(head.get("cycle", 1))
+    except (TypeError, ValueError):
+        cur, cycle = 0, 1
+    state["cursor"] = cur if 1 <= cur <= CATALOG_MAX_OFFSET else 0  # 0 なら、上位の下（walk_start）から
+    state["cycle"] = cycle if cycle >= 1 else 1
+    state["cycle_done"] = day_key(head.get("cycle_done"))
+    for cid, val in (ranks.items() if isinstance(ranks, dict) else []):
+        if isinstance(val, list) and len(val) == 2 and all(isinstance(v, int) and not isinstance(v, bool) for v in val) and 1 <= val[0] <= CATALOG_MAX_OFFSET and val[1] >= 1:
+            state["ranks"][str(cid)] = [val[0], min(val[1], state["cycle"])]
     if not os.path.isdir(CATALOG_DIR):
         return state
     for name in sorted(os.listdir(CATALOG_DIR)):
@@ -1110,12 +1135,18 @@ def load_catalog(today_str):
             item = catalog_item(row)
             if item:
                 state["items"].setdefault(item["cid"], item)
+    # 順位の無い作品（順位のファイルより前に集めた作品など）は、いまの一回りで見かけたものとして数える（すぐには外さない）
+    for cid in state["items"]:
+        state["ranks"].setdefault(cid, [CATALOG_MAX_OFFSET, state["cycle"]])
+    for cid in [c for c in state["ranks"] if c not in state["items"]]:
+        del state["ranks"][cid]
     return state
 
 
 def save_catalog(state):
     """過去作品を、発売月ごとのファイルに書く（1作品1行・発売日の新しい順）。作品が無くなった月のファイルは消す。
-    続きの場所は catalog_state.json に書く。書き込み途中で止まっても壊れないよう、1ファイルずつ書いてから置き換える"""
+    順位は catalog_rank.json（1作品1行・cid の順）、続きの場所は catalog_state.json に書く。
+    書き込み途中で止まっても壊れないよう、1ファイルずつ書いてから置き換える"""
     os.makedirs(CATALOG_DIR, exist_ok=True)
     by_month = {}
     for item in state["items"].values():
@@ -1130,62 +1161,123 @@ def save_catalog(state):
     for name in os.listdir(CATALOG_DIR):
         if CATALOG_FILE.match(name) and name[:7] not in by_month:
             os.remove(os.path.join(CATALOG_DIR, name))
-    head = {"cursor": state["cursor"], "cycle_done": state["cycle_done"], "items": len(state["items"])}
+    ranks = {cid: state["ranks"][cid] for cid in sorted(state["items"]) if cid in state["ranks"]}
+    body = ",\n".join(f"{json.dumps(cid)}:[{r[0]},{r[1]}]" for cid, r in ranks.items())
+    with open(CATALOG_RANK_PATH + ".tmp", "w", encoding="utf-8") as f:
+        f.write("{\n" + body + "\n}\n" if body else "{}\n")
+    os.replace(CATALOG_RANK_PATH + ".tmp", CATALOG_RANK_PATH)
+    head = {"cursor": state["cursor"], "cycle": state["cycle"], "cycle_done": state["cycle_done"], "limit": CATALOG_LIMIT, "items": len(state["items"])}
     with open(CATALOG_STATE_PATH + ".tmp", "w", encoding="utf-8") as f:
         json.dump(head, f, ensure_ascii=False)
         f.write("\n")
     os.replace(CATALOG_STATE_PATH + ".tmp", CATALOG_STATE_PATH)
 
 
-def update_catalog(state, archive, today, calls=None):
-    """FANZAの人気順（発売済みだけ）の一覧を、続きから calls 回（1回100本）取って、過去作品に足す・空だった項目を補う。
-    毎日の更新で載せた作品（archive）と同じ作品は入れない（入っていたら外す）。最後まで行ったら最初に戻る（一回りした日を cycle_done に）。
-    続けて失敗したら、その回はやめる（続きの場所は、取れたところまで進める）。
-    (呼んだ回数, 取れた本数, 新しく足した本数, 補った本数, 外した本数) を返す"""
+def prune_catalog(state):
+    """一回りが終わったときに呼ぶ。2回続けて一回りで見かけなかった作品（人気の上位 CATALOG_LIMIT 本から外れた作品）を外し、外した本数を返す。
+    1回だけ見かけなかった作品は外さない（順位が毎日少しずつ入れ替わるので、続きから取るあいだに取りこぼすことがあるため）。
+    Claude がコメントを書いた作品は外さない（作品ページとコメントがあるので、コレクションに残す）"""
+    done = state["cycle"]  # 終わった一回りの番号
+    gone = [cid for cid, item in state["items"].items()
+            if state["ranks"].get(cid, [0, done])[1] < done - 1 and item.get("comment_kind") != "claude"]
+    # 一度に外れるのは、ふつうは少し（順位の入れ替わりで、上位から外れた分だけ）。多すぎるときは、APIの答えがおかしかったものとして、外さない
+    if len(gone) > len(state["items"]) * CATALOG_PRUNE_MAX_SHARE:
+        print(f"  ⚠️ 人気の上位から外れた作品が多すぎます（{len(gone)}本 / {len(state['items'])}本）。念のため、今回は外しません")
+        print(f"::warning title=過去作品を外すのをやめました::人気の上位から外れた作品が多すぎます（{len(gone)}本）。APIの答えがおかしかった可能性があるので、今回は外していません")
+        return 0
+    for cid in gone:
+        del state["items"][cid]
+        state["ranks"].pop(cid, None)
+    return len(gone)
+
+
+def update_catalog(state, archive, today, top_calls=None, calls=None):
+    """FANZAの人気順（発売済みだけ）の一覧を取って、過去作品に足す・順位を入れ替える・空だった項目を補う。
+    ・まず、その日の上位 top_calls×100本（毎日取り直す。その日の人気順）
+    ・次に、その下（上位の下〜CATALOG_LIMIT本目）を、続きから calls×100本。最後まで行ったら、上位の下に戻る（一回り。cycle を1つ進め、
+      2回続けて見かけなかった作品を外す）
+    毎日の更新で載せた作品（archive）と同じ作品は入れない（入っていたら外す）。続けて失敗したら、その回はやめる（続きの場所は、取れたところまで進める）。
+    {"calls", "got", "added", "filled", "removed", "pruned"} を返す"""
+    top_calls = CATALOG_TOP_CALLS if top_calls is None else top_calls
     calls = CATALOG_CALLS_PER_RUN if calls is None else calls
     today_str = today.strftime("%Y-%m-%d")
-    items = state["items"]
-    removed = 0
+    lte = iso(today.replace(hour=23, minute=59, second=59))
+    items, ranks = state["items"], state["ranks"]
+    stats = {"calls": 0, "got": 0, "added": 0, "filled": 0, "removed": 0, "pruned": 0}
     for cid in [c for c in items if c in archive]:
         del items[cid]  # 毎日の更新で載せた作品のほうを使う
-        removed += 1
-    off = state["cursor"]
-    done = got = added = filled = fails = 0
-    while done < calls:
-        done += 1
+        ranks.pop(cid, None)
+        stats["removed"] += 1
+    fails = 0
+    seen_now = {}  # 今回見かけた作品の、いちばん上の順位（順位が入れ替わって、同じ作品が2回出てきたとき用）
+
+    def fetch(off):
+        """人気順の off 本目から100本を取って取り込む。取れたら行数、失敗したら None"""
+        nonlocal fails
+        stats["calls"] += 1
         try:
-            rows = call_item_list({"sort": "rank", "hits": CATALOG_PAGE, "offset": off, "lte_date": iso(today.replace(hour=23, minute=59, second=59))})
+            rows = call_item_list({"sort": "rank", "hits": CATALOG_PAGE, "offset": off, "lte_date": lte})
             fails = 0
         except RuntimeError as e:
             fails += 1
             print(f"  ⚠️ 過去作品の一覧（人気順の{off}本目から）を取れませんでした: {e}")
-            if fails >= MAX_API_FAILS_IN_ROW:
-                print("  ⏸ 続けて失敗したので、今回の過去作品の取得はやめます")
-                break
-            continue
+            return None
         time.sleep(DMM_INTERVAL_SEC)
-        for fresh in map(parse_api_item, rows):
+        for pos, fresh in enumerate(map(parse_api_item, rows)):
             if not fresh or fresh["cid"] in archive or day_key(fresh["date"]) > today_str:
                 continue
-            got += 1
+            stats["got"] += 1
+            seen_now[fresh["cid"]] = min(off + pos, seen_now.get(fresh["cid"], off + pos))
+            ranks[fresh["cid"]] = [seen_now[fresh["cid"]], state["cycle"]]  # その日の順位（1から）と、見かけた一回り
             old = items.get(fresh["cid"])
             if old is None:
                 fresh["updated"] = today_str
                 item = catalog_item(fresh)
                 if item:
                     items[item["cid"]] = item
-                    added += 1
+                    stats["added"] += 1
+                else:
+                    ranks.pop(fresh["cid"], None)
                 continue
             if apply_fresh(old, fresh, today_str):
-                filled += 1
+                stats["filled"] += 1
                 items[old["cid"]] = catalog_item(old) or old  # 発売日が変わって定型文に戻ったコメントは、空に戻す
-        if len(rows) < CATALOG_PAGE or off + CATALOG_PAGE > CATALOG_MAX_OFFSET:
-            off = 1
+        return len(rows)
+
+    top_end = min(top_calls * CATALOG_PAGE, CATALOG_LIMIT)  # 毎日取り直す上位の本数
+    off = 1
+    short = False  # 一覧が、決めた深さより手前で終わった（ふつうは起きない。全体は5万本ある）
+    while off <= top_end and fails < MAX_API_FAILS_IN_ROW:
+        got = fetch(off)
+        if got is None:
+            continue  # 同じ場所をもう一度（続けて失敗したら、上の条件で止まる）
+        if got < CATALOG_PAGE:
+            short = True
+            break
+        off += CATALOG_PAGE
+    walk_start = top_end + 1
+    cur = state["cursor"] if walk_start <= state["cursor"] <= CATALOG_LIMIT else walk_start
+    done = 0
+    while done < calls and walk_start <= CATALOG_LIMIT and fails < MAX_API_FAILS_IN_ROW and not short:
+        done += 1
+        got = fetch(cur)
+        if got is None:
+            continue
+        if cur + CATALOG_PAGE > CATALOG_LIMIT:  # 決めた深さまで来た → 一回り
+            cur = walk_start
             state["cycle_done"] = today_str
+            stats["pruned"] += prune_catalog(state)
+            state["cycle"] += 1
+        elif got < CATALOG_PAGE:
+            short = True  # 深さの手前で一覧が終わった（APIの答えがおかしい）。一回りにも数えず、続きの場所も進めない（次の日にもう一度）
         else:
-            off += CATALOG_PAGE
-    state["cursor"] = off
-    return done, got, added, filled, removed
+            cur += CATALOG_PAGE
+    if short:
+        print(f"  ⚠️ 人気順の一覧が、上位{CATALOG_LIMIT}本より手前で終わりました。念のため、一回りには数えず、続きの場所も進めません")
+    if fails >= MAX_API_FAILS_IN_ROW:
+        print("  ⏸ 続けて失敗したので、今回の過去作品の取得はやめます")
+    state["cursor"] = cur
+    return stats
 
 
 # ------------------------------------------------------------------
@@ -1378,8 +1470,9 @@ def main():
         print(f"📇 女優検索の名簿: 一覧を{directory_result[0]}回取得 / {directory_result[1]}人を確認・うち新しく{directory_result[2]}人・見かけなくなって外した{directory.get('pruned', 0)}人（名簿 {len(directory['rows'])}人）")
 
     # ---- 過去作品（FANZAの人気順に、発売済みの作品を毎日少しずつ。Gemini は使わない。失敗しても、ほかの更新は止めない）----
-    catalog = load_catalog(today_str) if CATALOG_CALLS_PER_RUN > 0 else None
-    if CATALOG_CALLS_PER_RUN > 0 and catalog is None:
+    catalog_on = CATALOG_TOP_CALLS + CATALOG_CALLS_PER_RUN > 0
+    catalog = load_catalog(today_str) if catalog_on else None
+    if catalog_on and catalog is None:
         print("::warning title=過去作品のファイルを読めませんでした::site/src/data/catalog のファイルが壊れています。過去作品の更新はスキップしました（ファイルは変更していません）")
 
     def catalog_stage():
@@ -1389,8 +1482,8 @@ def main():
 
     catalog_result = run_stage("過去作品の取得", catalog_stage) if catalog is not None else None
     if catalog_result:
-        print(f"🗂️ 過去作品: 一覧を{catalog_result[0]}回取得 / {catalog_result[1]}本を確認・うち新しく{catalog_result[2]}本・空だった項目を補った{catalog_result[3]}本"
-              f"（過去作品 {len(catalog['items'])}本。次は人気順の{catalog['cursor']}本目から）")
+        print(f"🗂️ 過去作品: 一覧を{catalog_result['calls']}回取得 / {catalog_result['got']}本を確認・うち新しく{catalog_result['added']}本・空だった項目を補った{catalog_result['filled']}本・"
+              f"人気の上位から外れて外した{catalog_result['pruned']}本（過去作品 {len(catalog['items'])}本。人気順の上位{CATALOG_LIMIT}本まで。次は{catalog['cursor']}本目から）")
 
     summary = [
         "### ✅ FANZAデータの取り直しの結果" if refresh_only else "### ✅ FANZA更新の結果",
@@ -1422,9 +1515,9 @@ def main():
     elif directory is None:
         summary.append("- 女優検索の名簿: 保存データ（actress_directory.json）が壊れているため、更新をスキップ（ファイルは変更していません）")
     if catalog_result:
-        summary.append(f"- 過去作品: {len(catalog['items'])}本（今回 一覧を{catalog_result[0]}回取得・新しく{catalog_result[2]}本・補った{catalog_result[3]}本。"
-                       f"次は人気順の{catalog['cursor']}本目から。一回りした日: {catalog['cycle_done'] or 'まだ'}）")
-    elif CATALOG_CALLS_PER_RUN > 0 and catalog is None:
+        summary.append(f"- 過去作品: {len(catalog['items'])}本（人気順の上位{CATALOG_LIMIT}本まで。今回 一覧を{catalog_result['calls']}回取得・新しく{catalog_result['added']}本・"
+                       f"補った{catalog_result['filled']}本・人気の上位から外れて外した{catalog_result['pruned']}本。次は{catalog['cursor']}本目から。一回りした日: {catalog['cycle_done'] or 'まだ'}）")
+    elif catalog_on and catalog is None:
         summary.append("- 過去作品: ファイル（site/src/data/catalog）が壊れているため、更新をスキップ（ファイルは変更していません）")
     write_step_summary(summary)
 
