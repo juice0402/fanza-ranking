@@ -84,23 +84,50 @@ def main():
         archive = []
     base = {"site": "FANZA", "service": "digital", "floor": "videoa"}
 
-    say("## 0) 過去作品の集め方（人気順・発売済みだけ・offset で続きから）")
+    say("## 0) セール・キャンペーンの情報（campaign・prices）")
     lte = today.replace(hour=23, minute=59, second=59).strftime(fmt)
-    for off in (1, 101, 25001, 49901, 50001):
-        res, err = call("ItemList", dict(base, sort="rank", hits=100, offset=off, lte_date=lte))
-        if err:
-            say(f"- offset={off}: ❌ {err}")
-            continue
-        got = res.get("items") or []
-        days = sorted(str(x.get("date", ""))[:10] for x in got if x.get("date"))
-        future = sum(1 for d in days if d > today.strftime("%Y-%m-%d"))
-        say(f"- offset={off}: 取得 {len(got)}件 / 全体 {res.get('total_count')}件 / first_position {res.get('first_position')} / 発売日 {days[0] if days else '-'}〜{days[-1] if days else '-'} / 未来の発売日 {future}件")
-    res1, _ = call("ItemList", dict(base, sort="rank", hits=100, offset=1, lte_date=lte))
-    res2, _ = call("ItemList", dict(base, sort="rank", hits=100, offset=101, lte_date=lte))
-    if res1 and res2:
-        a = {x.get("content_id") for x in res1.get("items") or []}
-        b = {x.get("content_id") for x in res2.get("items") or []}
-        say(f"- 1〜100本目と101〜200本目の重なり: {len(a & b)}件（0なら、offset で続きを取れている）")
+    pool = []
+    for label, extra in (("人気順 1〜300本目", [dict(sort="rank", offset=o, lte_date=lte) for o in (1, 101, 201)]),
+                         ("最近30日の発売の人気順 1〜100本目", [dict(sort="rank", gte_date=(today - timedelta(days=30)).strftime(fmt), lte_date=lte)]),
+                         ("新しい順 1〜100本目", [dict(sort="date", lte_date=lte)])):
+        got = []
+        for ex in extra:
+            res, err = call("ItemList", dict(base, hits=100, **ex))
+            if err:
+                say(f"- {label}: ❌ {err}")
+                continue
+            got += res.get("items") or []
+        pool += got
+        camp = [x for x in got if x.get("campaign")]
+        disc = []
+        for x in got:
+            pr = x.get("prices") or {}
+            try:
+                if pr.get("list_price") and pr.get("price") and int(str(pr["price"]).rstrip("~").replace(",", "")) < int(str(pr["list_price"]).replace(",", "")):
+                    disc.append(x)
+            except ValueError:
+                pass
+        say(f"- {label}: {len(got)}件 / campaign あり {len(camp)}件 / prices の price が list_price より安い {len(disc)}件")
+    if pool:
+        say("- prices の形（1件目）: " + shape(pool[0].get("prices")))
+        say("- prices の値（1件目）: " + json.dumps(pool[0].get("prices"), ensure_ascii=False)[:300])
+        camp = [x for x in pool if x.get("campaign")]
+        if camp:
+            say("- campaign の形: " + shape(camp[0].get("campaign")))
+            titles = {}
+            for x in camp:
+                for c in x.get("campaign") or []:
+                    if isinstance(c, dict):
+                        key = (str(c.get("title")), str(c.get("date_begin"))[:16], str(c.get("date_end"))[:16])
+                        titles[key] = titles.get(key, 0) + 1
+            for (t, b_, e_), n in sorted(titles.items(), key=lambda kv: -kv[1])[:12]:
+                say(f"  - 「{t[:40]}」 {b_}〜{e_}: {n}件")
+            ex = camp[0]
+            say("- campaign のある作品の prices（例）: " + json.dumps(ex.get("prices"), ensure_ascii=False)[:300])
+        else:
+            say("- campaign のある作品は見つからず")
+        keys = sorted({k for x in pool for k in x})
+        say("- ItemList の項目名（全部）: " + ", ".join(keys))
 
     say("\n## 1) ItemList（新しい作品）の項目")
     res, err = call("ItemList", dict(base, sort="date", hits=20, gte_date=(today - timedelta(days=3)).strftime(fmt), lte_date=today.replace(hour=23, minute=59, second=59).strftime(fmt)))
