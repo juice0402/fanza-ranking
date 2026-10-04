@@ -336,6 +336,30 @@ small = {x["cid"]: good_comment(x, i) + "サンプル画像は12枚です。" fo
 r = run("apply", write_comments("small.json", small), "--dry-run")
 check("5本以下のときは数えない（毎日の少ない本数で、書けなくならないように）", r.returncode == 0, r.stdout + r.stderr)
 
+print("\n■ 同じことの言い直し（水増し）を断る・決まり文句を使いすぎない（2回目の試運転で見つかったもの）")
+fresh_data()
+one = templates[0]
+padded = good_comment(one, 0) + "長めの作品を探す方に向いています。長めの作品を探す方にも向いています。"
+r = run("apply", write_comments("padded.json", {one["cid"]: padded}), "--dry-run")
+check("1つのコメントに、ほぼ同じ文が2回あると断る", r.returncode == 1 and "同じ内容の文が2回" in r.stdout, r.stdout)
+check("repeated_sentence: 言い直しの部分を返す・ちがう文なら空", cc_mod.repeated_sentence("短時間なので、気軽に内容を確かめたい方に。短時間なので、気軽に確かめられます。").startswith("短時間なので、気軽に")
+      and cc_mod.repeated_sentence("職場の先輩とのドライブから始まる一本です。〇〇さんが出演する作品で、収録は約246分です。") == "")
+names = {x["cid"]: good_comment(x, i) + "メーカーの名前からも、別の作品を探せます。" for i, x in enumerate(templates[:7])}
+r = run("apply", write_comments("names.json", names), "--dry-run")
+check("「名前から」のような決まり文句が3本に1本より多いと断る", r.returncode == 1 and "「名前から」を使ったコメント" in r.stdout, r.stdout)
+
+print("\n■ --rewrite（仕上げ済みのコメントを直すときだけ）")
+fresh_data()
+final = finals[0]
+fixed = good_comment(final, 1)
+r = run("apply", write_comments("fix.json", {final["cid"]: fixed}), "--today", "2026-11-02")
+check("ふだんは、仕上げ済みのコメントを上書きしない", r.returncode == 1 and "上書きしません" in r.stdout, r.stdout)
+r = run("apply", write_comments("fix.json", {final["cid"]: fixed}), "--today", "2026-11-02", "--rewrite")
+after = {x["cid"]: x for x in read_data()}
+check("--rewrite なら書き直せる（点検は同じ・更新日も進む）", r.returncode == 0 and after[final["cid"]]["comment"] == fixed and after[final["cid"]]["updated"] == "2026-11-02", r.stdout + r.stderr)
+r = run("apply", write_comments("fix_bad.json", {final["cid"]: "短い文です。"}), "--rewrite", "--dry-run")
+check("--rewrite でも、点検に通らない文は書き込まない", r.returncode == 1 and "文字数" in r.stdout, r.stdout)
+
 print("\n■ 学校・子どもの生活を連想させる場面の言葉（試運転で「職業体験」「学園」「家庭教師」に触れたコメントがあったため）")
 for word in ("学園", "職業体験", "家庭教師", "放課後", "部活"):
     one = templates[0]

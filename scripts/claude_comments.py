@@ -18,6 +18,7 @@ Gemini が書けなかった作品は、定型文（comment_kind: template）の
 書き込んだコメントは comment_kind を "claude" にし、その作品の updated（更新日）を今日（日本時間）にします
 （サイトのフッターの「ひとことコメントは…自動で作成」の注記の対象。sitemap の lastmod にも使われます）。
 Claude が仕上げたコメント（"claude"）は上書きしません（発売日をすぎて、予約の言い方が残っているものだけは書き直します）。
+直す必要が見つかったときだけ、apply --rewrite で書き直せます（毎日の予約タスクでは使わない）。
 """
 import argparse
 import json
@@ -58,7 +59,10 @@ HYPE_WORDS = ["待望", "話題", "熱い視線", "高い関心", "期待が高�
 AVOID_PHRASES = ["気になる方は", "チェック", "ぜひ", "いまのうちに", "お早めに", "お見逃しなく", "おすすめ"]
 # まとめて書くときに、3本に1本より多く使うと断る言い回し（どのコメントも「サンプル動画と12枚の画像で雰囲気を確かめられます」で終わる、
 # 型どおりの文章になってしまうため。2026-10-04 の試運転で、40本ほぼすべてがこの結びだった）。6本以上まとめて書くときだけ数える
-REPEAT_LIMIT_PHRASES = ["サンプル", "雰囲気を確かめ", "雰囲気をつかめ", "雰囲気を見られ", "様子を確かめ", "様子を見られ", "公開されています", "用意されています"]
+REPEAT_LIMIT_PHRASES = ["サンプル", "雰囲気を確かめ", "雰囲気をつかめ", "雰囲気を見られ", "様子を確かめ", "様子を見られ", "公開されています", "用意されています",
+                        # 2回目の試運転で、文字数を満たすための決まり文句になっていたもの（40本中14本が「名前から…探せます」）
+                        "名前から", "向いています"]
+SAME_SENTENCE_RUN = 10  # 1つのコメントの中で、2つの文がこの文字数以上つづけて同じなら、同じことの言い直し（水増し）として断る（「確かめられます。」のような短い語尾の一致は数えない）
 # 発売日をすぎると古くなる言い方（予約中の作品に書いたコメントが、発売後も「予約受付中」のまま残らないように探す）
 STALE_STATUS = re.compile(r"予約|発売予定|発売前|発売を前に|発売に向けて|発売日を待|発売まで|リリース前|リリースを前に|リリースへ向け|待ちきれ|まもなく|近日")
 
@@ -287,7 +291,26 @@ def comment_problems(comment, item):
         problems.append(f"タイトルの言葉をそのまま写しています（「{copied}」。内容は、自分の言葉で、やわらかく言いかえてください）")
     if text == (item.get("comment") or "").strip():
         problems.append("いまのコメントと同じです")
+    repeated = repeated_sentence(text)
+    if repeated:
+        problems.append(f"同じ内容の文が2回入っています（「{repeated}」）。言い直して文字数を増やさず、事実（ジャンル・形式・発売日・収録時間など）を1つ足してください")
     return problems
+
+
+def repeated_sentence(text, run=SAME_SENTENCE_RUN):
+    """1つのコメントの中で、2つの文に run 文字以上つづけて同じところがあれば、その部分を返す（なければ ""）。
+    2回目の試運転で「長めの作品を探す方に向いています。長めの作品を探す方にも向いています。」のような水増しがあったため"""
+    sentences = [x for x in re.split(r"(?<=[。！？])", text) if x.strip()]
+    for a in range(len(sentences)):
+        for b in range(a + 1, len(sentences)):
+            x, y = sentences[a], sentences[b]
+            for i in range(len(x) - run + 1):
+                if x[i:i + run] in y:
+                    j = i + run
+                    while j < len(x) and x[i:j + 1] in y:
+                        j += 1
+                    return x[i:j]
+    return ""
 
 
 def read_comments_file(path):
@@ -329,7 +352,7 @@ def cmd_apply(args):
         if item is None:
             errors.append((cid, ["保存データにない cid です"]))
             continue
-        if item.get("comment_kind") == FINAL_KIND and not stale_status_word(item, stamp):
+        if item.get("comment_kind") == FINAL_KIND and not stale_status_word(item, stamp) and not args.rewrite:
             errors.append((cid, ["Claude が仕上げたコメントが、すでに付いています（上書きしません。書き直せるのは、定型文・Gemini の下書き・発売日をすぎて予約の言い方が残っているものだけ）"]))
             continue
         problems = comment_problems(comment, item)
@@ -409,6 +432,8 @@ def main():
     p_apply = sub.add_parser("apply", help="コメントを点検して書き込む")
     p_apply.add_argument("file", help='{"cid": "コメント"} の形のJSONファイル')
     p_apply.add_argument("--dry-run", action="store_true", help="点検だけして書き込まない")
+    p_apply.add_argument("--rewrite", action="store_true",
+                         help="Claude が仕上げたコメントも書き直す（運営者に頼まれたときや、見直しで問題が見つかった文を直すときだけ。毎日の予約タスクでは使わない）")
     p_apply.add_argument("--today", help="更新日に入れる日付 YYYY-MM-DD（テスト用。省略すると日本時間の今日）")
     p_apply.set_defaults(func=cmd_apply)
 
