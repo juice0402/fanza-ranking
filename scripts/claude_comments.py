@@ -64,7 +64,9 @@ REPEAT_LIMIT_PHRASES = ["サンプル", "雰囲気を確かめ", "雰囲気を�
                         "名前から", "向いています"]
 SAME_SENTENCE_RUN = 10  # 1つのコメントの中で、2つの文がこの文字数以上つづけて同じなら、同じことの言い直し（水増し）として断る（「確かめられます。」のような短い語尾の一致は数えない）
 # 発売日をすぎると古くなる言い方（予約中の作品に書いたコメントが、発売後も「予約受付中」のまま残らないように探す）
-STALE_STATUS = re.compile(r"予約|発売予定|発売前|発売を前に|発売に向けて|発売日を待|発売まで|リリース前|リリースを前に|リリースへ向け|待ちきれ|まもなく|近日")
+# 「発売されます」「出ます」「控えています」のような、これから先のことを言う言い方も、発売日をすぎると古くなる（2026-10-04 に追加。予約の作品は「11月1日発売」のように日付で書く）
+STALE_STATUS = re.compile(r"予約|発売予定|発売前|発売を前に|発売に向けて|発売日を待|発売まで|リリース前|リリースを前に|リリースへ向け|待ちきれ|まもなく|近日|"
+                          r"発売されます|発売になります|出ます|控えて")
 
 # 同意の無い場面・薬・嫌がらせなどの設定を表す言葉。タイトルにあっても見せる（フィクションの設定として、落ち着いた言葉で内容を書く。
 # list で fiction_theme: true を付ける）。2026-10-04 夕方まではタイトルごと見せていなかったが、運営者の希望で内容を書くようにした
@@ -220,14 +222,33 @@ def stale_status_word(item, today):
 
 def pending_items(items, today=None):
     """書く対象の作品: Claude がまだ仕上げていないもの（定型文・Gemini の下書き）と、
-    発売日をすぎたのに予約の言い方が残っているもの"""
+    発売日をすぎたのに予約・これから先の言い方が残っているもの、仕上げたあとに情報が増えたもの（info_added）"""
     today = today or jst_today()
-    return [x for x in items if x.get("comment_kind") != FINAL_KIND or stale_status_word(x, today)]
+    return [x for x in items if x.get("comment_kind") != FINAL_KIND or stale_status_word(x, today) or info_added(x)]
+
+
+def info_added(item):
+    """仕上げたあとに、作品の情報が増えて、コメントが追いついていないときの理由（なければ ""）。
+    ・出演者が載ったのに、コメントに出演者の名前が1人も入っていない（「出演者名は載っていません」と書いたままなど）
+    ・収録時間・ジャンルが加わって「事実が少ない作品」でなくなったのに、コメントが短いまま（事実が少ないときの80文字で書いたもの）
+    予約のうちに書いたコメントを、発売前後に増えた情報で書き直すため（2026-10-04 に追加）"""
+    if item.get("comment_kind") != FINAL_KIND:
+        return ""
+    text = item.get("comment") or ""
+    names = [n for n in (item.get("actress") or []) if n]
+    if names and not any(n in text for n in names):
+        return "出演者が載った"
+    if len(text.strip()) < min_length_for(item):
+        return "情報が増えた"
+    return ""
 
 
 def pending_reason(item, today):
     if stale_status_word(item, today):
         return "予約の言い方が残っている"
+    added = info_added(item)
+    if added:
+        return added
     if item.get("comment_kind") == DRAFT_KIND:
         return "下書きを仕上げる"
     return "定型文"
@@ -413,8 +434,8 @@ def cmd_apply(args):
         if item is None:
             errors.append((cid, ["保存データにない cid です"]))
             continue
-        if item.get("comment_kind") == FINAL_KIND and not stale_status_word(item, stamp) and not args.rewrite:
-            errors.append((cid, ["Claude が仕上げたコメントが、すでに付いています（上書きしません。書き直せるのは、定型文・Gemini の下書き・発売日をすぎて予約の言い方が残っているものだけ）"]))
+        if item.get("comment_kind") == FINAL_KIND and not stale_status_word(item, stamp) and not info_added(item) and not args.rewrite:
+            errors.append((cid, ["Claude が仕上げたコメントが、すでに付いています（上書きしません。書き直せるのは、定型文・Gemini の下書き・発売日をすぎて予約やこれから先の言い方が残っているもの・仕上げたあとに出演者や情報が増えたものだけ）"]))
             continue
         problems = comment_problems(comment, item)
         if problems:
