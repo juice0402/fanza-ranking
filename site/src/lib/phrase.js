@@ -166,7 +166,7 @@ export function namesPattern(names) {
 
 /** この長さ（文字数）以下の名前は、<span class="nb">（white-space: nowrap）で包み、まったく改行しない（「S-Cute」の「-」のあとや、「犬/妄想族」の「/」のあとでも）。
  * 長い名前は包まない（狭い画面ではみ出さないように。区切りの <wbr> を入れないだけ） */
-export const NOWRAP_MAX = 12;
+export const NOWRAP_MAX = 10;
 
 // HTMLの文字参照（&amp; &#39; &#x27; など）。1文字として扱い、途中で区切らない
 const ENTITY = /&(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);/g;
@@ -187,17 +187,19 @@ export function phraseText(htmlText, namesRe = null) {
   const refs = core.match(ENTITY) || [];
   const plain = core.replace(ENTITY, '￼');
   const phrases = splitPhrases(plain, namesRe);
-  let r = 0;
-  const restored = phrases.map((p) => p.replace(/￼/g, () => refs[r++]));
   // 空白のあとには、<wbr> は要らない（空白で、もともと改行できる）
-  const body = restored.map((p, i) => (i === 0 || /\s$/.test(restored[i - 1]) ? p : '<wbr>' + p)).join('');
-  return `${lead}<span class="ph">${glueTilde(wrapNames(body, namesRe))}</span>${tail}`;
+  const body = phrases.map((p, i) => (i === 0 || /\s$/.test(phrases[i - 1]) ? p : '<wbr>' + p)).join('');
+  // 「～」をくっつけてから、名前を包む（文字参照は、まだ ￼ のまま。名前が「amp」などでも、文字参照の中を包まないように）。最後に文字参照を戻す
+  let r = 0;
+  const html = wrapNames(glueTilde(body), namesRe).replace(/￼/g, () => refs[r++]);
+  return `${lead}<span class="ph">${html}</span>${tail}`;
 }
 
 /** 「～」「〜」の前では改行しない（「気持ちよ／～く」「オニごっこ／～集団」のように、行の頭に「～」が来るのを防ぐ）。
  * ブラウザは keep-all でも「～」の前で改行することがあるので、前の1文字（と、あいだの空白）と一緒に <span class="nb"> で包む */
 function glueTilde(html) {
-  return html.replace(/([^\s>;])(\s?)(?:<wbr>)?([～〜])/g, '<span class="nb">$1$2$3</span>');
+  // u フラグ: 絵文字など（4バイトの文字）を、半分に割らずに1文字として扱う。文字参照の代わりの ￼ と、タグの終わり（>）の直後は、くっつけない
+  return html.replace(/([^\s>￼])(\s?)(?:<wbr>)?([～〜])/gu, '<span class="nb">$1$2$3</span>');
 }
 
 /** 文字列の中の短い名前（NOWRAP_MAX 文字以下）を <span class="nb"> で包む（名前の中には <wbr> が無いので、そのまま探せる） */

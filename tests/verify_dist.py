@@ -689,6 +689,16 @@ check("全ページのフッターに、広告のくわしい文がある", not 
 check(f"全ページの18歳確認: 最初は隠れている・ダイアログ・「はい」「いいえ」・JavaScriptが無効のときの注意書き", not bad_gate, bad_gate[:3])
 check(f"全ページの「Powered by FANZA Webサービス」が、規約の指す先へのリンクになっている", not bad_credit, bad_credit[:3])
 check(f"全ページの <head>: 画面幅・OGP・Twitterカード・アイコン（ico / svg / apple-touch）", not bad_head, bad_head[:3])
+# 書体（Google Fonts）: 表示を止めないよう preload して、読み込み終わったら stylesheet に切り替える。JavaScript が無いときのための <noscript> の読み込みもある
+bad_fonts = []
+for p in pages:
+    html_ = read(p)
+    head_ = html_[: html_.find("</head>")]
+    pre = [t for t in tags(head_, "link") if t.get("rel") == "preload" and t.get("as") == "style" and str(t.get("href", "")).startswith("https://fonts.googleapis.com/css2?")]
+    ns = re.search(r'<noscript><link rel="stylesheet" href="https://fonts\.googleapis\.com/css2\?[^"]*"\s*/?></noscript>', head_)
+    if len(pre) != 1 or "this.rel='stylesheet'" not in pre[0].get("onload", "") or not ns or "wght@400;700" not in pre[0].get("href", ""):
+        bad_fonts.append(os.path.relpath(p, DIST))
+check("全ページの書体の読み込み: 表示を止めない形（preload → onload で stylesheet）＋ <noscript> の読み込み・太さは 400 と 700 だけ", not bad_fonts, bad_fonts[:3])
 check(f"全ページが lang=ja", not bad_lang, bad_lang[:3])
 check(f"全ページの画像に alt がある", not bad_alt, bad_alt[:3])
 check("FANZA/DMM への外部リンク（サンプル画像を拡大するリンクを除く）は、すべて広告の属性（sponsored nofollow noopener noreferrer）つき", not bad_ext, bad_ext[:3])
@@ -740,7 +750,7 @@ check("CSS: ふだん（ぼかしが使えない古いブラウザ）と「透�
 hdr = os.path.join(DIST, "_headers")
 htext = read(hdr) if os.path.isfile(hdr) else ""
 check("応答ヘッダーの設定（_headers）がある: nosniff・フレームへの埋め込み禁止（frame-ancestors）", "X-Content-Type-Options: nosniff" in htext and "frame-ancestors 'self'" in htext and re.search(r"^/\*\s*$", htext, re.M) is not None)
-check("応答ヘッダー: 名前にハッシュが付くファイル（/_astro/*）は長くキャッシュ（immutable）。名前が変わらないスクリプト・索引は短く", re.search(r"^/_astro/\*\s*\n\s+Cache-Control: public, max-age=31536000, immutable", htext, re.M) is not None and all(re.search(r"^/%s\s*\n\s+Cache-Control: public, max-age=600\s*$" % re.escape(os.path.basename(j)), htext, re.M) for j in glob.glob(os.path.join(DIST, "*.js"))))
+check("応答ヘッダー: 名前にハッシュが付くファイル（/_astro/*）は長くキャッシュ（immutable）。名前が変わらないスクリプト（/*.js）は、新しいページと食い違わないよう、長く置かない", re.search(r"^/_astro/\*\s*\n\s+Cache-Control: public, max-age=31536000, immutable", htext, re.M) is not None and not re.search(r"^/[^\n]*\.js\s*\n\s+Cache-Control", htext, re.M))
 
 
 print("\n■ サムネの切り取り・作品検索・「VR作品を隠す」")
@@ -1062,7 +1072,7 @@ for p in html_files:
 check("出演者名・メーカー名の途中に、文節の区切り（<wbr>）が入っていない", not split_names, split_names[:5])
 nb_rules = [body for sels, body in css_rules if ".nb" in sels]
 check("CSS: 短い名前の包み（.nb）は white-space: nowrap（途中で改行しない）", any(re.search(r"white-space\s*:\s*nowrap", b) for b in nb_rules), nb_rules[:1])
-nb_long = sorted({m.group(1) for p in html_files for m in NB_SPAN.finditer(read_raw(p)) if len(re.sub(r"(さん|ちゃん|様)$", "", m.group(1))) > 12})
+nb_long = sorted({m.group(1) for p in html_files for m in NB_SPAN.finditer(read_raw(p)) if len(re.sub(r"(さん|ちゃん|様)$", "", m.group(1))) > 10})
 check("改行しない包み（.nb）は、短い名前だけ（長いと、狭い画面ではみ出すため）", not nb_long, nb_long[:3])
 check("script・style・title・ボタン・コードなどの中には、区切りを入れていない", not ph_in_skip, ph_in_skip[:3])
 check(f"ほとんどのページ（9割以上）の日本語の文章に、文節の区切りが入っている（Astro の拡張が動いた証拠。{with_ph}/{len(html_files)}）", html_files and with_ph >= len(html_files) * 0.9, (with_ph, len(html_files)))

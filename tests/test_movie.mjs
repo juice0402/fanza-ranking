@@ -24,6 +24,7 @@ check('幅が分からない（0・負・数字でない・NaN・Infinity）と�
 console.log('\n■ 再生ボタンを押したときに入れる、再生ページのURL');
 check('FANZA(DMM) の https のURLは、そのまま使う', safeMovieUrl('https://www.dmm.co.jp/litevideo/-/part/=/cid=a/size=476_306/') === 'https://www.dmm.co.jp/litevideo/-/part/=/cid=a/size=476_306/' && safeMovieUrl('https://dmm.co.jp/x') === 'https://dmm.co.jp/x');
 check('ほかのホスト・似せたホスト・http・javascript: ・空は使わない', ['https://evil.example/x', 'https://dmm.co.jp.evil.example/x', 'https://evildmm.co.jp/x', 'https://www.dmm.co.jp:@evil.example/x', 'http://www.dmm.co.jp/x', 'javascript:alert(1)', '', null, 5].every((u) => safeMovieUrl(u) === ''));
+check('バックスラッシュ・空白でホストを偽る形も使わない', ['https://evil.example\\.dmm.co.jp/x', 'https://evil.example .dmm.co.jp/x', 'https://www.dmm.co.jp/a b'].every((u) => safeMovieUrl(u) === ''));
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

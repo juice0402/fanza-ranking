@@ -78,7 +78,8 @@ a {
 }
 
 a:focus-visible,
-button:focus-visible {
+button:focus-visible,
+summary:focus-visible {
   outline: 3px solid var(--pop);
   outline-offset: 2px;
 }
@@ -173,7 +174,7 @@ button:focus-visible {
   flex-wrap: wrap;
   gap: 0 16px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .site-nav-link {
@@ -216,9 +217,9 @@ button:focus-visible {
   overflow-wrap: break-word; /* anywhere に対応していない古いブラウザ向け */
   overflow-wrap: anywhere;
 }
-/* 短い出演者名・メーカー名（12文字まで）は、途中で改行しない（「S-Cute」の「-」のあと・「犬/妄想族」の「/」のあとでも）。phrase.js が包む */
+/* 短い出演者名・メーカー名（10文字まで）は、途中で改行しない（「S-Cute」の「-」のあと・「犬/妄想族」の「/」のあとでも）。phrase.js が包む */
 .nb {
-  white-space: nowrap;
+  white-space: nowrap; /* 10文字まで（狭いスマホ 320px の2列のカードでも、はみ出さない長さ）。inline-block にすると、前後で語の途中の改行が起きるので使わない */
 }
 
 .hero-lead {
@@ -869,8 +870,30 @@ button:focus-visible {
   cursor: pointer;
 }
 
-.cast-more[open] .cast-more-toggle {
+/* たためる欄（details）の開け閉めの印は、ブラウザごとの違いをなくして、自前の「▸」にそろえる（開くと下向き） */
+.cast-more-toggle,
+.ws-filters-toggle {
+  list-style: none;
+}
+
+.cast-more-toggle::-webkit-details-marker,
+.ws-filters-toggle::-webkit-details-marker {
   display: none;
+}
+
+.cast-more-toggle::before,
+.ws-filters-toggle::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--paper-dim);
+  text-decoration: none;
+  transition: transform 0.15s;
+}
+
+.cast-more[open] > .cast-more-toggle::before,
+.ws-filters[open] > .ws-filters-toggle::before {
+  transform: rotate(90deg);
 }
 
 /* 月ごとのページの、前の月・次の月 */

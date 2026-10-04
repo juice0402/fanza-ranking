@@ -242,7 +242,8 @@ WRITTEN_KINDS = ("ai", "claude")  # 文章が書かれている（定型文で�
 
 
 def strip_wrapping(text):
-    """全体が「…」や "…" で囲まれていれば、その囲みだけを外す（文の途中の「」は残す）"""
+    """全体が「…」や "…" で囲まれていれば、その囲みだけを外す（文の途中の「」は残す）。
+    対になる相手が無い、はじめの「・終わりの」（片方だけのかっこ）も外す"""
     pairs = (("「", "」"), ("『", "』"), ('"', '"'), ("'", "'"))
     changed = True
     while changed and len(text) >= 2:
@@ -251,6 +252,12 @@ def strip_wrapping(text):
             inner = text[len(left):-len(right)]
             if text.startswith(left) and text.endswith(right) and left not in inner and right not in inner:
                 text = inner.strip()
+                changed = True
+            elif left != right and text.startswith(left) and right not in text:
+                text = text[len(left):].strip()
+                changed = True
+            elif left != right and text.endswith(right) and left not in text:
+                text = text[:-len(right)].strip()
                 changed = True
     return text
 
@@ -597,8 +604,13 @@ def apply_fresh(old, fresh, today_str):
     if fresh_day and fresh_day != old_day:
         old["date"] = fresh["date"]  # 発売日の延期・前倒し（トップの「発売中/予約」・カレンダー・月のページに使う）
         changed.append("date")
-        # コメントに古い発売日（例: 11月1日）が書いてあれば、間違いになるので定型文に戻す（その日のうちに Claude が書き直す）
-        if old_day and old.get("comment_kind") in WRITTEN_KINDS and f"{int(old_day[5:7])}月{int(old_day[8:10])}日" in (old.get("comment") or ""):
+        # コメントに古い発売日（例: 11月1日。「11月1日」の中の「1月1日」は別の日として扱う）が書いてあれば、間違いになる。
+        # 文章のコメントは定型文に戻し（その日のうちに Claude が書き直す）、定型文は新しい発売日で作り直す
+        old_date_re = re.compile(rf"(?<![0-9０-９]){int(old_day[5:7])}月{int(old_day[8:10])}日") if old_day else None
+        if old.get("comment_kind") == "template":
+            old["comment"] = template_comment(old)
+            changed.append("comment")
+        elif old_date_re and old.get("comment_kind") in WRITTEN_KINDS and old_date_re.search(old.get("comment") or ""):
             old["comment"] = template_comment(old)
             old["comment_kind"] = "template"
             changed.append("comment")

@@ -90,6 +90,9 @@ const trail = [
             },
             function () {
               button.textContent = 'コピーできませんでした';
+              setTimeout(function () {
+                button.textContent = 'アドレスをコピー';
+              }, 2000);
             }
           );
         });

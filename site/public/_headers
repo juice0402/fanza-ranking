@@ -10,22 +10,6 @@
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
 
-# 名前が変わらないスクリプト・検索の索引は、10分だけ置く（更新したときに、古いものが長く残らないように）
-/actress-search.js
-  Cache-Control: public, max-age=600
-/favorites.js
-  Cache-Control: public, max-age=600
-/lightbox.js
-  Cache-Control: public, max-age=600
-/movie.js
-  Cache-Control: public, max-age=600
-/search.js
-  Cache-Control: public, max-age=600
-/vr-filter.js
-  Cache-Control: public, max-age=600
-/data/*
-  Cache-Control: public, max-age=600
-
 # アイコン（めったに変わらない）は1週間
 /favicon.ico
   Cache-Control: public, max-age=604800

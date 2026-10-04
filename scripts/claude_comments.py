@@ -139,12 +139,17 @@ def cmd_list(args):
     items = load_raw()
     today = args.today or jst_today()
     todo = pending_items(items, today)
-    # 発売済みを新しい順に、そのあとに予約を発売日の近い順に
-    released = sorted((x for x in todo if (x.get("date") or "")[:10] <= today),
-                      key=lambda x: (x.get("date") or "", x["cid"]), reverse=True)
-    upcoming = sorted((x for x in todo if (x.get("date") or "")[:10] > today),
-                      key=lambda x: (x.get("date") or "", x["cid"]))
-    shown = (released + upcoming)[: max(args.limit, 0)]
+    # 先に、急ぐもの（予約の言い方が残っている・定型文）、そのあとに Gemini の下書き。
+    # それぞれの中は、発売済みを新しい順に、そのあとに予約を発売日の近い順に
+    def ordered(rows):
+        released = sorted((x for x in rows if (x.get("date") or "")[:10] <= today),
+                          key=lambda x: (x.get("date") or "", x["cid"]), reverse=True)
+        upcoming = sorted((x for x in rows if (x.get("date") or "")[:10] > today),
+                          key=lambda x: (x.get("date") or "", x["cid"]))
+        return released + upcoming
+    urgent = [x for x in todo if pending_reason(x, today) != "下書きを仕上げる"]
+    drafts = [x for x in todo if pending_reason(x, today) == "下書きを仕上げる"]
+    shown = (ordered(urgent) + ordered(drafts))[: max(args.limit, 0)]
 
     safe = set(safe_genres_from_config())
     rows = []

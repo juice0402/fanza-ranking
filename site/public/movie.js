@@ -13,7 +13,7 @@
 
   // 再生ページのURLとして使ってよいか（FANZA(DMM) の https だけ）
   function safeMovieUrl(url) {
-    if (typeof url !== 'string' || !/^https:\/\//.test(url)) return '';
+    if (typeof url !== 'string' || !/^https:\/\//.test(url) || /[\\\s]/.test(url)) return ''; // バックスラッシュ・空白入りは使わない（ホストを偽る形）
     var host = url.slice(8).split(/[/?#]/)[0].toLowerCase();
     if (host.indexOf('@') >= 0 || host.indexOf(':') >= 0) return '';
     return host === 'dmm.co.jp' || /\.dmm\.co\.jp$/.test(host) ? url : '';

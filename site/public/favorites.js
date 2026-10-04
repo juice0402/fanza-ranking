@@ -317,7 +317,7 @@
     var meta = el('span', 'fav-row-meta ph-js', jpDate(item.d) + (cast.length ? '　' : ''));
     cast.forEach(function (name, i) {
       if (i > 0) meta.appendChild(document.createTextNode('、'));
-      meta.appendChild(el('span', name.length <= 12 ? 'nb' : '', name)); // 短い名前は、途中で改行しない
+      meta.appendChild(el('span', name.length <= 10 ? 'nb' : '', name)); // 短い名前は、途中で改行しない
     });
     body.appendChild(meta);
     link.appendChild(body);

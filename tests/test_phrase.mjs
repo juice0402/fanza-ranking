@@ -72,7 +72,10 @@ check('名前に正規表現の記号（. * + ( ) など）が入っていても
 check('ビルドで使う名前の一覧を、作品データから集められる（出演者・メーカー。「不明」は除く）', namesFromData().length > 20 && !namesFromData().includes('不明'));
 check('作品データが読めなければ、名前の一覧は空（ビルドは止めない）', namesFromData(new URL('file:///no/such/file.json')).length === 0);
 
-check('12文字の名前（ケイ・エム・プロデュース）も包む（「・」のあとでブラウザが改行しないように）', phraseHtml('<p>ケイ・エム・プロデュースの新作です。</p>', re).includes('<span class="nb">ケイ・エム・プロデュース</span>'));
+check('10文字より長い名前（ケイ・エム・プロデュース）は包まない（狭い画面ではみ出さないように）が、途中に <wbr> は入れない', !phraseHtml('<p>ケイ・エム・プロデュースの新作です。</p>', re).includes('<span class="nb">ケイ') && !phraseHtml('<p>ケイ・エム・プロデュースの新作です。</p>', re).includes('ケイ・<wbr>'));
+check('文字参照（&amp; など）の中は、名前として包まない（名前が「amp」でも）', phraseHtml('<p>A&amp;Bの新作です。ampの作品です。</p>', namesPattern(['amp'])).includes('A&amp;B') && unphraseHtml(phraseHtml('<p>A&amp;Bの新作です。ampの作品です。</p>', namesPattern(['amp']))) === '<p>A&amp;Bの新作です。ampの作品です。</p>');
+check('絵文字のあとの「～」も、文字を壊さない', !/[\ud800-\udbff](?![\udc00-\udfff])/.test(phraseHtml('<p>美少女の作品です💕～最高の一本</p>')) && unphraseHtml(phraseHtml('<p>美少女の作品です💕～最高の一本</p>')) === '<p>美少女の作品です💕～最高の一本</p>');
+check('名前の中の「～」でも、包みが入れ子にならず、2回かけても同じ', (() => { const r2 = namesPattern(['まりん～']); const h = phraseHtml('<p>出演はまりん～さんの新作です。</p>', r2); return !/<span class="nb">[^<]*<span/.test(h) && phraseHtml(h, r2) === h && unphraseHtml(h) === '<p>出演はまりん～さんの新作です。</p>'; })());
 const dates = splitPhrases('発売日は2026年10月3日から2026年11月3日です。収録時間は約246分で、3本あります。');
 check('日付・数字と単位は、途中で区切らない（「2026年11／月」「246／分」にしない）', ['2026年10月3日', '2026年11月3日', '約246分', '3本'].every((w) => dates.some((p) => p.includes(w))), JSON.stringify(dates));
 

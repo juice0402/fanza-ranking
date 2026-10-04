@@ -261,12 +261,12 @@
     return Number(day.slice(0, 4)) + '年' + Number(day.slice(5, 7)) + '月' + Number(day.slice(8, 10)) + '日';
   }
 
-  // 名前を並べる。短い名前（12文字まで）は、途中で改行しない（.nb）。ビルドの phrase.js と同じ考え方
+  // 名前を並べる。短い名前（10文字まで）は、途中で改行しない（.nb）。ビルドの phrase.js と同じ考え方
   function names(parent, list, sep, empty) {
     if (!list.length && empty) parent.appendChild(document.createTextNode(empty));
     list.forEach(function (name, i) {
       if (i > 0) parent.appendChild(document.createTextNode(sep));
-      parent.appendChild(el('span', name.length <= 12 ? 'nb' : '', name));
+      parent.appendChild(el('span', name.length <= 10 ? 'nb' : '', name));
     });
     return parent;
   }

@@ -108,12 +108,17 @@ check("収録時間（分）を出す。無いものは null", all((x["duration_
       and any(x["duration_min"] for x in out["items"]) and {x["cid"]: x["duration_min"] for x in out["items"]} == {t["cid"]: (t.get("duration_min") or None) for t in pending},
       {x["cid"]: x["duration_min"] for x in out["items"]})
 statuses = [x["status"] for x in out["items"]]
-check("発売済みが先、予約があと", statuses == sorted(statuses, key=lambda s: 0 if s == "発売済み" else 1), statuses)
+reasons = [x["reason"] for x in out["items"]]
+check("急ぐもの（定型文・予約の言い方が残っている）が先、Gemini の下書きがあと", reasons == sorted(reasons, key=lambda r: 1 if r == "下書きを仕上げる" else 0), reasons)
+for label, group in (("定型文", [x for x in out["items"] if x["reason"] != "下書きを仕上げる"]), ("下書き", [x for x in out["items"] if x["reason"] == "下書きを仕上げる"])):
+    st = [x["status"] for x in group]
+    check(f"{label}の中は、発売済みが先、予約があと", st == sorted(st, key=lambda s: 0 if s == "発売済み" else 1), st)
 check("--today を基準に 発売済み/予約 を分ける",
       all((x["status"] == "発売済み") == (x["date"] <= "2026-11-03") for x in out["items"]) and "予約" in statuses and "発売済み" in statuses,
       statuses)
-released_dates = [x["date"] for x in out["items"] if x["status"] == "発売済み"]
-upcoming_dates = [x["date"] for x in out["items"] if x["status"] == "予約"]
+tmpl_rows = [x for x in out["items"] if x["reason"] != "下書きを仕上げる"]
+released_dates = [x["date"] for x in tmpl_rows if x["status"] == "発売済み"]
+upcoming_dates = [x["date"] for x in tmpl_rows if x["status"] == "予約"]
 check("発売済みは新しい順、予約は発売日の近い順", released_dates == sorted(released_dates, reverse=True) and upcoming_dates == sorted(upcoming_dates))
 check("日付は YYYY-MM-DD", all(len(x["date"]) == 10 for x in out["items"]))
 # 作品の内容を表す日本語のタグ（タイトルの【…】由来）は、書き手に見せない

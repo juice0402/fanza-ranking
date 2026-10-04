@@ -597,12 +597,24 @@ it5 = json.loads(json.dumps(base_item))
 check("同じ日（時刻だけ違う）なら、発売日は変えない", af(it5, dict(fresh_item, date="2026-11-01 00:00:00", sample_images=[], duration_min=None, image_url=""), TODAY_STR) == [] and it5["updated"] == "2000-01-01")
 check("取り直しの発売日が空・変な形なら、発売日は変えない", af(json.loads(json.dumps(base_item)), dict(fresh_item, date="", sample_images=[], duration_min=None, image_url=""), TODAY_STR) == [])
 
+it6 = json.loads(json.dumps(base_item))
+it6["comment_kind"] = "template"
+it6["comment"] = mod.template_comment(it6)
+af(it6, dict(fresh_item, date="2026-11-21 10:00:00", sample_images=[], duration_min=None, image_url=""), TODAY_STR)
+check("定型文のコメントは、新しい発売日で作り直す（古い日付が残らない）", it6["comment"] == mod.template_comment(it6) and "11月21日" in it6["comment"] and "11月1日" not in it6["comment"], it6["comment"])
+it7 = json.loads(json.dumps(base_item))
+it7["date"] = "2026-01-01 10:00:00"
+it7["comment"] = "花子さん出演、11月1日に発売された一本です。メーカーの新作として紹介します。"
+af(it7, dict(fresh_item, date="2026-01-08 10:00:00", sample_images=[], duration_min=None, image_url=""), TODAY_STR)
+check("古い日付の照らし合わせは、日付の区切りを見る（「11月1日」の中の「1月1日」は、別の日）", it7["comment_kind"] == "claude", it7["comment_kind"])
+
 print("\n■ コメントの囲み記号の外し方（clean_comment）")
 cc = mod.clean_comment
 check("全体を囲む「」は外す", cc("「花子さん出演の新作です。」") == "花子さん出演の新作です。")
 check("文の頭の「新作」の「」は残す（片方だけ外して、とじかっこだけが残らない）", cc("「新作」として届いた一本です。") == "「新作」として届いた一本です。", cc("「新作」として届いた一本です。"))
 check("文の終わりの「」も残す", cc("出演は花子さん、作品名は「秘密」") == "出演は花子さん、作品名は「秘密」")
 check("全体を囲む \"…\" も外す", cc('"花子さん出演の新作です。"') == "花子さん出演の新作です。")
+check("片方だけのかっこ（はじめの「・終わりの」）も外す", cc("「花子さん出演の新作です。") == "花子さん出演の新作です。" and cc("花子さん出演の新作です。」") == "花子さん出演の新作です。")
 
 print("\n■ サンプル動画のURLの選び方")
 tm = mod  # 1回目に読み込んだスクリプト
