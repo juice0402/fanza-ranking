@@ -25,6 +25,8 @@ GitHub Actions（毎日 0:05 JST。日付が変わった直後）
   → main に commit → Cloudflare Pages が自動ビルド（Astro, 静的サイト）→ 公開
 
 Claude の予約タスク（毎日 0:20 JST。手順は docs/claude-comments.md）
+  → まず、今日の更新が済んでいるかを確かめる（scripts/already_updated.sh。GitHubの定時実行は数時間遅れることがある。
+    まだなら、更新を手動実行で動かして待つ。遅れて来た定時実行は、済んでいるのを見て何もしない＝Geminiを二重に使わない）
   → Gemini の下書き・定型文のままの作品と、発売日をすぎたのに「予約」の言い方が残る作品を、Claude が読み直して完成した文章（2〜3文・100〜160文字。内容にさらっと触れる）に書き上げる
     （comment_kind: claude。scripts/claude_comments.py。1回40件まで）
   → ブランチ+PR → CIが緑ならMerge → 公開
@@ -40,6 +42,7 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 |---|---|
 | `get_new_releases.py` | 毎日の更新スクリプト。Python標準ライブラリだけ（pip不要） |
 | `scripts/claude_comments.py` | Claude がコメントを書き上げるための道具（`list` で対象と下書き・使える事実を出し、`apply` で点検して書き込む。書いたものは `comment_kind: "claude"`。確かめられない評価・古くなる言い方・下書きと同じ文は断る）。標準ライブラリだけ |
+| `scripts/already_updated.sh` | 今日（日本時間）の「データ更新」が、もう記録に入っているかを調べる（済んでいれば 0）。毎日の更新の定時実行（遅れて来たときに二重に動かない）と、0:20 の予約タスク（更新が遅れていたら先に動かす）が使う |
 | `scripts/claude_roundups.py` | Claude が週のまとめ記事を書くための道具（`list` で週の作品データを出し、`apply` で点検して `roundups.json` に書き込む）。標準ライブラリだけ |
 | `site/` | サイト本体（Astro 7 / 静的出力）。Cloudflare Pages のビルド対象 |
 | `site/src/config.js` | **サイト名・URL・表示件数の設定はここだけ**（独自ドメイン化もここ）。月・ジャンルのページの最低本数と、ページを作るジャンルの一覧（`TAG_PAGE_GENRES`）もここ |
