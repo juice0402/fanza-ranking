@@ -64,6 +64,13 @@ MAX_API_FAILS_IN_ROW = 3    # 取り直し・プロフィールの取得で、�
 RANKING_ITEMS = 6           # 売れ筋ランキングの本数（画面に出すのは先頭3本。VR作品を隠したとき、次の順位から差し替えるために、多めに取っておく）
 ACTRESSES_PATH = os.environ.get("ACTRESSES_PATH", os.path.join(os.path.dirname(DATA_PATH), "actresses.json"))
 RANKING_PATH = os.environ.get("RANKING_PATH", os.path.join(os.path.dirname(DATA_PATH), "ranking.json"))
+# --- 女優検索の名簿（FANZA公式の出演者検索で、体型・身長・生年月日のどれかが載っている人を、一覧で集める）---
+DIRECTORY_PATH = os.environ.get("DIRECTORY_PATH", os.path.join(os.path.dirname(DATA_PATH), "actress_directory.json"))
+DIRECTORY_CALLS_PER_RUN = int(os.environ.get("DIRECTORY_CALLS", "40"))  # 1回の実行で一覧を取りに行く回数（1回100人。全部で約200回 → 5日ほどで一回り）
+DIRECTORY_PAGE = 100        # 一覧の1回の人数（APIの上限）
+# 一覧の絞り込み（順に一回りする）。2026-10-04 の調べ: バストあり 約8,800人・身長あり 約6,400人・生年月日あり 約5,000人（全体は約60,000人）
+DIRECTORY_FILTERS = ({"gte_bust": 1}, {"gte_height": 1}, {"gte_birthday": "1900-01-01"})
+ACTRESS_IMAGE_KEY = re.compile(r"^https://pics\.dmm\.co\.jp/mono/actjpgs/(?:thumbnail/)?([a-z0-9_]{1,60})\.jpg$")
 
 # --- コメントの書き分け ---
 # 作品ごとに「切り口」「書き出し」「結び」の組み合わせを決めてAIに頼む（同じ作品・同じ回数なら、いつも同じ組み合わせ）。
@@ -901,6 +908,111 @@ def update_profiles(state, archive, today_str):
 
 
 # ------------------------------------------------------------------
+# 女優検索の名簿（FANZA公式の出演者検索の一覧から。サイトに作品が無い人も、体型・身長・年齢で探せるようにする）
+# ------------------------------------------------------------------
+DIRECTORY_FIELDS = ("id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday")
+
+
+def directory_row(raw, today_str):
+    """出演者検索の1件 → 名簿の1行（保存する形）。体型・身長・生年月日のどれも無い人は None（検索の条件に使えないため、名簿に入れない）。
+    顔写真は、FANZAの画像のファイル名（例 hasumi_kurea）だけを持つ（URLは決まった形なので、サイト側で組み立てる）。
+    血液型・趣味・出身地は保存しない（clean_actress_entry と同じ決まり）"""
+    entry = clean_actress_entry(raw, today_str)
+    if not entry:
+        return None
+    m = ACTRESS_IMAGE_KEY.match(entry["image_small"] or entry["image_large"] or "")
+    row = {"id": entry["id"], "name": entry["name"], "ruby": entry["ruby"], "img": m.group(1) if m else "",
+           "bust": entry["bust"], "cup": entry["cup"], "waist": entry["waist"], "hip": entry["hip"], "height": entry["height"],
+           "birthday": entry["birthday"]}
+    if not any(row[k] for k in ("bust", "waist", "hip", "height", "birthday")):
+        return None
+    return row
+
+
+def load_directory(today_str):
+    """名簿 {"cursor": {"filter": 番号, "offset": 何人目から}, "cycle_done": 一回りした日, "rows": {id: 1行}} を読む。
+    壊れていて読めないときは None（名簿の更新だけをやめる。ファイルは上書きしない）"""
+    state = {"cursor": {"filter": 0, "offset": 1}, "cycle_done": "", "rows": {}}
+    if not os.path.exists(DIRECTORY_PATH):
+        return state
+    try:
+        with open(DIRECTORY_PATH, encoding="utf-8") as f:
+            raw = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"⚠️ 女優検索の名簿を読めませんでした（{e}）。上書きを防ぐため、名簿の更新はやめます")
+        return None
+    if not isinstance(raw, dict) or not isinstance(raw.get("rows"), list):
+        print("⚠️ 女優検索の名簿の形が違います。上書きを防ぐため、名簿の更新はやめます")
+        return None
+    cur = raw.get("cursor") if isinstance(raw.get("cursor"), dict) else {}
+    try:
+        fi, off = int(cur.get("filter", 0)), int(cur.get("offset", 1))
+    except (TypeError, ValueError):
+        fi, off = 0, 1
+    state["cursor"] = {"filter": fi if 0 <= fi < len(DIRECTORY_FILTERS) else 0, "offset": off if 1 <= off <= 50001 else 1}
+    state["cycle_done"] = day_key(raw.get("cycle_done"))
+    for r in raw["rows"]:
+        row = directory_row(dict(r, image_small=f"https://pics.dmm.co.jp/mono/actjpgs/thumbnail/{r.get('img')}.jpg" if isinstance(r, dict) and r.get("img") else ""), today_str) if isinstance(r, dict) else None
+        if row:
+            state["rows"].setdefault(row["id"], row)
+    return state
+
+
+def save_directory(state):
+    """名簿を書く。1人1行（毎日の差分が、変わった人の行だけになるように）。id の順"""
+    rows = sorted(state["rows"].values(), key=lambda r: int(r["id"]))
+    folder = os.path.dirname(DIRECTORY_PATH)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    head = {"cursor": state["cursor"], "cycle_done": state["cycle_done"]}
+    body = ",\n".join(json.dumps({k: r[k] for k in DIRECTORY_FIELDS}, ensure_ascii=False) for r in rows)
+    text = json.dumps(head, ensure_ascii=False)[:-1] + ', "rows": [\n' + body + "\n]}\n"
+    tmp_path = DIRECTORY_PATH + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(text)
+    os.replace(tmp_path, DIRECTORY_PATH)
+
+
+def update_directory(state, today_str, calls=None):
+    """出演者検索の一覧（DIRECTORY_FILTERS を順に、id の順に100人ずつ）を、続きから calls 回だけ取って、名簿に足す・更新する。
+    一つの絞り込みが終わったら次へ、最後まで行ったら最初に戻る（一回りした日を cycle_done に）。
+    続けて失敗したら、その回はやめる（続きの位置は進めない）。(呼んだ回数, 取れた人数, 新しく足した人数) を返す"""
+    calls = DIRECTORY_CALLS_PER_RUN if calls is None else calls
+    fi, off = state["cursor"]["filter"], state["cursor"]["offset"]
+    done = got = added = fails = 0
+    while done < calls:
+        params = dict(DIRECTORY_FILTERS[fi], sort="id", hits=DIRECTORY_PAGE, offset=off)
+        done += 1
+        try:
+            rows, total = call_actress_search(params)
+            fails = 0
+        except RuntimeError as e:
+            fails += 1
+            print(f"  ⚠️ 女優の一覧（{fi + 1}番目の絞り込み・{off}人目から）を取れませんでした: {e}")
+            if fails >= MAX_API_FAILS_IN_ROW:
+                print("  ⏸ 続けて失敗したので、今回の名簿の取得はやめます")
+                break
+            continue
+        time.sleep(DMM_INTERVAL_SEC)
+        for raw in rows:
+            row = directory_row(raw, today_str)
+            if not row:
+                continue
+            got += 1
+            if row["id"] not in state["rows"]:
+                added += 1
+            state["rows"][row["id"]] = row
+        if len(rows) < DIRECTORY_PAGE or (total is not None and off + DIRECTORY_PAGE > total) or off + DIRECTORY_PAGE > 50001:
+            fi, off = (fi + 1) % len(DIRECTORY_FILTERS), 1
+            if fi == 0:
+                state["cycle_done"] = today_str
+        else:
+            off += DIRECTORY_PAGE
+    state["cursor"] = {"filter": fi, "offset": off}
+    return done, got, added
+
+
+# ------------------------------------------------------------------
 # 売れ筋ランキング（FANZAの人気順の上位）
 # ------------------------------------------------------------------
 def fetch_ranking_from(raw_items):
@@ -1075,6 +1187,20 @@ def main():
     if profile_result:
         print(f"👤 出演者プロフィール: 新しく見つけた {profile_result[0]}人 / 取得 {profile_result[1]}人 / 名前で見つからなかった {profile_result[2]}人（保存中 {len(actress_state['actresses'])}人）")
 
+    # ---- 女優検索の名簿（FANZA公式の出演者検索の一覧。失敗しても、ほかの更新は止めない）----
+    directory = load_directory(today_str)
+    if directory is None:
+        print("::warning title=女優検索の名簿を読めませんでした::actress_directory.json が壊れています。名簿の更新はスキップしました（ファイルは変更していません）")
+
+    def directory_stage():
+        result = update_directory(directory, today_str)
+        save_directory(directory)
+        return result
+
+    directory_result = run_stage("女優検索の名簿の取得", directory_stage) if directory is not None and DIRECTORY_CALLS_PER_RUN > 0 else None
+    if directory_result:
+        print(f"📇 女優検索の名簿: 一覧を{directory_result[0]}回取得 / {directory_result[1]}人を確認・うち新しく{directory_result[2]}人（名簿 {len(directory['rows'])}人）")
+
     summary = [
         "### ✅ FANZAデータの取り直しの結果" if refresh_only else "### ✅ FANZA更新の結果",
         "",
@@ -1100,6 +1226,10 @@ def main():
         summary.append("- 出演者プロフィール: 保存データ（actresses.json）が壊れているため、更新をスキップ（ファイルは変更していません）")
     else:
         summary.append("- 出演者プロフィール: 取得できず（前回のまま）")
+    if directory_result:
+        summary.append(f"- 女優検索の名簿: {len(directory['rows'])}人（今回 一覧を{directory_result[0]}回取得・新しく{directory_result[2]}人。一回りした日: {directory['cycle_done'] or 'まだ'}）")
+    elif directory is None:
+        summary.append("- 女優検索の名簿: 保存データ（actress_directory.json）が壊れているため、更新をスキップ（ファイルは変更していません）")
     write_step_summary(summary)
 
 

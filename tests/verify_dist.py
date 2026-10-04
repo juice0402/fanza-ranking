@@ -408,20 +408,29 @@ print("\n■ 出演者検索（/actress/）")
 search_page = os.path.join(DIST, "actress", "index.html")
 idx_path = os.path.join(DIST, "data", "actresses-index.json")
 act_index = load_json(idx_path) if os.path.isfile(idx_path) else None
-check("出演者検索の索引（/data/actresses-index.json）がある・形が正しい", isinstance(act_index, dict) and isinstance(act_index.get("actresses"), list) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(act_index.get("generated", ""))), str(act_index)[:80])
+check("女優検索の索引（/data/actresses-index.json）がある・形が正しい（顔写真の置き場所・全作品のURLの形つき）",
+      isinstance(act_index, dict) and isinstance(act_index.get("actresses"), list) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(act_index.get("generated", "")))
+      and act_index.get("img") == "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/"
+      and (act_index.get("list") == "" or (str(act_index.get("list")).count("{ID}") == 1 and fanza_https(str(act_index.get("list")).replace("{ID}", "1"), FANZA_LINK))), str(act_index)[:120])
 rows = act_index["actresses"] if isinstance(act_index, dict) and isinstance(act_index.get("actresses"), list) else []
-ALLOWED_KEYS = {"n", "r", "s", "k", "i", "a", "h", "b", "c", "wa", "hi", "l"}
+ALLOWED_KEYS = {"n", "r", "id", "s", "k", "i", "a", "h", "b", "c", "wa", "hi", "l"}
+DIRECTORY = os.path.join(ROOT, "site", "src", "data", "actress_directory.json")
+dir_raw = load_json(DIRECTORY) if os.path.isfile(DIRECTORY) else None
+dir_ids = {str(r.get("id")) for r in (dir_raw.get("rows") if isinstance(dir_raw, dict) and isinstance(dir_raw.get("rows"), list) else []) if isinstance(r, dict)}
+profile_ids = {str(r.get("id")) for r in profiles.values()}
 page_slugs = {os.path.basename(os.path.dirname(pth)) for pth in actress_pages}
-row_names = [str(r.get("n")) for r in rows if isinstance(r, dict)]
-row_by_name = {str(r.get("n")): r for r in rows if isinstance(r, dict)}
-# 索引に載るのは「プロフィールを取得済みの人」＋「専用ページのある人（プロフィールが無くても、名前・作品数で探せるように）」。
-# 同じ名前で別人のプロフィールが2つあるとき（同名の別人）は、取り違えを避けて、プロフィールの側を載せない
-check("索引に、名前の重複が無い", len(row_names) == len(set(row_names)), len(row_names) - len(set(row_names)))
-check(f"索引の人数が、「プロフィール取得済み（{len(profiles)}人）＋専用ページのある出演者（{len(page_name_slug)}人）」の範囲に収まる", len(page_name_slug) <= len(rows) <= len(set(profiles) | set(page_name_slug)), (len(rows), len(profiles), len(page_name_slug)))
+row_by_name = {}
+for r in rows:
+    if isinstance(r, dict) and r.get("s"):
+        row_by_name[str(r.get("n"))] = r
+# 索引に載るのは「名簿（FANZA公式の出演者検索の一覧）」＋「プロフィールを取得済みの人」＋「専用ページのある人（プロフィールが無くても、名前・作品数で探せるように）」。
+# 同じ名前の別人は id が違う別の行（専用ページは、作品の出演者と同じ人の行にだけ付く）
+row_ids = [str(r.get("id")) for r in rows if isinstance(r, dict) and r.get("id")]
+check("索引に、同じ id の重複が無い・専用ページ（s）の重複も無い", len(row_ids) == len(set(row_ids)) and len([r for r in rows if isinstance(r, dict) and r.get("s")]) == len({r.get("s") for r in rows if isinstance(r, dict) and r.get("s")}))
 missing_page_rows = [n for n, slug in page_name_slug.items() if n not in row_by_name or row_by_name[n].get("s") != slug]
 check("専用ページのある出演者は、全員が索引にいて、s（ページの識別子）が実際のページと合っている", not missing_page_rows, missing_page_rows[:3])
-stray_rows = [n for n in row_names if n not in profiles and n not in page_name_slug]
-check("索引の全員が、プロフィールがあるか、専用ページがある（出どころの無い行が無い）", not stray_rows, stray_rows[:3])
+stray_rows = [r.get("n") for r in rows if isinstance(r, dict) and not (r.get("s") or str(r.get("id")) in dir_ids or str(r.get("id")) in profile_ids)]
+check(f"索引の全員が、名簿（{len(dir_ids)}人）・取得済みのプロフィール・専用ページのどれかにいる（出どころの無い行が無い）", not stray_rows, stray_rows[:3])
 
 
 def int_in(v, lo, hi):
@@ -431,29 +440,32 @@ def int_in(v, lo, hi):
 bad_rows = []
 for r in rows:
     here = []
-    if not isinstance(r, dict) or set(r) != ALLOWED_KEYS:
+    if not isinstance(r, dict) or not set(r) <= ALLOWED_KEYS or "n" not in r:
         bad_rows.append((str(r)[:60], ["項目が決まった形ではない"]))
         continue
     if not str(r["n"]).strip():
         here.append("名前が空")
-    if not (isinstance(r["k"], int) and r["k"] >= 0):
-        here.append("作品数が整数でない")
-    elif (r["s"] != "") != (r["k"] >= 2):
-        here.append("出演者ページの有無（s）が、作品数（2本以上）と合わない")
-    if r["s"] and (not re.fullmatch(r"[0-9a-f]{10}", str(r["s"])) or r["s"] not in page_slugs):
-        here.append("s のページが存在しない")
-    if r["i"] and not fanza_https(r["i"], DMM):
-        here.append("顔写真のURLが FANZA(DMM) の https ではない")
-    if r["l"] and not fanza_https(r["l"], FANZA_LINK):
+    if "id" in r and not re.fullmatch(r"\d{1,12}", str(r["id"])):
+        here.append("id が数字でない")
+    if "k" in r and not (isinstance(r["k"], int) and r["k"] >= 1):
+        here.append("作品数が1以上の整数でない")
+    if r.get("s") and (not re.fullmatch(r"[0-9a-f]{10}", str(r["s"])) or r["s"] not in page_slugs or r.get("k", 0) < 2):
+        here.append("s のページが存在しない・作品数が2本未満")
+    if r.get("i") and not (re.fullmatch(r"[a-z0-9_]{1,60}", str(r["i"])) or fanza_https(r["i"], DMM)):
+        here.append("顔写真が、ファイル名でも FANZA(DMM) の https でもない")
+    if r.get("l") and not fanza_https(r["l"], FANZA_LINK):
         here.append("全作品リンクが FANZA の https ではない")
-    if not (int_in(r["a"], 18, 80) and int_in(r["h"], 120, 210) and int_in(r["b"], 50, 160) and int_in(r["wa"], 40, 130) and int_in(r["hi"], 50, 160)):
+    if not (int_in(r.get("a"), 18, 80) and int_in(r.get("h"), 120, 210) and int_in(r.get("b"), 50, 160) and int_in(r.get("wa"), 40, 130) and int_in(r.get("hi"), 50, 160)):
         here.append("年齢・身長・サイズが範囲外")
-    if not (isinstance(r["c"], str) and re.fullmatch(r"[A-Z]?", r["c"])):
+    if "c" in r and not (isinstance(r["c"], str) and re.fullmatch(r"[A-Z]", r["c"])):
         here.append("カップが英字1文字でない")
+    if any(v is None or v == "" for v in r.values()):
+        here.append("値が空の項目が入っている（無い値は、項目ごと入れない）")
     if here:
         bad_rows.append((r.get("n"), here))
-check("索引の各項目: 決まった項目だけ・ページの有無が作品数と合う・URLがFANZAのhttps・数字が範囲内", not bad_rows, bad_rows[:3])
-check("索引は作品の多い順", all(rows[i]["k"] >= rows[i + 1]["k"] for i in range(len(rows) - 1)) if rows and all(isinstance(r, dict) and isinstance(r.get("k"), int) for r in rows) else True)
+check("索引の各項目: 決まった項目だけ・ページの有無が作品数と合う・URLがFANZAのhttps・数字が範囲内・空の項目なし", not bad_rows, bad_rows[:3])
+check("索引はこのサイトの作品の多い順", all(rows[i].get("k", 0) >= rows[i + 1].get("k", 0) for i in range(len(rows) - 1)) if rows and all(isinstance(r, dict) for r in rows) else True)
+check("索引の大きさが 3MB 以内（女優検索のページを開くたびにダウンロードされるため）", (not os.path.isfile(idx_path)) or os.path.getsize(idx_path) <= 3 * 1024 * 1024, os.path.getsize(idx_path) if os.path.isfile(idx_path) else 0)
 if os.path.isfile(search_page):
     stext = read(search_page)
     check("検索のスクリプト（actress-search.js）が公開されている", os.path.isfile(os.path.join(DIST, "actress-search.js")))
@@ -461,18 +473,20 @@ if os.path.isfile(search_page):
         section = [t for t in tags(stext, "section") if t.get("id") == "actress-search"]
         check("検索の部品がある（最初は隠れていて、索引のURLを持つ）", bool(section) and "hidden" in section[0] and section[0].get("data-index") == "/data/actresses-index.json" and 'src="/actress-search.js"' in stext, section[:1])
         names = {t.get("name") for tag in ("input", "select") for t in tags(stext, tag)}
-        need = {"text", "age", "height", "bust", "cup", "waist", "hip", "sort"}
-        check("検索の入力欄が揃っている（名前・年齢・身長・バスト・カップ・ウエスト・ヒップ・並び順）", need <= names, sorted(need - names))
+        need = {"q", "cup", "site", "face", "sort"} | {f"{k}_{e}" for k in ("age", "height", "bust", "waist", "hip") for e in ("min", "max")}
+        check("検索の入力欄が揃っている（名前・年齢/身長/バスト/ウエスト/ヒップの下限と上限・カップ・このサイトの作品・顔写真・並び順）", need <= names, sorted(need - names))
         values = [t.get("value", "") for t in tags(stext, "option")]
-        bad_values = [v for v in values if not re.fullmatch(r"|\d{0,3}-\d{0,3}|[A-Z]\+?|works|name", v)]
-        check("選択肢の値が、スクリプトの読める形（20-24 / -19 / 40- / D / K+）だけ", not bad_values, bad_values[:5])
+        bad_values = [v for v in values if v not in ("works", "bust", "cup", "young", "old", "tall", "short", "waist", "hip", "newest", "name")]
+        check("並び順の値が、スクリプトの読める形だけ", not bad_values and len(values) == 11, bad_values[:5])
+        cup_values = [t.get("value") for t in tags(stext, "input") if t.get("name") == "cup"]
+        check("カップの選択肢: A〜K と L以上（L+）", cup_values == list("ABCDEFGHIJK") + ["L+"], cup_values)
         ids = {t.get("id") for tag in ("ul", "p", "button", "section") for t in tags(stext, tag)}
         check("検索結果の表示先（#as-list・#as-count・#as-more・#as-note）がある", {"as-list", "as-count", "as-more", "as-note"} <= ids, sorted({"as-list", "as-count", "as-more", "as-note"} - ids))
     else:
         check("索引が空のときは、検索の部品を出さない", 'id="actress-search"' not in stext and 'src="/actress-search.js"' not in stext)
     static_rows = len([t for t in tags(stext, "li") if has_class(t, "actress-row")])
     check(f"JavaScriptが使えないとき用の一覧に、専用ページのある出演者が全員いる（{len(actress_pages)}人）", static_rows == len(actress_pages) and any(t.get("id") == "actress-static" for t in tags(stext, "section")), (static_rows, len(actress_pages)))
-    check("検索の注意書き（載っていない人は絞り込みで外れる・データのある人数）が、ページにある", (not rows) or ("結果に出ません" in stext and "調べ済み" in stext))
+    check("検索の注意書き（載っていない人は絞り込みで外れる・データのある人数・FANZA公式のデータ）が、ページにある", (not rows) or ("結果に出ません" in stext and "いま探せる" in stext and "FANZA公式" in stext))
 
 print("\n■ 売れ筋ランキング（トップページ）")
 rk_raw = load_json(RANKING) if os.path.isfile(RANKING) else None

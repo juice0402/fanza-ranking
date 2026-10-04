@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import Face from '../../components/Face.astro';
-import { actressGroups, actressSearchIndex, profilesByName, profilesCoverage } from '../../lib/data.js';
+import { actressGroups, actressSearchIndex, actressIndexCoverage, profilesByName } from '../../lib/data.js';
 import { ACTRESS_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
 import { ACTRESS_SEARCH_INDEX_PATH, compactSpec, faceUrl } from '../../lib/profiles.js';
 
@@ -11,17 +11,31 @@ const trail = [
   { name: '女優検索', path: ACTRESS_INDEX_PATH },
 ];
 const hasSearch = actressSearchIndex.actresses.length > 0;
-const cov = profilesCoverage;
+const cov = actressIndexCoverage;
+const fmt = (n) => n.toLocaleString('ja-JP');
 
-// 絞り込みの選択肢（値は「最小-最大」。-19 は19まで、40- は40から）
-const RANGES = {
-  age: { label: '年齢', options: [['-19', '〜19歳'], ['20-24', '20〜24歳'], ['25-29', '25〜29歳'], ['30-34', '30〜34歳'], ['35-39', '35〜39歳'], ['40-', '40歳〜']] },
-  height: { label: '身長', options: [['-149', '〜149cm'], ['150-154', '150〜154cm'], ['155-159', '155〜159cm'], ['160-164', '160〜164cm'], ['165-169', '165〜169cm'], ['170-', '170cm〜']] },
-  bust: { label: 'バスト', options: [['-79', '〜79cm'], ['80-84', '80〜84cm'], ['85-89', '85〜89cm'], ['90-94', '90〜94cm'], ['95-99', '95〜99cm'], ['100-', '100cm〜']] },
-  waist: { label: 'ウエスト', options: [['-54', '〜54cm'], ['55-57', '55〜57cm'], ['58-60', '58〜60cm'], ['61-64', '61〜64cm'], ['65-', '65cm〜']] },
-  hip: { label: 'ヒップ', options: [['-79', '〜79cm'], ['80-84', '80〜84cm'], ['85-89', '85〜89cm'], ['90-94', '90〜94cm'], ['95-', '95cm〜']] },
-};
-const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+// 数字の条件（下限・上限を、数字で入れる）。name は actress-search.js の RANGES と同じ
+const RANGES = [
+  { name: 'age', label: '年齢', unit: '歳', min: 18, max: 80 },
+  { name: 'height', label: '身長', unit: 'cm', min: 120, max: 210 },
+  { name: 'bust', label: 'バスト', unit: 'cm', min: 50, max: 160 },
+  { name: 'waist', label: 'ウエスト', unit: 'cm', min: 40, max: 130 },
+  { name: 'hip', label: 'ヒップ', unit: 'cm', min: 50, max: 160 },
+];
+const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
+const SORTS = [
+  ['works', 'このサイトの作品の多い順'],
+  ['bust', 'バストの大きい順'],
+  ['cup', 'カップの大きい順'],
+  ['young', '年齢の若い順'],
+  ['old', '年齢の高い順'],
+  ['tall', '身長の高い順'],
+  ['short', '身長の低い順'],
+  ['waist', 'ウエストの細い順'],
+  ['hip', 'ヒップの大きい順'],
+  ['newest', 'FANZAに新しく登録された順'],
+  ['name', '名前（五十音）順'],
+];
 ---
 
 <Base
@@ -37,7 +51,7 @@ const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
       <h1 class="hero-title">女優検索</h1>
       <p class="hero-lead">
         {hasSearch
-          ? <>名前・年齢・身長・スリーサイズ・カップで、出演者を探せます。掲載作品が{ENTITY_MIN_ITEMS}本以上の人は専用ページがあり、それ以外の人はFANZAの作品一覧にリンクします。</>
+          ? <>FANZA公式のプロフィールが載っている{fmt(cov.total)}人から、名前・年齢・身長・スリーサイズ（バスト・ウエスト・ヒップ）・カップで探せます。このサイトに作品が{ENTITY_MIN_ITEMS}本以上ある人は専用ページ、それ以外の人はFANZAの作品一覧にリンクします。</>
           : <>掲載している作品が{ENTITY_MIN_ITEMS}本以上ある出演者の一覧です。作品数の多い順に並べています。</>}
       </p>
     </section>
@@ -48,48 +62,54 @@ const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
         <form class="as-form" role="search" autocomplete="off">
           <label class="as-field as-field-wide">
             名前（ひらがな・カタカナでもOK）
-            <input type="search" name="text" placeholder="例: さくら" enterkeyhint="search" />
+            <input type="search" name="q" placeholder="例: さくら" enterkeyhint="search" />
           </label>
-          {/* 年齢・身長・サイズ・並び順は、たためる（スマホで、結果がすぐ見えるように。広い画面では最初から開く。actress-search.js） */}
+          {/* 年齢・身長・スリーサイズ・カップ・並び順は、たためる（スマホで、結果がすぐ見えるように。広い画面・条件つきで開いたときは開く。actress-search.js） */}
           <details id="as-filters" class="ws-filters">
-            <summary class="ws-filters-toggle">年齢・身長・サイズ・並び順で絞り込む</summary>
-          <div class="as-grid">
-            {Object.entries(RANGES).map(([name, def]) => (
-              <label class="as-field">
-                {def.label}
-                <select name={name}>
-                  <option value="">指定なし</option>
-                  {def.options.map(([value, label]) => <option value={value}>{label}</option>)}
-                </select>
-              </label>
-            ))}
-            <label class="as-field">
-              カップ
-              <select name="cup">
-                <option value="">指定なし</option>
-                {CUPS.map((c) => <option value={c}>{c}カップ</option>)}
-                <option value="K+">Kカップ以上</option>
-              </select>
-            </label>
-            <label class="as-field">
-              並び順
-              <select name="sort">
-                <option value="works">作品の多い順</option>
-                <option value="name">名前（五十音）順</option>
-              </select>
-            </label>
-          </div>
+            <summary class="ws-filters-toggle">年齢・身長・スリーサイズ・カップで絞り込む<span id="as-filter-note" class="ws-filter-note"></span></summary>
+            <div class="as-ranges">
+              {RANGES.map((r) => (
+                <fieldset class="as-range">
+                  <legend class="as-range-label">{r.label}</legend>
+                  <div class="as-range-inputs">
+                    <input type="number" name={`${r.name}_min`} inputmode="numeric" min={r.min} max={r.max} placeholder="下限" aria-label={`${r.label}の下限（${r.unit}）`} />
+                    <span class="as-range-sep" aria-hidden="true">〜</span>
+                    <input type="number" name={`${r.name}_max`} inputmode="numeric" min={r.min} max={r.max} placeholder="上限" aria-label={`${r.label}の上限（${r.unit}）`} />
+                    <span class="as-range-unit">{r.unit}</span>
+                  </div>
+                </fieldset>
+              ))}
+            </div>
+            <fieldset class="as-cups">
+              <legend class="as-range-label">カップ（いくつでも選べます）</legend>
+              <div class="as-cup-list">
+                {CUPS.map((c) => (
+                  <label class="as-cup"><input type="checkbox" name="cup" value={c} /><span>{c}</span></label>
+                ))}
+                <label class="as-cup"><input type="checkbox" name="cup" value="L+" /><span>L〜</span></label>
+              </div>
+            </fieldset>
+            <div class="as-checks">
+              <label class="as-check"><input type="checkbox" name="site" value="1" /> このサイトに作品がある人だけ</label>
+              <label class="as-check"><input type="checkbox" name="face" value="1" /> 顔写真がある人だけ</label>
+            </div>
           </details>
+          <label class="as-field as-field-wide">
+            並び順
+            <select name="sort">
+              {SORTS.map(([value, label]) => <option value={value}>{label}</option>)}
+            </select>
+          </label>
           <div class="as-actions">
             <button type="reset" class="btn btn-quiet">条件をクリア</button>
           </div>
         </form>
         <p id="as-count" class="as-count" aria-live="polite"></p>
-        <p id="as-note" class="as-note" hidden>年齢・身長・サイズで絞り込むと、FANZAにその情報が載っていない人は結果に出ません。</p>
+        <p id="as-note" class="as-note" hidden>年齢・身長・スリーサイズ・カップで絞り込むと、FANZAにその情報が載っていない人は結果に出ません。</p>
         <ul id="as-list" class="actress-list"></ul>
         <p class="more"><button id="as-more" type="button" class="btn btn-quiet more-btn" hidden>もっと見る</button></p>
         <p class="as-coverage">
-          FANZAに載っている情報は、人によって違います。いま調べ済みの{cov.total}人のうち、年齢が載っているのは{cov.withAge}人、身長は{cov.withHeight}人、スリーサイズは{cov.withSize}人です（毎日、少しずつ増えます）。
+          プロフィールは、FANZA公式の出演者データです（ほかのサイトの情報や推測は使っていません）。いま探せる{fmt(cov.total)}人のうち、年齢が分かるのは{fmt(cov.withAge)}人、身長は{fmt(cov.withHeight)}人、スリーサイズは{fmt(cov.withSize)}人、カップは{fmt(cov.withCup)}人です。年齢は、FANZAに載っている生年月日から毎日計算しています。データは毎日、少しずつ新しくなります。
         </p>
       </section>
     )}
