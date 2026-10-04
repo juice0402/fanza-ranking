@@ -26,6 +26,9 @@ python3 tests/test_data.py || failed=1
 step "サイトの部品 (Node.js)"
 node tests/test_items.mjs || failed=1
 
+step "品番・作品ページの情報欄・月ごと/ジャンルごとのページの部品 (Node.js)"
+node tests/test_seo.mjs || failed=1
+
 step "週のまとめ記事の部品 (Node.js + Pythonとの突き合わせ)"
 node tests/test_roundups.mjs || failed=1
 
@@ -46,6 +49,9 @@ node tests/test_movie.mjs || failed=1
 
 step "作品検索・「VR作品を隠す」の部品 (Node.js)"
 node tests/test_search.mjs || failed=1
+
+step "日本語の文節改行の部品 (Node.js)"
+node tests/test_phrase.mjs || failed=1
 
 if [ "${1:-}" = "--build" ]; then
   step "サイトのビルド"

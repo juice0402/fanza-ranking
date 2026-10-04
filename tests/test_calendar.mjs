@@ -56,7 +56,8 @@ check('DTSTAMP は、その日の0時（同じ日なら同じ値）', text.inclu
 check('予定の題名に、作品タイトルを入れない', !/SUMMARY:[^\r\n]*(古い作品|最近の作品|今日の作品|月またぎ|年またぎ)/.test(text));
 check('題名: 出演者がいれば出演者名・いなければメーカー名・どちらもなければ「FANZAの新作」', text.includes('SUMMARY:【発売】Aの新作') && text.includes('SUMMARY:【発売】メーカーXの新作') && text.includes('SUMMARY:【発売】FANZAの新作'));
 check('題名: subject を指定すれば、それが入る', C.buildIcs({ calName: 'x', items, today, subject: '花子' }).includes('SUMMARY:【発売】花子の新作'));
-check('説明には、タイトル・品番・リンクが入る（記号は書き換え済み）', text.includes('DESCRIPTION:最近の作品\\, セミコロン\\; あり\\n品番: recent1\\nhttps://fanza-ranking.pages.dev/item/recent1/'));
+check('説明には、タイトル・作品ID（品番を作れないとき）・リンクが入る（記号は書き換え済み）', text.includes('DESCRIPTION:最近の作品\\, セミコロン\\; あり\\n作品ID: recent1\\nhttps://fanza-ranking.pages.dev/item/recent1/'));
+check('説明の品番は、作品ページと同じ形（1dldss00566 → DLDSS-566）', unfold(C.buildIcs({ calName: 'x', items: normalizeItems([{ cid: '1dldss00566', title: 'テスト', date: today }]), today })).includes('\\n品番: DLDSS-566\\n'));
 check('URL の行に、作品ページのURLが入る', text.includes('URL:https://fanza-ranking.pages.dev/item/soon1/'));
 const alarms = (text.match(/BEGIN:VALARM/g) || []).length;
 check('通知（朝9時）は、今日以降に発売の予定だけ（3件）・発売済みの予定には付けない', alarms === 3 && text.includes('TRIGGER:PT9H'), String(alarms));
@@ -73,7 +74,7 @@ check('索引: 日付は generated に入る', idx.generated === today);
 check('索引: 専用ページのある出演者・メーカーの {名前: 短い名前}（pages）。渡さなければ空', JSON.stringify(idx.pages) === JSON.stringify({ actress: {}, maker: {} }) && JSON.stringify(F.buildFavoritesIndex(items, today, 60, { actress: { A: 'abcdef0123' }, maker: {} }).pages) === JSON.stringify({ actress: { A: 'abcdef0123' }, maker: {} }));
 check('索引: グループ → {名前: 短い名前}', JSON.stringify(F.pageSlugMap([{ name: 'A', slug: 's1' }, { name: 'B', slug: 's2' }])) === JSON.stringify({ A: 's1', B: 's2' }) && JSON.stringify(F.pageSlugMap([])) === '{}');
 const one = idx.items.find((i) => i.c === 'recent1');
-check('索引: 短い名前の項目（c,t,d,a,m,i）', one && one.t.includes('最近の作品') && one.d === '2026-09-25' && one.a.join() === 'A' && one.m === 'M' && 'i' in one, JSON.stringify(one));
+check('索引: 短い名前の項目（c,t,d,a,m,i）。タイトルは、幅のない空白（文節の区切り）を除くと元どおり', one && one.t.replace(/\u200b/g, '') === items.find((i) => i.cid === 'recent1').title && one.d === '2026-09-25' && one.a.join() === 'A' && one.m === 'M' && 'i' in one, JSON.stringify(one));
 check('索引: メーカー「不明」は空文字にする', idx.items.find((i) => i.c === 'today1').m === '');
 const attrs = F.workFavoriteAttrs(items[1]);
 check('作品の☆ボタンの情報', attrs['data-fav-type'] === 'work' && attrs['data-fav-key'] === 'recent1' && attrs['data-actress'] === 'A' && attrs['data-date'] === '2026-09-25' && attrs['data-maker'] === 'M');

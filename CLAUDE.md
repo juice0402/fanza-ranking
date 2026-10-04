@@ -12,10 +12,10 @@ FANZAの新作・予約作品を毎日自動で集め、AIのひとことコメ�
 GitHub Actions（毎日 0:05 JST。日付が変わった直後）
   → get_new_releases.py
       FANZA(DMM) アフィリエイトAPI から「発売済み」「予約」を別々に取得
-      保存済み作品の「空だった出演者」「空だったジャンル」「未取得のサンプル動画」を補う（今回の取得に出ていれば refresh_from_fetched、
+      保存済み作品の「空だった出演者・ジャンル・サンプル画像・収録時間」「未取得のサンプル動画」を補い、発売日の変更（延期）を反映する（今回の取得に出ていれば refresh_from_fetched、
         出ていなければ品番を指定して取り直し refetch_by_cid。1回20件まで。出演者は発売30日後まで、動画は3回まで。
         ジャンルは、予約の作品にあとから載るので、今回の取得か、出演者・動画の取り直しのついでに入る）
-      Gemini でひとことコメント作成（ブロック時は代替文 → 次回再挑戦）
+      Gemini でひとことコメントの「下書き」を作成（comment_kind: ai。ブロック時は代替文 template → 次回再挑戦）
       → site/src/data/new_releases.json に作品IDごとにためていく
       出演者のプロフィール（顔写真・体型・生年月日・FANZAの全作品リンク）を女優検索APIで取得（1回30人まで）
       → site/src/data/actresses.json（Geminiは使わない）
@@ -23,7 +23,8 @@ GitHub Actions（毎日 0:05 JST。日付が変わった直後）
   → main に commit → Cloudflare Pages が自動ビルド（Astro, 静的サイト）→ 公開
 
 Claude の予約タスク（毎日 0:20 JST。手順は docs/claude-comments.md）
-  → Gemini が書けず定型文のままの作品に、Claude がコメントを書く（scripts/claude_comments.py）
+  → Gemini の下書き・定型文のままの作品と、発売日をすぎたのに「予約」の言い方が残る作品を、Claude が読み直して完成した文章に書き上げる
+    （comment_kind: claude。scripts/claude_comments.py。1回40件まで）
   → ブランチ+PR → CIが緑ならMerge → 公開
 
 Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundups.md）
@@ -36,22 +37,24 @@ Claude の予約タスク（毎週月曜 0:50 JST。手順は docs/claude-roundu
 | 場所 | 役割 |
 |---|---|
 | `get_new_releases.py` | 毎日の更新スクリプト。Python標準ライブラリだけ（pip不要） |
-| `scripts/claude_comments.py` | Claude がコメントを書くための道具（`list` で対象を出し、`apply` で点検して書き込む）。標準ライブラリだけ |
+| `scripts/claude_comments.py` | Claude がコメントを書き上げるための道具（`list` で対象と下書き・使える事実を出し、`apply` で点検して書き込む。書いたものは `comment_kind: "claude"`。確かめられない評価・古くなる言い方・下書きと同じ文は断る）。標準ライブラリだけ |
 | `scripts/claude_roundups.py` | Claude が週のまとめ記事を書くための道具（`list` で週の作品データを出し、`apply` で点検して `roundups.json` に書き込む）。標準ライブラリだけ |
 | `site/` | サイト本体（Astro 7 / 静的出力）。Cloudflare Pages のビルド対象 |
-| `site/src/config.js` | **サイト名・URL・表示件数の設定はここだけ**（独自ドメイン化もここ） |
+| `site/src/config.js` | **サイト名・URL・表示件数の設定はここだけ**（独自ドメイン化もここ）。月・ジャンルのページの最低本数と、ページを作るジャンルの一覧（`TAG_PAGE_GENRES`）もここ |
 | `site/src/lib/items.js` | 並べ替え・日付・sitemap/robots・出演者/メーカーのまとめ・構造化データ（JSON-LD）など、テストできる部品（画面に依存しない） |
 | `site/src/lib/roundups.js` | 週のまとめ記事の部品（週の計算・集計・読み込み・Article構造化データ。画面に依存しない）。集計は `claude_roundups.py` の `week_stats` と同じ数え方（`tests/test_roundups.mjs` で突き合わせている） |
 | `site/src/lib/favorites.js` / `site/src/lib/calendar.js` | お気に入りの索引（`/data/favorites-index.json`）と、発売日カレンダー（`.ics`）の部品（画面に依存しない。`tests/test_calendar.mjs`）。カレンダーの予定の**題名に作品タイトルを入れない**（「【発売】○○の新作」。タイトル・品番・リンクは説明に入れる）。`escapeIcsText` は `;` `,` `\` 改行を書き換える |
 | `site/public/favorites.js` / `site/public/lightbox.js` | ブラウザで動く小さなスクリプト（ビルドを通さずそのまま配信）。`favorites.js` は ☆ の付け外しと「お気に入り」ページ・トップのお知らせ（**保存先は端末の localStorage だけ。サーバーには送らない**）。部品は node でテストできる（`tests/test_favorites.mjs`）。DOM は `textContent` で作り、保存データの HTML は実行しない |
-| `site/src/lib/search.js` / `site/public/search.js` | 作品検索（`/search/`）。`search.js`（lib）は索引 `/data/items-index.json`（キー: c 品番 / t タイトル / d 発売日 / a 出演者 / m メーカー / g ジャンルの番号 / v VRなら1 / i 画像。新しい順に最大3000本）を作る。`public/search.js` は、キーワード（タイトル・出演者・メーカー・品番・ジャンル）・ジャンル（タグ。複数はAND。足すと0本になるものは押せない）・発売の状態で端末の中で絞り込み、条件を URL（`?q=&tag=&st=&sort=`）にも書く。作品ページのジャンルは、この URL へのリンク。`noindex`・sitemap なし。DOM は `textContent` で作る。部品は `tests/test_search.mjs` |
-| `site/public/vr-filter.js` / `site/src/components/VrToggle.astro` | 「VR作品を隠す」スイッチ。一覧の1マス（`li.shelf-cell`）の `data-vr`（`vrAttrs(item)`）を、`html.hide-vr` のとき CSS で隠す。状態は localStorage（`hide-vr`）だけ。`Base.astro` の `<head>` で先に印を付けてチラつきを防ぐ。VR判定は `items.js` の `isVrWork`（タイトルの【VR】・形式タグ・ジャンルの「VR」のどれか）。トップ・過去の作品・出演者/メーカー・検索にスイッチがある。売れ筋は、データに6本あり、画面に出すのは先頭の3本（`config.js` の `RANKING_SHOWN`。残りは `rank-off` で隠してある）。隠すときは `rankLayout` が、VRを除いた先頭3本に差し替える（順位の数字も1・2・3にふり直し、見出しに「VRを除く」と出す）。出す本数に合わせて `.rank-podium` の `data-visible` と `.is-hero` も付け替えて、残りでちょうど埋まるように並べ直す（`items.js` の `rankHasHero` と同じ決め方。`tests/test_search.mjs`） |
+| `site/src/lib/search.js` / `site/public/search.js` | 作品検索（`/search/`）。`search.js`（lib）は索引 `/data/items-index.json`（キー: c 作品ID / p 品番（例 DLDSS-566。作れないときは無い）/ t タイトル（文節の区切り U+200B 入り）/ d 発売日 / a 出演者 / m メーカー / g ジャンルの番号 / v VRなら1 / i 画像。新しい順に最大3000本）を作る。`public/search.js` は、キーワード（タイトル・出演者・メーカー・品番（「-」の有無は問わない）・ジャンル）・ジャンル（タグ。複数はAND。足すと0本になるものは押せない）・発売の状態で端末の中で絞り込み、条件を URL（`?q=&tag=&st=&sort=`）にも書く（トップの検索欄は `?q=` を送るふつうのフォーム）。ジャンル・発売・並び順は `details` にたたむ（スマホでは閉じる）。`noindex`・sitemap なし。DOM は `textContent` で作る。部品は `tests/test_search.mjs` |
+| `site/public/vr-filter.js` / `site/src/components/VrToggle.astro` | 「VR作品を隠す」スイッチ。一覧の1マス（`li.shelf-cell`）の `data-vr`（`vrAttrs(item)`）を、`html.hide-vr` のとき CSS で隠す。状態は localStorage（`hide-vr`）だけ。`Base.astro` の `<head>` で先に印を付けてチラつきを防ぐ。VR判定は `items.js` の `isVrWork`（タイトルの【VR】・形式タグ・ジャンルの「VR」のどれか）。トップ・過去の作品・出演者/メーカー・検索にスイッチがある。VR作品のページ（`/tag/`）では隠さない（`DaySection` の `keepVr`）。全部がVRになりうるまとまり（作品ページの「同じ出演者・メーカーの作品」など）には `data-vr-group` を付け、全部隠れたら見出しごと隠す。売れ筋は、データに6本あり、画面に出すのは先頭の3本（`config.js` の `RANKING_SHOWN`。残りは `rank-off` で隠してある）。隠すときは `rankLayout` が、VRを除いた先頭3本に差し替える（順位の数字も1・2・3にふり直し、見出しに「VRを除く」と出す）。出す本数に合わせて `.rank-podium` の `data-visible` と `.is-hero` も付け替えて、残りでちょうど埋まるように並べ直す（`items.js` の `rankHasHero` と同じ決め方。`tests/test_search.mjs`） |
 | `site/src/lib/profiles.js` | 出演者のプロフィール（顔写真・年齢・体型）・出演者検索の索引（`/data/actresses-index.json`）・売れ筋ランキングの表示用の整え方（画面に依存しない。`tests/test_profiles.mjs`）。生年月日は年齢にだけ変えて、ここから先には持ち出さない。URLは FANZA(DMM) の https だけ通す |
-| `site/public/actress-search.js` / `site/public/movie.js` | ブラウザで動く小さなスクリプト。`actress-search.js` は `/actress/` の「条件で探す」（名前・年齢・身長・スリーサイズ・カップ。索引を読んで、端末の中で絞り込む）。`movie.js` は作品ページのサンプル動画の枠の拡大・縮小。部品は node でテストできる（`tests/test_profiles.mjs` / `tests/test_movie.mjs`）。DOM は `textContent` で作る |
-| `site/public/_headers` / アイコン | Cloudflare Pages の応答ヘッダー（nosniff・フレームへの埋め込み禁止など。CSP は最小限）と、サイトのアイコン（`favicon.svg` / `favicon.ico` / `apple-touch-icon.png`）。`tests/verify_dist.py` が、全ページの `<head>`・ヘッダーの広告ラベル（`pr-chip`）とフッターの広告文・18歳確認・クレジット・FANZAへのリンクの属性と一緒に検査する |
+| `site/src/lib/phrase.js` / `site/src/integrations/phrase-breaks.js` / `site/src/lib/budoux-ja.js` | **日本語の文章を文節で改行させる**仕組み（運営者が見つけた「あ／り」のような語の途中の改行を、全ページ・全箇所で防ぐ）。iPhone/iPadのSafari系には、CSSの `word-break: auto-phrase` が無い（2026-10に確認）ため、**ビルドの最後に（Astro の拡張 `phraseBreaks`、`astro:build:done`）、できあがった全HTMLの日本語の文章へ、文節の区切り `<wbr>` を足し、`<span class="ph">` で包む**。CSS（`site.css` の `.ph`）が `word-break: keep-all`・`line-break: strict`・`overflow-wrap: anywhere`。文節はBudouX（Google・Apache-2.0。モデルは `budoux-ja.js`、ライセンスは `budoux-LICENSE.txt`）で決め、禁則・英数字・中黒・かっこ・長すぎる文節（8文字超は分ける）を足してある。script・style・title・textarea・button・pre・code・noscript・svg・select は触らない。**ページに手で印を付ける必要は無い**（コメントなど、あとから増える文章も自動）。**出演者名・メーカー名（作品データから集める）の途中には区切りを入れず、10文字までの名前は `<span class="nb">`（nowrap）で包む。伏せ字（○●）・数字と単位も離さず、「～」は前の1文字と一緒に包む。** ブラウザで作る文章（検索結果・お気に入り）は、索引のタイトルに U+200B（区切り）・U+2060/U+00A0（「～」の前の改行止め）を入れて `.ph-js` で表示（`phraseZwsp`）。出演者検索の結果は対象外。開発サーバー（`npm run dev`）では動かない（ビルドしたときだけ）。`tests/test_phrase.mjs`、`tests/verify_dist.py`（`read()` は区切りを外して読み、区切りそのものは専用の検査）。画面に出る文字は変えない |
+| `site/public/actress-search.js` / `site/public/movie.js` | ブラウザで動く小さなスクリプト。`actress-search.js` は `/actress/` の「条件で探す」（名前・年齢・身長・スリーサイズ・カップ。索引を読んで、端末の中で絞り込む）。`movie.js` は作品ページのサンプル動画: 最初はパッケージ画像＋再生ボタン（`.movie-play`）だけで、押すとFANZAの再生ページ（iframe）を入れ、枠の幅に合わせて拡大・縮小する（表示を速くするため。JavaScript が無いときは `<noscript>` の iframe。画質は変えられない → `docs/design-notes.md`）。部品は node でテストできる（`tests/test_profiles.mjs` / `tests/test_movie.mjs`）。DOM は `textContent` で作る |
+| `site/public/_headers` / アイコン | Cloudflare Pages の応答ヘッダー（nosniff・フレームへの埋め込み禁止など。CSP は最小限。`/_astro/*` は1年キャッシュ、アイコンは1週間。名前が変わらない `/*.js` はキャッシュしない）と、サイトのアイコン（`favicon.svg` / `favicon.ico` / `apple-touch-icon.png`）。`tests/verify_dist.py` が、全ページの `<head>`・ヘッダーの広告ラベル（`pr-chip`）とフッターの広告文・18歳確認・クレジット・FANZAへのリンクの属性と一緒に検査する |
 | `site/src/components/` | 画面の部品。`Face`（出演者の顔の丸。写真が無い・読み込めないときは頭文字）、`SampleMovie`（FANZAのサンプル動画の枠）、`RankCard`（売れ筋の1枚）など |
+| `site/src/lib/facts.js` / `site/src/lib/collections.js` | SEOのための部品（画面に依存しない。`tests/test_seo.mjs`）。`facts.js` は作品ページの「この作品のデータ」欄（掲載データを数えた事実だけ。評価の言葉は書かない）と、作品IDから作る**品番**（`productCode`。形がはっきりしたものだけ。作れないときは出さない）。`collections.js` は月ごとのページ（`/month/YYYY-MM/`。5本以上の月）とジャンルのページ（`/tag/<ハッシュ>/`。3本以上。**作るのは `config.js` の `TAG_PAGE_GENRES` にあるジャンルと「VR作品」だけ**。過激・未成年を連想させる名前は入れない） |
 | `site/src/lib/data.js` | JSON読み込み。`released`/`upcoming`/`all`/`roundups`/`ranking`/`profilesByName`/`actressSearchIndex` などを各ページに渡す。`actresses.json` と `ranking.json` は、まだ無くてもビルドが止まらない（`import.meta.glob` で任意に読む） |
-| `site/src/pages/` | トップ、`item/[cid]`（作品）、`archive/[page]`（過去作品）、`actress/`（出演者別。2本以上の人だけ）、`maker/`（メーカー別。2本以上だけ）、`weekly/`（週のまとめ記事。1本も無いあいだは一覧が noindex・sitemap にも入らず、リンクも出さない）、`favorites`（お気に入り。noindex）、`calendar/`（使い方のページ＋購読用の `.ics`。使い方は noindex）、`data/favorites-index.json.js`、`data/actresses-index.json.js`（出演者検索の索引）、404、`sitemap.xml.js`、`robots.txt.js` |
+| `site/src/pages/` | トップ、`item/[cid]`（作品）、`archive/[page]`（過去作品）、`actress/`（出演者別。2本以上の人だけ）、`maker/`（メーカー別。2本以上だけ）、`month/`（月ごと）、`tag/`（ジャンルごと）、`weekly/`（週のまとめ記事。1本も無いあいだは一覧が noindex・sitemap にも入らず、リンクも出さない）、`favorites`（お気に入り。noindex）、`calendar/`（使い方のページ＋購読用の `.ics`。使い方は noindex）、`data/favorites-index.json.js`、`data/actresses-index.json.js`（出演者検索の索引）、404、`sitemap.xml.js`、`robots.txt.js` |
 | `site/src/data/new_releases.json` | **自動更新のデータ。手で編集しない**（作品IDごとに蓄積。`updated` は、その作品のコメントを最後に変えた日で、sitemap の `lastmod` に使う） |
 | `site/src/data/actresses.json` | **自動更新のデータ。手で編集しない**（出演者のプロフィール。`{actresses:[…], unmatched:{名前:探した日}}`。体型は数字・生年月日は年齢の計算用で、画面に出すのは**年齢だけ**。血液型・趣味・出身地は**保存しない**。名前の完全一致が1人だけのときだけ採用し、推測で選ばない） |
 | `site/src/data/ranking.json` | **自動更新のデータ。手で編集しない**（売れ筋ランキング上位6本。各行の `vr` は、取得のときにジャンルなどから判定した「VR作品か」。取得に失敗したら前回のものを残す） |
@@ -96,9 +99,9 @@ cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
 
 ## 変更のしかた（例）
 
-- 表示件数・サイト名・URL → `site/src/config.js`
+- 表示件数・サイト名・URL・ページを作るジャンル → `site/src/config.js`
 - デザイン → `site/src/styles/site.css`、部品は `site/src/components/`、全ページ共通部分は `site/src/layouts/Base.astro`
-- コメントの文体・代替文 → `get_new_releases.py`（`ANGLES`、`template_comment`、`build_prompt`）。Claude が書くコメントの書き方・手順 → `docs/claude-comments.md`。週のまとめ記事の書き方・手順 → `docs/claude-roundups.md`
+- コメントの文体・代替文 → `get_new_releases.py`（`ANGLES`/`OPENINGS`/`CLOSINGS`、`HYPE_WORDS`、`template_comment`、`build_prompt`。**切り口・書き出し・結びを作品ごとに変えて、似た文章の量産にならないようにしている**。確かめられない評価が入った答えは採用しない）。Claude が書くコメントの書き方・手順 → `docs/claude-comments.md`。週のまとめ記事の書き方・手順 → `docs/claude-roundups.md`
 - 取得する件数・日数 → `get_new_releases.py` 冒頭の定数（`NEW_ITEMS_PER_RUN` など。Geminiの回数上限とセットで考える → 守ること8）
 
 背景や今後の予定は `docs/design-notes.md` を見ること。

@@ -220,6 +220,8 @@ class Env:
         if self.gemini_mode == "mixed" and not self.first_429_done:
             self.first_429_done = True
             raise urllib.error.HTTPError(req.full_url, 429, "rate", {}, io.BytesIO(b"{}"))
+        if self.gemini_mode == "hype":  # 確かめられない評価が入った答え（採用されないはず）
+            return FakeResponse({"candidates": [{"content": {"parts": [{"text": "待望の新作が登場。熱い視線が集まる注目の一本です。ぜひご覧ください。"}]}}]})
         if "ブロック太郎" in prompt and self.gemini_mode == "mixed":
             return FakeResponse({"promptFeedback": {"blockReason": "PROHIBITED_CONTENT"}})
         return FakeResponse({"candidates": [{"content": {"parts": [{"text": "「テスト用のAIコメントです。**上品**に紹介します。」\n"}]}}]})
@@ -354,6 +356,49 @@ retried_u = [x for x in du if x["cid"] in tries0 and x["comment_tries"] > tries0
 check("ブロックされて再挑戦したが、コメントが変わらなかった作品がある", len(retried_u) > 0, len(retried_u))
 check("そうした作品の更新日は動かない", all(x["updated"] == "2000-01-01" for x in retried_u), {x["updated"] for x in retried_u})
 check("新しく入った作品は今日の日付", all(x["updated"] == TODAY_STR for x in du if x["cid"] not in tries0))
+
+print("\n■ コメントの書き分け（切り口・書き出し・結び）と、確かめられない評価の除外")
+m_v = load_module(os.path.join(tmp, "v.json"))
+base_item = {"cid": "x00001", "actress": ["花子"], "maker": "メーカーA", "tags": ["VR"], "duration_min": 92, "date": "2026-11-22"}
+prompts_v = {m_v.build_prompt(dict(base_item, cid=f"x{i:05d}"), 0, today="2026-10-04") for i in range(300)}
+check("切り口が6種類・書き出しが4種類・結びが4種類ある", len(m_v.ANGLES) == 6 and len(m_v.OPENINGS) == 4 and len(m_v.CLOSINGS) == 4, (len(m_v.ANGLES), len(m_v.OPENINGS), len(m_v.CLOSINGS)))
+check("作品ごとに、いろいろな組み合わせの依頼が作られる（300作品で、少なくとも60通り）", len(prompts_v) >= 60, len(prompts_v))
+check("同じ作品・同じ回数なら、いつも同じ依頼になる", m_v.build_prompt(base_item, 0, today="2026-10-04") == m_v.build_prompt(dict(base_item), 0, today="2026-10-04"))
+check("再挑戦（回数が増える）では、別の組み合わせになる作品がある", sum(m_v.build_prompt(dict(base_item, cid=f"x{i:05d}"), 0, today="2026-10-04") != m_v.build_prompt(dict(base_item, cid=f"x{i:05d}"), 1, today="2026-10-04") for i in range(50)) >= 40)
+p_up = m_v.build_prompt(base_item, 0, today="2026-10-04")
+p_rel = m_v.build_prompt(base_item, 0, today="2026-12-01")
+check("発売前の作品には「予約受付中」「発売予定」など古くなる言い方を使わないよう頼み、日付で書かせる", "古くなる言い方は使わず" in p_up and "「○月○日発売」" in p_up and "この作品は発売済み" not in p_up)
+check("発売済みの作品には「発売されました」と書いてよいと伝える", "この作品は発売済み" in p_rel and "古くなる" not in p_rel)
+check("使いすぎる言い回し（気になる方は・チェック・ぜひ…）は使わないよう頼む", all(w in p_up for w in m_v.AVOID_PHRASES))
+check("収録時間（事実）を渡す。無いときは「記載なし」", "収録時間: 約92分" in p_up and "収録時間: 記載なし" in m_v.build_prompt(dict(base_item, duration_min=None), 0, today="2026-10-04") and "収録時間: 記載なし" in m_v.build_prompt(dict(base_item, duration_min=True), 0, today="2026-10-04"))
+check("人気・期待度・評判は書かないよう頼む。「前向きなトーン」とは頼まない", "人気" in p_up and "期待度" in p_up and "前向き" not in p_up)
+check("依頼にタイトルは入らない（従来どおり）", "title" not in p_up and "タイトル" not in p_up)
+
+check("確かめられない評価の言葉を見つけられる", m_v.rejected_words("待望の新作で、ファンの期待が高い注目の一本") == ["待望", "ファンの", "注目の"], m_v.rejected_words("待望の新作で、ファンの期待が高い注目の一本"))
+check("過激な言葉・未成年を連想させる言葉も見つけられる", "中出" in m_v.rejected_words("中出しの") and "少女" in m_v.rejected_words("少女のような") and "JK" in m_v.rejected_words("jkの"))
+check("ふつうのコメントは、見つからない", m_v.rejected_words("花子さん出演の、メーカーAの新作です。発売は11月22日、収録時間は約92分です。") == [])
+
+# 言葉の一覧が、Claude の道具（scripts/claude_comments.py）と同じ
+spec_cc = importlib.util.spec_from_file_location("cc_test", os.path.join(ROOT, "scripts", "claude_comments.py"))
+cc = importlib.util.module_from_spec(spec_cc)
+spec_cc.loader.exec_module(cc)
+check("確かめられない評価・過激な言葉・結びの言い回しの一覧が、Claude の道具と同じ（片方だけ直し忘れない）",
+      m_v.HYPE_WORDS == cc.HYPE_WORDS and m_v.EXPLICIT_WORDS == cc.EXPLICIT_WORDS and m_v.MINOR_WORDS == cc.MINOR_WORDS and m_v.AVOID_PHRASES == cc.AVOID_PHRASES)
+
+path_h = os.path.join(tmp, "hype.json")
+shutil.copy(SAVED_DATA, path_h)
+d_before = json.load(open(path_h, encoding="utf-8"))
+tries_h0 = {x["cid"]: x["comment_tries"] for x in d_before}
+e = Env()
+e.gemini_mode = "hype"
+m_h = load_module(path_h)
+code_h, out_h = run_main_capture(m_h, e)
+d_h = json.load(open(path_h, encoding="utf-8"))
+new_h = [x for x in d_h if x["cid"] not in tries_h0]
+check("確かめられない評価が入った答えは、採用されない（新しい作品は、すべて定型文）", code_h == 0 and new_h and all(x["comment_kind"] == "template" and "待望" not in x["comment"] and "熱い視線" not in x["comment"] for x in new_h), [(x["cid"], x["comment_kind"]) for x in new_h][:3])
+check("採用しなかった作品は、再挑戦の回数が1増える（上限まで続けば、Claude が書き直す）", all(x["comment_tries"] == 1 for x in new_h), {x["comment_tries"] for x in new_h})
+check("採用しなかった数が、画面とカウンターに出る（連続失敗のお休みにはならない）", m_h.CommentMaker is not None and "採用せず" in out_h and e.gemini_calls > 4, e.gemini_calls)
+check("定型文に入るのは作品情報だけ（確かめられない評価は入らない）", all(not m_h.rejected_words(x["comment"]) for x in new_h))
 
 print("\n■ Geminiが使えない/APIキー無しでも止まらない")
 path_b = os.path.join(tmp, "b.json")
@@ -491,7 +536,8 @@ def seeded(cid, days, actress, kind="ai", genres=("保存済みのジャンル",
     """保存済みの作品（APIの偽の応答にも出てくる cid を使う）。更新日は昔の日付にしておく"""
     api = make_api_item(cid, days, actress=tuple(actress))
     return {"cid": cid, "title": api["title"], "url": api["affiliateURL"], "image_url": api["imageURL"]["large"],
-            "sample_images": [], "date": api["date"], "maker": "テストメーカー", "actress": list(actress), "genres": list(genres),
+            "sample_images": [f"https://pics.dmm.co.jp/digital/video/{cid}/{cid}jp-{i}.jpg" for i in (1, 2, 3)],
+            "date": api["date"], "maker": "テストメーカー", "actress": list(actress), "genres": list(genres),
             "tags": ["VR", "8K"], "duration_min": 120, "sample_movie": make_movie(cid)["size_476_306"], "movie_tries": 0,
             "comment": "保存済みのコメントです。" * 5, "comment_kind": kind,
             "comment_tries": 0, "updated": "2000-01-01"}
@@ -521,6 +567,54 @@ check("ログに補った件数が出る（2件）", "補いました: 2件" in 
 check("ジャンルが空だった作品に、ジャンル（商品タグ）が入る・出演者は書き換えない・更新日が今日になる", got["rel005"]["genres"] == ["テストジャンル"] and got["rel005"]["actress"] == ["既存の人"] and got["rel005"]["updated"] == TODAY_STR, got["rel005"])
 check("すでにジャンルがある作品は、書き換えない", got["rel001"]["genres"] == ["保存済みのジャンル"] and got["rel002"]["genres"] == ["保存済みのジャンル"], (got["rel001"]["genres"], got["rel002"]["genres"]))
 check("ログに、ジャンルを補った件数が出る（rel005 と、取り直された保存済みの1件で、2件）", "ジャンルを補いました: 2件" in out, [l for l in out.splitlines() if "ジャンル" in l])
+
+print("\n■ 予約の作品に、あとから載ったサンプル画像・収録時間・発売日の変更を反映する（apply_fresh）")
+af = mod.apply_fresh
+base_item = {"cid": "x1", "date": "2026-11-01 10:00:00", "sample_images": [], "duration_min": None, "image_url": "",
+             "actress": ["花子"], "genres": ["巨乳"], "sample_movie": "", "comment": "花子さん出演、11月1日発売の新作です。メーカーの一本として紹介します。",
+             "comment_kind": "claude", "updated": "2000-01-01", "title": "t", "maker": "m", "tags": []}
+fresh_item = {"cid": "x1", "date": "2026-11-01 10:00:00", "sample_images": ["https://pics.dmm.co.jp/a/x1jp-1.jpg"], "duration_min": 150,
+              "image_url": "https://pics.dmm.co.jp/a/x1pl.jpg", "actress": ["別の人"], "genres": ["別"], "sample_movie": ""}
+it = json.loads(json.dumps(base_item))
+ch = af(it, dict(fresh_item), TODAY_STR)
+check("空だったサンプル画像・収録時間・パッケージ画像が入る（入っている出演者・ジャンルは書き換えない）",
+      it["sample_images"] == fresh_item["sample_images"] and it["duration_min"] == 150 and it["image_url"] == fresh_item["image_url"]
+      and it["actress"] == ["花子"] and it["genres"] == ["巨乳"] and sorted(ch) == ["duration_min", "image_url", "sample_images"], (ch, it))
+check("補ったら更新日が今日になる", it["updated"] == TODAY_STR)
+it2 = json.loads(json.dumps(base_item))
+it2["sample_images"] = ["https://pics.dmm.co.jp/a/old.jpg"]
+af(it2, dict(fresh_item, sample_images=["https://pics.dmm.co.jp/a/new.jpg"]), TODAY_STR)
+check("すでに入っているサンプル画像は書き換えない", it2["sample_images"] == ["https://pics.dmm.co.jp/a/old.jpg"])
+it3 = json.loads(json.dumps(base_item))
+ch3 = af(it3, dict(fresh_item, date="2026-11-21 10:00:00", sample_images=[], duration_min=None, image_url=""), TODAY_STR)
+check("発売日が延期されたら、発売日を直す", it3["date"] == "2026-11-21 10:00:00" and "date" in ch3, (ch3, it3["date"]))
+check("コメントに古い発売日（11月1日）が書いてあれば、定型文に戻す（Claude が書き直す）", it3["comment_kind"] == "template" and "11月1日" not in it3["comment"] and "comment" in ch3, it3["comment"])
+it4 = json.loads(json.dumps(base_item))
+it4["comment"] = "花子さん出演の、メーカーの新作です。サンプル画像で雰囲気を確かめられます。"
+ch4 = af(it4, dict(fresh_item, date="2026-11-21 10:00:00", sample_images=[], duration_min=None, image_url=""), TODAY_STR)
+check("コメントに日付が書いてなければ、コメントはそのまま", it4["comment_kind"] == "claude" and ch4 == ["date"], ch4)
+it5 = json.loads(json.dumps(base_item))
+check("同じ日（時刻だけ違う）なら、発売日は変えない", af(it5, dict(fresh_item, date="2026-11-01 00:00:00", sample_images=[], duration_min=None, image_url=""), TODAY_STR) == [] and it5["updated"] == "2000-01-01")
+check("取り直しの発売日が空・変な形なら、発売日は変えない", af(json.loads(json.dumps(base_item)), dict(fresh_item, date="", sample_images=[], duration_min=None, image_url=""), TODAY_STR) == [])
+
+it6 = json.loads(json.dumps(base_item))
+it6["comment_kind"] = "template"
+it6["comment"] = mod.template_comment(it6)
+af(it6, dict(fresh_item, date="2026-11-21 10:00:00", sample_images=[], duration_min=None, image_url=""), TODAY_STR)
+check("定型文のコメントは、新しい発売日で作り直す（古い日付が残らない）", it6["comment"] == mod.template_comment(it6) and "11月21日" in it6["comment"] and "11月1日" not in it6["comment"], it6["comment"])
+it7 = json.loads(json.dumps(base_item))
+it7["date"] = "2026-01-01 10:00:00"
+it7["comment"] = "花子さん出演、11月1日に発売された一本です。メーカーの新作として紹介します。"
+af(it7, dict(fresh_item, date="2026-01-08 10:00:00", sample_images=[], duration_min=None, image_url=""), TODAY_STR)
+check("古い日付の照らし合わせは、日付の区切りを見る（「11月1日」の中の「1月1日」は、別の日）", it7["comment_kind"] == "claude", it7["comment_kind"])
+
+print("\n■ コメントの囲み記号の外し方（clean_comment）")
+cc = mod.clean_comment
+check("全体を囲む「」は外す", cc("「花子さん出演の新作です。」") == "花子さん出演の新作です。")
+check("文の頭の「新作」の「」は残す（片方だけ外して、とじかっこだけが残らない）", cc("「新作」として届いた一本です。") == "「新作」として届いた一本です。", cc("「新作」として届いた一本です。"))
+check("文の終わりの「」も残す", cc("出演は花子さん、作品名は「秘密」") == "出演は花子さん、作品名は「秘密」")
+check("全体を囲む \"…\" も外す", cc('"花子さん出演の新作です。"') == "花子さん出演の新作です。")
+check("片方だけのかっこ（はじめの「・終わりの」）も外す", cc("「花子さん出演の新作です。") == "花子さん出演の新作です。" and cc("花子さん出演の新作です。」") == "花子さん出演の新作です。")
 
 print("\n■ サンプル動画のURLの選び方")
 tm = mod  # 1回目に読み込んだスクリプト
@@ -791,6 +885,8 @@ print("\n■ 形式タグ・URL・生年月日の検査")
 tags_item = m_p.parse_api_item(make_api_item("tag001", -1, title="【VR】【痴●団地】【8K】【ケツずり】【4K60fps】テスト作品"))
 check("形式タグは英数字6文字までだけ（日本語の括弧書き・長すぎるものはタイトルの断片なので除く）", tags_item["tags"] == ["VR", "8K"], tags_item["tags"])
 check("保存済みのタグも、形式タグだけに直す（日本語の断片は消える）", m_p.normalize_loaded({"cid": "a", "title": "テスト", "tags": ["ケツずり", "VR", "VR"]})["tags"] == ["VR"] and m_p.normalize_loaded({"cid": "a", "title": "【痴●団地】テスト", "tags": ["痴●団地"]})["tags"] == [])
+nl = lambda kind: m_p.normalize_loaded({"cid": "a", "title": "テスト", "comment": "文章のコメントです。", "comment_kind": kind})["comment_kind"]
+check("コメントの種類 ai（Geminiの下書き）・claude（Claudeが仕上げ）・template は、そのまま読む。知らない種類は template", [nl(k) for k in ("ai", "claude", "template", "xx")] == ["ai", "claude", "template", "template"])
 frag = m_p.normalize_loaded({"cid": "b", "title": "【ケツずり】テスト", "tags": ["ケツずり", "8K"], "actress": ["花子"], "maker": "M", "date": "2026-10-01"})
 check("AIへの依頼にも、定型文にも、タイトルの断片は入らない", "ケツずり" not in m_p.build_prompt(frag, 0) and "ケツずり" not in m_p.template_comment(frag) and "8K" in m_p.build_prompt(frag, 0))
 H = ("dmm.co.jp",)

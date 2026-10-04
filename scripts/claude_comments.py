@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""Claude がAIコメントを書くための道具（Python標準ライブラリだけ）
+"""Claude がコメントを書く・仕上げるための道具（Python標準ライブラリだけ）
 
-毎日の更新（get_new_releases.py）で Gemini がコメントを付けられなかった作品は、
-定型文（comment_kind: template）のまま保存されます。その定型文を、Claude が書いた
-コメントに置き換えるときに使います。手順は docs/claude-comments.md を見てください。
+毎日の更新（get_new_releases.py）では、Gemini がコメントの「下書き」（comment_kind: ai）を書きます。
+Gemini が書けなかった作品は、定型文（comment_kind: template）のまま保存されます。
+そのどちらも、Claude が読み直して書き上げた文章（comment_kind: claude）に置き換えるときに使います。
+手順は docs/claude-comments.md を見てください。
 
   python3 scripts/claude_comments.py list [--limit 30]
-      定型文のままの作品を、コメント作りに必要な情報だけで表示する（作品タイトルは出さない）
+      書く対象の作品を、コメント作りに必要な情報だけで表示する（作品タイトルは出さない）。対象は次の3つ
+        ・定型文のままの作品（reason: 定型文）
+        ・Gemini の下書きのままの作品（reason: 下書きを仕上げる。draft に下書きが入る）
+        ・発売日をすぎたのに、コメントに「予約」「発売予定」「発売前」などの言い方が残っている作品（reason: 予約の言い方が残っている）
   python3 scripts/claude_comments.py apply コメント.json [--dry-run]
       {"cid": "コメント", ...} を点検して、問題が無ければ new_releases.json に書き込む
       （1件でも問題があれば何も書き込まない）
 
-書き込んだコメントは comment_kind を "ai" にし、その作品の updated（更新日）を今日（日本時間）にします
+書き込んだコメントは comment_kind を "claude" にし、その作品の updated（更新日）を今日（日本時間）にします
 （サイトのフッターの「ひとことコメントは…自動で作成」の注記の対象。sitemap の lastmod にも使われます）。
-Gemini が作ったコメント（すでに "ai"）は上書きしません。
+Claude が仕上げたコメント（"claude"）は上書きしません（発売日をすぎて、予約の言い方が残っているものだけは書き直します）。
 """
 import argparse
 import json
@@ -40,6 +44,19 @@ FORBIDDEN_CHARS = "<>*#"
 # コメントは保存したままずっと表示されるので、日がたつと古くなる言い方は使わない（日付で書く）
 RELATIVE_TIME_WORDS = ["今日", "本日", "明日", "昨日", "今週", "来週", "先週", "今夜", "今朝", "今月", "来月"]
 
+# 確かめられない評価（人気・期待度・評判）や大げさな言い方。get_new_releases.py の HYPE_WORDS と同じ一覧（tests/test_script.py が同じかを調べる）
+HYPE_WORDS = ["待望", "話題", "熱い視線", "高い関心", "期待が高まる", "期待が膨らむ", "期待作", "期待の", "大人気", "人気の", "ファンの", "ファンから",
+              "おなじみ", "必見", "間違いなし", "至高", "極上", "圧倒的", "注目の", "見逃せない", "目が離せない", "心を奪", "豪華な"]
+# 使いすぎると、どのコメントも同じ結びになる言い回し（get_new_releases.py の AVOID_PHRASES と同じ一覧）。まとめて書くときに、多すぎたら知らせるだけ
+AVOID_PHRASES = ["気になる方は", "チェック", "ぜひ", "いまのうちに", "お早めに", "お見逃しなく", "おすすめ"]
+# 発売日をすぎると古くなる言い方（予約中の作品に書いたコメントが、発売後も「予約受付中」のまま残らないように探す）
+STALE_STATUS = re.compile(r"予約|発売予定|発売前|発売を前に|発売に向けて|発売日を待|発売まで|リリース前|リリースを前に|リリースへ向け|待ちきれ|まもなく|近日")
+
+# コメントの種類（get_new_releases.py と同じ）: template＝定型文、ai＝Gemini の下書き、claude＝Claude が仕上げたもの
+FINAL_KIND = "claude"
+DRAFT_KIND = "ai"
+CONFIG_JS = os.path.join(ROOT, "site", "src", "config.js")
+
 # list に出す形式タグは、VR / 8K のような英数字だけのものに絞る。
 # タグは作品タイトルの【…】から取っているため、日本語のタグには作品の内容を表す言葉が混ざることがある。
 FORMAT_TAG = re.compile(r"^[0-9A-Za-z]{1,6}$")
@@ -47,6 +64,22 @@ FORMAT_TAG = re.compile(r"^[0-9A-Za-z]{1,6}$")
 
 def jst_today():
     return datetime.now(JST).strftime("%Y-%m-%d")
+
+
+def safe_genres_from_config(path=CONFIG_JS):
+    """コメントに使ってよいジャンル。サイトの「ジャンルのページ」を作るジャンルの一覧（config.js の TAG_PAGE_GENRES）と同じ。
+    過激な言葉・未成年を連想させる言葉は、その一覧に入れていない。読めなければ空（ジャンルを出さないだけ）"""
+    try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        return []
+    m = re.search(r"TAG_PAGE_GENRES\s*=\s*\[(.*?)\]", text, re.S)
+    if not m:
+        return []
+    names = re.findall(r"'([^']+)'|\"([^\"]+)\"", m.group(1))
+    words = [a or b for a, b in names]
+    return [w for w in words if not any(x.lower() in w.lower() for x in EXPLICIT_WORDS + MINOR_WORDS)]
 
 
 # ------------------------------------------------------------------
@@ -76,35 +109,71 @@ def save_raw(items):
 # ------------------------------------------------------------------
 # list: コメントを書く対象を出す
 # ------------------------------------------------------------------
-def pending_items(items):
-    """定型文のままの作品（Gemini が書いたコメントは対象外）"""
-    return [x for x in items if x.get("comment_kind") != "ai"]
+def stale_status_word(item, today):
+    """発売日をすぎた作品のコメントに「予約」「発売予定」などが残っていれば、その言葉（なければ空）。予約中の作品・定型文は対象外"""
+    if item.get("comment_kind") not in (DRAFT_KIND, FINAL_KIND):
+        return ""
+    day = str(item.get("date") or "")[:10]
+    if not day or day > today:
+        return ""
+    m = STALE_STATUS.search(item.get("comment") or "")
+    return m.group(0) if m else ""
+
+
+def pending_items(items, today=None):
+    """書く対象の作品: Claude がまだ仕上げていないもの（定型文・Gemini の下書き）と、
+    発売日をすぎたのに予約の言い方が残っているもの"""
+    today = today or jst_today()
+    return [x for x in items if x.get("comment_kind") != FINAL_KIND or stale_status_word(x, today)]
+
+
+def pending_reason(item, today):
+    if stale_status_word(item, today):
+        return "予約の言い方が残っている"
+    if item.get("comment_kind") == DRAFT_KIND:
+        return "下書きを仕上げる"
+    return "定型文"
 
 
 def cmd_list(args):
     items = load_raw()
     today = args.today or jst_today()
-    todo = pending_items(items)
-    # 発売済みを新しい順に、そのあとに予約を発売日の近い順に
-    released = sorted((x for x in todo if (x.get("date") or "")[:10] <= today),
-                      key=lambda x: (x.get("date") or "", x["cid"]), reverse=True)
-    upcoming = sorted((x for x in todo if (x.get("date") or "")[:10] > today),
-                      key=lambda x: (x.get("date") or "", x["cid"]))
-    shown = (released + upcoming)[: max(args.limit, 0)]
+    todo = pending_items(items, today)
+    # 先に、急ぐもの（予約の言い方が残っている・定型文）、そのあとに Gemini の下書き。
+    # それぞれの中は、発売済みを新しい順に、そのあとに予約を発売日の近い順に
+    def ordered(rows):
+        released = sorted((x for x in rows if (x.get("date") or "")[:10] <= today),
+                          key=lambda x: (x.get("date") or "", x["cid"]), reverse=True)
+        upcoming = sorted((x for x in rows if (x.get("date") or "")[:10] > today),
+                          key=lambda x: (x.get("date") or "", x["cid"]))
+        return released + upcoming
+    urgent = [x for x in todo if pending_reason(x, today) != "下書きを仕上げる"]
+    drafts = [x for x in todo if pending_reason(x, today) == "下書きを仕上げる"]
+    shown = (ordered(urgent) + ordered(drafts))[: max(args.limit, 0)]
 
+    safe = set(safe_genres_from_config())
     rows = []
     for x in shown:
         maker = x.get("maker")
         minutes = x.get("duration_min")
-        rows.append({
+        reason = pending_reason(x, today)
+        row = {
             "cid": x["cid"],
+            "reason": reason,
             "status": "発売済み" if (x.get("date") or "")[:10] <= today else "予約",
             "date": (x.get("date") or "")[:10],
             "actress": x.get("actress") or [],
             "maker": None if (not maker or maker == "不明") else maker,
             "tags": [t for t in (x.get("tags") or []) if isinstance(t, str) and FORMAT_TAG.match(t)],
             "duration_min": minutes if isinstance(minutes, int) and not isinstance(minutes, bool) and minutes > 0 else None,
-        })
+            # ジャンルは、サイトの「ジャンルのページ」と同じ、決めた一覧にあるものだけ（過激な言葉は出さない）
+            "genres": [g for g in (x.get("genres") or []) if g in safe],
+            "sample_movie": bool(x.get("sample_movie")),
+            "sample_images": len(x.get("sample_images") or []),
+        }
+        if x.get("comment_kind") in (DRAFT_KIND, FINAL_KIND):
+            row["draft"] = x.get("comment") or ""  # 仕上げる前の文（Gemini の下書きなど）。そのまま使わず、書き直す
+        rows.append(row)
     print(json.dumps({"today": today, "total_pending": len(todo), "shown": len(rows), "items": rows},
                      ensure_ascii=False, indent=1))
 
@@ -142,6 +211,12 @@ def comment_problems(comment, item):
         return ["文字列ではありません"]
     text = comment.strip()
     problems = text_problems(text, MIN_LEN, MAX_LEN)
+    hype = [w for w in HYPE_WORDS if w in text]
+    if hype:
+        problems.append("確かめられない評価・大げさな言い方があります（事実だけで書いてください）: " + "、".join(hype))
+    stale = [w for w in sorted(set(STALE_STATUS.findall(text)))]
+    if stale:
+        problems.append("発売日をすぎると古くなる言い方があります（日付で書いてください。例: 「11月1日発売」）: " + "、".join(stale))
     for name in item.get("actress") or []:
         if name and text.count(name) > 1:
             problems.append(f"出演者名「{name}」が2回以上入っています（1回まで）")
@@ -189,8 +264,8 @@ def cmd_apply(args):
         if item is None:
             errors.append((cid, ["保存データにない cid です"]))
             continue
-        if item.get("comment_kind") == "ai":
-            errors.append((cid, ["すでにAIコメントが付いています（上書きしません）"]))
+        if item.get("comment_kind") == FINAL_KIND and not stale_status_word(item, stamp):
+            errors.append((cid, ["Claude が仕上げたコメントが、すでに付いています（上書きしません。書き直せるのは、定型文・Gemini の下書き・発売日をすぎて予約の言い方が残っているものだけ）"]))
             continue
         problems = comment_problems(comment, item)
         if problems:
@@ -222,13 +297,20 @@ def cmd_apply(args):
         if count * 4 > len(texts):
             print(f"⚠️ 書き出しが「{top}」の コメントが {count}/{len(texts)} 件あります。変化をつけると読みやすくなります")
 
+    # 同じ結びの言い回しが多すぎると、どのコメントも同じ型に見えるので、気づけるように警告だけ出す
+    if len(texts) >= 6:
+        for phrase in AVOID_PHRASES:
+            count = sum(1 for t in texts.values() if phrase in t)
+            if count * 3 > len(texts):
+                print(f"⚠️ 「{phrase}」を使ったコメントが {count}/{len(texts)} 件あります。言い回しを変えると、読みやすくなります")
+
     if args.dry_run:
         print(f"✅ {len(texts)}件、問題ありません（--dry-run のため書き込んでいません）")
         return
 
     for cid, text in texts.items():
         by_cid[cid]["comment"] = text
-        by_cid[cid]["comment_kind"] = "ai"
+        by_cid[cid]["comment_kind"] = FINAL_KIND
         by_cid[cid]["updated"] = stamp  # コメントを変えた日（sitemap の lastmod に使う）
     save_raw(items)
     # 書いたものを読み直して確かめる
@@ -236,15 +318,17 @@ def cmd_apply(args):
     ok = len(check) == len(items) and all(x["cid"] == y["cid"] for x, y in zip(check, items))
     if not ok:
         sys.exit("❌ 書き込み後の確認に失敗しました。git で変更を取り消してください")
-    left = len(pending_items(check))
-    print(f"✅ {len(texts)}件のコメントを書き込みました（定型文のままの作品: 残り{left}件）")
+    left = len(pending_items(check, stamp))
+    kinds = [x.get("comment_kind") for x in pending_items(check, stamp)]
+    print(f"✅ {len(texts)}件のコメントを書き込みました（まだ仕上げていない作品: 残り{left}件。"
+          f"うち定型文 {kinds.count('template')}件・Gemini の下書き {kinds.count(DRAFT_KIND)}件）")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Claude がAIコメントを書くための道具")
+    parser = argparse.ArgumentParser(description="Claude がコメントを書く・仕上げるための道具")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_list = sub.add_parser("list", help="定型文のままの作品を出す")
+    p_list = sub.add_parser("list", help="まだ仕上げていない作品（定型文・Gemini の下書き）を出す")
     p_list.add_argument("--limit", type=int, default=DEFAULT_LIMIT, help=f"出す件数（既定 {DEFAULT_LIMIT}）")
     p_list.add_argument("--today", help="今日の日付 YYYY-MM-DD（テスト用。省略すると日本時間の今日）")
     p_list.set_defaults(func=cmd_list)

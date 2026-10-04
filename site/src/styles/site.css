@@ -23,6 +23,14 @@
   --gutter: 16px;
   --maxw: 1180px;
 
+  /* 角の丸みは、この3つだけを使う（サイト全体の見た目をそろえるため）
+     ・押せるもの（ボタン・チップ・切り替え・ページ送り）… 丸い端（--r-pill）
+     ・枠（パネル・入力欄・一覧の箱・ひとこと）… --r-panel
+     ・画像（表紙・サンプル・動画の枠）… --r-media */
+  --r-pill: 999px;
+  --r-panel: 10px;
+  --r-media: 4px;
+
   /* パッケージ画像（800×538）の「表紙」だけを切り出す比率。表紙は右端の約379px（高さ538）で、左にある背表紙の分を含めない。
      7:10 は表紙（379:538）より少しだけ細く、背表紙を絶対に入れない。サムネはすべてこの比率にそろえる */
   --cover-ratio: 7 / 10;
@@ -78,7 +86,8 @@ a {
 }
 
 a:focus-visible,
-button:focus-visible {
+button:focus-visible,
+summary:focus-visible {
   outline: 3px solid var(--pop);
   outline-offset: 2px;
 }
@@ -124,13 +133,19 @@ button:focus-visible {
 
 .pr-chip {
   flex: none;
-  padding: 1px 7px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  /* 高さは、左のタイトルの文字（約16px）に近い17px。枠の上下を、タイトルの文字の上下にそろえる。
+     「広告」の文字は、フォントの癖で少し上にずれて見えるので、上に1pxの余白を足して、枠の真ん中に見えるようにしている */
+  height: 17px;
+  padding: 1px 6px 0;
   border: 1px solid var(--paper);
-  border-radius: 3px;
+  border-radius: var(--r-media);
   color: var(--paper);
   font-size: 12px;
   font-weight: 700;
-  line-height: 1.5;
+  line-height: 1;
   letter-spacing: 0.04em;
 }
 
@@ -151,7 +166,7 @@ button:focus-visible {
   background: var(--ink-deep);
   border-bottom: 1px solid var(--line);
   color: var(--paper-dim);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   text-align: center;
 }
@@ -167,7 +182,7 @@ button:focus-visible {
   flex-wrap: wrap;
   gap: 0 16px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .site-nav-link {
@@ -201,6 +216,20 @@ button:focus-visible {
   display: inline-block;
 }
 
+/* 日本語の文章を、文節のところで改行する。ビルドの最後に、全ページの文章へ、文節の区切り（<wbr>）とこの印が入る（site/src/lib/phrase.js）。
+   keep-all で、<wbr> の所以外では改行しない。1つの文節が行より長いときだけ、どこででも改行する（anywhere） */
+.ph,
+.ph-js {
+  word-break: keep-all;
+  line-break: strict; /* 行のはじめに「ー」「～」「ぁ」などが来ないようにする（禁則を厳しめに） */
+  overflow-wrap: break-word; /* anywhere に対応していない古いブラウザ向け */
+  overflow-wrap: anywhere;
+}
+/* 短い出演者名・メーカー名（10文字まで）は、途中で改行しない（「S-Cute」の「-」のあと・「犬/妄想族」の「/」のあとでも）。phrase.js が包む */
+.nb {
+  white-space: nowrap; /* 10文字まで（狭いスマホ 320px の2列のカードでも、はみ出さない長さ）。inline-block にすると、前後で語の途中の改行が起きるので使わない */
+}
+
 .hero-lead {
   margin: 0;
   max-width: 34em;
@@ -209,11 +238,73 @@ button:focus-visible {
   text-wrap: balance;
 }
 
-.hero-jump {
+/* トップの検索欄（作品検索のページへ、キーワードを送る。ふつうのフォームなので JavaScript が無くても動く） */
+.hero-search {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+  max-width: 560px;
   margin-top: 18px;
+}
+
+.hero-search-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--board);
+  color: var(--paper);
+  font: 400 16px/1.3 var(--font-body); /* 16px 未満だと、iPhone で入力欄に触れたとき画面が拡大されてしまう */
+}
+
+.hero-search-input::placeholder {
+  color: var(--paper-dim);
+  opacity: 1;
+}
+
+.hero-search-input:focus-visible {
+  outline: 3px solid var(--pop);
+  outline-offset: 1px;
+}
+
+.hero-search-btn {
+  flex: none;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font: 700 15px/1 var(--font-body);
+  cursor: pointer;
+}
+
+/* 探し方のリンク（ジャンル・出演者・メーカー…）。スマホでは3列にそろえて、2行に収める */
+.hero-jump {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 560px;
+  margin-top: 12px;
+}
+
+.hero-jump .chip-link {
+  justify-content: center;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .hero-jump {
+    display: flex;
+    flex-wrap: wrap;
+    max-width: none;
+  }
+
+  .hero-jump .chip-link {
+    padding: 0 18px;
+  }
 }
 
 .chip-link {
@@ -222,7 +313,7 @@ button:focus-visible {
   min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
@@ -284,14 +375,14 @@ button:focus-visible {
   gap: 8px;
   margin: 0;
   padding: 6px 14px 4px;
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--r-panel) var(--r-panel) 0 0;
   background: var(--paper);
   color: var(--ink);
   font: 400 22px/1.2 var(--font-display);
 }
 
 .divider-year {
-  font: 500 11px/1 var(--font-body);
+  font: 400 12px/1 var(--font-body);
   opacity: 0.65;
 }
 
@@ -351,7 +442,7 @@ button:focus-visible {
   display: block;
   aspect-ratio: var(--cover-ratio);
   overflow: hidden;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: var(--board);
 }
 
@@ -438,7 +529,7 @@ button:focus-visible {
   min-height: 44px;
   padding: 0 18px;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--r-pill);
   font: 700 14px/1.2 var(--font-body);
   text-align: center;
   text-decoration: none;
@@ -466,6 +557,27 @@ button:focus-visible {
 
 .btn-quiet:hover {
   border-color: var(--paper);
+}
+
+/* 一覧のカードの「FANZAで見る」。赤い大きなボタンは、ページごとの一番の行き先（作品ページの「FANZAで詳細を見る」など）だけにして、
+   カードのほうは控えめな枠のボタンにする（たくさん並ぶので、赤が続いて見づらくならないように）。外のサイトへ行く印（↗）を添える */
+.btn-card {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--paper);
+  font-size: 13px;
+}
+
+.btn-card::after {
+  content: '↗';
+  margin-left: 6px;
+  color: var(--paper-dim);
+  font-weight: 400;
+}
+
+.btn-card:hover {
+  border-color: var(--hot);
+  background: rgba(217, 18, 63, 0.14);
 }
 
 .btn-lg {
@@ -499,7 +611,7 @@ button:focus-visible {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--r-pill);
   font-weight: 700;
   text-decoration: none;
 }
@@ -524,15 +636,29 @@ button:focus-visible {
 
 /* ---------- 作品ページ ---------- */
 
+/* パンくずは1行に収める（長い作品名は、最後の項目だけ「…」で切る。2行目が「/」から始まらないように） */
 .crumbs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  min-width: 0;
   margin: 18px 0 14px;
   padding: 0;
   color: var(--paper-dim);
   font-size: 12px;
   list-style: none;
+}
+
+.crumbs-item {
+  flex: none;
+  white-space: nowrap;
+}
+
+.crumbs-item:last-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .crumbs-item + .crumbs-item::before {
@@ -568,7 +694,7 @@ button:focus-visible {
 .detail-cover {
   width: 100%;
   height: auto;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: var(--board);
 }
 
@@ -612,7 +738,7 @@ button:focus-visible {
 .chip {
   padding: 1px 10px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font-size: 12px;
 }
 
@@ -624,7 +750,7 @@ button:focus-visible {
 .chip-tag {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 14px;
   text-decoration: none;
 }
@@ -638,7 +764,7 @@ button:focus-visible {
   position: relative;
   margin: 0 0 20px;
   padding: 16px 18px;
-  border-radius: 4px;
+  border-radius: var(--r-panel);
   background: var(--paper);
   color: var(--ink);
 }
@@ -647,7 +773,7 @@ button:focus-visible {
   display: inline-block;
   margin: 0 0 8px;
   padding: 2px 10px;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: var(--ink);
   color: var(--paper);
   font: 400 12px/1.5 var(--font-display);
@@ -667,9 +793,10 @@ button:focus-visible {
 }
 
 .fine {
+  max-width: 44em; /* 広い画面で、1行が長くなりすぎないように */
   margin: 10px 0 0;
   color: var(--paper-dim);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
@@ -713,6 +840,109 @@ button:focus-visible {
   font: 400 20px/1.3 var(--font-display);
 }
 
+/* 作品ページの「この作品のデータ」欄（保存データから数えた事実の文）。1つの枠の中に、罫線で区切った行を並べる（表のように読める） */
+.facts {
+  max-width: 760px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--board);
+  list-style: none;
+}
+
+.facts-row {
+  display: grid;
+  grid-template-columns: 6.5em 1fr;
+  gap: 2px 12px;
+  padding: 11px 14px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.facts-row + .facts-row {
+  border-top: 1px solid var(--line);
+}
+
+.facts-label {
+  color: var(--paper-dim);
+  font-size: 12px;
+  line-height: 2;
+}
+
+.facts-text {
+  min-width: 0;
+}
+
+@media (max-width: 479px) {
+  .facts-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+/* 出演者が多い作品の「ほか○人を見る」（開くと、残りの出演者が出る） */
+.cast-more {
+  margin-top: 4px;
+}
+
+.cast-more-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* たためる欄（details）の開け閉めの印は、ブラウザごとの違いをなくして、自前の「▸」にそろえる（開くと下向き） */
+.cast-more-toggle,
+.ws-filters-toggle {
+  list-style: none;
+}
+
+.cast-more-toggle::-webkit-details-marker,
+.ws-filters-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.cast-more-toggle::before,
+.ws-filters-toggle::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--paper-dim);
+  text-decoration: none;
+  transition: transform 0.15s;
+}
+
+.cast-more[open] > .cast-more-toggle::before,
+.ws-filters[open] > .ws-filters-toggle::before {
+  transform: rotate(90deg);
+}
+
+/* 月ごとのページの、前の月・次の月 */
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 22px 0 0;
+  font-size: 14px;
+}
+
+.month-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
 .samples {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -732,7 +962,7 @@ button:focus-visible {
   width: 100%;
   aspect-ratio: 3 / 2;
   object-fit: cover;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: var(--board);
 }
 
@@ -777,6 +1007,7 @@ button:focus-visible {
   z-index: 100;
   display: flex; /* 画面が低いとき、箱の上が切れないよう、flex と margin: auto（.gate-box）で中央にする */
   padding: 20px;
+  overflow-y: auto; /* 画面がとても低い（横向き・拡大表示）ときだけ、箱の中をスクロールして「はい」「いいえ」に届く。ふだんは箱が収まるので動かない */
   touch-action: none; /* 指でなぞっても、後ろのページが動かない */
   overscroll-behavior: none;
   background: rgba(10, 7, 15, 0.97);
@@ -816,6 +1047,11 @@ button:focus-visible {
   display: none;
 }
 
+/* 開いたときのフォーカスは箱そのもの（ボタンに黄色い輪が出ないように）。箱には輪を出さない */
+.gate-box:focus {
+  outline: none;
+}
+
 .gate-box {
   position: relative; /* 縁の暗がり（.gate::before）より前に出す */
   width: 100%;
@@ -823,7 +1059,7 @@ button:focus-visible {
   margin: auto;
   padding: 28px 24px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--r-panel);
   background: var(--board);
 }
 
@@ -853,6 +1089,7 @@ button:focus-visible {
 @media (max-height: 480px) {
   .gate {
     padding: 10px;
+    touch-action: pan-y; /* 低い画面では、箱が収まりきらないことがあるので、上下になぞって「はい」「いいえ」まで動かせるようにする（後ろのページは html.gate-open で止まったまま） */
   }
 
   .gate-box {
@@ -928,6 +1165,7 @@ button:focus-visible {
   border: 1px solid var(--line);
   background: var(--board);
   text-decoration: none;
+  border-radius: var(--r-panel);
 }
 
 .name-link:hover {
@@ -1041,7 +1279,7 @@ button:focus-visible {
   width: 100%;
   height: auto;
   aspect-ratio: 800 / 538;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: var(--board);
   object-fit: contain;
 }
@@ -1075,6 +1313,12 @@ html.lightbox-open {
   background: var(--ink-deep);
 }
 
+/* 開いた直後のフォーカスは枠そのもの（lightbox.js）。そこには輪を出さない（ボタンに Tab で移ったときは、いつもの輪が出る） */
+.lightbox:focus,
+.lightbox:focus-visible {
+  outline: none;
+}
+
 .lightbox-stage {
   position: relative;
   display: flex;
@@ -1102,8 +1346,20 @@ html.lightbox-open {
   border-radius: 50%;
   background: rgba(36, 27, 48, 0.85);
   color: var(--paper);
-  font: 400 30px/1 var(--font-body);
   cursor: pointer;
+}
+
+/* 矢印と×は、文字ではなく図形（SVG）。文字だと、行の高さの関係で、丸の中心より下にずれる（本物のフォントで測ると4〜5px） */
+.lightbox-btn svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
 }
 
 .lightbox-btn:hover {
@@ -1133,7 +1389,7 @@ html.lightbox-open {
   left: 50%;
   margin: 0;
   padding: 3px 12px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: rgba(36, 27, 48, 0.85);
   font-size: 13px;
   transform: translateX(-50%);
@@ -1148,7 +1404,7 @@ html.lightbox-open {
   min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--r-pill);
   background: transparent;
   color: var(--paper);
   font: 700 14px/1.2 var(--font-body);
@@ -1207,17 +1463,27 @@ html.lightbox-open {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  /* 2つは、文字の大きさ・行の高さを同じにして、文字の高さがそろって見えるようにする（太さと色だけ変える） */
+  font-size: 13px;
+  line-height: 1.4;
+  text-underline-offset: 3px;
 }
 
 .cal-link {
-  font-size: 13px;
   font-weight: 700;
-  text-underline-offset: 3px;
 }
 
 .cal-help {
   color: var(--paper-dim);
-  font-size: 12px;
+  font-weight: 400;
+}
+
+/* 「発売日をカレンダーで受け取る」と「使い方」は、1つの組にして、狭い画面で別々の行に離れないようにする */
+.cal-set {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 16px;
 }
 
 .fav-banner {
@@ -1225,7 +1491,7 @@ html.lightbox-open {
   margin-top: 14px;
   padding: 12px 14px;
   border: 1px solid var(--pop);
-  border-radius: 4px;
+  border-radius: var(--r-panel);
   background: var(--board);
   font-size: 13px;
   font-weight: 700;
@@ -1266,7 +1532,7 @@ html.lightbox-open {
   flex: none;
   width: 60px;
   height: 86px; /* 表紙の比率（--cover-ratio）に合わせる */
-  border-radius: 2px;
+  border-radius: var(--r-media);
   background: var(--ink);
   object-fit: cover;
   object-position: 100% 50%;
@@ -1296,13 +1562,13 @@ html.lightbox-open {
 
 .fav-remove {
   flex: none;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--r-pill);
   background: transparent;
   color: var(--paper-dim);
-  font: 500 12px/1 var(--font-body);
+  font: 700 12px/1 var(--font-body);
   cursor: pointer;
 }
 
@@ -1332,9 +1598,31 @@ html.lightbox-open {
   font-size: 14px;
 }
 
+/* カレンダーのアドレス（コピーして使う）。枠に入れて、読みやすい大きさに */
+.cal-url-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+
 .cal-url {
-  font-size: 12px;
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--board);
+  font-size: 13px;
+  line-height: 1.5;
   overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.cal-copy {
+  flex: none;
 }
 
 /* ---------- 出演者の顔写真・出演者のプロフィール ---------- */
@@ -1422,16 +1710,11 @@ html.lightbox-open {
   margin: 0;
 }
 
-.profile-spec {
-  margin: 6px 0 0;
-  color: var(--paper-dim);
-  font-size: 13px;
-}
-
 .profile-source {
+  max-width: 44em; /* 広い画面で、1行が長くなりすぎないように */
   margin: 8px 0 0;
   color: var(--paper-dim);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
@@ -1450,7 +1733,7 @@ html.lightbox-open {
   max-width: 640px;
   aspect-ratio: 476 / 306;
   overflow: hidden;
-  border-radius: 3px;
+  border-radius: var(--r-media);
   background: #000;
 }
 
@@ -1464,6 +1747,68 @@ html.lightbox-open {
   border: 0;
   transform-origin: 0 0;
   transform: scale(var(--movie-scale, 1));
+}
+
+/* 再生ボタン（パッケージ画像の上に、丸い再生マーク）。押すと movie.js が再生ページ（iframe）に入れ替える */
+.movie-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: #000;
+  color: #fff;
+  font: 700 14px/1.2 var(--font-body);
+  cursor: pointer;
+}
+
+.movie-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.72;
+}
+
+.movie-play-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--hot);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+}
+
+.movie-play-icon svg {
+  width: 30px;
+  height: 30px;
+  margin-left: 4px; /* 三角形の見た目の重心を、丸の真ん中に */
+  fill: #fff;
+}
+
+.movie-play-label {
+  position: relative;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.movie-play:hover .movie-play-icon {
+  background: var(--hot-hover);
+}
+
+.movie-play:focus-visible {
+  outline: 3px solid var(--pop);
+  outline-offset: -3px;
 }
 
 .movie-note {
@@ -1503,7 +1848,7 @@ html.lightbox-open {
   margin: 18px 0 0;
   padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--r-panel);
   background: var(--board);
 }
 
@@ -1535,9 +1880,9 @@ html.lightbox-open {
 .as-field select {
   width: 100%;
   min-height: 44px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--r-panel);
   background: var(--ink);
   color: var(--paper);
   font: inherit;
@@ -1558,6 +1903,7 @@ html.lightbox-open {
 
 .as-note,
 .as-coverage {
+  max-width: 44em;
   margin: 6px 0 0;
   color: var(--paper-dim);
   font-size: 12px;
@@ -1582,6 +1928,7 @@ html.lightbox-open {
   border: 1px solid var(--line);
   background: var(--board);
   text-decoration: none;
+  border-radius: var(--r-panel);
 }
 
 .actress-row-link:hover {
@@ -1602,7 +1949,6 @@ html.lightbox-open {
   font-size: 12px;
 }
 
-.actress-row-spec.is-empty,
 .actress-row-meta {
   color: var(--paper-dim);
   font-size: 12px;
@@ -1779,7 +2125,7 @@ html.lightbox-open {
   min-height: 44px;
   padding: 0 16px 0 12px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: transparent;
   color: var(--paper);
   font: 700 13px/1.2 var(--font-body);
@@ -1796,7 +2142,7 @@ html.lightbox-open {
   width: 18px;
   height: 18px;
   border: 2px solid var(--paper-dim);
-  border-radius: 4px;
+  border-radius: var(--r-media);
 }
 
 .vr-toggle[aria-pressed='true'] {
@@ -1823,24 +2169,40 @@ html.lightbox-open {
 /* 「VR作品を隠す」: VR作品の目印（data-vr）が付いたマスを隠す。全部がVRの日付は、見出しごと隠す（vr-filter.js が印を付ける） */
 .hide-vr [data-vr],
 .day.vr-empty,
+[data-vr-group].vr-empty,
 #ranking.vr-empty,
 .rank-podium .rank-cell.rank-off {
   display: none;
 }
 
-/* トップの案内の先頭の「作品を探す」だけ、目立たせる */
-.chip-link-main {
-  border-color: var(--paper);
-  background: var(--paper);
-  color: var(--ink);
-}
-
-.chip-link-main:hover {
-  border-color: var(--pop);
-  background: var(--pop);
-}
-
 /* ---------- 作品検索（/search/） ---------- */
+
+/* ジャンル・発売・並び順の、たためる欄 */
+/* details に display: grid を付けると、古いSafariで開閉が効かないことがあるので、すき間は子の margin で作る */
+.ws-filters > * + * {
+  margin-top: 12px;
+}
+
+.ws-filters-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  min-height: 44px;
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ws-filter-note {
+  color: var(--pop);
+  font-size: 13px;
+}
+
+.ws-filters[open] > .ws-filters-toggle {
+  margin-bottom: 4px;
+}
 
 .ws-tags {
   min-width: 0;
@@ -1869,10 +2231,10 @@ html.lightbox-open {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: transparent;
   color: var(--paper);
   font: 700 13px/1.2 var(--font-body);
@@ -1896,7 +2258,7 @@ html.lightbox-open {
 
 .tag-count {
   color: var(--paper-dim);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
 }
 

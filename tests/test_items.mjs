@@ -26,6 +26,7 @@ check('壊れたデータ(cid無し/日付不正/タイトル無し/重複)を�
 check('配列でない入力でも落ちない', L.normalizeItems(null).length === 0 && L.normalizeItems({}).length === 0);
 check('足りない項目に既定値', items.every((i) => Array.isArray(i.actress) && Array.isArray(i.sample_images) && typeof i.comment === 'string'));
 check('AI判定(comment_kind)', items.some((i) => i.isAi) && items.some((i) => !i.isAi));
+check('Claude が仕上げたコメント（comment_kind: claude）も、文章のコメントとして扱う。知らない種類は定型文の扱い', L.normalizeItems([{ cid: 'k1', title: 't', date: '2026-10-01', comment_kind: 'claude', comment: 'x' }, { cid: 'k2', title: 't', date: '2026-10-01', comment_kind: 'template', comment: 'x' }, { cid: 'k3', title: 't', date: '2026-10-01', comment_kind: '???', comment: 'x' }]).map((i) => i.isAi).join() === 'true,false,false');
 const byCid = Object.fromEntries(items.map((i) => [i.cid, i]));
 check('更新日(updated): 正しい日付はそのまま', /^\d{4}-\d{2}-\d{2}$/.test(byCid.smp0001.updated) && byCid.smp0001.updated === raw[0].updated, byCid.smp0001.updated);
 check('更新日(updated): 無い作品は空（sitemapに載せない）', byCid.smp0003.updated === '' && byCid.smp0004.updated === '');

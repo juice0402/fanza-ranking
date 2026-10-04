@@ -1,0 +1,47 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { monthGroups } from '../../lib/data.js';
+import { MONTH_INDEX_PATH } from '../../lib/collections.js';
+import { MONTH_MIN_ITEMS } from '../../config.js';
+import { breadcrumbLd, SITE_NAME } from '../../lib/items.js';
+
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '月ごとの新作', path: MONTH_INDEX_PATH },
+];
+---
+
+<Base
+  title={`月ごとのFANZA新作・予約作品一覧｜${SITE_NAME}`}
+  description="FANZAの新作・予約作品を、発売月ごとにまとめた一覧です。発売日の順に並べているので、その月の発売予定をひと目で確かめられます。"
+  path={MONTH_INDEX_PATH}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">月ごとの新作・予約</h1>
+      <p class="hero-lead">発売月ごとに、FANZAの新作・予約作品をまとめています。掲載している作品が{MONTH_MIN_ITEMS}本以上ある月の一覧です。</p>
+    </section>
+
+    <section class="section" aria-labelledby="month-list-title">
+      <h2 id="month-list-title" class="visually-hidden">月の一覧</h2>
+      {monthGroups.length > 0
+        ? (
+          <ul class="name-grid">
+            {monthGroups.map((g) => (
+              <li>
+                <a class="name-link" href={g.path}>
+                  <span class="name-link-name">{g.name}発売</span>
+                  <span class="name-link-count">{g.items.length}本</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+        : <p class="empty">まだ一覧に載せられる月がありません。毎日の更新をお待ちください。</p>}
+    </section>
+  </div>
+</Base>

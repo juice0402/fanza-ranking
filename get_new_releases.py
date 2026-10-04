@@ -9,7 +9,8 @@ GitHub Actions から毎日自動で実行されます。
 
 保存先: site/src/data/new_releases.json
   - 作品ごとに1件。cid（作品ID）で重複を防ぎ、毎回「追記」します。
-  - comment_kind が "ai" ならAIが書いたコメント、"template" なら作品情報から作った代わりの文。
+  - comment_kind が "ai" なら Gemini が書いたコメント（下書き）、"claude" なら Claude が読み直して仕上げたコメント、
+    "template" なら作品情報から作った代わりの文。下書きと定型文は、毎日 0:20 の Claude の予約タスクが仕上げる（docs/claude-comments.md）。
   - updated は、その作品のデータ（コメント）を最後に変えた日（日本時間 YYYY-MM-DD）。sitemap の lastmod に使います。
   - sample_movie は、FANZAのサンプル動画のURL（無ければ空）。movie_tries は、品番で取り直しても見つからなかった回数。
 保存先（出演者）: site/src/data/actresses.json … 出演者ごとの顔写真・体型・年齢の元データ・FANZAの全作品リンク（FANZA公式のデータ）
@@ -64,11 +65,40 @@ RANKING_ITEMS = 6           # 売れ筋ランキングの本数（画面に出�
 ACTRESSES_PATH = os.environ.get("ACTRESSES_PATH", os.path.join(os.path.dirname(DATA_PATH), "actresses.json"))
 RANKING_PATH = os.environ.get("RANKING_PATH", os.path.join(os.path.dirname(DATA_PATH), "ranking.json"))
 
+# --- コメントの書き分け ---
+# 作品ごとに「切り口」「書き出し」「結び」の組み合わせを決めてAIに頼む（同じ作品・同じ回数なら、いつも同じ組み合わせ）。
+# 全部のコメントが「出演者＋メーカー＋日付＋『ぜひチェック』」の同じ型にならないようにするため（検索エンジンに、似た文章の量産と見られないように）。
+# どれも「作品情報にある事実」だけを材料にする（雰囲気・人気・期待度など、確かめられないことは書かせない）。
 ANGLES = [
-    "出演者の魅力",
-    "新作として発売されるタイミングの注目度",
-    "作品の形式や雰囲気（わかる範囲で）",
+    "出演者の名前を主役にして、メーカーと発売日を添える（出演者が記載なしなら、メーカーを主役にする）",
+    "メーカーのラインナップの一本として、メーカー名を主役にする",
+    "発売日（何月何日か）を主役にする",
+    "形式（VR・8Kなど）を主役にする（形式が記載なしなら、メーカーを主役にする）",
+    "収録時間を主役にして、事実だけを淡々と伝える（収録時間が記載なしなら、発売日を主役にする）",
+    "出演者の顔ぶれを主役にする（複数人なら人数や「ほか○名」。記載なしなら、メーカーを主役にする）",
 ]
+OPENINGS = [
+    "出演者名から書き出す（記載なしのときは、メーカー名から）",
+    "メーカー名から書き出す",
+    "発売日（○月○日）から書き出す",
+    "「新作」「新着」「一本」などの言葉から書き出す",
+]
+CLOSINGS = [
+    "呼びかけは入れず、事実を言い切って終える",
+    "最後に、くわしい情報はFANZAのページで確認できる、と添える",
+    "最後に、発売日をもう一度、さらりと添える",
+    "最後に、収録時間（記載なしなら、メーカー名）を添える",
+]
+# 使いすぎて、どのコメントも同じ結びになってしまう言い回し（AIへの依頼で、使わないよう頼む。採用の可否には使わない）
+AVOID_PHRASES = ["気になる方は", "チェック", "ぜひ", "いまのうちに", "お早めに", "お見逃しなく", "おすすめ"]
+# 確かめられない評価（人気・期待度・評判）や、大げさな言い方。入っていたら採用せず、定型文にして、Claude の書き直しに回す
+# （docs/claude-comments.md の「人気・知名度の評価は書かない」と同じ考え方。scripts/claude_comments.py にも同じ一覧がある。tests/test_script.py が、2つが同じかを調べる）
+HYPE_WORDS = ["待望", "話題", "熱い視線", "高い関心", "期待が高まる", "期待が膨らむ", "期待作", "期待の", "大人気", "人気の", "ファンの", "ファンから",
+              "おなじみ", "必見", "間違いなし", "至高", "極上", "圧倒的", "注目の", "見逃せない", "目が離せない", "心を奪", "豪華な"]
+# 出してはいけない言葉（過激な表現・未成年を連想させる言葉）。scripts/claude_comments.py と同じ一覧
+EXPLICIT_WORDS = ["中出", "射精", "精液", "挿入", "フェラ", "レイプ", "強姦", "凌辱", "陵辱", "輪姦", "痴漢", "盗撮", "調教"]
+MINOR_WORDS = ["未成年", "少女", "ロリ", "児童", "幼", "女子高生", "女子校生", "女子中", "中学生", "高校生", "小学生",
+               "JK", "JC", "JS", "制服"]
 
 
 # ------------------------------------------------------------------
@@ -160,31 +190,81 @@ def template_comment(item):
     return text
 
 
-def build_prompt(item, tries):
+def rejected_words(text):
+    """AIコメントに入っていたら採用しない言葉（確かめられない評価・過激な言葉・未成年を連想させる言葉）のリスト（なければ空）"""
+    low = (text or "").lower()
+    return [w for w in HYPE_WORDS + EXPLICIT_WORDS + MINOR_WORDS if w.lower() in low]
+
+
+def build_prompt(item, tries, today=None):
     """AIに渡す文章。タイトルは渡しません（過激な言葉でブロックされやすいため）"""
     actress = item.get("actress") or []
     tags = item.get("tags") or []
-    angle = ANGLES[stable_number(item.get("cid"), tries) % len(ANGLES)]
+    cid = item.get("cid")
+    # 切り口・書き出し・結びは、それぞれ別の数から選ぶ（組み合わせがかたよらないように）。再挑戦（tries が増える）のときは、別の組み合わせになる
+    angle = ANGLES[stable_number(cid, "angle", tries) % len(ANGLES)]
+    opening = OPENINGS[stable_number(cid, "opening", tries) % len(OPENINGS)]
+    closing = CLOSINGS[stable_number(cid, "closing", tries) % len(CLOSINGS)]
+    minutes = item.get("duration_min")
+    minutes_text = f"約{minutes}分" if isinstance(minutes, int) and not isinstance(minutes, bool) and minutes > 0 else "記載なし"
+    today = today or datetime.now(JST).strftime("%Y-%m-%d")
+    if day_key(item.get("date")) and day_key(item.get("date")) > today:
+        status_rule = ("この作品はまだ発売前。ただし「予約受付中」「発売予定」「発売される」「まもなく」「〜を前に」「待ちきれない」のような、"
+                       "発売日をすぎると古くなる言い方は使わず、「○月○日発売」と日付だけで伝える")
+    else:
+        status_rule = "この作品は発売済み。「発売されました」「発売中」などと書いてよい"
     return (
         "映像作品の紹介サイトに載せる、60〜90文字の短い紹介コメントを日本語で1つだけ書いてください。\n\n"
         "【書き方のルール】\n"
-        "- 上品で、読んだ人が気になる前向きなトーンにする\n"
+        "- 落ち着いた、上品なトーンで、「です・ます」調にする\n"
+        "- 使ってよい情報は、下の【作品情報】にあることだけ。作品の中身（ストーリー・雰囲気・演出）、出演者の容姿・経歴・人気、"
+        "作品の評判や期待度は書かない。分からないことは書かない\n"
         "- 過激・直接的な表現や、性的な描写は使わない\n"
-        "- 作品の中身（ストーリーなど）を断定しない。分からないことは書かない\n"
-        "- 出演者名は入れてよい（1回まで）\n"
+        "- 出演者名は入れてよい（1回まで。複数人のときは「○○さんほか○名」でもよい）\n"
+        f"- 次の言い回しは使わない: {'、'.join(AVOID_PHRASES)}\n"
+        f"- {status_rule}\n"
         "- 挨拶・前置き・絵文字・飾りの記号は入れず、コメント本文だけを出力する\n"
-        f"- 今回は「{angle}」を中心に書く\n\n"
+        f"- 切り口: {angle}\n"
+        f"- 書き出し: {opening}\n"
+        f"- 結び: {closing}\n\n"
         "【作品情報】\n"
         f"出演: {', '.join(actress) if actress else '記載なし'}\n"
         f"メーカー: {item.get('maker') or '記載なし'}\n"
         f"形式: {' / '.join(tags) if tags else '記載なし'}\n"
+        f"収録時間: {minutes_text}\n"
         f"発売日: {format_date_jp(item.get('date'))}"
     )
 
 
+# コメントの種類: template＝定型文、ai＝Gemini の下書き、claude＝Claude が仕上げたもの
+COMMENT_KINDS = ("ai", "claude", "template")
+WRITTEN_KINDS = ("ai", "claude")  # 文章が書かれている（定型文ではない）もの
+
+
+def strip_wrapping(text):
+    """全体が「…」や "…" で囲まれていれば、その囲みだけを外す（文の途中の「」は残す）。
+    対になる相手が無い、はじめの「・終わりの」（片方だけのかっこ）も外す"""
+    pairs = (("「", "」"), ("『", "』"), ('"', '"'), ("'", "'"))
+    changed = True
+    while changed and len(text) >= 2:
+        changed = False
+        for left, right in pairs:
+            inner = text[len(left):-len(right)]
+            if text.startswith(left) and text.endswith(right) and left not in inner and right not in inner:
+                text = inner.strip()
+                changed = True
+            elif left != right and text.startswith(left) and right not in text:
+                text = text[len(left):].strip()
+                changed = True
+            elif left != right and text.endswith(right) and left not in text:
+                text = text[:-len(right)].strip()
+                changed = True
+    return text
+
+
 def clean_comment(text):
     text = re.sub(r"[\r\n]+", " ", text or "").strip()
-    text = text.strip("「」\"' ")
+    text = strip_wrapping(text)
     text = re.sub(r"\*+", "", text)  # マークダウンの強調記号を除く
     if len(text) > 140:
         text = text[:139] + "…"
@@ -272,6 +352,7 @@ class CommentMaker:
         self.fails_in_row = 0
         self.ai_ok = 0
         self.blocked = 0
+        self.rejected = 0        # 使わない言い回しが入っていて、採用しなかった数
         self.calls = 0           # Geminiに頼んだ回数
         self.stop_reason = ""    # AIをお休みした理由（なければ空）
 
@@ -291,16 +372,24 @@ class CommentMaker:
             self.calls += 1
             text, status = ask_gemini(build_prompt(item, tries))
             time.sleep(GEMINI_INTERVAL_SEC)
+            bad = []
             if status == "ok":
                 comment = clean_comment(text)
-                if comment:
+                bad = rejected_words(comment)
+                if comment and not bad:
                     item["comment"] = comment
                     item["comment_kind"] = "ai"
                     item["comment_tries"] = tries + 1
                     self.fails_in_row = 0
                     self.ai_ok += 1
                     return
-            if status == "quota":
+            if bad:
+                # 確かめられない評価などが入っていた → 採用しない。定型文にして、次は別の切り口で再挑戦（上限まで続けば、Claude が書き直す）
+                self.rejected += 1
+                self.fails_in_row = 0
+                item["comment_tries"] = tries + 1
+                print(f"   ⚠️ 使わない言い回し（{'、'.join(bad[:3])}）が入っていたので、採用しませんでした")
+            elif status == "quota":
                 self.stop("Geminiの利用上限（無料枠は1日20回ほど）に達した")  # 数えない（あとで再挑戦できる）
             elif status == "blocked":
                 self.blocked += 1
@@ -312,7 +401,7 @@ class CommentMaker:
                     print("   ⚠️ 連続で失敗したので、今回はAIコメントをお休みします")
                     self.stop("連続で失敗した（Geminiが混み合っている）")
 
-        if item.get("comment_kind") != "ai":
+        if item.get("comment_kind") not in WRITTEN_KINDS:
             item["comment"] = template_comment(item)
             item["comment_kind"] = "template"
             item.setdefault("comment_tries", tries)
@@ -343,7 +432,7 @@ def normalize_loaded(item):
         "sample_movie": safe_https_url(item.get("sample_movie"), MOVIE_HOSTS),
         "movie_tries": int(item.get("movie_tries") or 0),
         "comment": item.get("comment") or "",
-        "comment_kind": item.get("comment_kind") if item.get("comment_kind") in ("ai", "template") else "template",
+        "comment_kind": item.get("comment_kind") if item.get("comment_kind") in COMMENT_KINDS else "template",
         "comment_tries": int(item.get("comment_tries") or 0),
         "updated": day_key(item.get("updated")),
     }
@@ -501,14 +590,39 @@ def parse_api_item(raw):
 
 
 def apply_fresh(old, fresh, today_str):
-    """保存済みの作品 old に、取り直した fresh から、空だった項目（出演者・ジャンル・サンプル動画）だけを補う。
+    """保存済みの作品 old に、取り直した fresh から、空だった項目（出演者・ジャンル・サンプル動画・サンプル画像・
+    収録時間・パッケージ画像）を補い、発売日が変わっていれば直す。
 
-    ・すでに入っている項目は書き換えない（空欄を埋めるだけ）
+    ・すでに入っている項目は書き換えない（空欄を埋めるだけ）。発売日だけは、FANZAで延期・前倒しされたら合わせる
     ・補ったら更新日（updated）を進める（sitemap の lastmod に使う）
-    ・ジャンル（商品タグ）は、予約の作品には、発売が近づいてからFANZAに載ることが多い（作品検索のタグ・VR判定に使う）
-    補った項目名のリスト（"actress" / "genres" / "sample_movie"）を返す
+    ・ジャンル（商品タグ）・サンプル画像・収録時間は、予約の作品には、発売が近づいてからFANZAに載ることが多い
+    補った項目名のリスト（"actress" / "genres" / "sample_movie" / "sample_images" / "duration_min" / "image_url" / "date"）を返す
     """
     changed = []
+    fresh_day = day_key(fresh.get("date"))
+    old_day = day_key(old.get("date"))
+    if fresh_day and fresh_day != old_day:
+        old["date"] = fresh["date"]  # 発売日の延期・前倒し（トップの「発売中/予約」・カレンダー・月のページに使う）
+        changed.append("date")
+        # コメントに古い発売日（例: 11月1日。「11月1日」の中の「1月1日」は別の日として扱う）が書いてあれば、間違いになる。
+        # 文章のコメントは定型文に戻し（その日のうちに Claude が書き直す）、定型文は新しい発売日で作り直す
+        old_date_re = re.compile(rf"(?<![0-9０-９]){int(old_day[5:7])}月{int(old_day[8:10])}日") if old_day else None
+        if old.get("comment_kind") == "template":
+            old["comment"] = template_comment(old)
+            changed.append("comment")
+        elif old_date_re and old.get("comment_kind") in WRITTEN_KINDS and old_date_re.search(old.get("comment") or ""):
+            old["comment"] = template_comment(old)
+            old["comment_kind"] = "template"
+            changed.append("comment")
+    if not old.get("sample_images") and fresh.get("sample_images"):
+        old["sample_images"] = list(fresh["sample_images"])
+        changed.append("sample_images")
+    if not old.get("duration_min") and fresh.get("duration_min"):
+        old["duration_min"] = fresh["duration_min"]
+        changed.append("duration_min")
+    if not old.get("image_url") and fresh.get("image_url"):
+        old["image_url"] = fresh["image_url"]
+        changed.append("image_url")
     if not old.get("actress") and fresh.get("actress"):
         old["actress"] = list(fresh["actress"])
         changed.append("actress")
@@ -930,10 +1044,10 @@ def main():
                 print(f"  {item['comment_kind']:8s} {item['comment'][:24]}")
 
     save_archive(archive)
-    total_ai = sum(1 for it in archive.values() if it.get("comment_kind") == "ai")
-    print(f"\n✨ 保存完了！ 合計{len(archive)}件（AIコメント{total_ai}件 / 代わりの文{len(archive) - total_ai}件）")
+    kinds = [it.get("comment_kind") for it in archive.values()]
+    print(f"\n✨ 保存完了！ 合計{len(archive)}件（Claudeが仕上げ{kinds.count('claude')}件 / Geminiの下書き{kinds.count('ai')}件 / 代わりの文{kinds.count('template')}件）")
     if maker:
-        print(f"   今回のAI成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / Geminiに頼んだ回数 {maker.calls}回")
+        print(f"   今回のAI成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / 採用せず {maker.rejected}件 / Geminiに頼んだ回数 {maker.calls}回")
         if maker.stop_reason:
             print(f"   ⏸ AIコメントを途中でお休みした理由: {maker.stop_reason}")
             print(f"::warning title=AIコメントを途中でお休みしました::{maker.stop_reason}")
@@ -967,10 +1081,11 @@ def main():
         f"- 出演者が空だった作品に補った: {len(filled_cast)}件",
         f"- サンプル動画を補った: {len(filled_movie)}件" + (f"（品番で取り直した作品 {refetched[1]}件）" if refetched else ""),
         f"- ジャンルを補った: {len(filled_genres)}件",
-        f"- 合計: {len(archive)}件（AIコメント {total_ai}件 / 代わりの文 {len(archive) - total_ai}件）",
+        "- 合計: {}件（Claudeが仕上げ {}件 / Geminiの下書き {}件 / 代わりの文 {}件。下書きと代わりの文は、0:20 に Claude が仕上げます）".format(
+            len(archive), *(sum(1 for it in archive.values() if it.get("comment_kind") == k) for k in ("claude", "ai", "template"))),
     ]
     if maker:
-        summary.append(f"- 今回のAIコメント: 成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / Geminiに頼んだ回数 {maker.calls}回")
+        summary.append(f"- 今回のAIコメント: 成功 {maker.ai_ok}件 / ブロック {maker.blocked}件 / 採用せず（確かめられない言い回しが入っていた）{maker.rejected}件 / Geminiに頼んだ回数 {maker.calls}回")
         if maker.stop_reason:
             summary.append(f"- ⏸ AIコメントを途中でお休み: {maker.stop_reason}（代わりの文の作品は、次回以降に自動で再挑戦します）")
     summary.append(f"- 売れ筋ランキング: {str(len(ranking[0])) + '本' if ranking else '取得できず（前回のまま）'}")

@@ -47,8 +47,10 @@ const trail = [
       <p class="summary">{summary}</p>
       <div class="hero-actions">
         <FavButton type="maker" favKey={group.name} slug={group.slug} off="このメーカーをお気に入りに追加" on="お気に入り済み（新作が「お気に入り」に出ます）" />
-        <a class="cal-link" href={webcalUrl(makerIcsPath(group.slug))}>発売日をカレンダーで受け取る</a>
-        <a class="cal-help" href={CALENDAR_PATH}>使い方</a>
+        <span class="cal-set">
+          <a class="cal-link" href={webcalUrl(makerIcsPath(group.slug))}>発売日をカレンダーで受け取る</a>
+          <a class="cal-help" href={CALENDAR_PATH}>使い方</a>
+        </span>
       </div>
     </section>
 

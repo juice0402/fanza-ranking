@@ -53,6 +53,11 @@ export function truncate(text, max) {
 /** "YYYY-MM-DD" の形か */
 export const isDay = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
 
+/** "YYYY-MM-DD" から n 日あと（n が負なら前）の "YYYY-MM-DD"（日付だけで計算するので、時差の影響を受けない） */
+export function addDays(dateKey, n) {
+  return new Date(Date.UTC(+dateKey.slice(0, 4), +dateKey.slice(5, 7) - 1, +dateKey.slice(8, 10)) + n * 86400000).toISOString().slice(0, 10);
+}
+
 export const itemPath = (cid) => `/item/${cid}/`;
 export const archivePath = (n) => `/archive/${n}/`;
 
@@ -132,7 +137,8 @@ export function normalizeItems(raw) {
       formats,
       vr: isVrWork({ title, formats, genres }),
       comment: String(r.comment ?? ''),
-      isAi: r.comment_kind === 'ai',
+      // 文章のコメントか（ai＝Gemini の下書き、claude＝Claude が仕上げたもの）。定型文（template）なら false
+      isAi: r.comment_kind === 'ai' || r.comment_kind === 'claude',
       // データ（コメント）を最後に変えた日。分からなければ ''（sitemap には載せない）
       updated: isDay(r.updated) ? r.updated : '',
     });
@@ -240,15 +246,20 @@ export function buildRobots(siteUrl = SITE_URL) {
   return `User-agent: *\nAllow: /\n\nSitemap: ${siteUrl}/sitemap.xml\n`;
 }
 
-/** 作品ページのタイトル（検索結果に出る部分） */
-export function itemPageTitle(item) {
-  const cast = item.actress.slice(0, 2).join('・');
-  return `${truncate(item.title, 44)}${cast ? `（${cast}）` : ''}｜${SITE_NAME}`;
+/**
+ * 作品ページのタイトル（検索結果に出る部分）。品番（facts.js の productCode）が分かるときは、先頭に付ける
+ * （品番で探す人が多いため。タイトルは長いので、品番・出演者を先に見せて、題名は途中で切る）
+ */
+export function itemPageTitle(item, code = '') {
+  const shown = truncate(item.title, code ? 38 : 44);
+  // タイトルに名前が入っている出演者は、かっこの中にくり返さない（同じ言葉の重ねすぎを避ける）
+  const cast = item.actress.filter((name) => !shown.includes(name)).slice(0, 2).join('・');
+  return `${code ? `${code} ` : ''}${shown}${cast ? `（${cast}）` : ''}｜${SITE_NAME}`;
 }
 
-/** 作品ページの説明文 */
-export function itemPageDescription(item) {
-  const base = `${item.maker}の${formatDateJp(item.dateKey)}発売作品。`;
+/** 作品ページの説明文（コメント＋メーカー・発売日・品番） */
+export function itemPageDescription(item, code = '') {
+  const base = `${item.maker}の${formatDateJp(item.dateKey)}発売作品${code ? `（品番 ${code}）` : ''}。`;
   return truncate(`${item.comment} ${base}`.trim(), 120);
 }
 
@@ -304,7 +315,7 @@ export const groupByMaker = (items, minItems = ENTITY_MIN_ITEMS) =>
 export const indexByName = (groups) => new Map(groups.map((g) => [g.name, g]));
 
 /** 多く出てきた順に、重複なしで並べる（同数なら先に出てきた順） */
-function rankedNames(names, limit) {
+export function rankedNames(names, limit) {
   const counts = new Map();
   for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1);
   const ranked = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a));
@@ -316,7 +327,7 @@ export function formatsOf(items) {
   return [...new Set(items.flatMap((i) => i.formats))];
 }
 
-function dateRangeJp(items) {
+export function dateRangeJp(items) {
   const days = items.map((i) => i.dateKey).sort();
   const [first, last] = [days[0], days[days.length - 1]];
   return first === last ? `${formatDateJp(first)}` : `${formatDateJp(first)}から${formatDateJp(last)}`;
@@ -345,7 +356,7 @@ export function makerSummary(group) {
     `FANZAの新作・予約として掲載している${name}の作品は${items.length}本です。`,
     `発売日は${dateRangeJp(items)}です。`,
   ];
-  if (cast.names.length) parts.push(`出演は${cast.names.join('、')}${cast.more ? 'ほか' : ''}などです。`);
+  if (cast.names.length) parts.push(`出演は${cast.names.join('、')}${cast.more ? 'ほか' : ''}です。`);
   if (formats.length) parts.push(`${formats.join('・')}の作品を含みます。`);
   return parts.join('');
 }

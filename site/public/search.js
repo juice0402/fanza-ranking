@@ -23,7 +23,8 @@
     s = s.toLowerCase().replace(/[ァ-ヶ]/g, function (c) {
       return String.fromCharCode(c.charCodeAt(0) - 0x60);
     });
-    return s.replace(/[\s　・·.・]/g, '');
+    // 品番の「-」の有無（DLDSS-566 / dldss566）と、タイトルの文節の区切り（幅のない空白 U+200B）も、そろえる
+    return s.replace(/[\s　・·.・\-\u200b\u2060]/g, '');
   }
 
   // キーワードを、空白で区切った語に分ける（全部の語を含む作品だけを探す）
@@ -89,7 +90,7 @@
       var names = row.g.map(function (n) {
         return genres[n] || '';
       });
-      row._h = normalizeText(row.t) + SEP + row.a.map(normalizeText).join(SEP) + SEP + normalizeText(row.m) + SEP + normalizeText(row.c) + SEP + names.map(normalizeText).join(SEP);
+      row._h = normalizeText(row.t) + SEP + row.a.map(normalizeText).join(SEP) + SEP + normalizeText(row.m) + SEP + normalizeText(row.c) + SEP + normalizeText(typeof row.p === 'string' ? row.p : '') + SEP + names.map(normalizeText).join(SEP);
     });
     return rows;
   }
@@ -223,6 +224,8 @@
   var list = document.getElementById('ws-list');
   var more = document.getElementById('ws-more');
   var fallback = document.getElementById('ws-fallback');
+  var filters = document.getElementById('ws-filters'); // ジャンル・発売・並び順の、たためる欄（無くても動く）
+  var filterNote = document.getElementById('ws-filter-note');
   var indexUrl = root.getAttribute('data-index');
   if (!form || !tagList || !tagMore || !count || !list || !more || !indexUrl) return;
 
@@ -258,6 +261,16 @@
     return Number(day.slice(0, 4)) + '年' + Number(day.slice(5, 7)) + '月' + Number(day.slice(8, 10)) + '日';
   }
 
+  // 名前を並べる。短い名前（10文字まで）は、途中で改行しない（.nb）。ビルドの phrase.js と同じ考え方
+  function names(parent, list, sep, empty) {
+    if (!list.length && empty) parent.appendChild(document.createTextNode(empty));
+    list.forEach(function (name, i) {
+      if (i > 0) parent.appendChild(document.createTextNode(sep));
+      parent.appendChild(el('span', name.length <= 10 ? 'nb' : '', name));
+    });
+    return parent;
+  }
+
   function card(row, today) {
     var li = el('li', 'shelf-cell');
     var article = el('article', 'item');
@@ -286,7 +299,7 @@
     article.appendChild(cover);
 
     var heading = el('h3', 'item-title');
-    var link = el('a', 'item-title-link', row.t);
+    var link = el('a', 'item-title-link ph-js', row.t); // ph-js: 文節の区切り（索引のタイトルに入っている U+200B）の所だけで改行する
     link.href = href;
     heading.appendChild(link);
     article.appendChild(heading);
@@ -294,8 +307,10 @@
     var cast = row.a.filter(function (name) {
       return typeof name === 'string' && name;
     });
-    article.appendChild(el('p', 'item-cast', cast.length ? cast.join('、') : '出演者の記載なし'));
-    article.appendChild(el('p', 'item-meta', jp(row.d) + '発売' + (row.m ? '・' + row.m : '')));
+    article.appendChild(names(el('p', 'item-cast ph-js'), cast, '、', '出演者の記載なし'));
+    var meta = el('p', 'item-meta ph-js', jp(row.d) + '発売' + (row.m ? '・' : ''));
+    if (row.m) names(meta, [row.m], '', '');
+    article.appendChild(meta);
     li.appendChild(article);
     return li;
   }
@@ -309,9 +324,11 @@
 
   function updateTags(counts) {
     var visible = visibleTags(counts, selected, TAGS_COLLAPSED, expanded);
+    var focused = document.activeElement;
     tagButtons.forEach(function (button, n) {
       var on = selected.indexOf(n) >= 0;
-      button.parentNode.hidden = visible.indexOf(n) < 0; // 隠すのは外側の li（隠れた li に、並びの間隔が残らないように）
+      // 隠すのは外側の li（隠れた li に、並びの間隔が残らないように）。いま押したボタンは隠さない（フォーカスが、ページの先頭に飛ばないように）
+      button.parentNode.hidden = visible.indexOf(n) < 0 && button !== focused;
       button.setAttribute('aria-pressed', on ? 'true' : 'false');
       button.disabled = !on && counts[n] === 0; // 足すと0本になるジャンルは、押せなくする
       button.querySelector('.tag-count').textContent = String(counts[n]);
@@ -337,6 +354,10 @@
     var vrNote = o.hideVr ? '（VR作品を除く）' : '';
     count.textContent = found.length ? found.length + '本が見つかりました' + vrNote : '条件に合う作品がありません。条件をゆるめてみてね。' + (o.hideVr ? 'VR作品は隠しています。' : '');
     more.hidden = found.length <= visible.length;
+    if (filterNote) {
+      var active = selected.length + (state.status ? 1 : 0) + (state.sort === 'old' ? 1 : 0);
+      filterNote.textContent = active ? '（' + active + '件を指定中）' : '';
+    }
     writeUrl();
   }
 
@@ -383,8 +404,12 @@
     render();
   });
   more.addEventListener('click', function () {
+    var before = shown;
     shown += PAGE_SIZE;
     render();
+    // 増えた分の先頭の作品へ、フォーカスを移す（「もっと見る」が消えても、フォーカスがページの先頭に飛ばないように）
+    var first = list.children[before] && list.children[before].querySelector('.item-title-link');
+    if (first) first.focus();
   });
   document.addEventListener('vrfilterchange', onChange); // 「VR作品を隠す」スイッチが押されたとき
 
@@ -405,6 +430,9 @@
       form.elements.status.value = first.status;
       form.elements.sort.value = first.sort;
       selected = first.tags;
+      // 広い画面か、ジャンル・発売・並び順の指定つきで開いたときは、たためる欄を最初から開いておく
+      var wide = typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 720px)').matches;
+      if (filters && (wide || first.tags.length || first.status || first.sort === 'old')) filters.open = true;
       root.hidden = false;
       if (fallback) fallback.hidden = true;
       render();

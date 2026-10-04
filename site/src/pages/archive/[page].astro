@@ -43,7 +43,7 @@ const trail = [
     <section class="section" aria-labelledby="archive-title">
       <h2 id="archive-title" class="visually-hidden">発売日ごとの作品</h2>
       {groups.length > 0
-        ? <DaySection groups={groups} />
+        ? <DaySection groups={groups} eagerFirst={2} />
         : <p class="empty">まだ作品がありません。毎日の更新をお待ちください。</p>}
     </section>
 

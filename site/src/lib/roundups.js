@@ -1,7 +1,9 @@
 // 「週のまとめ記事」の部品（画面に依存しない）。
 // 記事の本体（導入文・注目の作品）は、Claude が毎週月曜に書いて site/src/data/roundups.json に入れます。
 // 本数・メーカー別などの数字は、作品データから毎回自動で数えます（scripts/claude_roundups.py の week_stats と同じ数え方）。
-import { SITE_NAME, SITE_URL, dateParts, isDay, truncate } from './items.js';
+import { SITE_NAME, SITE_URL, addDays, dateParts, isDay, truncate } from './items.js';
+
+export { addDays }; // 以前からここにあった名前（テストなどが使う）
 
 export const WEEKLY_INDEX_PATH = '/weekly/';
 export const weeklyPath = (weekStart) => `/weekly/${weekStart}/`;
@@ -10,11 +12,6 @@ const TOP_MAKERS = 5;
 const TOP_ACTRESSES = 5; // 2本以上に出た人だけ
 
 const toUtc = (dateKey) => Date.UTC(+dateKey.slice(0, 4), +dateKey.slice(5, 7) - 1, +dateKey.slice(8, 10));
-
-/** dateKey から n 日あとの "YYYY-MM-DD" */
-export function addDays(dateKey, n) {
-  return new Date(toUtc(dateKey) + n * 86400000).toISOString().slice(0, 10);
-}
 
 /** その日を含む週の月曜日 */
 export function weekStartOf(dateKey) {

@@ -2,10 +2,11 @@
 import '../styles/site.css';
 import { SITE_NAME, SITE_URL, jsonLdScript, ACTRESS_INDEX_PATH, MAKER_INDEX_PATH } from '../lib/items.js';
 import { GOOGLE_SITE_VERIFICATION } from '../config.js';
-import { roundups } from '../lib/data.js';
+import { roundups, monthGroups, tagGroups, upcoming } from '../lib/data.js';
 import { FAVORITES_PATH } from '../lib/favorites.js';
 import { CALENDAR_PATH } from '../lib/calendar.js';
 import { WEEKLY_INDEX_PATH } from '../lib/roundups.js';
+import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import { SEARCH_PATH } from '../lib/search.js';
 
 const {
@@ -19,6 +20,10 @@ const {
 } = Astro.props;
 
 const canonical = SITE_URL + path;
+// 書体（Google Fonts）。表示を止めないよう、読み込み終わってから当てる（preload → onload で stylesheet に）。
+// 使う太さは 400 と 700 だけ（太さが増えるほど、読み込むファイルが増えるため）。JavaScript が無いときは <noscript> の中のふつうの読み込み
+const FONTS_URL = 'https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap';
+const hasUpcoming = upcoming.length > 0; // 予約の作品が無い日は、ヘッダー・フッターの「予約」（トップの #upcoming）を出さない（行き先が無いため）
 ---
 
 <!doctype html>
@@ -44,12 +49,9 @@ const canonical = SITE_URL + path;
 
     {jsonLd.map((data) => <script is:inline type="application/ld+json" set:html={jsonLdScript(data)} />)}
 
-    <script is:inline>
-      // 「VR作品を隠す」を選んでいる端末では、ページを開いた瞬間から隠す（チラつかないよう、ここで先に印を付ける）。スイッチの動きは /vr-filter.js
-      try {
-        if (localStorage.getItem('hide-vr') === '1') document.documentElement.classList.add('hide-vr');
-      } catch (e) {}
-    </script>
+    {/* 「VR作品を隠す」を選んでいる端末では、ページを開いた瞬間から隠す（チラつかないよう、ここで先に印を付ける）。スイッチの動きは /vr-filter.js。
+         ページごとに送られる小さなスクリプトなので、説明はここ（Astro のコメント。出力されない）に書く */}
+    <script is:inline>try{if(localStorage.getItem('hide-vr')==='1')document.documentElement.classList.add('hide-vr')}catch(e){}</script>
 
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
@@ -57,14 +59,13 @@ const canonical = SITE_URL + path;
     <link rel="sitemap" href="/sitemap.xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap"
-    />
+    <link rel="preconnect" href="https://pics.dmm.co.jp" />
+    <link rel="preload" as="style" href={FONTS_URL} onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href={FONTS_URL} /></noscript>
   </head>
   <body class={stickyCta ? 'has-sticky' : ''}>
     <div id="age-gate" class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title" hidden>
-      <div class="gate-box">
+      <div class="gate-box" tabindex="-1">
         <p class="gate-mark">18+</p>
         <h2 id="gate-title" class="gate-title">18歳以上ですか？</h2>
         <p class="gate-text">このサイトにはアダルト作品の紹介が含まれます。18歳未満の方はご利用いただけません。</p>
@@ -74,6 +75,11 @@ const canonical = SITE_URL + path;
         </div>
       </div>
     </div>
+    {/* 18歳確認の画面の動き（ページごとに送られるので、説明はここに書き、スクリプトは短くしてある）:
+         ・確認済み（localStorage の age-ok）でなければ、画面を出し、後ろの本文を inert にして（キーボード・読み上げで触れない）、html に gate-open を付ける（後ろを動かさない）
+         ・最初のフォーカスは、確認の箱そのもの（ボタンにすぐフォーカスすると、iPhone/iPad で黄色い輪が出て見えるため）。Tab で「はい」「いいえ」を行き来し、外に出ない
+         ・このスクリプトは本文の途中で動くので、後ろの部品の inert は、読み込みが終わってから付ける
+         ・「はい」で閉じて、確認済みを保存する（保存できない端末では、ページごとに確認が出る） */}
     <script is:inline>
       (function () {
         var gate = document.getElementById('age-gate');
@@ -82,10 +88,9 @@ const canonical = SITE_URL + path;
           ok = localStorage.getItem('age-ok') === '1';
         } catch (e) {}
         if (ok || !gate) return;
+        var box = gate.querySelector('.gate-box');
         var yes = document.getElementById('gate-yes');
         var no = gate.querySelector('a');
-        // 確認画面が出ているあいだ、後ろの本文は、キーボード・読み上げで触れないようにする（inert）。
-        // このスクリプトは本文の途中で動くので、後ろの部品は、読み込みが終わってから探す
         function setInert(on) {
           for (var el = document.body.firstElementChild; el; el = el.nextElementSibling) {
             if (el === gate || el.tagName === 'SCRIPT') continue;
@@ -102,14 +107,18 @@ const canonical = SITE_URL + path;
         } else {
           setInert(true);
         }
-        yes.focus();
-        // Tab キーで、確認画面の外に出ない（「はい」と「いいえ」の2つを行き来する）
+        try {
+          box.focus({ preventScroll: true });
+        } catch (e) {
+          box.focus();
+        }
         gate.addEventListener('keydown', function (e) {
           if (e.key !== 'Tab') return;
-          if (e.shiftKey && document.activeElement === yes) {
+          var at = document.activeElement;
+          if (e.shiftKey ? at === yes || at === box : at === no) {
             e.preventDefault();
-            no.focus();
-          } else if (!e.shiftKey && document.activeElement === no) {
+            (e.shiftKey ? no : yes).focus();
+          } else if (at !== yes && at !== no) {
             e.preventDefault();
             yes.focus();
           }
@@ -135,7 +144,7 @@ const canonical = SITE_URL + path;
       </div>
       <nav class="site-nav" aria-label="メイン">
         <a class="site-nav-link" href="/#released">発売中</a>
-        <a class="site-nav-link" href="/#upcoming">予約</a>
+        {hasUpcoming && <a class="site-nav-link" href="/#upcoming">予約</a>}
         <a class="site-nav-link" href="/archive/1/">過去の作品</a>
         <a class="site-nav-link" href={SEARCH_PATH}>検索</a>
         <a class="site-nav-link" href={FAVORITES_PATH}>★お気に入り</a>
@@ -155,11 +164,13 @@ const canonical = SITE_URL + path;
         </ul>
         <nav class="foot-nav" aria-label="サイト内の案内">
           <a class="foot-link" href="/#released">発売中</a>
-          <a class="foot-link" href="/#upcoming">予約</a>
+          {hasUpcoming && <a class="foot-link" href="/#upcoming">予約</a>}
           <a class="foot-link" href="/archive/1/">過去の作品</a>
           <a class="foot-link" href={SEARCH_PATH}>作品を探す</a>
           <a class="foot-link" href={FAVORITES_PATH}>お気に入り</a>
           <a class="foot-link" href={CALENDAR_PATH}>発売日カレンダー</a>
+          {monthGroups.length > 0 && <a class="foot-link" href={MONTH_INDEX_PATH}>月ごとの新作</a>}
+          {tagGroups.length > 0 && <a class="foot-link" href={TAG_INDEX_PATH}>ジャンルから探す</a>}
           <a class="foot-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a>
           <a class="foot-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
           {roundups.length > 0 && <a class="foot-link" href={WEEKLY_INDEX_PATH}>週ごとのまとめ</a>}

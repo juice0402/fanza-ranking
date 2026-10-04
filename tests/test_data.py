@@ -38,7 +38,7 @@ check("cid の重複がない", len(set(cids)) == len(cids), [c for c in set(cid
 check("タイトルがすべてある", all(str(x.get("title", "")).strip() for x in items))
 check("発売日が YYYY-MM-DD で始まる", all(re.match(r"^\d{4}-\d{2}-\d{2}", str(x.get("date", ""))) for x in items))
 check("コメントがすべてある", all(str(x.get("comment", "")).strip() for x in items))
-check("comment_kind は ai か template", all(x.get("comment_kind") in ("ai", "template") for x in items),
+check("comment_kind は ai（Geminiの下書き）・claude（Claudeが仕上げ）・template（定型文）のどれか", all(x.get("comment_kind") in ("ai", "claude", "template") for x in items),
       {x.get("comment_kind") for x in items})
 jst_tomorrow = (datetime.now(timezone(timedelta(hours=9))) + timedelta(days=1)).strftime("%Y-%m-%d")
 check("更新日(updated)がすべてある（YYYY-MM-DD）", all(re.match(r"^\d{4}-\d{2}-\d{2}$", str(x.get("updated", ""))) for x in items),

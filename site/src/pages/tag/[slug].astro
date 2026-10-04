@@ -1,0 +1,59 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import VrToggle from '../../components/VrToggle.astro';
+import DaySection from '../../components/DaySection.astro';
+import { tagGroups } from '../../lib/data.js';
+import { TAG_INDEX_PATH, VR_TAG_NAME, tagPageTitle, tagSummary } from '../../lib/collections.js';
+import { TAG_PAGE_LIMIT } from '../../config.js';
+import { breadcrumbLd, countByDate, groupByDate, summaryDescription } from '../../lib/items.js';
+import { searchPath } from '../../lib/search.js';
+
+// 作品が TAG_MIN_ITEMS 本以上ある、ジャンルごとに1ページ作る（作るジャンルは config.js の TAG_PAGE_GENRES と、VR作品）
+export function getStaticPaths() {
+  return tagGroups.map((group) => ({ params: { slug: group.slug }, props: { group } }));
+}
+
+const { group } = Astro.props;
+const isVr = group.name === VR_TAG_NAME;
+const summary = tagSummary(group);
+const shown = group.items.slice(0, TAG_PAGE_LIMIT); // 新しい順
+const groups = groupByDate(shown, countByDate(group.items));
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: 'ジャンルから探す', path: TAG_INDEX_PATH },
+  { name: group.name, path: group.path },
+];
+---
+
+<Base
+  title={tagPageTitle(group)}
+  description={summaryDescription(summary)}
+  path={group.path}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{isVr ? 'VR作品' : group.name}の新作・予約作品</h1>
+      <p class="summary">{summary}</p>
+    </section>
+
+    <section class="section" aria-labelledby="works-title">
+      <div class="section-head">
+        <h2 id="works-title" class="section-title">作品（{group.items.length}本）</h2>
+        <p class="section-note">発売日が新しい順</p>
+      </div>
+      {!isVr && (
+        <div class="list-tools">
+          <VrToggle />
+        </div>
+      )}
+      <DaySection groups={groups} eagerFirst={2} keepVr={isVr} />
+      {group.items.length > shown.length && (
+        <p class="more"><a class="btn btn-quiet" href={searchPath(group.name)}>ほかの{group.items.length - shown.length}本は、作品検索で探せます</a></p>
+      )}
+    </section>
+  </div>
+</Base>

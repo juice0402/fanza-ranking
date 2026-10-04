@@ -65,6 +65,9 @@
       show(i);
       document.documentElement.classList.add('lightbox-open');
       dialog.showModal();
+      // showModal は、最初のボタン（前へ）にフォーカスを移す。すると iPad などで、そのボタンに黄色いフォーカスの輪が付いて見える。
+      // そこで、フォーカスは枠そのものに置く（← → や Esc は、そのまま効く。Tab を押せば、ボタンに移れて、輪も出る）
+      dialog.focus({ preventScroll: true });
     });
   });
 

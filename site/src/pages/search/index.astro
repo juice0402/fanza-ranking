@@ -38,6 +38,9 @@ const hasWorks = all.length > 0;
             <input type="search" name="q" placeholder="例: 人妻 / 出演者の名前" enterkeyhint="search" />
           </label>
 
+          {/* ジャンル・発売・並び順は、たたんでおける（スマホで、結果がすぐ見えるように。広い画面・条件付きで開いたときは、最初から開く） */}
+          <details id="ws-filters" class="ws-filters">
+            <summary class="ws-filters-toggle">ジャンル・発売・並び順で絞り込む<span id="ws-filter-note" class="ws-filter-note"></span></summary>
           <fieldset class="ws-tags">
             <legend class="ws-legend">ジャンル（タグ）｜選んだものを、すべて含む作品だけが出ます</legend>
             <ul id="ws-tag-list" class="ws-tag-list"></ul>
@@ -61,6 +64,7 @@ const hasWorks = all.length > 0;
               </select>
             </label>
           </div>
+          </details>
 
           <div class="as-actions">
             <VrToggle />

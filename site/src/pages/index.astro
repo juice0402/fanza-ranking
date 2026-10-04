@@ -3,7 +3,8 @@ import Base from '../layouts/Base.astro';
 import DaySection from '../components/DaySection.astro';
 import RankCard from '../components/RankCard.astro';
 import VrToggle from '../components/VrToggle.astro';
-import { released, upcoming, roundups, ranking } from '../lib/data.js';
+import { released, upcoming, roundups, ranking, monthGroups, tagGroups } from '../lib/data.js';
+import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import { weeklyPath } from '../lib/roundups.js';
 import { SEARCH_PATH } from '../lib/search.js';
 import {
@@ -46,15 +47,19 @@ const rankFirstIsHero = rankHasHero(rankShownCount);
 
     <section class="hero">
       <h1 class="hero-title"><span class="phrase">FANZAの新作を、</span><span class="phrase">発売日ごとに。</span></h1>
-      <p class="hero-lead"><span class="phrase">発売日ごとに新作をまとめて、</span><span class="phrase">作品ごとにひとこと添えています。</span><span class="phrase">毎日更新。</span></p>
-      <nav class="hero-jump" aria-label="ページ内の移動">
-        <a class="chip-link chip-link-main" href={SEARCH_PATH}>作品を探す</a>
-        {ranking && <a class="chip-link" href="#ranking">売れ筋TOP3</a>}
-        {released.length > 0 && <a class="chip-link" href="#released">発売中の新作 {released.length}本</a>}
-        {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約受付中 {upcomingShown}本</a>}
-        <a class="chip-link" href={ACTRESS_INDEX_PATH}>出演者から探す</a>
-        <a class="chip-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
-        {latestRoundup && <a class="chip-link" href={weeklyPath(latestRoundup.week_start)}>最新の週のまとめ</a>}
+      <p class="hero-lead">発売日ごとに新作をまとめて、作品ごとにひとこと添えています。毎日更新。</p>
+      <form class="hero-search" action={SEARCH_PATH} method="get" role="search">
+        <label class="visually-hidden" for="hero-q">作品を探す（タイトル・出演者・メーカー・品番）</label>
+        <input id="hero-q" class="hero-search-input" type="search" name="q" placeholder="タイトル・出演者・品番" enterkeyhint="search" autocomplete="off" />
+        <button class="hero-search-btn" type="submit">探す</button>
+      </form>
+      <nav class="hero-jump" aria-label="探し方">
+        {tagGroups.length > 0 && <a class="chip-link" href={TAG_INDEX_PATH}>ジャンル</a>}
+        <a class="chip-link" href={ACTRESS_INDEX_PATH}>出演者</a>
+        <a class="chip-link" href={MAKER_INDEX_PATH}>メーカー</a>
+        {monthGroups.length > 0 && <a class="chip-link" href={MONTH_INDEX_PATH}>月ごと</a>}
+        {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約 {upcomingShown}本</a>}
+        {latestRoundup && <a class="chip-link" href={weeklyPath(latestRoundup.week_start)}>週のまとめ</a>}
       </nav>
     </section>
 
@@ -71,7 +76,7 @@ const rankFirstIsHero = rankHasHero(rankShownCount);
         <ul class="shelf rank-podium" data-show={RANKING_SHOWN} data-visible={rankShownCount}>
           {ranking.items.map((entry, i) => (
             <li class={`shelf-cell rank-cell${i === 0 && rankFirstIsHero ? ' is-hero' : ''}${i >= RANKING_SHOWN ? ' rank-off' : ''}`} data-rank={entry.rank} {...vrAttrs(entry)}>
-              <RankCard entry={entry} />
+              <RankCard entry={entry} first={i === 0} />
             </li>
           ))}
         </ul>
@@ -81,7 +86,7 @@ const rankFirstIsHero = rankHasHero(rankShownCount);
     <section id="released" class="section" aria-labelledby="released-title">
       <div class="section-head">
         <h2 id="released-title" class="section-title">発売中の新作</h2>
-        <p class="section-note">発売日が新しい順</p>
+        <p class="section-note">発売日が新しい順{released.length > 0 && `・全${released.length}本`}</p>
       </div>
       {releasedGroups.length > 0
         ? <DaySection groups={releasedGroups} />
@@ -95,7 +100,7 @@ const rankFirstIsHero = rankHasHero(rankShownCount);
       <section id="upcoming" class="section" aria-labelledby="upcoming-title">
         <div class="section-head">
           <h2 id="upcoming-title" class="section-title">予約受付中</h2>
-          <p class="section-note">発売日が近い順</p>
+          <p class="section-note">発売日が近い順・{upcomingShown}本</p>
         </div>
         <DaySection groups={upcomingGroups} />
       </section>

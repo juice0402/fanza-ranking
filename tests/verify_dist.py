@@ -44,9 +44,23 @@ def warn(name, ok, detail=""):
     print(("  ✅ " if ok else "  ⚠️ ") + name + (f"  → {detail}" if (detail and not ok) else ""))
 
 
-def read(path):
+def read_raw(path):
     with open(path, encoding="utf-8") as f:
         return f.read()
+
+
+def unphrase(text):
+    """日本語の文章に足した、文節の区切り（<wbr>）と包み（<span class="ph">・名前の <span class="nb">）を取り除く
+    （site/src/lib/phrase.js の逆。文字を探す検査が、区切りで途切れないように）"""
+    text = re.sub(r"<wbr\s*/?>", "", text)
+    text = re.sub(r'<span class="nb">([^<]*)</span>', r"\1", text)
+    return re.sub(r'<span class="ph">([^<]*)</span>', r"\1", text)
+
+
+def read(path):
+    """ファイルの中身。HTMLは、文節の区切りを取り除いた形で返す（区切りそのものの検査だけが read_raw を使う）"""
+    text = read_raw(path)
+    return unphrase(text) if path.endswith(".html") else text
 
 
 def tags(text, name):
@@ -201,6 +215,25 @@ for cid, x in valid.items():
     elif links or has_dialog:
         bad_samples.append((cid, 0, links, has_dialog, has_script))
 check("サンプル画像のある作品ページに、拡大表示の部品（リンク・ダイアログ・スクリプト）が揃っている", not bad_samples, bad_samples[:3])
+# 拡大表示を開いた直後のフォーカスは、枠そのもの（前へボタンに黄色い輪が付いて見えないように）。枠に tabindex="-1"、輪を消す CSS、lightbox.js の dialog.focus が揃っている
+bad_lb_focus = []
+for cid, x in valid.items():
+    page = os.path.join(DIST, "item", cid, "index.html")
+    if os.path.isfile(page) and 'id="lightbox"' in read(page):
+        dlg = next((t for t in tags(read(page), "dialog") if t.get("id") == "lightbox"), None)
+        if not dlg or dlg.get("tabindex") != "-1":
+            bad_lb_focus.append(cid)
+lb_js = read(os.path.join(DIST, "lightbox.js")) if os.path.isfile(os.path.join(DIST, "lightbox.js")) else ""
+check("拡大表示: 枠に tabindex=-1・開いた直後は枠にフォーカス（lightbox.js の dialog.focus）で、前へボタンに輪が付かない", not bad_lb_focus and "dialog.focus(" in lb_js, bad_lb_focus[:3])
+# 拡大表示の矢印（前・次）と×は、文字（‹ › ×）ではなく図形（SVG）。文字だと、丸の中心より下にずれて見える（本物のフォントで4〜5px）
+bad_lb_icon = []
+for cid, x in valid.items():
+    page = os.path.join(DIST, "item", cid, "index.html")
+    if os.path.isfile(page) and 'id="lightbox"' in read(page):
+        btns = re.findall(r'<button\b[^>]*class="[^"]*lightbox-btn[^"]*"[^>]*>(.*?)</button>', read(page), re.S)
+        if len(btns) != 3 or any('<svg' not in b or re.search(r'[‹›×]', re.sub(r'<svg.*?</svg>', '', b, flags=re.S)) for b in btns):
+            bad_lb_icon.append(cid)
+check("拡大表示: 前・次・閉じるのボタンは、図形（SVG）の矢印・×で、文字ではない（丸の真ん中にそろえるため）", not bad_lb_icon, bad_lb_icon[:3])
 with_spine = [os.path.relpath(p, DIST) for p in glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True) if 'class="spine"' in read(p)]
 check("カードに、画像をさえぎるメーカーの縦帯（spine）が出ていない", not with_spine, with_spine[:3])
 
@@ -250,6 +283,13 @@ for cid, x in valid.items():
         problems_here = []
         if len(iframes) != 1 or frame.get("src") != movie:
             problems_here.append("動画の枠(iframe)が1つで、動画のURLと同じではない")
+        # 開いた時点では、重いFANZAの再生ページを読み込まない（再生ボタンを押すと movie.js が入れる。iframe は JavaScript が無いとき用の <noscript> の中だけ）
+        outside = re.sub(r"<noscript>[\s\S]*?</noscript>", "", text)
+        if tags(outside, "iframe"):
+            problems_here.append("ページを開いた時点で、再生ページ(iframe)を読み込んでいる（<noscript> の外に iframe がある）")
+        plays = [t for t in tags(text, "button") if has_class(t, "movie-play")]
+        if len(plays) != 1 or plays[0].get("data-movie-src") != movie:
+            problems_here.append("再生ボタン（.movie-play）が1つで、動画のURL（data-movie-src）と同じではない")
         if frame.get("width") != "476" or frame.get("height") != "306":
             problems_here.append("枠のサイズが 476x306 ではない")
         if 'src="/movie.js"' not in text:
@@ -282,6 +322,17 @@ for cid, x in valid.items():
             problems_here.append("動画が無いのに movie.js を読み込んでいる")
         if problems_here:
             bad_movie.append((cid, problems_here))
+# 表示の速さ: 最初の画面の主な画像（動画が無い作品の表紙・動画の再生ボタンの画像）は、優先して読む（fetchpriority="high"）
+slow_lcp = []
+for cid, x in valid.items():
+    page = os.path.join(DIST, "item", cid, "index.html")
+    if not os.path.isfile(page) or not str(x.get("image_url") or "").strip():
+        continue
+    imgs = tags(read(page), "img")
+    main_img = next((t for t in imgs if has_class(t, "detail-cover") or has_class(t, "movie-poster")), None)
+    if not main_img or main_img.get("fetchpriority") != "high" or main_img.get("loading") == "lazy":
+        slow_lcp.append(cid)
+check("作品ページの最初の画面の画像（表紙・動画の再生ボタンの画像）を、優先して読む（fetchpriority=high・lazy にしない）", not slow_lcp, slow_lcp[:3])
 check(f"動画がある作品（{movie_count}件）は動画を表紙の場所に出し、パッケージ写真をサンプル画像の下の別の欄に大きく出している／動画が無い作品は、これまでどおり表紙", not bad_movie, bad_movie[:3])
 foreign_frames = []
 for pth in all_html:
@@ -442,6 +493,9 @@ if isinstance(rk_raw, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(rk_raw.ge
         if isinstance(r, dict) and re.fullmatch(r"[A-Za-z0-9_\-]+", str(r.get("cid", ""))) and str(r.get("title", "")).strip() and fanza_https(r.get("url"), FANZA_LINK):
             rk_items.append(r)
     rk_items = rk_items[:6]  # 売れ筋は、VR作品を隠したときの差し替え用に、6本まで持つ（画面に出すのは先頭の3本）
+# トップの検索欄: 作品検索のページ（/search/）へ、キーワード（q）を送る。JavaScript が無くても動く（ふつうのフォーム）
+hero_forms = [t for t in tags(home_html, "form") if has_class(t, "hero-search")]
+check("トップに検索欄があり、/search/ にキーワード（q）を送る", len(hero_forms) == 1 and hero_forms[0].get("action") == "/search/" and hero_forms[0].get("method", "get").lower() == "get" and any(t.get("name") == "q" for t in tags(home_html, "input")), hero_forms)
 home_sections = [t for t in tags(home_html, "section") if t.get("id") == "ranking"]
 rank_cards = [t for t in tags(home_html, "article") if has_class(t, "rank-item")]
 if rk_fresh and rk_items:
@@ -450,7 +504,7 @@ if rk_fresh and rk_items:
     missing = [r["cid"] for r in rk_items if r["url"] not in hrefs or not SPONSORED <= set(hrefs[r["url"]].get("rel", "").split())]
     check("各作品の「FANZAで見る」は、アフィリエイトのURLで、広告のリンクの属性（sponsored など）が付いている", not missing, missing)
     check("「人気順」と書いてある（FANZAのデイリーランキングと同じとは書かない）", "人気順" in home_html and "デイリーランキング" not in home_html)
-    check("ページ内の移動に「売れ筋TOP3」がある", 'href="#ranking"' in home_html)
+    check("売れ筋の欄は、トップのはじめのほう（発売中の新作より前）にある", home_html.find('id="ranking"') < home_html.find('id="released"'))
     cell_places = [re.search(r"\brank-([0-3])\b", t.get("class", "")) for t in rank_cards]
     check("1〜3位のカードに、順位ごとの大きさの目印（rank-1〜rank-3。4位以降は rank-0）が、順番どおりに付いている（表示の順位は、抜けがあっても1,2,3…とそろえる）", [m.group(1) if m else None for m in cell_places] == [str(i) if i <= 3 else "0" for i in range(1, len(rk_items) + 1)], [t.get("class") for t in rank_cards])
     check("売れ筋の並びに rank-podium の目印がある（スマホで1位を大きく・広い画面で3本を横いっぱいにする見た目の足がかり）", any(has_class(t, "rank-podium") for t in tags(home_html, "ul")))
@@ -635,6 +689,16 @@ check("全ページのフッターに、広告のくわしい文がある", not 
 check(f"全ページの18歳確認: 最初は隠れている・ダイアログ・「はい」「いいえ」・JavaScriptが無効のときの注意書き", not bad_gate, bad_gate[:3])
 check(f"全ページの「Powered by FANZA Webサービス」が、規約の指す先へのリンクになっている", not bad_credit, bad_credit[:3])
 check(f"全ページの <head>: 画面幅・OGP・Twitterカード・アイコン（ico / svg / apple-touch）", not bad_head, bad_head[:3])
+# 書体（Google Fonts）: 表示を止めないよう preload して、読み込み終わったら stylesheet に切り替える。JavaScript が無いときのための <noscript> の読み込みもある
+bad_fonts = []
+for p in pages:
+    html_ = read(p)
+    head_ = html_[: html_.find("</head>")]
+    pre = [t for t in tags(head_, "link") if t.get("rel") == "preload" and t.get("as") == "style" and str(t.get("href", "")).startswith("https://fonts.googleapis.com/css2?")]
+    ns = re.search(r'<noscript><link rel="stylesheet" href="https://fonts\.googleapis\.com/css2\?[^"]*"\s*/?></noscript>', head_)
+    if len(pre) != 1 or "this.rel='stylesheet'" not in pre[0].get("onload", "") or not ns or "wght@400;700" not in pre[0].get("href", ""):
+        bad_fonts.append(os.path.relpath(p, DIST))
+check("全ページの書体の読み込み: 表示を止めない形（preload → onload で stylesheet）＋ <noscript> の読み込み・太さは 400 と 700 だけ", not bad_fonts, bad_fonts[:3])
 check(f"全ページが lang=ja", not bad_lang, bad_lang[:3])
 check(f"全ページの画像に alt がある", not bad_alt, bad_alt[:3])
 check("FANZA/DMM への外部リンク（サンプル画像を拡大するリンクを除く）は、すべて広告の属性（sponsored nofollow noopener noreferrer）つき", not bad_ext, bad_ext[:3])
@@ -686,6 +750,7 @@ check("CSS: ふだん（ぼかしが使えない古いブラウザ）と「透�
 hdr = os.path.join(DIST, "_headers")
 htext = read(hdr) if os.path.isfile(hdr) else ""
 check("応答ヘッダーの設定（_headers）がある: nosniff・フレームへの埋め込み禁止（frame-ancestors）", "X-Content-Type-Options: nosniff" in htext and "frame-ancestors 'self'" in htext and re.search(r"^/\*\s*$", htext, re.M) is not None)
+check("応答ヘッダー: 名前にハッシュが付くファイル（/_astro/*）は長くキャッシュ（immutable）。名前が変わらないスクリプト（/*.js）は、新しいページと食い違わないよう、長く置かない", re.search(r"^/_astro/\*\s*\n\s+Cache-Control: public, max-age=31536000, immutable", htext, re.M) is not None and not re.search(r"^/[^\n]*\.js\s*\n\s+Cache-Control", htext, re.M))
 
 
 print("\n■ サムネの切り取り・作品検索・「VR作品を隠す」")
@@ -722,6 +787,24 @@ check("CSS: お気に入りのサムネ（.fav-thumb）も、表紙の比率に�
 hide_rule = [b for sels, b in css_rules if ".hide-vr [data-vr]" in sels]
 rank_sels = [x for sels, b in css_rules for x in sels]
 check("CSS: 売れ筋は、VRを隠して2本・1本になったときの並べ方（data-visible=2/1）と、全部がVRのとき売れ筋ごと隠す（#ranking.vr-empty）がある", '.rank-podium[data-visible="2"]' in rank_sels and '.rank-podium[data-visible="1"]' in rank_sels and any("#ranking.vr-empty" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules), [x for x in rank_sels if "data-visible" in x or "vr-empty" in x])
+vr_tag = next((g for g in glob.glob(os.path.join(DIST, "tag", "*", "index.html")) if "<h1" in read(g) and "VR作品の新作・予約作品" in read(g)), None)
+if vr_tag:
+    check("VR作品のページでは、「VR作品を隠す」を選んでいても作品を隠さない（data-vr を付けない。全部が消えて空になるため）", "data-vr" not in re.sub(r"data-vr-(toggle|group)", "", read(vr_tag)), os.path.relpath(vr_tag, DIST))
+related_pages = [p for p in glob.glob(os.path.join(DIST, "item", "*", "index.html")) if 'id="related-title"' in read(p)]
+check("作品ページの「同じ出演者・メーカーの作品」は、VRを隠して全部が消えたら見出しごと隠せる（data-vr-group）", related_pages and all(re.search(r'<section[^>]*aria-labelledby="related-title"[^>]*data-vr-group', read(p)) for p in related_pages), len(related_pages))
+# 見た目の統一: 角の丸みは3つの決まった値（--r-pill / --r-panel / --r-media）だけ。丸（50%）は顔写真・丸ボタン用
+css_src = read(os.path.join(ROOT, "site", "src", "styles", "site.css"))
+odd_radius = [m.group(0) for m in re.finditer(r"border-radius\s*:\s*([^;]+);", css_src) if not re.fullmatch(r"(var\(--r-(pill|panel|media)\)\s*)+0?\s*0?|50%", m.group(1).strip().replace(" 0 0", ""))]
+check("CSS: 角の丸みは、決めた3つ（押せるもの・枠・画像）と丸（50%）だけ（サイト全体の見た目をそろえる）", not odd_radius, odd_radius[:3])
+# 一覧のカードの「FANZAで見る」は控えめなボタン（.btn-card）。赤いボタン（.btn-hot）は、ページごとの一番の行き先だけ
+hot_in_cards = []
+for p in pages:
+    for card_ in re.finditer(r'<article class="item[^"]*">[\s\S]*?</article>', read(p)):
+        if "btn-hot" in card_.group(0) or "btn-card" not in card_.group(0) and "FANZAで見る" in card_.group(0):
+            hot_in_cards.append(os.path.relpath(p, DIST))
+            break
+check("一覧のカードの「FANZAで見る」は、控えめなボタン（.btn-card）。赤いボタンは使わない", not hot_in_cards, hot_in_cards[:3])
+check("CSS: 全部がVRのまとまり（[data-vr-group].vr-empty）を隠す", any("[data-vr-group].vr-empty" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules))
 check("CSS: html.hide-vr のとき、VR作品の目印（data-vr）のマスと、全部がVRの日付（.day.vr-empty）を隠す", bool(hide_rule) and all(re.search(r"display\s*:\s*none", b) for b in hide_rule) and any(".day.vr-empty" in sels for sels, b in css_rules if ".hide-vr [data-vr]" in sels), hide_rule[:1])
 hidden_ok = [sels for sels, b in css_rules if ".vr-toggle[hidden]" in sels and re.search(r"display\s*:\s*none", b)]
 check("CSS: 隠れているスイッチ・検索（hidden）が、display の指定に負けずに隠れる", bool(hidden_ok) and any(".work-search[hidden]" in sels for sels in hidden_ok), hidden_ok[:1])
@@ -731,7 +814,7 @@ no_head_vr, no_vr_js, no_nav_search, no_foot_search = [], [], [], []
 for p in pages:
     html_ = read(p)
     head_ = html_[: html_.find("</head>")] if "</head>" in html_ else ""
-    if "localStorage.getItem('hide-vr') === '1'" not in head_ or "classList.add('hide-vr')" not in head_:
+    if not re.search(r"localStorage\.getItem\('hide-vr'\)\s*===\s*'1'", head_) or "classList.add('hide-vr')" not in head_:
         no_head_vr.append(os.path.relpath(p, DIST))
     if 'src="/vr-filter.js"' not in html_:
         no_vr_js.append(os.path.relpath(p, DIST))
@@ -792,8 +875,32 @@ for tp in toggle_pages:
         bad_toggle.append((os.path.relpath(tp, DIST), btns[:1]))
 check("「VR作品を隠す」スイッチが、トップ・検索・過去の作品・出演者・メーカーのページに1つずつある（最初は隠れている・押された状態ではない・文言つき）", not bad_toggle, bad_toggle[:3])
 
-# 作品ページ: ジャンルは、そのジャンルで絞り込んだ検索へのリンク
+# 作品ページ: ジャンルは、ジャンルのページ（/tag/…。ページがあるジャンル）か、そのジャンルで絞り込んだ検索へのリンク
 import urllib.parse as _up
+import hashlib as _hl
+import unicodedata as _ud
+
+
+def entity_slug(name):
+    """site/src/lib/items.js の entitySlug と同じ（名前 → URLの短い英数字）。突き合わせるため、別に書いてある"""
+    return _hl.sha1(_ud.normalize("NFC", str(name)).encode("utf-8")).hexdigest()[:10]
+
+
+def config_value(name):
+    """site/src/config.js の export const NAME = … の値（数字・文字列のリスト）を読む"""
+    text_ = read(os.path.join(ROOT, "site", "src", "config.js"))
+    m_ = re.search(r"export const %s = (\[.*?\]|\d+);" % name, text_, re.S)
+    assert m_, name
+    return int(m_.group(1)) if m_.group(1).isdigit() else re.findall(r"'([^']+)'", m_.group(1))
+
+
+TAG_MIN = config_value("TAG_MIN_ITEMS")
+TAG_GENRES = config_value("TAG_PAGE_GENRES")
+genre_counts = {}
+for x in valid.values():
+    for g in set(g for g in (x.get("genres") or []) if g):
+        genre_counts[g] = genre_counts.get(g, 0) + 1
+tag_pages_expected = {g for g in TAG_GENRES if genre_counts.get(g, 0) >= TAG_MIN}
 bad_chip, chip_pages = [], 0
 for cid, x in valid.items():
     fp = os.path.join(DIST, "item", cid, "index.html")
@@ -802,10 +909,101 @@ for cid, x in valid.items():
         continue
     chip_pages += 1
     links_ = [t.get("href") for t in tags(read(fp), "a") if has_class(t, "chip-tag")]
-    if links_ != ["/search/?tag=" + _up.quote(g, safe="") for g in genres_]:
-        bad_chip.append((cid, links_[:2]))
-check(f"作品ページのジャンル（{chip_pages}ページ）が、そのジャンルで絞り込んだ検索（/search/?tag=…）へのリンクになっている", not bad_chip, bad_chip[:2])
+    want_ = [(f"/tag/{entity_slug(g)}/" if g in tag_pages_expected else "/search/?tag=" + _up.quote(g, safe="")) for g in genres_]
+    if links_ != want_:
+        bad_chip.append((cid, links_[:2], want_[:2]))
+check(f"作品ページのジャンル（{chip_pages}ページ）が、ジャンルのページ（ある場合）か、そのジャンルで絞り込んだ検索（/search/?tag=…）へのリンクになっている", not bad_chip, bad_chip[:2])
 warn("ジャンルのある作品が1本以上ある", chip_pages > 0)
+
+print("\n■ 品番・作品ページの情報欄・月ごとのページ・ジャンルのページ（検索から来てもらうための作り）")
+
+
+def product_code(cid):
+    """site/src/lib/facts.js の productCode と同じ（作品ID → 品番。作れなければ ''）。突き合わせるため、別に書いてある"""
+    m_ = re.match(r"^(?:h_\d+|\d{1,3})?([a-z]{2,10})(\d{3,5})$", str(cid).lower())
+    return f"{m_.group(1).upper()}-{int(m_.group(2)):03d}" if m_ else ""
+
+
+def ymd_jp(day):
+    return f"{int(day[:4])}年{int(day[5:7])}月{int(day[8:10])}日"
+
+
+by_date_count = {}
+for x in valid.values():
+    by_date_count[x["date"][:10]] = by_date_count.get(x["date"][:10], 0) + 1
+bad_code, bad_facts, with_code = [], [], 0
+for cid, x in valid.items():
+    fp = os.path.join(DIST, "item", cid, "index.html")
+    if not os.path.isfile(fp):
+        continue
+    html_ = read(fp)
+    code_ = product_code(cid)
+    row_ = re.search(r'<dt class="spec-term">品番</dt>\s*<dd class="spec-desc">([^<]*)</dd>', html_)
+    title_ = re.search(r"<title>(.*?)</title>", html_, re.S).group(1)
+    desc_ = re.search(r'<meta name="description" content="([^"]*)"', html_)
+    if code_:
+        with_code += 1
+        if not (row_ and row_.group(1) == code_ and htmllib.unescape(title_).startswith(code_ + " ") and desc_ and code_ in htmllib.unescape(desc_.group(1))):
+            bad_code.append((cid, code_, row_.group(1) if row_ else None, title_[:30]))
+    elif row_ or re.match(r"^[A-Z0-9]+-\d{3,} ", htmllib.unescape(title_)):
+        bad_code.append((cid, "品番を作れないのに出ている", title_[:30]))
+    # 情報欄: 「同じ発売日」の行（いつも出る）の本数が、データを数えた値と同じ
+    facts_ = re.search(r'<h2 id="facts-title"[^>]*>この作品のデータ</h2>\s*<ul class="facts">(.*?)</ul>', html_, re.S)
+    rows_ = re.findall(r'<li class="facts-row">\s*<span class="facts-label">(.*?)</span>\s*<span class="facts-text">(.*?)</span>\s*</li>', facts_.group(1), re.S) if facts_ else []
+    n_same = by_date_count[x["date"][:10]]
+    want_day = f"{ymd_jp(x['date'][:10])}発売の作品は、" + ("この1本だけです。" if n_same == 1 else f"掲載中で{n_same}本あります。")
+    if not rows_ or rows_[0][0] != "同じ発売日" or want_day not in htmllib.unescape(re.sub(r"<[^>]+>", "", rows_[0][1])):
+        bad_facts.append((cid, want_day, (rows_[0] if rows_ else None)))
+check(f"作品ページの品番（作れる{with_code}ページ）: 「品番」の欄・タイトルの先頭・説明文に、同じ品番が出ている。作れない作品には出ていない", not bad_code, bad_code[:3])
+check("作品ページに「この作品のデータ」欄があり、先頭の行（同じ発売日）の本数が、データを数えた値と同じ", not bad_facts, bad_facts[:2])
+warn("品番を作れる作品が1本以上ある", with_code > 0)
+
+MONTH_MIN = config_value("MONTH_MIN_ITEMS")
+TAG_LIMIT = config_value("TAG_PAGE_LIMIT")
+month_counts = {}
+for x in valid.values():
+    month_counts[x["date"][:7]] = month_counts.get(x["date"][:7], 0) + 1
+months_want = {ym: n for ym, n in month_counts.items() if n >= MONTH_MIN}
+month_files = {os.path.basename(os.path.dirname(f)): f for f in glob.glob(os.path.join(DIST, "month", "*", "index.html"))}
+check(f"月ごとのページが、作品が{MONTH_MIN}本以上ある月（{len(months_want)}か月）だけ作られている", set(month_files) == set(months_want), (sorted(month_files), sorted(months_want)))
+bad_month = []
+for ym, f in month_files.items():
+    html_ = read(f)
+    h1_ = re.search(r'<h1 class="hero-title">(.*?)</h1>', html_, re.S)
+    cards_ = len(re.findall(r'<article class="item">', html_))
+    if not (h1_ and f"{int(ym[:4])}年{int(ym[5:7])}月発売" in h1_.group(1) and cards_ == months_want.get(ym) and 'name="robots" content="noindex' not in html_):
+        bad_month.append((ym, h1_.group(1)[:30] if h1_ else None, cards_, months_want.get(ym)))
+check("月ごとのページ: 見出しに「○年○月発売」・並んでいる作品の数が、その月の作品の数と同じ・noindexではない", not bad_month, bad_month[:3])
+month_index = os.path.join(DIST, "month", "index.html")
+if months_want:
+    check("月の一覧ページ（/month/）がある。すべての月のページへのリンクがある", os.path.isfile(month_index) and all(f'href="/month/{ym}/"' in read(month_index) for ym in months_want))
+    check("月の一覧・月ごとのページが、sitemap に入っている", "/month/" in sm_paths and all(f"/month/{ym}/" in sm_paths for ym in months_want), [p for p in sm_paths if p.startswith("/month")][:3])
+else:
+    check("月ごとのページが1つも無いときは、一覧ページも作らず、sitemap にも入れない", not os.path.isfile(month_index) and not [p for p in sm_paths if p.startswith("/month")])
+
+tag_counts = {entity_slug(g): (g, n) for g, n in ((g, genre_counts.get(g, 0)) for g in TAG_GENRES) if n >= TAG_MIN}
+vr_n = sum(1 for x in valid.values() if is_vr_raw(x))
+if vr_n >= TAG_MIN:
+    tag_counts[entity_slug("VR作品")] = ("VR作品", vr_n)
+tag_files = {os.path.basename(os.path.dirname(f)): f for f in glob.glob(os.path.join(DIST, "tag", "*", "index.html"))}
+check(f"ジャンルのページが、許可したジャンル（config.js の TAG_PAGE_GENRES）で作品が{TAG_MIN}本以上あるものと、VR作品だけ作られている（{len(tag_counts)}ページ）", set(tag_files) == set(tag_counts), (len(tag_files), len(tag_counts)))
+bad_tag = []
+for slug_, f in tag_files.items():
+    html_ = read(f)
+    name_, n_ = tag_counts.get(slug_, ("", 0))
+    cards_ = len(re.findall(r'<article class="item">', html_))
+    h1_ = re.search(r'<h1 class="hero-title">(.*?)</h1>', html_, re.S)
+    if not (h1_ and name_.replace("VR作品", "VR作品") in h1_.group(1) and cards_ == min(n_, TAG_LIMIT) and 'name="robots" content="noindex' not in html_):
+        bad_tag.append((slug_, name_, cards_, min(n_, TAG_LIMIT)))
+check("ジャンルのページ: 見出しにジャンル名・並んでいる作品の数が、そのジャンルの作品の数（多いときは上限まで）と同じ・noindexではない", not bad_tag, bad_tag[:3])
+tag_index = os.path.join(DIST, "tag", "index.html")
+if tag_counts:
+    check("ジャンルの一覧ページ（/tag/）がある。すべてのジャンルのページへのリンクがある", os.path.isfile(tag_index) and all(f'href="/tag/{sl}/"' in read(tag_index) for sl in tag_counts))
+    check("ジャンルの一覧・ジャンルのページが、sitemap に入っている", "/tag/" in sm_paths and all(f"/tag/{sl}/" in sm_paths for sl in tag_counts), [p for p in sm_paths if p.startswith("/tag")][:3])
+else:
+    check("ジャンルのページが1つも無いときは、一覧ページも作らず、sitemap にも入れない", not os.path.isfile(tag_index) and not [p for p in sm_paths if p.startswith("/tag")])
+no_sensitive_tag = [g for g, _ in tag_counts.values() if re.search(r"制服|校生|学生|少女|ロリ|幼|中出|顔射|フェラ|レイプ|痴漢|盗撮|調教|ドラッグ|放尿", g)]
+check("ジャンルのページに、過激な行為・未成年を連想させる名前のものが無い", not no_sensitive_tag, no_sensitive_tag)
 
 # 検索ページ
 sp = os.path.join(DIST, "search", "index.html")
@@ -836,7 +1034,12 @@ if os.path.isfile(ii):
     check("索引が正しいJSONで、generated・newDays・genres・items がある", bool(ok_shape), str(iidx)[:80])
     if ok_shape:
         irows, igenres = iidx["items"], iidx["genres"]
-        check("索引の項目が、短い名前（c,t,d,a,m,g,i,v）だけで、データにある作品・長い文やURLは入っていない", all(isinstance(r, dict) and set(r) <= set("ctdamgiv") and {"c", "t", "d", "a", "m", "g", "i"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("ctdamgiv"))][:1])
+        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v）だけで、データにある作品・長い文やURLは入っていない", all(isinstance(r, dict) and set(r) <= set("cptdamgiv") and {"c", "t", "d", "a", "m", "g", "i"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("cptdamgiv"))][:1])
+        bad_p = [(r["c"], r.get("p")) for r in irows if (r.get("p") or "") != product_code(r["c"])]
+        check("索引の品番（p）が、作品ページと同じ品番（作れない作品には無い）", not bad_p, bad_p[:3])
+        bad_t = [r["c"] for r in irows if r["c"] in valid and r["t"].replace("\u200b", "").replace("\u2060", "").replace("\u00a0", " ") != str(valid[r["c"]].get("title", "")).strip()]
+        check("索引のタイトルは、文節の区切り（U+200B）と改行を止める文字（U+2060・U+00A0）を戻すと、データのタイトルと同じ", not bad_t, bad_t[:3])
+        check("索引のタイトルに、文節の区切り（U+200B）が入っている（ブラウザで語の途中で改行しないため）", any("\u200b" in r["t"] for r in irows))
         check(f"索引の作品の数（{len(irows)}）= min(データの件数 {len(valid)}, 3000)", len(irows) == min(len(valid), 3000), (len(irows), len(valid)))
         check("索引は発売日の新しい順", [r["d"] for r in irows] == sorted((r["d"] for r in irows), reverse=True))
         check("ジャンルの番号（g）が、すべて genres の範囲内で、作品のジャンルの名前に戻る", all(all(isinstance(n, int) and 0 <= n < len(igenres) for n in r["g"]) and sorted(igenres[n] for n in r["g"]) == sorted(set(g for g in (valid[r["c"]].get("genres") or []) if g)) for r in irows), [r["c"] for r in irows if sorted(igenres[n] for n in r["g"] if isinstance(n, int) and 0 <= n < len(igenres)) != sorted(set(g for g in (valid[r["c"]].get("genres") or []) if g))][:2])
@@ -846,6 +1049,50 @@ if os.path.isfile(ii):
         bad_img = [r["c"] for r in irows if r["i"] and not fanza_https(r["i"] if r["i"].startswith("https://") else "https://pics.dmm.co.jp/" + r["i"], ["dmm.co.jp"])]
         check("索引の画像が、FANZA(DMM)の画像に戻せる形（先頭を省いた形）", not bad_img, bad_img[:3])
         check("索引の大きさが 1.5MB 以内（検索ページを開くたびにダウンロードされるため）", os.path.getsize(ii) <= 1500 * 1024, os.path.getsize(ii))
+
+print("\n■ 日本語の文章の改行（文節の区切り）")
+# 日本語の文章は、ビルドの最後に、文節の区切り（<wbr>）と包み（<span class="ph">）が足される（site/src/lib/phrase.js・Astro の拡張 phrase-breaks）。
+# iPhone/iPadのSafari系には、CSSで文節ごとに改行する機能が無いため、「あ／り」のような語の途中の改行を、これで防いでいる
+html_files = glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True)
+PH_BLOCK = re.compile(r'<span class="ph">(?:[^<]|<wbr>|<span class="nb">[^<]*</span>)*</span>')
+NB_SPAN = re.compile(r'<span class="nb">([^<]*)</span>')
+SKIP_EL = re.compile(r"<(script|style|title|textarea|button|option|select|pre|code|noscript|svg|template)\b[^>]*>[\s\S]*?</\1\s*>", re.I)
+stray_wbr, tag_in_ph, ph_in_skip, with_ph = [], [], [], 0
+for p in html_files:
+    raw = read_raw(p)
+    if PH_BLOCK.search(raw):
+        with_ph += 1
+    if "<wbr" in PH_BLOCK.sub("", raw):
+        stray_wbr.append(rel(p))
+    if any("<" in NB_SPAN.sub("", re.sub(r"<wbr>", "", m.group(0)[len('<span class="ph">'):-len("</span>")])) for m in PH_BLOCK.finditer(raw)):
+        tag_in_ph.append(rel(p))
+    if any('class="ph"' in m.group(0) or "<wbr" in m.group(0) for m in SKIP_EL.finditer(raw)):
+        ph_in_skip.append(rel(p))
+check("全ページで、文節の区切り（<wbr>）が、すべて <span class=\"ph\"> の中にある", not stray_wbr, stray_wbr[:3])
+check("<span class=\"ph\"> の中には、<wbr> と名前の <span class=\"nb\"> のほか、タグが入っていない（文章だけ）", not tag_in_ph, tag_in_ph[:3])
+# 出演者名・メーカー名の途中には、区切り（<wbr>）が入っていない（運営者が見つけた「波多｜野結衣」のような改行を防ぐ）
+name_list = sorted({n for it in valid.values() for n in [*(it.get("actress") or []), it.get("maker") or ""] if n and n != "不明" and len(n) >= 2}, key=len, reverse=True)
+split_names = []
+for p in html_files:
+    raw = read_raw(p)
+    for m in PH_BLOCK.finditer(raw):
+        inner = NB_SPAN.sub(r"\1", m.group(0)[len('<span class="ph">'):-len("</span>")])
+        flat = inner.replace("<wbr>", "")
+        for n in name_list:
+            if n in flat and n not in inner:
+                split_names.append((rel(p), n))
+check("出演者名・メーカー名の途中に、文節の区切り（<wbr>）が入っていない", not split_names, split_names[:5])
+nb_rules = [body for sels, body in css_rules if ".nb" in sels]
+check("CSS: 短い名前の包み（.nb）は white-space: nowrap（途中で改行しない）", any(re.search(r"white-space\s*:\s*nowrap", b) for b in nb_rules), nb_rules[:1])
+nb_long = sorted({m.group(1) for p in html_files for m in NB_SPAN.finditer(read_raw(p)) if len(re.sub(r"(さん|ちゃん|様)$", "", m.group(1))) > 10})
+check("改行しない包み（.nb）は、短い名前だけ（長いと、狭い画面ではみ出すため）", not nb_long, nb_long[:3])
+check("script・style・title・ボタン・コードなどの中には、区切りを入れていない", not ph_in_skip, ph_in_skip[:3])
+check(f"ほとんどのページ（9割以上）の日本語の文章に、文節の区切りが入っている（Astro の拡張が動いた証拠。{with_ph}/{len(html_files)}）", html_files and with_ph >= len(html_files) * 0.9, (with_ph, len(html_files)))
+for path_, label in [("index.html", "トップ"), ("actress/index.html", "出演者一覧（運営者が見つけた説明文）"), ("calendar/index.html", "カレンダーの使い方")]:
+    f = os.path.join(DIST, path_)
+    check(f"{label}の説明文に、文節の区切り（<wbr>）が入っている", os.path.isfile(f) and bool(re.search(r'<span class="ph">[^<]*<wbr>', read_raw(f))), path_)
+ph_rules = [body for sels, body in css_rules if ".ph" in sels]
+check("CSS: .ph は word-break: keep-all（<wbr> の所以外では改行しない）・overflow-wrap（長すぎるときだけ、どこででも）・line-break: strict（禁則を厳しめに）", any(re.search(r"word-break\s*:\s*keep-all", b) and re.search(r"overflow-wrap\s*:\s*(anywhere|break-word)", b) and re.search(r"line-break\s*:\s*strict", b) for b in ph_rules), ph_rules[:1])
 
 print("\n■ 検索エンジン向けの点検（SEO）")
 # Search Console の所有権の確認コード（config.js の値）が、全ページの <head> に出ている（確認はトップページで行われる）
