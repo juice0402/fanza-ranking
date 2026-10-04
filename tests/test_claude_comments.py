@@ -478,6 +478,66 @@ check("apply も止まる（データを上書きしない）", run("apply", wri
 open(DATA, "w", encoding="utf-8").write('{"cid": "a"}')
 check("リストでないデータも止まる", run("list").returncode != 0)
 
+print("\n■ 過去作品（data/catalog/YYYY-MM.json）のコメント")
+import importlib.util as _ilu
+CAT_DIR = os.path.join(tmp, "catalog")  # DATA と同じフォルダの catalog（claude_comments.py の CATALOG_DIR の既定）
+os.environ["API_ID"] = "x"
+_spec = _ilu.spec_from_file_location("grn_for_catalog", os.path.join(ROOT, "get_new_releases.py"))
+grn = _ilu.module_from_spec(_spec)
+_spec.loader.exec_module(grn)
+grn.CATALOG_DIR = CAT_DIR
+grn.CATALOG_STATE_PATH = os.path.join(tmp, "catalog_state.json")
+fresh_data()
+base_items = read_data()
+cat_state = {"items": {}, "cursor": 1, "cycle_done": ""}
+for i, x in enumerate(base_items[:6]):
+    y = dict(x, cid=f"oldwork{i:03d}", date=f"20{19 + i % 3}-0{1 + i}-15 10:00:00", comment_kind="none", comment="", updated="2026-10-04",
+             url=f"https://al.fanza.co.jp/?lurl=x{i}&af_id=x-990")
+    cat_state["items"][y["cid"]] = grn.catalog_item(y)
+dup = grn.catalog_item(dict(base_items[0], comment_kind="none", comment=""))  # 毎日の更新の作品と同じ作品（サイトは毎日の更新のほうを使う）
+cat_state["items"][dup["cid"]] = dup
+grn.save_catalog(cat_state)  # 毎日の更新と同じ書き方で作る
+shard_before = {n: open(os.path.join(CAT_DIR, n), encoding="utf-8").read() for n in os.listdir(CAT_DIR)}
+lst = json.loads(run("list", "--limit", "40").stdout)
+cat_rows = [r for r in lst["items"] if r.get("catalog")]
+cur_rows = [r for r in lst["items"] if not r.get("catalog")]
+check("list: 毎日の更新の作品を先に、枠が余ったら過去作品（コメントがまだ無いもの）を出す", len(cur_rows) == len(pending) and len(cat_rows) == 6 and lst["items"].index(cat_rows[0]) == len(cur_rows), (len(cur_rows), len(cat_rows)))
+check("list: 過去作品は reason「過去作品」・catalog: true・発売済み・発売日の新しい順", all(r["reason"] == "過去作品" and r["status"] == "発売済み" for r in cat_rows) and [r["date"] for r in cat_rows] == sorted((r["date"] for r in cat_rows), reverse=True), [(r["cid"], r["date"]) for r in cat_rows])
+check("list: 毎日の更新の作品と同じ作品は、過去作品として出さない", dup["cid"] not in {r["cid"] for r in cat_rows})
+check("list: total_pending に過去作品も入る・catalog_pending は過去作品の数", lst["total_pending"] == len(pending) + 6 and lst["catalog_pending"] == 6, (lst["total_pending"], lst["catalog_pending"]))
+lst_small = json.loads(run("list", "--limit", str(len(pending) - 1)).stdout)
+check("list: 枠が毎日の更新の作品で埋まるときは、過去作品を出さない", not any(r.get("catalog") for r in lst_small["items"]))
+pick_cat = [r["cid"] for r in cat_rows[:2]]
+by_all = {x["cid"]: x for x in base_items} | {c: it for c, it in cat_state["items"].items()}
+payload = {c: good_comment(by_all[c], 30 + i) for i, c in enumerate(pick_cat + [templates[0]["cid"]])}
+r = run("apply", write_comments("cat.json", payload), "--today", "2026-11-03")
+check("apply: 過去作品と毎日の更新の作品を、いっしょに書き込める", r.returncode == 0 and "うち過去作品 2件" in r.stdout and "コメントがまだ無い過去作品: 4本" in r.stdout, r.stdout + r.stderr)
+cat_now = {}
+for n in os.listdir(CAT_DIR):
+    for row in json.load(open(os.path.join(CAT_DIR, n), encoding="utf-8")):
+        cat_now[row["cid"]] = (n, row)
+check("apply: 過去作品のファイルに、comment_kind claude・更新日・コメントが入る", all(cat_now[c][1]["comment_kind"] == "claude" and cat_now[c][1]["updated"] == "2026-11-03" and cat_now[c][1]["comment"] == payload[c] for c in pick_cat))
+check("apply: 毎日の更新の作品は new_releases.json に入る（過去作品のファイルには入れない）", next(x for x in read_data() if x["cid"] == templates[0]["cid"])["comment_kind"] == "claude" and cat_now[dup["cid"]][1]["comment_kind"] == "none")
+touched = {cat_now[c][0] for c in pick_cat}
+same_lines = all(
+    [l for l in open(os.path.join(CAT_DIR, n), encoding="utf-8").read().split("\n") if not any(f'"cid":"{c}"' in l for c in pick_cat)]
+    == [l for l in shard_before[n].split("\n") if not any(f'"cid":"{c}"' in l for c in pick_cat)] for n in shard_before)
+check("apply: 書き方は毎日の更新と同じ（1作品1行）。書いた作品の行のほかは1文字も変わらない・書いていない月のファイルはそのまま", same_lines and all(open(os.path.join(CAT_DIR, n), encoding="utf-8").read() == shard_before[n] for n in shard_before if n not in touched))
+check("apply のあと、毎日の更新が読み直しても同じ（過去作品の Claude のコメントは残る）", all(grn.load_catalog("2026-11-03")["items"][c]["comment_kind"] == "claude" for c in pick_cat))
+r = run("apply", write_comments("cat2.json", {pick_cat[0]: good_comment(by_all[pick_cat[0]], 41)}), "--today", "2026-11-03")
+check("apply: Claude が書いた過去作品のコメントは上書きしない（--rewrite のときだけ）", r.returncode == 1 and "上書きしません" in r.stdout, r.stdout)
+others = [c for c in cat_state["items"] if c not in pick_cat and c != dup["cid"]]
+many_cur = [x for x in read_data() if x["comment_kind"] != "claude"]
+r = run("apply", write_comments("cat3.json", {c: good_comment(by_all[c], 50 + i) for i, c in enumerate(others[:2])}), "--today", "2026-11-03", "--dry-run")
+check("apply: 過去作品も、点検は同じ（--dry-run で通る）", r.returncode == 0, r.stdout + r.stderr)
+r = run("apply", write_comments("cat4.json", {"nosuchwork": good_comment(base_items[0], 60)}))
+check("apply: どこにもない cid は断る", r.returncode == 1 and "にない cid" in r.stdout, r.stdout)
+open(os.path.join(CAT_DIR, sorted(os.listdir(CAT_DIR))[0]), "w", encoding="utf-8").write("[{broken")
+r = run("list")
+check("過去作品のファイルが壊れていたら、止める（書き戻して壊さないように）", r.returncode != 0 and "過去作品のファイル" in (r.stdout + r.stderr), r.stdout + r.stderr)
+shutil.rmtree(CAT_DIR)
+os.remove(os.path.join(tmp, "catalog_state.json"))
+
 print("\n■ 全件を書き換えた後")
 fresh_data()
 everything = {x["cid"]: good_comment(x, i) for i, x in enumerate(pending)}
