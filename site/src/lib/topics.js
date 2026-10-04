@@ -106,7 +106,8 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
     topics.push(topic);
   };
   const nonVrFirst = (list) => list.find((i) => !i.vr) ?? list[0];
-  const ranked = newRanking(items, today, 100);
+  const ranked = newRanking(items, today, 100); // 新着の人気TOP100（人気の女優を数える範囲）
+  const pool = newRanking(items, today, Infinity); // 新着の人気順の全部（きょう発売・デビュー作と、その繰り上げを探す範囲）
 
   // 急上昇: 前の日の新着の人気順から、大きく順位を上げた作品（前の日の順位が無い作品は、前の日の圏外から）。2件まで。
   // きょう発売の作品は、前の日にはまだ無いので入れない（「きょう発売」の話題で出す）
@@ -125,7 +126,7 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
   }
 
   // きょう発売: きょう発売の作品の中で、新着の人気順がいちばん上の作品
-  pick(ranked.filter((i) => i.dateKey === today), (i) => {
+  pick(pool.filter((i) => i.dateKey === today), (i) => {
     const who = [i.actress.slice(0, 2).join('・'), i.maker !== '不明' ? i.maker : ''].filter(Boolean).join('｜');
     return workTopic(i, 'today', 'きょう発売', truncate(i.title, 40), `${who ? `${who}｜` : ''}新着の人気順 ${i.popNew}位`);
   });
@@ -142,7 +143,7 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
   }
 
   // デビュー作: ジャンルに「デビュー作品」がある作品の中で、新着の人気順がいちばん上の作品
-  pick(ranked.filter((i) => i.genres?.includes('デビュー作品')), (i) => {
+  pick(pool.filter((i) => i.genres?.includes('デビュー作品')), (i) => {
     const name = i.actress[0];
     return { ...workTopic(i, 'debut', 'デビュー作', name ? `${name}のデビュー作` : truncate(i.title, 40), `新着の人気順 ${i.popNew}位｜${mdLabel(i.dateKey)}発売`), face: name ? faceOf(name) : '' };
   });
