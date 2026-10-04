@@ -585,7 +585,7 @@ if os.path.isfile(search_page):
     check(f"JavaScriptが使えないとき用の一覧に、専用ページのある出演者がいる（{len(actress_pages)}人。多いときは作品数の多い順に{index_limit}人まで）", static_rows == min(len(actress_pages), index_limit) and any(t.get("id") == "actress-static" for t in tags(stext, "section")), (static_rows, len(actress_pages)))
     check("検索の注意書き（載っていない人は絞り込みで外れる・データのある人数・FANZA公式のデータ）が、ページにある", (not rows) or ("結果に出ません" in stext and "いま探せる" in stext and "FANZA公式" in stext))
 
-print("\n■ トップ: きょうの新着人気TOP3・きょうの数字・きょうの話題")
+print("\n■ トップ: きょうの新着人気TOP3・きょうの話題")
 rk_raw = load_json(RANKING) if os.path.isfile(RANKING) else None
 rk_items = []
 rk_fresh = False
@@ -648,30 +648,18 @@ if top_rows:
 else:
     check("新着の人気順も売れ筋（新しいもの）も無いときは、TOP3の欄を出さない", not home_sections and not medal_cells and 'href="#ranking"' not in home_html)
 
-# きょうの数字: today.json（FANZA動画全体の日ごとの発売本数・予約受付中の本数）。今日のデータのときだけ出す
-TODAY_JSON = os.path.join(ROOT, "site", "src", "data", "today.json")
-td_raw = load_json(TODAY_JSON) if os.path.isfile(TODAY_JSON) else None
-td_daily = [r for r in (td_raw.get("daily") if isinstance(td_raw, dict) and isinstance(td_raw.get("daily"), list) else []) if isinstance(r, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("d", ""))) and isinstance(r.get("n"), int) and not isinstance(r.get("n"), bool) and r["n"] >= 0]
-stats_on = isinstance(td_raw, dict) and td_raw.get("date") == JST_TODAY and bool(td_daily) and td_daily[-1]["d"] == JST_TODAY
-stats_sec = [t for t in tags(home_html, "section") if t.get("id") == "stats"]
-today_box = next((t for t in tags(home_html, "div") if has_class(t, "today")), {})
-if stats_on:
-    nums = re.findall(r'<span class="stat-n">([^<]*)</span>', home_html)
-    want_nums = [f"{td_daily[-1]['n']:,}", f"{sum(r['n'] for r in td_daily):,}"]
-    if isinstance(td_raw.get("upcoming_total"), int) and not isinstance(td_raw.get("upcoming_total"), bool) and td_raw["upcoming_total"] >= 0:
-        want_nums.append(f"{td_raw['upcoming_total']:,}")
-    bars = [t for t in tags(home_html, "li") if has_class(t, "bar")]
-    check("きょうの数字: 欄がある・きょう発売／この期間の合計／予約受付中の本数が today.json と同じ（3けたごとに「,」）", len(stats_sec) == 1 and nums == want_nums and has_class(today_box, "has-stats"), (nums, want_nums))
-    check("きょうの数字: 日ごとの棒が日数分あり、きょうの棒だけに印", len(bars) == len(td_daily) and [has_class(b, "is-today") for b in bars] == [r["d"] == JST_TODAY for r in td_daily], len(bars))
-    check("きょうの数字: FANZA動画全体の本数であることが書いてある（このサイトに載せた本数ではない）", "FANZA動画（ビデオ）全体の本数" in home_html)
-else:
-    check("今日の数字が無い・古いときは、きょうの数字の欄を出さない（古い数字を「きょう」として出さない）", not stats_sec and not has_class(today_box, "has-stats"))
+# きょうの数字（発売本数の欄）は、運営者の判断で外した（2026-10-05。today.json の本数は、いまは画面に出さない）
+check("トップに「きょうの数字」（発売本数の欄）が無い", 'id="stats"' not in home_html and "FANZA動画（ビデオ）全体の本数" not in home_html)
 
 # きょうの話題: 種類ごとの札・リンク先（作品ページ・女優のページ・まとめ記事・セールのページ・FANZA）
-TOPIC_LABELS = {"rise": "急上昇", "today": "きょう発売", "upcoming": "予約の人気1位", "entry": "予約に初登場", "debut": "デビュー作", "actress": "人気の女優", "weekly": "週のまとめ", "sale": "もうすぐ終わる"}
-topic_cells = [(m.group(1), m.group(2), m.group(3)) for m in re.finditer(r'<li class="topic topic-([a-z]+)"([^>]*)>(.*?)</li>', home_html, re.S)]
+TOPIC_LABELS = {"rise": "急上昇", "today": "きょう発売", "upcoming": "予約で人気", "entry": "予約に初登場", "debut": "デビュー作", "actress": "人気の女優", "weekly": "週のまとめ", "sale": "もうすぐ終わる"}
+# 話題の作品がVR作品のときは、すぐ後ろに、同じ種類のVRでない次の作品（.topic-alt。「VR作品を隠す」のときだけ出る）が付くことがある
+topic_all = [(m.group(1), bool(m.group(2)), m.group(3), m.group(4)) for m in re.finditer(r'<li class="topic topic-([a-z]+)( topic-alt)?"([^>]*)>(.*?)</li>', home_html, re.S)]
+topic_cells = [(k, a, inner) for k, alt, a, inner in topic_all if not alt]
+bad_alt = [k for n, (k, alt, a, _) in enumerate(topic_all) if alt and ('data-vr="true"' in a or n == 0 or topic_all[n - 1][0] != k or topic_all[n - 1][1] or 'data-vr="true"' not in topic_all[n - 1][2])]
+check(f"きょうの話題: VR作品の話題の繰り上げ（{sum(1 for x in topic_all if x[1])}件）は、VR作品の話題のすぐ後ろで同じ種類・VRの印なし", not bad_alt, bad_alt[:3])
 bad_topic = []
-for kind, attrs, inner in topic_cells:
+for kind, attrs, inner in [(k, a, inner) for k, _, a, inner in topic_all]:
     a_ = next((t for t in tags(inner, "a") if has_class(t, "topic-link")), {})
     href = a_.get("href", "")
     label = re.search(r'<span class="topic-tag">([^<]*)</span>', inner)
@@ -688,7 +676,7 @@ for kind, attrs, inner in topic_cells:
         bad_topic.append((kind, "セールの終わり"))
 check(f"きょうの話題（{len(topic_cells)}件。8件まで）: 種類ごとの札と、リンク先（サイトの中はあるページ・外はFANZAで広告のリンクの属性つき）。TOP3の作品は出さない",
       len(topic_cells) <= 8 and not bad_topic and (not topic_cells or 'id="topics"' in home_html), bad_topic[:3])
-topic_text = " ".join(re.sub(r"<[^>]+>", "", inner) for _, _, inner in topic_cells)
+topic_text = " ".join(re.sub(r"<[^>]+>", "", inner) for _, _, _, inner in topic_all)
 check("きょうの話題: 評価の言葉を書かない（データで決まった形の文だけ）", not re.search(r"おすすめ|話題作|必見|最高傑作|大人気|神作", topic_text))
 if any(k == "sale" for k, _, _ in topic_cells):
     check("きょうの話題に、もうすぐ終わるセールがあるときは、終わったら隠すスクリプト（sale.js）がある", 'src="/sale.js"' in home_html)
@@ -982,6 +970,8 @@ for p in pages:
             hot_in_cards.append(os.path.relpath(p, DIST))
             break
 check("一覧のカードの「FANZAで見る」は、控えめなボタン（.btn-card）。赤いボタンは使わない", not hot_in_cards, hot_in_cards[:3])
+check("CSS: きょうの話題の繰り上げ（.topic-alt）は、ふだんは隠れていて、「VR作品を隠す」のときだけ出る", any(sels == [".topic-alt"] and re.search(r"display\s*:\s*none", b) for sels, b in css_rules) and any(".hide-vr .topic-alt" in sels and re.search(r"display\s*:\s*block", b) for sels, b in css_rules))
+check("CSS: 1行の出演者の行（.item-cast・.medal-cast）では、文節の区切り（<wbr>）を消して、2行にしない（Chromium は nowrap でも <wbr> で改行する）", all(any(f"{c} wbr" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules) for c in (".item-cast", ".medal-cast")))
 check("CSS: 全部がVRのまとまり（[data-vr-group].vr-empty）を隠す", any("[data-vr-group].vr-empty" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules))
 check("CSS: html.hide-vr のとき、VR作品の目印（data-vr）のマスと、全部がVRの日付（.day.vr-empty）を隠す", bool(hide_rule) and all(re.search(r"display\s*:\s*none", b) for b in hide_rule) and any(".day.vr-empty" in sels for sels, b in css_rules if ".hide-vr [data-vr]" in sels), hide_rule[:1])
 hidden_ok = [sels for sels, b in css_rules if ".vr-toggle[hidden]" in sels and re.search(r"display\s*:\s*none", b)]
