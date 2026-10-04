@@ -205,8 +205,18 @@
     return out;
   }
 
+  // 一覧に出す出演者（先頭から max 人）と、出しきれない人数（オムニバスなど出演者が多い作品で、カードが長くならないように。
+  // max は site/src/config.js の CAST_LIMIT と同じ3人。tests で突き合わせている）
+  var CAST_LIMIT = 3;
+  function castShown(list, max) {
+    var names = list.slice(0, max);
+    return { names: names, more: list.length - names.length };
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
+      castShown: castShown,
+      CAST_LIMIT: CAST_LIMIT,
       normalizeText: normalizeText,
       splitTerms: splitTerms,
       jstToday: jstToday,
@@ -322,7 +332,10 @@
     var cast = row.a.filter(function (name) {
       return typeof name === 'string' && name;
     });
-    article.appendChild(names(el('p', 'item-cast ph-js'), cast, '、', '出演者の記載なし'));
+    var shown = castShown(cast, CAST_LIMIT);
+    var castLine = names(el('p', 'item-cast ph-js'), shown.names, '、', '出演者の記載なし');
+    if (shown.more > 0) castLine.appendChild(document.createTextNode(' ほか' + shown.more + '名'));
+    article.appendChild(castLine);
     var meta = el('p', 'item-meta ph-js', jp(row.d) + '発売' + (row.m ? '・' : ''));
     if (row.m) names(meta, [row.m], '', '');
     article.appendChild(meta);

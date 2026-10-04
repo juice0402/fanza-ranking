@@ -101,5 +101,8 @@ check('日本時間の今日（UTC 15:00 → 翌日）', F.jstToday(Date.UTC(202
 check('日数の足し引き（月またぎ・うるう年）', F.addDays('2026-10-01', -1) === '2026-09-30' && F.addDays('2028-02-28', 1) === '2028-02-29');
 check('日本語の日付', F.jpDate('2026-10-07') === '2026年10月7日' && F.jpDate('2026-12-31') === '2026年12月31日' && F.jpDate('昨日') === '' && F.jpDate(undefined) === '');
 
+console.log('\n■ お気に入りの一覧の出演者は3名まで');
+check('3名まで出して、残りは人数だけ（作品検索・一覧のカードと同じ3名）', F.CAST_LIMIT === 3 && JSON.stringify(plain(F.castShown(['a', 'b', 'c', 'd', 'e'], F.CAST_LIMIT))) === JSON.stringify({ names: ['a', 'b', 'c'], more: 2 }) && plain(F.castShown([], 3)).more === 0);
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

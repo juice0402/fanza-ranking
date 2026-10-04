@@ -6,7 +6,7 @@
 // 発売日（メダルの横）と、前の日からの順位の動き（▲3・▼1・→・初登場。表紙の右上のふちの小さな札）も出す（毎日見に来たとき、何が変わったかが分かるように）
 import { paged, popularity } from '../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
-import { dateParts, vrAttrs } from '../lib/items.js';
+import { castLine, dateParts, vrAttrs } from '../lib/items.js';
 import { TOP_SHOWN, rankMove } from '../lib/topics.js';
 
 // entries: 新着の人気順の作品（作品データの形）か、売れ筋ランキング（ranking.json）の作品
@@ -35,7 +35,7 @@ const shown = Math.min(entries.length, TOP_SHOWN);
           </span>
           <span class="medal-meta">{md && <span class="medal-date">{md.m}/{md.d}発売</span>}</span>
           <span class="medal-title">{item.title}</span>
-          <span class="medal-cast">{item.actress.length ? item.actress.slice(0, 2).join('、') : '出演者の記載なし'}</span>
+          <span class="medal-cast">{castLine(item.actress, 2)}</span>
         </a>
       </li>
     );

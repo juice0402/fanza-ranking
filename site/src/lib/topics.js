@@ -14,6 +14,8 @@ export const TOPICS_LIMIT = 8; // 「きょうの話題」の最大数
 export const RISE_MIN = 10; // 「急上昇」: 前の日から、この順位以上あがった作品
 export const RISE_WITHIN = 50; // 「急上昇」: きょうの新着の人気順が、この順位までの作品
 export const SALE_SOON_DAYS = 2; // 「もうすぐ終わるセール」: 終わりがこの日数以内のキャンペーン
+export const HOT_LIMIT = 3; // 「いま人気の女優」に出す人数
+export const HOT_MAX_CAST = 4; // 「いま人気の女優」で数える作品の出演者の人数の上限（オムニバス・総集編の大人数の作品は数えない）
 
 const mdLabel = (dateKey) => {
   const p = dateParts(dateKey);
@@ -73,17 +75,41 @@ export function rankMove(cid, now, prevRank) {
 }
 
 /**
+ * いま人気の女優（トップ。運営者の希望「きょうの顔」→ 名前は「いま人気の女優」。2026-10-05）:
+ * この1週間に発売された作品の、新着の人気TOP100に出ている女優を、作品ごとに「101 − 順位」の点を足して並べる（人気の高い作品に多く出ている人が上）。
+ * 出演者が HOT_MAX_CAST 人をこえる作品（オムニバス・総集編）は数えない（1本で何十人もの点が入ってしまうため）。
+ * excludeVr: VR作品を数えない（「VR作品を隠す」のときの並び）。[{ name, score, count（本数）, best（いちばん上の順位）, top（いちばん上の作品） }]
+ */
+export function hotActresses(items, today, { excludeVr = false, limit = HOT_LIMIT } = {}) {
+  const board = new Map();
+  for (const i of newRanking(items, today, 100)) {
+    if (i.popNew > 100 || (excludeVr && i.vr)) continue;
+    const cast = [...new Set(i.actress)];
+    if (cast.length === 0 || cast.length > HOT_MAX_CAST) continue;
+    for (const name of cast) {
+      const row = board.get(name) ?? { name, score: 0, count: 0, best: i.popNew, top: i };
+      row.score += 101 - i.popNew;
+      row.count += 1;
+      board.set(name, row);
+    }
+  }
+  return [...board.values()]
+    .sort((a, b) => b.score - a.score || a.best - b.best || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    .slice(0, limit);
+}
+
+/**
  * きょうの話題: [{ kind, label, title, text, image, face, href, external, vr, alt? }]（大事な順に、最大 limit 件）。
- *   kind: rise 急上昇 / today きょう発売 / upcoming 予約で人気 / entry 予約に初登場 / debut デビュー作 / actress 出演が多い女優 / weekly 週のまとめ / sale もうすぐ終わるセール
+ *   kind: rise 急上昇 / today きょう発売 / upcoming 予約で人気 / entry 予約に初登場 / debut デビュー作 / weekly 週のまとめ / sale もうすぐ終わるセール
  *   image: 作品の表紙（パッケージ画像。表紙の部分を切り出して見せる）、face: 出演者の顔写真（あるときだけ。image より先に使う）
  *   end: セールの終わりの時刻（sale だけ。ブラウザが、すぎたら隠す /sale.js）
  *   alt: 話題の作品がVR作品のとき、「VR作品を隠す」を選んだ人に代わりに出す、同じ種類のVRでない次の作品の話題（繰り上げ。運営者の希望。2026-10-05）
  * ctx: { items（このサイトの全作品）, today, popularity, todayData（normalizeToday）, sale（normalizeSale）, roundup（いちばん新しい週のまとめ）, linkOf(item) → {href, external},
- *        actressPage(name) → path | '', faceOf(name) → url | '', skip: Set（TOP3など、ほかの欄に出ている作品ID）,
+ *        faceOf(name) → url | '', skip: Set（TOP3など、ほかの欄に出ている作品ID）,
  *        skipVrOff: Set（VR作品を隠したときにTOP3に出る作品ID。繰り上げの作品には使わない） }
  */
 export function buildTopics(ctx, limit = TOPICS_LIMIT) {
-  const { items, today, popularity, todayData, sale, roundup = null, linkOf, actressPage = () => '', faceOf = () => '', skip = new Set(), skipVrOff = new Set() } = ctx;
+  const { items, today, popularity, todayData, sale, roundup = null, linkOf, faceOf = () => '', skip = new Set(), skipVrOff = new Set() } = ctx;
   const topics = [];
   const used = new Set(skip);
   const workTopic = (item, kind, label, title, text) => ({ kind, label, title, text, image: item.image_url, face: '', vr: Boolean(item.vr), ...linkOf(item) });
@@ -106,7 +132,7 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
     topics.push(topic);
   };
   const nonVrFirst = (list) => list.find((i) => !i.vr) ?? list[0];
-  const ranked = newRanking(items, today, 100); // 新着の人気TOP100（人気の女優を数える範囲）
+  const ranked = newRanking(items, today, 100); // 新着の人気TOP100（急上昇を探す範囲）
   const pool = newRanking(items, today, Infinity); // 新着の人気順の全部（きょう発売・デビュー作と、その繰り上げを探す範囲）
 
   // 急上昇: 前の日の新着の人気順から、大きく順位を上げた作品（前の日の順位が無い作品は、前の日の圏外から）。2件まで。
@@ -148,20 +174,7 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
     return { ...workTopic(i, 'debut', 'デビュー作', name ? `${name}のデビュー作` : truncate(i.title, 40), `新着の人気順 ${i.popNew}位｜${mdLabel(i.dateKey)}発売`), face: name ? faceOf(name) : '' };
   });
 
-  // 出演が多い女優: 新着の人気TOP100に、出演作が2本以上ある人（いちばん多い人）
-  const counts = new Map();
-  for (const i of ranked) for (const n of new Set(i.actress)) counts.set(n, (counts.get(n) ?? 0) + 1);
-  const busy = [...counts.entries()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1] || ranked.findIndex((i) => i.actress.includes(a[0])) - ranked.findIndex((i) => i.actress.includes(b[0])))[0];
-  if (busy) {
-    const [name, n] = busy;
-    const works = ranked.filter((i) => i.actress.includes(name));
-    const shown = nonVrFirst(works); // 顔写真が無いときの表紙・リンク先は、VRでない作品を先に（VR作品を隠していても見られるように）
-    const page = actressPage(name);
-    topics.push({
-      kind: 'actress', label: '人気の女優', title: name, text: `新着の人気TOP100に出演作が${n}本｜最高${works[0].popNew}位`,
-      image: shown.image_url, face: faceOf(name), vr: false, ...(page ? { href: page, external: false } : linkOf(shown)),
-    });
-  }
+  // 人気の女優は、トップの「いま人気の女優」の欄で出す（話題には入れない。2026-10-05）
 
   // 週のまとめ: 月曜に出た、前の週の新作のまとめ記事（出てから2日のあいだ）
   if (roundup && roundup.written <= today && daysBetween(today, roundup.written) <= 2) {

@@ -330,6 +330,15 @@ for cid, x in valid.items():
         if len(btns) != 3 or any('<svg' not in b or re.search(r'[‹›×]', re.sub(r'<svg.*?</svg>', '', b, flags=re.S)) for b in btns):
             bad_lb_icon.append(cid)
 check("拡大表示: 前・次・閉じるのボタンは、図形（SVG）の矢印・×で、文字ではない（丸の真ん中にそろえるため）", not bad_lb_icon, bad_lb_icon[:3])
+# 前・次のボタンは、画像に重ならないよう、画像の下の帯（.lightbox-bar）に置く（運営者の希望。2026-10-05）
+bad_lb_bar = []
+for cid, x in valid.items():
+    page = os.path.join(DIST, "item", cid, "index.html")
+    if os.path.isfile(page) and 'id="lightbox"' in read(page):
+        bar = re.search(r'<div class="lightbox-bar">(.*?)</div>', read(page), re.S)
+        if not bar or 'lightbox-prev' not in bar.group(1) or 'lightbox-next' not in bar.group(1) or 'lightbox-count' not in bar.group(1) or 'class="lightbox-view"' not in read(page):
+            bad_lb_bar.append(cid)
+check("拡大表示: 前・次のボタンと枚数は、画像の下の帯（.lightbox-bar）にある（画像に重ならない）", not bad_lb_bar, bad_lb_bar[:3])
 with_spine = [os.path.relpath(p, DIST) for p in glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True) if 'class="spine"' in read(p)]
 check("カードに、画像をさえぎるメーカーの縦帯（spine）が出ていない", not with_spine, with_spine[:3])
 
@@ -681,6 +690,66 @@ check("きょうの話題: 評価の言葉を書かない（データで決ま�
 if any(k == "sale" for k, _, _ in topic_cells):
     check("きょうの話題に、もうすぐ終わるセールがあるときは、終わったら隠すスクリプト（sale.js）がある", 'src="/sale.js"' in home_html)
 warn("きょうの話題が、トップにある（データがそろっていれば出る）", bool(topic_cells) or not pop_new)
+
+# いま人気の女優（site/src/lib/topics.js の hotActresses と同じ数え方）: この1週間の発売で、新着の人気順が100位までの作品
+# （出演者が1〜4人の作品だけ）に、101−順位の点を足す。上から3人
+def hot_names(exclude_vr):
+    board = {}
+    for c in sorted((c for c in everything if c in pop_new and pop_new[c] <= 100 and _top_from <= str(everything[c]["date"])[:10] <= JST_TODAY),
+                    key=lambda c: (pop_new[c], -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:100]:
+        x = everything[c]
+        if exclude_vr and is_vr_raw(x):
+            continue
+        cast = list(dict.fromkeys(a for a in (x.get("actress") or []) if a))
+        if not 1 <= len(cast) <= 4:
+            continue
+        for n in cast:
+            sc, best = board.get(n, (0, pop_new[c]))
+            board[n] = (sc + 101 - pop_new[c], min(best, pop_new[c]))
+    return [n for n, _ in sorted(board.items(), key=lambda kv: (-kv[1][0], kv[1][1], kv[0]))[:3]]
+
+
+def hot_list(cls):
+    m = re.search(r'<ol class="%s">(.*?)</ol>' % cls, home_html, re.S)
+    return [htmllib.unescape(re.sub(r"<[^>]+>", "", n)) for n in re.findall(r'<span class="hot-name"><span class="visually-hidden">[^<]*</span>(.*?)</span>', m.group(1), re.S)] if m else None
+
+
+want_hot, want_hot_novr = hot_names(False), hot_names(True)
+if want_hot:
+    got = hot_list("hot") if want_hot == want_hot_novr else hot_list("hot hot-all")
+    got_novr = None if want_hot == want_hot_novr else hot_list("hot hot-novr")
+    check(f"いま人気の女優: {len(want_hot)}人が、新着の人気順の点の順に並ぶ（オムニバスの作品は数えない）", 'id="hot"' in home_html and got == want_hot, (got, want_hot))
+    check("いま人気の女優: VR作品を隠すときの並び（VR作品を数えない）は、ちがうときだけ、もう1つ用意する", (got_novr is None and want_hot == want_hot_novr) or got_novr == want_hot_novr, (got_novr, want_hot_novr))
+    check("いま人気の女優: 「顔」という言葉は使わず「いま人気の女優」（運営者の希望）", 'id="hot-title" class="today-sec-title">いま人気の女優</h2>' in home_html)
+else:
+    check("人気の作品が無いときは、いま人気の女優の欄を出さない", 'id="hot"' not in home_html)
+
+# 運命の1本（発売中の新作の下。ひとことコメントのある・作品ページのある・発売済みの人気作。未成年を連想させるタイトルは入れない）
+gacha_m = re.search(r'<script type="application/json" id="gacha-data">(.*?)</script>', read_raw(index_path), re.S)
+if gacha_m:
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import claude_comments as _cc
+    gacha_rows = json.loads(gacha_m.group(1))
+    bad_gacha = [r.get("c") for r in gacha_rows if r.get("c") not in paged or not has_comment(everything.get(r.get("c"), {})) or str(everything[r["c"]]["date"])[:10] > JST_TODAY
+                 or _cc.title_block_reason(everything[r["c"]]) == "minor" or bool(r.get("v")) != is_vr_raw(everything[r["c"]]) or not fanza_https(r.get("i"), DMM)]
+    check(f"運命の1本: 候補（{len(gacha_rows)}本。80本まで）は、ひとことコメントと作品ページのある発売済みの作品だけ・未成年を連想させるタイトルは入れない・VRの印が合う", 0 < len(gacha_rows) <= 80 and not bad_gacha, bad_gacha[:3])
+    check("運命の1本: 欄は、発売中の新作の下（予約の上）にあり、最初は隠れている（JavaScript が出す）・スクリプト（gacha.js）がある",
+          home_html.find('id="released"') < home_html.find('id="gacha"') and (home_html.find('id="upcoming"') < 0 or home_html.find('id="gacha"') < home_html.find('id="upcoming"'))
+          and re.search(r'<section id="gacha"[^>]*\bhidden\b', home_html) is not None and 'src="/gacha.js"' in home_html and os.path.isfile(os.path.join(DIST, "gacha.js")))
+    check("運命の1本: ページに入れたデータの中に、タグの始まり（<）が無い", "<" not in gacha_m.group(1))
+else:
+    check("運命の1本の候補が無いときは、欄もスクリプトも出さない", 'id="gacha"' not in home_html and 'src="/gacha.js"' not in home_html)
+
+# 一覧のカードの出演者は3名まで（オムニバスなど、出演者が多い作品で、カードが長くならないように。運営者の希望。2026-10-05）
+bad_cast = []
+for lp in [index_path] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html")))[:3]:
+    for line in re.findall(r'<p class="item-cast">(.*?)</p>', read(lp), re.S):
+        text = htmllib.unescape(re.sub(r"<[^>]+>", "", line))
+        names = text.split(" ほか")[0].split("、")
+        more = re.search(r" ほか(\d+)名$", text)
+        if len(names) > 3 or (len(names) == 3 and "ほか" in text and not more):
+            bad_cast.append(text[:40])
+check("一覧のカードの出演者は3名まで（4名以上は「ほか○名」）", not bad_cast, bad_cast[:3])
 
 print("\n■ お気に入り・発売日カレンダー")
 all_pages = sorted(glob.glob(os.path.join(DIST, "**", "index.html"), recursive=True))
@@ -1103,8 +1172,10 @@ for cid, x in valid.items():
     want_day = f"{ymd_jp(x['date'][:10])}発売の作品は、" + ("この1本だけです。" if n_same == 1 else f"掲載中で{n_same}本あります。")
     if not rows_ or rows_[0][0] != "同じ発売日" or want_day not in htmllib.unescape(re.sub(r"<[^>]+>", "", rows_[0][1])):
         bad_facts.append((cid, want_day, (rows_[0] if rows_ else None)))
+    if any(label == "収録時間" for label, _ in rows_):  # 収録時間の長さくらべは出さない（運営者の判断。2026-10-05）
+        bad_facts.append((cid, "収録時間の長さくらべの行が出ている"))
 check(f"作品ページの品番（作れる{with_code}ページ）: 「品番」の欄・タイトルの先頭・説明文に、同じ品番が出ている。作れない作品には出ていない", not bad_code, bad_code[:3])
-check("作品ページに「この作品のデータ」欄があり、先頭の行（同じ発売日）の本数が、データを数えた値と同じ", not bad_facts, bad_facts[:2])
+check("作品ページに「この作品のデータ」欄があり、先頭の行（同じ発売日）の本数が、データを数えた値と同じ・収録時間の長さくらべの行は無い", not bad_facts, bad_facts[:2])
 warn("品番を作れる作品が1本以上ある", with_code > 0)
 
 MONTH_MIN = config_value("MONTH_MIN_ITEMS")
