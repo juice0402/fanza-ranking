@@ -6,15 +6,29 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { phraseDirectory } from '../lib/phrase.js';
 
-/** 途中で改行しない名前（出演者・メーカー）を、作品データから集める。読めなければ空（名前を守らないだけ） */
-export function namesFromData(file = new URL('../data/new_releases.json', import.meta.url)) {
+/** JSONの作品の一覧を読む（読めない・形が違うときは空） */
+function readItems(file) {
   try {
     const items = JSON.parse(fs.readFileSync(file, 'utf-8'));
-    if (!Array.isArray(items)) return [];
-    return [...new Set(items.flatMap((x) => [...(Array.isArray(x?.actress) ? x.actress : []), x?.maker]))].filter((n) => typeof n === 'string' && n && n !== '不明');
+    return Array.isArray(items) ? items : [];
   } catch {
     return [];
   }
+}
+
+/**
+ * 途中で改行しない名前（出演者・メーカー）を、作品データ（毎日の更新で載せた作品＋過去作品 data/catalog/*.json）から集める。
+ * 読めなければ空（名前を守らないだけ）
+ */
+export function namesFromData(file = new URL('../data/new_releases.json', import.meta.url), catalogDir = new URL('../data/catalog/', import.meta.url)) {
+  let shards = [];
+  try {
+    shards = fs.readdirSync(catalogDir).filter((f) => f.endsWith('.json')).sort().map((f) => new URL(f, catalogDir));
+  } catch {
+    shards = []; // 過去作品がまだ無い
+  }
+  const items = [file, ...shards].flatMap(readItems);
+  return [...new Set(items.flatMap((x) => [...(Array.isArray(x?.actress) ? x.actress : []), x?.maker]))].filter((n) => typeof n === 'string' && n && n !== '不明');
 }
 
 export default function phraseBreaks() {

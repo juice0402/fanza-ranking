@@ -3,6 +3,11 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import { makerGroups } from '../../lib/data.js';
 import { MAKER_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
+import { INDEX_LIST_LIMIT } from '../../config.js';
+
+// 並べるのは作品数の多い順に INDEX_LIST_LIMIT 件まで（過去作品が増えて、メーカーが多くなっても、ページが重くなりすぎないように）
+const shown = makerGroups.slice(0, INDEX_LIST_LIMIT);
+const more = makerGroups.length - shown.length;
 
 const trail = [
   { name: 'トップ', path: '/' },
@@ -21,7 +26,7 @@ const trail = [
 
     <section class="hero">
       <h1 class="hero-title">メーカーから探す</h1>
-      <p class="hero-lead">掲載している作品が{ENTITY_MIN_ITEMS}本以上あるメーカーの一覧です。作品数の多い順に並べています。</p>
+      <p class="hero-lead">掲載している作品が{ENTITY_MIN_ITEMS}本以上あるメーカーの一覧です。作品数の多い順に並べています。{more > 0 && `（上位${shown.length}社。ほかの${more}社のページは、作品ページのメーカー名から開けます）`}</p>
     </section>
 
     <section class="section" aria-labelledby="maker-list-title">
@@ -29,7 +34,7 @@ const trail = [
       {makerGroups.length > 0
         ? (
           <ul class="name-grid">
-            {makerGroups.map((g) => (
+            {shown.map((g) => (
               <li>
                 <a class="name-link" href={g.path}>
                   <span class="name-link-name">{g.name}</span>

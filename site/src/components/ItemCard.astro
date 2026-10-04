@@ -1,17 +1,20 @@
 ---
-import { itemPath, statusOf } from '../lib/items.js';
-import { today } from '../lib/data.js';
+import { statusOf } from '../lib/items.js';
+import { today, paged } from '../lib/data.js';
+import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
 
 // level: 見出しの階層（ページの構造に合わせて h3 / h4 を指定）
 // eager: 最初の画面に入る作品だけ、画像をすぐ読む（ほかは、見えそうになってから読む loading="lazy"）
 const { item, level = 'h4', eager = false } = Astro.props;
 const Heading = level;
 const status = statusOf(item, today);
-const href = itemPath(item.cid);
+// 作品ページがある作品は作品ページへ。無い作品（サイトのファイル数の上限であふれた、古い過去作品）は、FANZAの作品ページへ直接
+const { href, external } = itemHref(item, paged);
+const outbound = external ? OUTBOUND_ATTRS : {};
 ---
 
 <article class="item">
-  <a class="item-cover" href={href} tabindex="-1" aria-hidden="true">
+  <a class="item-cover" href={href} tabindex="-1" aria-hidden="true" {...outbound}>
     {item.image_url && (
       <img
         class="item-img"
@@ -26,9 +29,9 @@ const href = itemPath(item.cid);
     {status === 'wait' && <span class="pop pop-wait">予約</span>}
   </a>
   {/* 表紙の「新作」「予約」のシールは、読み上げでは聞こえない（表紙のリンクごと aria-hidden）ので、見出しの頭に、見えない文字で入れる */}
-  <Heading class="item-title">{status === 'new' && <span class="visually-hidden">新作：</span>}{status === 'wait' && <span class="visually-hidden">予約：</span>}<a class="item-title-link" href={href}>{item.title}</a></Heading>
+  <Heading class="item-title">{status === 'new' && <span class="visually-hidden">新作：</span>}{status === 'wait' && <span class="visually-hidden">予約：</span>}<a class="item-title-link" href={href} {...outbound}>{item.title}</a></Heading>
   <p class="item-cast">{item.actress.length ? item.actress.join('、') : '出演者の記載なし'}</p>
-  <p class="item-comment">{item.comment}</p>
+  {item.comment && <p class="item-comment">{item.comment}</p>}
   {item.url && (
     <a class="btn btn-card btn-block" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで見る</a>
   )}

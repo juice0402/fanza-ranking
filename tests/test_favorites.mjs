@@ -91,6 +91,11 @@ check('形が違う短い名前・索引が壊れているときは、補わな�
 const protoStore = plain(F.toggle(F.emptyStore(), 'actress', 'constructor', { slug: '' }, 1).store);
 check('名前が constructor のような特別な名前でも、取り違えない', !F.resolveSlugs(protoStore, { actress: {}, maker: {} }).changed);
 
+console.log('\n■ 発売日カレンダーのリンク（新作・予約が載っている人だけにある）');
+check('索引の pages に同じ短い名前で入っている人だけ、カレンダーがある', F.hasCalendar(pagesNow, 'actress', '新人', '0123456789') && F.hasCalendar(pagesNow, 'maker', '小さなメーカー', 'abcdef0123'));
+check('過去作品だけの人（pages に無い）・短い名前が違う・空の短い名前は、カレンダーなし', !F.hasCalendar(pagesNow, 'actress', '昔の人', 'bbbbbbbbbb') && !F.hasCalendar(pagesNow, 'actress', '前から', 'ffffffffff') && !F.hasCalendar(pagesNow, 'actress', '新人', ''));
+check('索引が壊れていても落ちない・constructor のような名前を取り違えない', [null, undefined, {}, [], 'x', { actress: null }].every((v) => !F.hasCalendar(v, 'actress', '新人', '0123456789')) && !F.hasCalendar({ actress: {}, maker: {} }, 'actress', 'constructor', 'function'));
+
 console.log('\n■ 日付');
 check('日本時間の今日（UTC 15:00 → 翌日）', F.jstToday(Date.UTC(2026, 9, 3, 15, 0)) === '2026-10-04' && F.jstToday(Date.UTC(2026, 9, 3, 14, 59)) === '2026-10-03');
 check('日数の足し引き（月またぎ・うるう年）', F.addDays('2026-10-01', -1) === '2026-09-30' && F.addDays('2028-02-28', 1) === '2028-02-29');

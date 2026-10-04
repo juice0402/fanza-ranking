@@ -6,16 +6,20 @@
 """
 import datetime
 import glob
+import hashlib as _hl
 import html as htmllib
 import json
 import os
 import re
 import sys
+import unicodedata as _ud
 from urllib.parse import urlparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "site", "dist")
 DATA = os.path.join(ROOT, "site", "src", "data", "new_releases.json")
+CATALOG_DIR = os.path.join(ROOT, "site", "src", "data", "catalog")  # 過去作品（発売月ごとのファイル。まだ無いこともある）
+FILE_LIMIT = 20000  # Cloudflare Pages の無料プランの、1つのサイトのファイル数の上限
 ROUNDUPS = os.path.join(ROOT, "site", "src", "data", "roundups.json")
 ACTRESSES = os.path.join(ROOT, "site", "src", "data", "actresses.json")
 RANKING = os.path.join(ROOT, "site", "src", "data", "ranking.json")
@@ -88,6 +92,16 @@ def fanza_https(url, hosts):
     return bool(m) and not re.search(r"[\\\s\x00-\x1f\x7f]", text) and any(host == h or host.endswith("." + h) for h in hosts)
 
 
+def entity_slug(name):
+    """site/src/lib/items.js の entitySlug と同じ（名前 → URLの短い英数字）。突き合わせるため、別に書いてある"""
+    return _hl.sha1(_ud.normalize("NFC", str(name)).encode("utf-8")).hexdigest()[:10]
+
+
+def rel(p):
+    """dist の中の相対パス（表示用）"""
+    return os.path.relpath(p, DIST)
+
+
 def page_file(url_path):
     """URLのパス（/item/abc/）に対応する、dist内のファイルを返す"""
     rel = url_path.lstrip("/")
@@ -100,12 +114,29 @@ if not os.path.isdir(DIST):
     print(f"  ❌ {DIST} がありません。先に `npm run build`（site フォルダ）を実行してください")
     sys.exit(1)
 
-raw = json.load(open(DATA, encoding="utf-8"))
-valid = {}
-for x in raw if isinstance(raw, list) else []:
-    cid = str((x or {}).get("cid", "")).strip()
-    if cid and str(x.get("title", "")).strip() and re.match(r"^\d{4}-\d{2}-\d{2}", str(x.get("date", ""))):
-        valid.setdefault(cid, x)
+def usable_rows(rows):
+    """サイト側の normalizeItems と同じ条件で、使える作品を cid ごとに（同じ cid は先のもの）"""
+    out = {}
+    for x in rows if isinstance(rows, list) else []:
+        if not isinstance(x, dict):
+            continue
+        cid = str(x.get("cid", "")).strip()
+        if cid and str(x.get("title", "")).strip() and re.match(r"^\d{4}-\d{2}-\d{2}", str(x.get("date", ""))):
+            out.setdefault(cid, x)
+    return out
+
+
+# 毎日の更新で載せた作品（新作・予約）
+curated = usable_rows(json.load(open(DATA, encoding="utf-8")))
+# 過去作品（カタログ）: 発売月ごとのファイルを、名前の順につなげて読む（サイト側の data.js と同じ）。
+# 毎日の更新で載せた作品と同じ作品・FANZAのURLが無い作品は、サイトに載らない
+catalog_rows = []
+for shard in sorted(glob.glob(os.path.join(CATALOG_DIR, "*.json"))):
+    loaded = json.load(open(shard, encoding="utf-8"))
+    catalog_rows.extend(loaded if isinstance(loaded, list) else [])
+catalog = {c: x for c, x in usable_rows(catalog_rows).items() if c not in curated and fanza_https(x.get("url"), ["fanza.co.jp", "dmm.co.jp"])}
+everything = {**curated, **catalog}
+has_comment = lambda x: bool(str(x.get("comment") or "").strip())
 
 print("■ ページが揃っている")
 index_path = os.path.join(DIST, "index.html")
@@ -113,7 +144,41 @@ check("トップページ", os.path.isfile(index_path))
 check("404ページ", os.path.isfile(os.path.join(DIST, "404.html")))
 check("過去の作品 1ページ目", os.path.isfile(os.path.join(DIST, "archive", "1", "index.html")))
 item_pages = glob.glob(os.path.join(DIST, "item", "*", "index.html"))
-check("作品ページの数 = データの件数", len(item_pages) == len(valid), f"ページ {len(item_pages)} / データ {len(valid)}")
+paged = {os.path.basename(os.path.dirname(p)) for p in item_pages}
+check("作品ページは、データにある作品のものだけ", paged <= set(everything), sorted(paged - set(everything))[:3])
+check(f"毎日の更新で載せた作品（{len(curated)}本）は、すべて作品ページがある", set(curated) <= paged, sorted(set(curated) - paged)[:3])
+
+print("\n■ ファイル数（Cloudflare Pages の無料プランは2万ファイルまで）")
+dist_files = sum(len(fs) for _, _, fs in os.walk(DIST))
+print(f"   ファイル {dist_files} ／ 作品ページ {len(paged)} ／ 作品 {len(everything)}本（過去作品 {len(catalog)}本）")
+check(f"サイト全体のファイル数（{dist_files}）が {FILE_LIMIT} 以内", dist_files <= FILE_LIMIT, dist_files)
+
+
+def page_rank(cid):
+    """作品ページの優先順（site/src/lib/plan.js と同じ考え方。小さいほど先）: 毎日の更新で載せた作品 → コメントのある過去作品 → そのほか、同じ中では発売日の新しい順"""
+    x = everything[cid]
+    return (0 if cid in curated else 1 if has_comment(x) else 2, -int(str(x["date"])[:10].replace("-", "")))
+
+
+unpaged = set(everything) - paged
+if unpaged:
+    worst_paged = max((page_rank(c) for c in paged), default=(-1, 0))
+    best_unpaged = min(page_rank(c) for c in unpaged)
+    check(f"作品ページの無い作品（{len(unpaged)}本）は、優先順があとのものだけ（毎日の更新で載せた作品→コメントのある過去作品→新しい順）", worst_paged <= best_unpaged, (worst_paged, best_unpaged))
+    budget = int(re.search(r"export const FILE_BUDGET = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1))
+    fixed = int(re.search(r"export const FIXED_FILES = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1))
+    check("あふれた作品があるときは、上限近くまで作品ページを作っている（枠を余らせていない）", dist_files >= budget - fixed, (dist_files, budget - fixed))
+bad_noindex = [c for c in paged if c in everything and (('name="robots" content="noindex' in read_raw(os.path.join(DIST, "item", c, "index.html"))) == has_comment(everything[c]))]
+check("作品ページ: コメントの無い作品（過去作品）だけ noindex（コメントのある作品は検索エンジンに出す）", not bad_noindex, bad_noindex[:3])
+links_out = []
+for lp in sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html")))[:50]:
+    for t in tags(read_raw(lp), "a"):
+        m_ = re.match(r"^/item/([^/]+)/$", t.get("href", ""))
+        if m_ and m_.group(1) not in paged:
+            links_out.append((os.path.relpath(lp, DIST), m_.group(1)))
+check("過去の作品の一覧から、作品ページの無い作品へは、サイトの中のリンクを張らない（FANZAへ直接）", not links_out, links_out[:3])
+# ここから下の、作品ページごとの点検は、作品ページがある作品を見る
+valid = {c: everything[c] for c in sorted(paged) if c in everything}
 robots = os.path.join(DIST, "robots.txt")
 check("robots.txt に Sitemap の行がある", os.path.isfile(robots) and "Sitemap:" in read(robots))
 
@@ -131,10 +196,12 @@ if os.path.isfile(sitemap_path):
     check("sitemap のすべてのURLに lastmod（YYYY-MM-DD）がある", not no_lastmod, no_lastmod[:3])
     lastmod_of = {urlparse(u).path: m for u, m in rows}
     sm_paths = [urlparse(u).path for u in locs]
-    wrong = [c for c in valid if lastmod_of.get(f"/item/{c}/") != str(valid[c].get("updated"))]
+    indexable_items = {c for c, x in valid.items() if has_comment(x)}
+    wrong = [c for c in indexable_items if lastmod_of.get(f"/item/{c}/") != str(valid[c].get("updated"))]
     check("sitemap の作品ページの lastmod が、データの updated と同じ", not wrong, wrong[:3])
     check("sitemap にトップがある", any(urlparse(u).path == "/" for u in locs))
-    check("sitemap に全作品が入っている", all(any(f"/item/{c}/" in u for u in locs) for c in valid))
+    sm_items = {p[len("/item/"):-1] for p in sm_paths if p.startswith("/item/")}
+    check(f"sitemap の作品ページ = 作品ページがあり、コメントのある作品（{len(indexable_items)}本）", sm_items == indexable_items, (sorted(indexable_items - sm_items)[:3], sorted(sm_items - indexable_items)[:3]))
     missing = [u for u in locs if not os.path.isfile(page_file(urlparse(u).path))]
     check("sitemap のURLがすべて実在するページ", not missing, missing[:3])
 
@@ -145,8 +212,9 @@ if os.path.isfile(sitemap_path):
     check("sitemap に出演者一覧・メーカー一覧がある", "/actress/" in sm_paths and "/maker/" in sm_paths)
     for kind in ("actress", "maker"):
         entity_pages = glob.glob(os.path.join(DIST, kind, "*", "index.html"))
-        in_sitemap = [p for p in sm_paths if p.startswith(f"/{kind}/") and p != f"/{kind}/"]
-        check(f"{kind} ページがすべて sitemap に入っている（{len(entity_pages)}ページ）", len(entity_pages) == len(in_sitemap), (len(entity_pages), len(in_sitemap)))
+        in_sitemap = {p for p in sm_paths if p.startswith(f"/{kind}/") and p != f"/{kind}/"}
+        indexable = {f"/{kind}/{os.path.basename(os.path.dirname(p))}/" for p in entity_pages if 'name="robots" content="noindex' not in read_raw(p)}
+        check(f"{kind} ページのうち、noindex でないもの（{len(indexable)}/{len(entity_pages)}ページ）が、すべて sitemap に入っている", indexable == in_sitemap, (len(indexable), len(in_sitemap)))
 
 print("\n■ 週のまとめ記事")
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -485,7 +553,8 @@ if os.path.isfile(search_page):
     else:
         check("索引が空のときは、検索の部品を出さない", 'id="actress-search"' not in stext and 'src="/actress-search.js"' not in stext)
     static_rows = len([t for t in tags(stext, "li") if has_class(t, "actress-row")])
-    check(f"JavaScriptが使えないとき用の一覧に、専用ページのある出演者が全員いる（{len(actress_pages)}人）", static_rows == len(actress_pages) and any(t.get("id") == "actress-static" for t in tags(stext, "section")), (static_rows, len(actress_pages)))
+    index_limit = int(re.search(r"export const INDEX_LIST_LIMIT = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1))
+    check(f"JavaScriptが使えないとき用の一覧に、専用ページのある出演者がいる（{len(actress_pages)}人。多いときは作品数の多い順に{index_limit}人まで）", static_rows == min(len(actress_pages), index_limit) and any(t.get("id") == "actress-static" for t in tags(stext, "section")), (static_rows, len(actress_pages)))
     check("検索の注意書き（載っていない人は絞り込みで外れる・データのある人数・FANZA公式のデータ）が、ページにある", (not rows) or ("結果に出ません" in stext and "いま探せる" in stext and "FANZA公式" in stext))
 
 print("\n■ 売れ筋ランキング（トップページ）")
@@ -545,6 +614,7 @@ check("トップに、お気に入りのお知らせ欄（#fav-banner）があ�
 
 # 索引: お気に入りの出演者・メーカーの新作を、ブラウザ側で探すための小さなJSON
 fav_index_path = os.path.join(DIST, "data", "favorites-index.json")
+fav_index = None
 check("お気に入りの索引（/data/favorites-index.json）がある", os.path.isfile(fav_index_path))
 if os.path.isfile(fav_index_path):
     try:
@@ -587,7 +657,8 @@ def ics_problems(path):
     cids = [u.split("@")[0] for u in uids]
     if not all(c in valid for c in cids):
         found.append("データに無い品番の予定")
-    titles_in_summary = [t for t in summaries if any(x["title"].strip() and x["title"].strip() in t for x in valid.values())]
+    own_titles = [str(valid[c].get("title") or "").strip() for c in cids if c in valid]
+    titles_in_summary = [t for t in summaries if any(ti and ti in t for ti in own_titles)]
     if titles_in_summary:
         found.append("題名に作品タイトルが入っている")
     starts = re.findall(r"^DTSTART;VALUE=DATE:(\d{8})$", body, re.M)
@@ -606,11 +677,18 @@ page_host = None
 m = re.search(r'<link rel="canonical" href="https?://([^/"]+)', home_html)
 if m:
     page_host = m.group(1)
+fav_pages = fav_index.get("pages") if isinstance(fav_index, dict) and isinstance(fav_index.get("pages"), dict) else {}
 for kind, label in (("actress", "出演者"), ("maker", "メーカー")):
     entity_pages = glob.glob(os.path.join(DIST, kind, "*", "index.html"))
     slugs = {os.path.basename(os.path.dirname(p)) for p in entity_pages}
     ics_files = {os.path.basename(p)[:-4] for p in glob.glob(os.path.join(DIST, "calendar", kind, "*.ics"))}
-    check(f"{label}ページ（{len(slugs)}）と、{label}ごとのカレンダー（{len(ics_files)}）が1対1", slugs == ics_files, (sorted(slugs - ics_files)[:2], sorted(ics_files - slugs)[:2]))
+    # カレンダーは、ページがある人・メーカーのうち、毎日の更新で載せた作品（新作・予約）がある人だけ（過去作品だけの人は作らない）
+    names_of = (lambda x: x.get("actress") or []) if kind == "actress" else (lambda x: [x.get("maker")] if x.get("maker") and x.get("maker") != "不明" else [])
+    curated_slugs = {entity_slug(n) for x in curated.values() for n in names_of(x) if n}
+    want_ics = slugs & curated_slugs
+    check(f"{label}ごとのカレンダー（{len(ics_files)}）は、{label}ページ（{len(slugs)}）のうち、新作・予約が載っている{label}の分だけ", ics_files == want_ics, (sorted(want_ics - ics_files)[:2], sorted(ics_files - want_ics)[:2]))
+    fav_slugs = set((fav_pages.get(kind) or {}).values()) if isinstance(fav_pages.get(kind), dict) else set()
+    check(f"お気に入りの索引の {kind} は、カレンダーがある{label}だけ（「お気に入り」ページは、ここにある人だけにカレンダーのリンクを出す）", fav_slugs == ics_files, (sorted(fav_slugs - ics_files)[:2], sorted(ics_files - fav_slugs)[:2]))
     bad_ics = [slug for slug in sorted(ics_files) if ics_problems(os.path.join(DIST, "calendar", kind, slug + ".ics"))]
     check(f"{label}ごとのカレンダーの形が正しい", not bad_ics, bad_ics[:3])
     no_btn = []
@@ -618,9 +696,9 @@ for kind, label in (("actress", "出演者"), ("maker", "メーカー")):
         html = read(p)
         slug = os.path.basename(os.path.dirname(p))
         link = f'href="webcal://{page_host}/calendar/{kind}/{slug}.ics"'
-        if 'data-fav-type="%s"' % kind not in html or link not in html:
+        if 'data-fav-type="%s"' % kind not in html or (link in html) != (slug in ics_files) or ('class="cal-link"' in html) != (slug in ics_files):
             no_btn.append(slug)
-    check(f"{label}ページに、☆ボタンと、そのページ専用のカレンダーのリンクがある", not no_btn, no_btn[:3])
+    check(f"{label}ページに、☆ボタンがあり、カレンダーがある{label}だけに、そのページ専用のカレンダーのリンクがある", not no_btn, no_btn[:3])
 no_work_btn = [cid for cid in valid if os.path.isfile(os.path.join(DIST, "item", cid, "index.html")) and 'data-fav-type="work"' not in read(os.path.join(DIST, "item", cid, "index.html"))]
 check("すべての作品ページに、作品の☆ボタンがある", not no_work_btn, no_work_btn[:3])
 cal_page = page_file("/calendar/")
@@ -883,13 +961,6 @@ check("「VR作品を隠す」スイッチが、トップ・検索・過去の�
 
 # 作品ページ: ジャンルは、ジャンルのページ（/tag/…。ページがあるジャンル）か、そのジャンルで絞り込んだ検索へのリンク
 import urllib.parse as _up
-import hashlib as _hl
-import unicodedata as _ud
-
-
-def entity_slug(name):
-    """site/src/lib/items.js の entitySlug と同じ（名前 → URLの短い英数字）。突き合わせるため、別に書いてある"""
-    return _hl.sha1(_ud.normalize("NFC", str(name)).encode("utf-8")).hexdigest()[:10]
 
 
 def config_value(name):
@@ -903,7 +974,7 @@ def config_value(name):
 TAG_MIN = config_value("TAG_MIN_ITEMS")
 TAG_GENRES = config_value("TAG_PAGE_GENRES")
 genre_counts = {}
-for x in valid.values():
+for x in curated.values():  # ジャンルのページ・月ごとのページは、毎日の更新で載せた作品だけで作る
     for g in set(g for g in (x.get("genres") or []) if g):
         genre_counts[g] = genre_counts.get(g, 0) + 1
 tag_pages_expected = {g for g in TAG_GENRES if genre_counts.get(g, 0) >= TAG_MIN}
@@ -935,7 +1006,7 @@ def ymd_jp(day):
 
 
 by_date_count = {}
-for x in valid.values():
+for x in everything.values():  # 「この作品のデータ」欄は、過去作品も含めて数える
     by_date_count[x["date"][:10]] = by_date_count.get(x["date"][:10], 0) + 1
 bad_code, bad_facts, with_code = [], [], 0
 for cid, x in valid.items():
@@ -967,7 +1038,7 @@ warn("品番を作れる作品が1本以上ある", with_code > 0)
 MONTH_MIN = config_value("MONTH_MIN_ITEMS")
 TAG_LIMIT = config_value("TAG_PAGE_LIMIT")
 month_counts = {}
-for x in valid.values():
+for x in curated.values():
     month_counts[x["date"][:7]] = month_counts.get(x["date"][:7], 0) + 1
 months_want = {ym: n for ym, n in month_counts.items() if n >= MONTH_MIN}
 month_files = {os.path.basename(os.path.dirname(f)): f for f in glob.glob(os.path.join(DIST, "month", "*", "index.html"))}
@@ -988,7 +1059,7 @@ else:
     check("月ごとのページが1つも無いときは、一覧ページも作らず、sitemap にも入れない", not os.path.isfile(month_index) and not [p for p in sm_paths if p.startswith("/month")])
 
 tag_counts = {entity_slug(g): (g, n) for g, n in ((g, genre_counts.get(g, 0)) for g in TAG_GENRES) if n >= TAG_MIN}
-vr_n = sum(1 for x in valid.values() if is_vr_raw(x))
+vr_n = sum(1 for x in curated.values() if is_vr_raw(x))
 if vr_n >= TAG_MIN:
     tag_counts[entity_slug("VR作品")] = ("VR作品", vr_n)
 tag_files = {os.path.basename(os.path.dirname(f)): f for f in glob.glob(os.path.join(DIST, "tag", "*", "index.html"))}
@@ -1077,15 +1148,32 @@ for p in html_files:
 check("全ページで、文節の区切り（<wbr>）が、すべて <span class=\"ph\"> の中にある", not stray_wbr, stray_wbr[:3])
 check("<span class=\"ph\"> の中には、<wbr> と名前の <span class=\"nb\"> のほか、タグが入っていない（文章だけ）", not tag_in_ph, tag_in_ph[:3])
 # 出演者名・メーカー名の途中には、区切り（<wbr>）が入っていない（運営者が見つけた「波多｜野結衣」のような改行を防ぐ）
-name_list = sorted({n for it in valid.values() for n in [*(it.get("actress") or []), it.get("maker") or ""] if n and n != "不明" and len(n) >= 2}, key=len, reverse=True)
+name_set = {n for it in everything.values() for n in [*(it.get("actress") or []), it.get("maker") or ""] if n and n != "不明" and len(n) >= 2}
+name_heads = {}  # 名前の先頭2文字 → 長さ（名前が数万あっても速く探すため）
+for n in name_set:
+    name_heads.setdefault(n[:2], set()).add(len(n))
+
+
+def names_in(text):
+    """text の中に出てくる名前（すべての位置・すべての長さ）"""
+    found = set()
+    for i in range(len(text) - 1):
+        for size in name_heads.get(text[i:i + 2], ()):
+            if text[i:i + size] in name_set:
+                found.add(text[i:i + size])
+    return found
+
+
 split_names = []
 for p in html_files:
     raw = read_raw(p)
     for m in PH_BLOCK.finditer(raw):
+        if "<wbr>" not in m.group(0):
+            continue  # 区切りが無ければ、名前が分かれることもない
         inner = NB_SPAN.sub(r"\1", m.group(0)[len('<span class="ph">'):-len("</span>")])
         flat = inner.replace("<wbr>", "")
-        for n in name_list:
-            if n in flat and n not in inner:
+        for n in names_in(flat):
+            if n not in inner:
                 split_names.append((rel(p), n))
 check("出演者名・メーカー名の途中に、文節の区切り（<wbr>）が入っていない", not split_names, split_names[:5])
 nb_rules = [body for sels, body in css_rules if ".nb" in sels]
@@ -1113,7 +1201,6 @@ else:
 LD = LD_BLOCK
 CANON = re.compile(r'<link rel="canonical" href="([^"]+)"')
 indexable = [p for p in pages if not p.endswith("404.html")]
-rel = lambda p: os.path.relpath(p, DIST)
 
 bad_ld, no_crumb, wrong_crumb = [], [], []
 for p in indexable:

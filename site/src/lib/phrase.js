@@ -119,14 +119,13 @@ function splitLong(text, start, end, keep, cuts) {
 export function protectedPositions(text, namesRe) {
   const keep = new Set();
   if (!namesRe || !text) return keep;
-  namesRe.lastIndex = 0;
-  for (const m of text.matchAll(namesRe)) {
-    for (let i = m.index + 1; i < m.index + m[0].length; i++) keep.add(i);
+  for (const m of namesRe.find(text)) {
+    for (let i = m.index + 1; i < m.index + m.text.length; i++) keep.add(i);
   }
   return keep;
 }
 
-/** 文章（HTMLの記号を含まない普通の文字列）→ 文節の配列。namesRe: 途中で改行しない語（出演者名・メーカー名）の正規表現（g つき。無くてもよい） */
+/** 文章（HTMLの記号を含まない普通の文字列）→ 文節の配列。namesRe: 途中で改行しない語（出演者名・メーカー名）を探す道具（namesPattern で作る。無くてもよい） */
 export function splitPhrases(text, namesRe = null) {
   if (!text) return [];
   const keep = protectedPositions(text, namesRe);
@@ -155,13 +154,46 @@ export function splitPhrases(text, namesRe = null) {
   return out.filter((p) => p !== '');
 }
 
-/** 名前の一覧 → 名前を探す正規表現（長い名前を先に。2文字以上だけ）。名前が無ければ null */
+// 名前のすぐあとの「さん」「ちゃん」「様」も、名前にくっつける（「青坂あおい／さん」で改行しない）
+const NAME_SUFFIXES = ['さん', 'ちゃん', '様'];
+
+/**
+ * 名前の一覧 → 文章の中から名前を探す道具（2文字以上の名前だけ。名前が無ければ null）。
+ * find(text) は、左から順に、重ならないように、その位置で一番長い名前（＋すぐあとの「さん」など）を探して [{ index, text }] を返す。
+ * 過去作品が増えると名前が数万になり、1つの大きな正規表現では、ビルドが何十分もかかったため、名前の先頭2文字と長さで引く表にしてある。
+ */
 export function namesPattern(names) {
   const list = [...new Set((names || []).filter((n) => typeof n === 'string' && [...n.trim()].length >= 2).map((n) => n.trim()))];
   if (!list.length) return null;
-  list.sort((a, b) => b.length - a.length);
-  // 名前のすぐあとの「さん」「ちゃん」「様」も、名前にくっつける（「青坂あおい／さん」で改行しない）
-  return new RegExp('(?:' + list.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')(?:さん|ちゃん|様)?', 'g');
+  const known = new Set(list);
+  const byHead = new Map(); // 先頭の2文字（UTF-16で2つ）→ その文字で始まる名前の長さ（長い順。同じ位置で、長い名前を先に選ぶ）
+  for (const n of list) {
+    const head = n.slice(0, 2);
+    if (!byHead.has(head)) byHead.set(head, new Set());
+    byHead.get(head).add(n.length);
+  }
+  for (const [head, lengths] of byHead) byHead.set(head, [...lengths].sort((x, y) => y - x));
+  return {
+    find(text) {
+      const found = [];
+      const str = String(text ?? '');
+      for (let i = 0; i + 1 < str.length; ) {
+        const lengths = byHead.get(str.slice(i, i + 2));
+        const len = lengths ? lengths.find((l) => known.has(str.slice(i, i + l))) : undefined;
+        const hit = len ? str.slice(i, i + len) : '';
+        if (!hit) {
+          i++;
+          continue;
+        }
+        let end = i + hit.length;
+        const suffix = NAME_SUFFIXES.find((x) => str.startsWith(x, end));
+        if (suffix) end += suffix.length;
+        found.push({ index: i, text: str.slice(i, end) });
+        i = end;
+      }
+      return found;
+    },
+  };
 }
 
 /** この長さ（文字数）以下の名前は、<span class="nb">（white-space: nowrap）で包み、まったく改行しない（「S-Cute」の「-」のあとや、「犬/妄想族」の「/」のあとでも）。
@@ -205,9 +237,15 @@ function glueTilde(html) {
 /** 文字列の中の短い名前（NOWRAP_MAX 文字以下）を <span class="nb"> で包む（名前の中には <wbr> が無いので、そのまま探せる） */
 function wrapNames(text, namesRe) {
   if (!namesRe) return text;
-  namesRe.lastIndex = 0;
-  // 長さは、あとに付けた「さん」などを除いて数える（「善場まみ（茉城まみ）さん」も、名前が10文字なので包む）
-  return text.replace(namesRe, (name) => ([...name.replace(/(?:さん|ちゃん|様)$/, '')].length <= NOWRAP_MAX ? `<span class="nb">${name}</span>` : name));
+  let out = '';
+  let last = 0;
+  for (const m of namesRe.find(text)) {
+    // 長さは、あとに付けた「さん」などを除いて数える（「善場まみ（茉城まみ）さん」も、名前が10文字なので包む）
+    const short = [...m.text.replace(/(?:さん|ちゃん|様)$/, '')].length <= NOWRAP_MAX;
+    out += text.slice(last, m.index) + (short ? `<span class="nb">${m.text}</span>` : m.text);
+    last = m.index + m.text.length;
+  }
+  return out + text.slice(last);
 }
 
 // 触らない所: コメント・script・style・title・textarea・pre・code・noscript・svg・template・select・option・button（中身ごと飛ばす）、

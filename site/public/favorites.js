@@ -124,6 +124,12 @@
     return { store: next, changed: changed };
   }
 
+  // 索引の pages（専用ページと発売日カレンダーの両方がある人・メーカー）に、同じ短い名前で入っているか
+  function hasCalendar(pages, type, name, slug) {
+    var known = pages && typeof pages[type] === 'object' && pages[type] ? pages[type] : {};
+    return Boolean(slug) && Object.prototype.hasOwnProperty.call(known, name) && known[name] === slug;
+  }
+
   // "2026-10-07" → "2026年10月7日"（日付でなければ空）
   function jpDate(day) {
     return typeof day === 'string' && DAY.test(day) ? +day.slice(0, 4) + '年' + +day.slice(5, 7) + '月' + +day.slice(8, 10) + '日' : '';
@@ -156,7 +162,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       emptyStore: emptyStore, parseStore: parseStore, isOn: isOn, toggle: toggle, remove: remove,
-      hasPeople: hasPeople, matches: matches, pickNew: pickNew, resolveSlugs: resolveSlugs, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT,
+      hasPeople: hasPeople, matches: matches, pickNew: pickNew, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT,
     };
     return;
   }
@@ -355,6 +361,15 @@
     } catch (e) {}
   }
 
+  function addCalendarLink(body, type, name, slug, base) {
+    loadIndex().then(function (index) {
+      if (!hasCalendar(index.pages, type, name, slug) || !body.isConnected) return;
+      var cal = el('a', 'fav-row-meta', '発売日をカレンダーで受け取る');
+      cal.href = 'webcal://' + location.host + base + slug + '.ics';
+      body.appendChild(cal);
+    }).catch(function () {});
+  }
+
   function renderPage(container) {
     var store = read();
     var people = hasPeople(store);
@@ -411,9 +426,8 @@
           var link = el('a', 'fav-row-title fav-row-title-link ph-js', name);
           link.href = def[2] + entry.slug + '/';
           body.appendChild(link);
-          var cal = el('a', 'fav-row-meta', '発売日をカレンダーで受け取る');
-          cal.href = 'webcal://' + location.host + def[3] + entry.slug + '.ics';
-          body.appendChild(cal);
+          // 発売日カレンダーは、新作・予約が載っている人・メーカーだけにある（索引の pages に入っている人）。索引を読んでから、あるときだけ出す
+          addCalendarLink(body, def[0], name, entry.slug, def[3]);
         } else {
           body.appendChild(el('span', 'fav-row-title ph-js', name));
           body.appendChild(el('span', 'fav-row-meta', '作品が2本以上になると、専用ページとカレンダーが使えます'));

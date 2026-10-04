@@ -6,31 +6,59 @@ import { normalizeRoundups } from './roundups.js';
 import { groupByMonth, groupByTag, monthPathByKey } from './collections.js';
 import { buildFactsContext } from './facts.js';
 import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay } from './profiles.js';
+import { hasCalendar, planPages } from './plan.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
 const optional = import.meta.glob('../data/{actresses,ranking,actress_directory}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
+// 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
+// まだ無ければ空。毎日の更新で載せた作品（new_releases.json）と同じ作品があれば、そちらを使う
+const catalogShards = import.meta.glob('../data/catalog/*.json', { eager: true, import: 'default' });
+const catalogRaw = Object.keys(catalogShards).sort().flatMap((k) => (Array.isArray(catalogShards[k]) ? catalogShards[k] : []));
+
 export const today = jstToday();
-export const all = normalizeItems(raw);
-export const { released, upcoming } = splitByRelease(all, today);
+// 毎日の更新で載せた作品（新作・予約。コメントがある）。トップ・月ごと/ジャンルごとのページ・検索・お気に入り・カレンダー・まとめ記事は、これだけを使う
+export const curated = normalizeItems(raw);
+const curatedCids = new Set(curated.map((i) => i.cid));
+// （FANZAのURLが無い過去作品は、作品ページが無いときのリンク先が無いので、載せない）
+export const catalog = normalizeItems(catalogRaw).filter((i) => !curatedCids.has(i.cid) && i.url).map((i) => ({ ...i, catalog: true }));
+// すべての作品（毎日の更新で載せた作品＋過去作品）。作品ページ・過去の作品の一覧・出演者/メーカーのページ・「この作品のデータ」欄は、これを使う
+export const all = [...curated, ...catalog];
+export const { released, upcoming } = splitByRelease(curated, today);
+export const allReleased = splitByRelease(all, today).released;
 
 // 出演者・メーカーごとのページ（作品が ENTITY_MIN_ITEMS 本以上の人・メーカーだけ）
 export const actressGroups = groupByActress(all);
 export const makerGroups = groupByMaker(all);
 export const actressByName = indexByName(actressGroups);
 export const makerByName = indexByName(makerGroups);
+// 発売日カレンダー（.ics）を作る出演者・メーカー: 毎日の更新で載せた作品がある人・メーカーだけ（過去作品だけの人の分まで作ると、ファイルが多くなりすぎるため）
+export const calendarActressGroups = actressGroups.filter(hasCalendar);
+export const calendarMakerGroups = makerGroups.filter(hasCalendar);
 
 // 月ごと・ジャンルごとのまとめページ（作品が少ない月・ジャンルは作らない）と、作品ページの「この作品のデータ」欄の集計
-export const monthGroups = groupByMonth(all);
+export const monthGroups = groupByMonth(curated);
 export const monthByKey = monthPathByKey(monthGroups);
-export const tagGroups = groupByTag(all);
+export const tagGroups = groupByTag(curated);
 export const tagByName = indexByName(tagGroups);
 export const factsContext = buildFactsContext(all);
 
 // 週のまとめ記事（Claudeが毎週月曜に書く。まだ1本も無いときは空）
-export const roundups = normalizeRoundups(rawRoundups, all);
+export const roundups = normalizeRoundups(rawRoundups, curated);
+
+// 作品ページを作る作品（サイト全体を2万ファイル以内に収める。lib/plan.js）
+export const pagePlan = planPages(all, {
+  actress: actressGroups.length,
+  maker: makerGroups.length,
+  month: monthGroups.length,
+  tag: tagGroups.length,
+  weekly: roundups.length,
+  ics: calendarActressGroups.length + calendarMakerGroups.length,
+  archiveItems: allReleased.length,
+});
+export const paged = pagePlan.paged;
 
 // 出演者のプロフィール（顔写真・年齢・体型・FANZAの全作品リンク）。名前で引く
 export const profiles = normalizeProfiles(optionalData('actresses'), today);

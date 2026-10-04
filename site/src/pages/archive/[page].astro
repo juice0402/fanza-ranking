@@ -3,19 +3,22 @@ import Base from '../../layouts/Base.astro';
 import DaySection from '../../components/DaySection.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import VrToggle from '../../components/VrToggle.astro';
-import { released } from '../../lib/data.js';
+import { allReleased } from '../../lib/data.js';
+import { listIndexable } from '../../lib/plan.js';
 import { ARCHIVE_PAGE_SIZE, breadcrumbLd, countByDate, groupByDate, archivePath, pageWindow, SITE_NAME } from '../../lib/items.js';
 
-// 発売済みの作品を、新しい順に ARCHIVE_PAGE_SIZE 件ずつのページに分ける
+// 発売済みの作品（毎日の更新で載せた作品＋過去作品）を、新しい順に ARCHIVE_PAGE_SIZE 件ずつのページに分ける
 export function getStaticPaths({ paginate }) {
-  return paginate(released, { pageSize: ARCHIVE_PAGE_SIZE });
+  return paginate(allReleased, { pageSize: ARCHIVE_PAGE_SIZE });
 }
 
 const { page } = Astro.props;
 const current = page.currentPage;
 const last = page.lastPage;
-const groups = groupByDate(page.data, countByDate(released)); // 日の途中でページが分かれても、その日の全部の本数を出す
+const groups = groupByDate(page.data, countByDate(allReleased)); // 日の途中でページが分かれても、その日の全部の本数を出す
 const pages = pageWindow(current, last);
+// コメントのある作品が1本も無いページ（古い過去作品だけのページ）は、FANZAへのリンクが並ぶだけなので、検索エンジンには出さない
+const noindex = !listIndexable(page.data);
 const trail = [
   { name: 'トップ', path: '/' },
   { name: current === 1 ? '過去の作品' : `過去の作品（${current}ページ目）`, path: archivePath(current) },
@@ -26,6 +29,7 @@ const trail = [
   title={`過去の作品一覧（${current}ページ目）｜${SITE_NAME}`}
   description={`FANZAの発売済み作品を発売日の新しい順に一覧できます。${current}ページ目（全${last}ページ）。`}
   path={archivePath(current)}
+  noindex={noindex}
   jsonLd={[breadcrumbLd(trail)]}
 >
   <div class="wrap">

@@ -53,6 +53,9 @@ node tests/test_search.mjs || failed=1
 step "日本語の文節改行の部品 (Node.js)"
 node tests/test_phrase.mjs || failed=1
 
+step "サイトのファイル数の計画（過去作品が増えても2万ファイル以内） (Node.js)"
+node tests/test_plan.mjs || failed=1
+
 if [ "${1:-}" = "--build" ]; then
   step "サイトのビルド"
   if (cd site && npm ci --no-audit --no-fund && npm run build); then
