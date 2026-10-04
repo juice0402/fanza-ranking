@@ -84,7 +84,25 @@ def main():
         archive = []
     base = {"site": "FANZA", "service": "digital", "floor": "videoa"}
 
-    say("## 1) ItemList（新しい作品）の項目")
+    say("## 0) 過去作品の集め方（人気順・発売済みだけ・offset で続きから）")
+    lte = today.replace(hour=23, minute=59, second=59).strftime(fmt)
+    for off in (1, 101, 25001, 49901, 50001):
+        res, err = call("ItemList", dict(base, sort="rank", hits=100, offset=off, lte_date=lte))
+        if err:
+            say(f"- offset={off}: ❌ {err}")
+            continue
+        got = res.get("items") or []
+        days = sorted(str(x.get("date", ""))[:10] for x in got if x.get("date"))
+        future = sum(1 for d in days if d > today.strftime("%Y-%m-%d"))
+        say(f"- offset={off}: 取得 {len(got)}件 / 全体 {res.get('total_count')}件 / first_position {res.get('first_position')} / 発売日 {days[0] if days else '-'}〜{days[-1] if days else '-'} / 未来の発売日 {future}件")
+    res1, _ = call("ItemList", dict(base, sort="rank", hits=100, offset=1, lte_date=lte))
+    res2, _ = call("ItemList", dict(base, sort="rank", hits=100, offset=101, lte_date=lte))
+    if res1 and res2:
+        a = {x.get("content_id") for x in res1.get("items") or []}
+        b = {x.get("content_id") for x in res2.get("items") or []}
+        say(f"- 1〜100本目と101〜200本目の重なり: {len(a & b)}件（0なら、offset で続きを取れている）")
+
+    say("\n## 1) ItemList（新しい作品）の項目")
     res, err = call("ItemList", dict(base, sort="date", hits=20, gte_date=(today - timedelta(days=3)).strftime(fmt), lte_date=today.replace(hour=23, minute=59, second=59).strftime(fmt)))
     if err:
         say(f"❌ {err}")
