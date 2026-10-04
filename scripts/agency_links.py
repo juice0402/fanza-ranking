@@ -104,7 +104,8 @@ def links(page_html, base_url):
         href = htmllib.unescape(m.group(2)).strip()
         if not href or href.startswith(("javascript:", "mailto:", "#")):
             continue
-        out.append((urllib.parse.urljoin(base_url, href), text_of(m.group(3))))
+        label = text_of(m.group(3)) or " ".join(htmllib.unescape(a) for a in re.findall(r"<img\b[^>]*\balt\s*=\s*[\"']([^\"']+)[\"']", m.group(3), re.I)).strip()
+        out.append((urllib.parse.urljoin(base_url, href), label))
     return out
 
 
@@ -122,9 +123,12 @@ def meta_content(page_html, prop):
 
 def name_candidates(page_html):
     """プロフィールのページから、名前らしい文字の候補（og:title・h1・h2・title）。照らし合わせは、このどれかが FANZA の名前と合うかで見る"""
-    cands = [meta_content(page_html, "og:title")]
+    cands = []
     for tag in ("h1", "h2", "h3"):
         cands += [text_of(x) for x in re.findall(r"<%s\b[^>]*>(.*?)</%s>" % (tag, tag), page_html, re.I | re.S)[:4]]
+    # class に name を含む要素（<p class="model-name"> など）の文字
+    cands += [text_of(x) for x in re.findall(r"<(?:p|div|span|dd|li|strong)\b[^>]*\bclass\s*=\s*[\"'][^\"']*name[^\"']*[\"'][^>]*>(.*?)</(?:p|div|span|dd|li|strong)>", page_html, re.I | re.S)[:6]]
+    cands.append(meta_content(page_html, "og:title"))
     t = re.search(r"<title\b[^>]*>(.*?)</title>", page_html, re.I | re.S)
     if t:
         cands.append(text_of(t.group(1)))
@@ -196,10 +200,15 @@ def collect_site(site, table):
         except (urllib.error.URLError, OSError, ValueError, PermissionError) as e:
             report["errors"].append(f"一覧: {type(e).__name__}: {e}"[:200])
             continue
+        other = []
         for url, label in links(page, roster):
             url = url.split("#")[0]
-            if pattern.match(url) and url not in [f[0] for f in found]:
-                found.append((url, label))
+            if pattern.match(url):
+                if url not in [f[0] for f in found]:
+                    found.append((url, label))
+            elif urllib.parse.urlsplit(url).netloc.endswith(urllib.parse.urlsplit(roster).netloc.replace("www.", "")) and url not in other:
+                other.append(url)
+        report.setdefault("other_links", []).extend(other[:40])  # 調べる用: 一覧のページの、プロフィールの形でないリンク
     report["profiles_found"] = len(found)
     pages = []
     for url, label in found[:MAX_PROFILES]:
@@ -222,21 +231,32 @@ def collect_site(site, table):
     wide_x = {h for h, n in count_x.items() if n >= limit}
     wide_ig = {h for h, n in count_ig.items() if n >= limit}
     report["site_wide"] = {"x": sorted(wide_x), "instagram": sorted(wide_ig)}
+    # どのページにも出てくる文字（事務所の名前・見出しなど）は、名前の候補にしない
+    count_c = {}
+    for _, _, cands, _, _ in pages:
+        for c in set(norm_name(c) for c in cands):
+            count_c[c] = count_c.get(c, 0) + 1
+    wide_c = {c for c, n in count_c.items() if n >= limit}
+    report["site_wide_text"] = sorted(wide_c)[:20]
     for url, label, cands, xs, igs in pages:
         xs = [h for h in xs if h.lower() not in wide_x]
         igs = [h for h in igs if h.lower() not in wide_ig]
-        tried = ([label] if label else []) + cands
-        match, how = None, "FANZAの名前と合わない"
+        tried = [c for c in ([label] if label else []) + cands if norm_name(c) not in wide_c]
+        # 名前は、候補の文字の全体（空白を除く）が FANZA の名前と完全に同じときだけ。文字の一部（「河北 彩花」の「彩花」など）では合わせない（人違いを防ぐ）
+        found_names = {}
         for cand in tried:
-            for piece in [cand] + re.split(r"\s+", cand):
-                hits = table.get(norm_name(piece), [])
-                if len(hits) == 1:
-                    match, how = hits[0], "一致"
-                    break
-                if len(hits) > 1:
-                    how = "FANZAに同じ名前が何人もいる"
-            if match:
-                break
+            hits = table.get(norm_name(cand), [])
+            for h in hits:
+                found_names.setdefault(h[1] or h[0], (h, len(hits)))
+        match, how = None, "FANZAの名前と合わない"
+        if len(found_names) == 1:
+            (hit, n_same), = found_names.values()
+            if n_same == 1:
+                match, how = hit, "一致"
+            else:
+                how = "FANZAに同じ名前が何人もいる"
+        elif len(found_names) > 1:
+            how = "名前の候補が何人もいる"
         rows.append({
             "agency": site["name"], "profile": url, "label": label[:40], "candidates": cands[:6],
             "x": xs[:2], "instagram": igs[:2],
