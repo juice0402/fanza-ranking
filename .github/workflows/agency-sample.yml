@@ -1,0 +1,27 @@
+name: Agency sample (branch only)
+
+# 所属事務所の公式サイトから「所属・X・Instagram」を集める見本づくり（運営者が「まずは見本で確かめる」を選んだ。2026-10-05）。
+# このブランチに push したときだけ動く。サイトのデータには書かず、結果を成果物（artifact）にするだけ。
+on:
+  push:
+    branches: ['claude/agency-sample']
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Collect
+        run: python scripts/agency_links.py out/agency_sample.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agency-sample
+          path: out/agency_sample.json
+          retention-days: 3
