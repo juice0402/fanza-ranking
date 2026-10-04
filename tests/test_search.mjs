@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as L from '../site/src/lib/search.js';
-import { normalizeItems } from '../site/src/lib/items.js';
+import { normalizeItems, rankHasHero, RANKING_SHOWN } from '../site/src/lib/items.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -107,6 +107,22 @@ check('保存のキーと、html に付ける印', V.KEY === 'hide-vr' && V.CLAS
 check('日付ごとの本数の文字: 隠さないとき・VRが無いときは元のまま', V.dayCountText('5本', 5, 2, false) === '5本' && V.dayCountText('5本', 5, 0, true) === '5本' && V.dayCountText('3本（全5本）', 3, 0, true) === '3本（全5本）');
 check('日付ごとの本数の文字: 隠すときは、VRを除いた本数（「全◯本」は、VRが分からないので出さない）', V.dayCountText('5本', 5, 2, true) === '3本（VRを除く）' && V.dayCountText('3本（全5本）', 3, 1, true) === '2本（VRを除く）');
 check('全部がVRの日付だけ、隠したときに空になる', V.dayIsEmpty(2, 2, true) && !V.dayIsEmpty(2, 1, true) && !V.dayIsEmpty(2, 2, false) && !V.dayIsEmpty(0, 0, true));
+
+console.log('\n■ 売れ筋TOP3の出し方（VR作品を隠すときは、VRを除いて次の順位から差し替え。残りが少なくても、空白を作らない）');
+const RL = (flags, hide, show = 3) => plain(V.rankLayout(flags, hide, show));
+const RLs = (flags, hide, show = 3) => JSON.stringify(RL(flags, hide, show));
+check('隠さないとき: 先頭の3本をそのまま（VRが混ざっていても）・1位を大きく。4位以降は出さない', RLs([0, 0, 0, 0, 0, 0], false) === '{"shown":[0,1,2],"visible":3,"hero":0}' && RLs([0, 0, 1, 0, 0, 0], false) === '{"shown":[0,1,2],"visible":3,"hero":0}');
+check('3位がVRで隠すとき: 4位が繰り上がって、先頭の3本（1・2・4位）。1位を大きく', RLs([0, 0, 1, 0, 0, 0], true) === '{"shown":[0,1,3],"visible":3,"hero":0}');
+check('1位がVRで隠すとき: 2・3・4位が出て、先頭（2位）を大きく', RLs([1, 0, 0, 0, 0, 0], true) === '{"shown":[1,2,3],"visible":3,"hero":1}');
+check('VRが多くて隠すとき: 6本の中から、VRでない先頭3本を拾う', RLs([1, 1, 0, 1, 0, 0], true) === '{"shown":[2,4,5],"visible":3,"hero":2}');
+check('VRでない作品が2本しか無いとき: 2本・大きく出す1本は無し（同じ大きさで2つ並べる）', RLs([1, 1, 0, 1, 1, 0], true) === '{"shown":[2,5],"visible":2,"hero":-1}');
+check('VRでない作品が1本しか無いとき: 残った1本を、横幅いっぱいに大きく出す（何位でも）', RLs([1, 1, 1, 1, 1, 0], true) === '{"shown":[5],"visible":1,"hero":5}' && RLs([1, 1, 0], true) === '{"shown":[2],"visible":1,"hero":2}');
+check('全部がVRで隠すとき: 0本（売れ筋の見出しごと隠す）', RLs([1, 1, 1, 1, 1, 1], true) === '{"shown":[],"visible":0,"hero":-1}');
+check('データが3本だけ（取り直す前）でも、いままでどおり動く（3位がVRなら2本）', RLs([0, 0, 1], true) === '{"shown":[0,1],"visible":2,"hero":-1}' && RLs([0, 0, 1], false) === '{"shown":[0,1,2],"visible":3,"hero":0}');
+check('作品が無い・2本だけのときも落ちない', RLs([], true) === '{"shown":[],"visible":0,"hero":-1}' && RLs([0, 0], false) === '{"shown":[0,1],"visible":2,"hero":-1}');
+check('出す本数（show）を変えても、その本数までで止まる', RLs([0, 0, 0, 0, 0, 0], false, 2) === '{"shown":[0,1],"visible":2,"hero":-1}');
+check('ページを作るときの決め方（rankHasHero）と、ブラウザでの決め方（rankLayout の hero）が、出す本数ごとに同じ', [0, 1, 2, 3].every((n) => rankHasHero(n) === (RL(Array(n).fill(0), false, 3).hero === 0)));
+check('出す本数の設定（RANKING_SHOWN）は3', RANKING_SHOWN === 3);
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

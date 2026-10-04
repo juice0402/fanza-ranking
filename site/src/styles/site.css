@@ -61,8 +61,11 @@ body.has-sticky {
   padding-bottom: 76px;
 }
 
+/* 18歳確認が出ているあいだは、後ろのページを動かさない（html にも body にも。端まで引っぱったときの動きも止める） */
+html.gate-open,
 html.gate-open body {
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 img {
@@ -765,14 +768,48 @@ button:focus-visible {
 
 /* ---------- 18歳以上の確認 ---------- */
 
+/* 後ろは、真っ黒ではなく、濃い曇りガラスのように強くぼかす（何が書いてあるか・写っているか分からない強さ）。
+   まず「ほぼ真っ黒」にしておき、ぼかしが使えるブラウザだけ、下の @supports で曇りガラスにする
+   （ぼかしが効かないのに、薄い色だけが残って、後ろが読めてしまうことが無いように） */
 .gate {
   position: fixed;
   inset: 0;
   z-index: 100;
-  display: grid;
-  place-items: center;
+  display: flex; /* 画面が低いとき、箱の上が切れないよう、flex と margin: auto（.gate-box）で中央にする */
   padding: 20px;
+  touch-action: none; /* 指でなぞっても、後ろのページが動かない */
+  overscroll-behavior: none;
   background: rgba(10, 7, 15, 0.97);
+}
+
+/* 条件は、プレフィックス無しの backdrop-filter だけにしてある（ビルドの道具が、不要な -webkit- を消すことがあるため。
+   古いSafariでは、ぼかしの代わりに、ほぼ真っ黒のまま） */
+@supports (backdrop-filter: blur(1px)) {
+  .gate {
+    background: rgba(14, 10, 20, 0.66);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    backdrop-filter: blur(18px) saturate(1.2);
+  }
+}
+
+/* 画面のふち（上下左右の約110px）は、ブラウザによって、ぼかしが弱くなって文字が読めてしまうことがある。
+   そこだけ暗くして、ふちまで「何が書いてあるか分からない」ようにする（暗い額縁のような見た目） */
+.gate::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(10, 7, 15, 0.97), rgba(10, 7, 15, 0.8) 40px, rgba(10, 7, 15, 0) 110px, rgba(10, 7, 15, 0) calc(100% - 110px), rgba(10, 7, 15, 0.8) calc(100% - 40px), rgba(10, 7, 15, 0.97)),
+    linear-gradient(to right, rgba(10, 7, 15, 0.97), rgba(10, 7, 15, 0.8) 40px, rgba(10, 7, 15, 0) 110px, rgba(10, 7, 15, 0) calc(100% - 110px), rgba(10, 7, 15, 0.8) calc(100% - 40px), rgba(10, 7, 15, 0.97));
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .gate {
+    background: rgba(10, 7, 15, 0.97);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 .gate[hidden] {
@@ -780,8 +817,10 @@ button:focus-visible {
 }
 
 .gate-box {
+  position: relative; /* 縁の暗がり（.gate::before）より前に出す */
   width: 100%;
   max-width: 420px;
+  margin: auto;
   padding: 28px 24px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -808,6 +847,33 @@ button:focus-visible {
 .gate-actions {
   display: grid;
   gap: 10px;
+}
+
+/* 横向きのスマホなど、画面が低いときは、箱を小さくして、上下が切れないようにする */
+@media (max-height: 480px) {
+  .gate {
+    padding: 10px;
+  }
+
+  .gate-box {
+    padding: 14px 18px;
+  }
+
+  .gate-mark {
+    margin-bottom: 4px;
+    font-size: 30px;
+  }
+
+  .gate-title {
+    margin-bottom: 4px;
+    font-size: 17px;
+  }
+
+  .gate-text {
+    margin-bottom: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
 }
 
 /* ---------- 404 ---------- */
@@ -1575,13 +1641,17 @@ html.lightbox-open {
 
 /* 売れ筋TOP3は、棚のほかの作品より大きく見せる。
    スマホ：1位は横幅いっぱい（カバーが左・文字が右）、2位と3位は横に並べる
-   ひろい画面：3本を横いっぱいに（1位だけ少し広く） */
+   ひろい画面：3本を横いっぱいに（1位だけ少し広く）
+   「VR作品を隠す」で見える本数が減ったときは、残りでちょうど埋まるように並べ直す（空白を作らない）。
+   site/public/vr-filter.js が、.rank-podium に data-visible（見えている本数）、先頭で大きく出す1本の li に .is-hero を付ける
+   （JavaScriptが動く前も同じ見た目になるよう、同じ印を、ページを作るとき site/src/pages/index.astro でも付けている）
+     3本: 上のとおり（1位が .is-hero）／ 2本: 同じ大きさで2つ並べる（.is-hero なし）／ 1本: 横幅いっぱい（広い画面は幅をおさえて中央に） */
 .rank-podium {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px 12px;
 }
 
-.rank-podium .rank-cell:first-child {
+.rank-podium .rank-cell.is-hero {
   grid-column: 1 / -1;
 }
 
@@ -1600,7 +1670,8 @@ html.lightbox-open {
   font-size: 14px;
 }
 
-.rank-1 {
+/* 大きく出す1本（:where は、強さ（詳細度）を、順位ごとの目印のときと同じにするため） */
+:where(.is-hero) .rank-item {
   display: grid;
   grid-template-columns: minmax(0, 46%) minmax(0, 1fr);
   grid-template-rows: auto auto auto 1fr;
@@ -1608,18 +1679,18 @@ html.lightbox-open {
   align-items: start;
 }
 
-.rank-1 .item-cover {
+:where(.is-hero) .rank-item .item-cover {
   grid-row: 1 / 5;
 }
 
-.rank-1 .item-title,
-.rank-1 .item-cast,
-.rank-1 .rank-maker,
-.rank-1 .btn {
+:where(.is-hero) .rank-item .item-title,
+:where(.is-hero) .rank-item .item-cast,
+:where(.is-hero) .rank-item .rank-maker,
+:where(.is-hero) .rank-item .btn {
   grid-column: 2;
 }
 
-.rank-1 .item-title {
+:where(.is-hero) .rank-item .item-title {
   margin-top: 2px;
   min-height: 0;
   font-size: 16px;
@@ -1627,15 +1698,15 @@ html.lightbox-open {
   line-clamp: 5;
 }
 
-.rank-1 .item-cast {
+:where(.is-hero) .rank-item .item-cast {
   white-space: normal;
 }
 
-.rank-1 .btn {
+:where(.is-hero) .rank-item .btn {
   align-self: end;
 }
 
-.rank-1 .rank-badge {
+:where(.is-hero) .rank-item .rank-badge {
   padding: 5px 13px 4px;
   font-size: 22px;
 }
@@ -1647,17 +1718,18 @@ html.lightbox-open {
     align-items: stretch;
   }
 
-  .rank-podium .rank-cell:first-child {
+  .rank-podium .rank-cell.is-hero {
     grid-column: auto;
   }
 
-  .rank-1 {
+  /* 3本のとき、1位は縦長のカード（1本だけのときは、上の横長のまま） */
+  :where(.rank-podium:not([data-visible="1"]) .is-hero) .rank-item {
     display: flex;
     flex-direction: column;
     align-items: stretch; /* 上の「横いっぱいの1位」の align-items: start を戻す（戻さないと、カバーの幅が0になる） */
   }
 
-  .rank-1 .item-title {
+  :where(.rank-podium:not([data-visible="1"]) .is-hero) .rank-item .item-title {
     margin-top: 10px;
     min-height: 4.65em;
     font-size: 17px;
@@ -1665,7 +1737,7 @@ html.lightbox-open {
     line-clamp: 3;
   }
 
-  .rank-1 .item-cast {
+  :where(.rank-podium:not([data-visible="1"]) .is-hero) .rank-item .item-cast {
     white-space: nowrap;
   }
 
@@ -1676,6 +1748,17 @@ html.lightbox-open {
   .rank-item .item-cast,
   .rank-item .rank-maker {
     font-size: 13px;
+  }
+
+  /* VR作品を隠して、残りが2本・1本になったとき: 横に広がりすぎないよう幅をおさえて、中央にそろえる */
+  .rank-podium[data-visible="2"] {
+    grid-template-columns: repeat(2, minmax(0, 400px));
+    justify-content: center;
+  }
+
+  .rank-podium[data-visible="1"] {
+    grid-template-columns: minmax(0, 640px);
+    justify-content: center;
   }
 }
 
@@ -1739,7 +1822,9 @@ html.lightbox-open {
 
 /* 「VR作品を隠す」: VR作品の目印（data-vr）が付いたマスを隠す。全部がVRの日付は、見出しごと隠す（vr-filter.js が印を付ける） */
 .hide-vr [data-vr],
-.day.vr-empty {
+.day.vr-empty,
+#ranking.vr-empty,
+.rank-podium .rank-cell.rank-off {
   display: none;
 }
 

@@ -110,7 +110,9 @@ const rankRaw = {
   ],
 };
 const rk = P.rankingForDisplay(rankRaw, today);
-check('使えない行（品番が壊れている・外部リンク）は飛ばし、3本まで・順位は 1,2,3 にそろえる', rk && rk.items.map((x) => `${x.rank}:${x.cid}`).join() === '1:ipzz00977,2:mida00812,3:juvr00281', rk && rk.items.map((x) => `${x.rank}:${x.cid}`).join());
+check('使えない行（品番が壊れている・外部リンク）は飛ばし、順位は 1,2,3… にそろえる（VR作品を隠したときの差し替え用に、3本より多く持つ）', rk && rk.items.map((x) => `${x.rank}:${x.cid}`).join() === '1:ipzz00977,2:mida00812,3:juvr00281,4:extra1', rk && rk.items.map((x) => `${x.rank}:${x.cid}`).join());
+const manyRows = Array.from({ length: 9 }, (_, i) => ({ cid: `m${i + 1}`, title: `作品${i + 1}`, url: 'https://al.fanza.co.jp/?x=' + i }));
+check(`持つのは最大 ${P.RANKING_MAX} 本まで`, P.RANKING_MAX === 6 && P.rankingForDisplay({ date: '2026-10-03', items: manyRows }, today).items.length === 6);
 check('日付・出演者（文字列だけ）・外部の画像は空', rk.items[0].date === '2026-10-02' && rk.items[0].actress.join() === '花子' && rk.items[1].image_url === '' && rk.date === '2026-10-03');
 const vrRank = P.rankingForDisplay({ date: '2026-10-03', items: [
   { cid: 'a1', title: '【VR】ふつうのVR', url: 'https://al.fanza.co.jp/?x=1' },
@@ -118,6 +120,14 @@ const vrRank = P.rankingForDisplay({ date: '2026-10-03', items: [
   { cid: 'a3', title: 'タイトルにVRが無い作品', url: 'https://al.fanza.co.jp/?x=3' },
 ] }, today, new Set(['a3']));
 check('売れ筋: VR作品に vr=true（題名の【VR】、または、当サイトの作品のジャンルから分かった品番）。それ以外は false。品番の集まりを渡さなくても動く', vrRank.items.map((i) => i.vr).join() === 'true,false,true' && P.rankingForDisplay({ date: '2026-10-03', items: [{ cid: 'a1', title: '【VR】x', url: 'https://al.fanza.co.jp/?x=1' }] }, today).items[0].vr === true);
+check('売れ筋: データの vr が true なら、題名やジャンルが分からなくても VR（取得のときに、ジャンルなどから判定して保存したもの）。true 以外（文字列 "true" など）は信じない', (() => {
+  const r = P.rankingForDisplay({ date: '2026-10-03', items: [
+    { cid: 'b1', title: '題名に印が無いVR', url: 'https://al.fanza.co.jp/?x=1', vr: true },
+    { cid: 'b2', title: 'ふつう', url: 'https://al.fanza.co.jp/?x=2', vr: false },
+    { cid: 'b3', title: 'ふつう2', url: 'https://al.fanza.co.jp/?x=3', vr: 'true' },
+  ] }, today);
+  return r.items.map((i) => i.vr).join() === 'true,false,false';
+})());
 check('古いランキング: 7日前までは出し、8日前からは出さない', P.rankingForDisplay({ ...rankRaw, date: '2026-09-26' }, today) !== null && P.rankingForDisplay({ ...rankRaw, date: '2026-09-25' }, today) === null);
 check('無い・壊れている・日付が変・使える行が0本のときは null', [null, undefined, {}, [], 'x', { date: '2026-10-03' }, { date: '昨日', items: [] }, { date: '2026-10-03', items: [] }, { date: '2026-10-03', items: [{ cid: 'x', title: 't', url: 'https://evil.example/' }] }].every((v) => P.rankingForDisplay(v, today) === null));
 
