@@ -164,7 +164,7 @@ const makerPage = makerByName.get(item.maker)?.path;
     )}
 
     {zoomable && (
-      <dialog id="lightbox" class="lightbox" aria-label="画像の拡大表示">
+      <dialog id="lightbox" class="lightbox" aria-label="画像の拡大表示" tabindex="-1">
         <div class="lightbox-stage">
           <img class="lightbox-img" alt="" />
           <button type="button" class="lightbox-btn lightbox-prev" data-lightbox="prev" aria-label="前の画像">‹</button>

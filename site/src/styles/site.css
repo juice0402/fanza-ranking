@@ -121,13 +121,19 @@ button:focus-visible {
 
 .pr-chip {
   flex: none;
-  padding: 1px 7px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  /* 高さは、左のタイトルの文字（約16px）に近い17px。枠の上下を、タイトルの文字の上下にそろえる。
+     「広告」の文字は、フォントの癖で少し上にずれて見えるので、上に1pxの余白を足して、枠の真ん中に見えるようにしている */
+  height: 17px;
+  padding: 1px 6px 0;
   border: 1px solid var(--paper);
   border-radius: 3px;
   color: var(--paper);
   font-size: 12px;
   font-weight: 700;
-  line-height: 1.5;
+  line-height: 1;
   letter-spacing: 0.04em;
 }
 
@@ -196,6 +202,15 @@ button:focus-visible {
 /* 見出しを文節ごとに改行して、1文字だけ取り残されないようにする */
 .phrase {
   display: inline-block;
+}
+
+/* 日本語の文章を、文節のところで改行する。ビルドの最後に、全ページの文章へ、文節の区切り（<wbr>）とこの印が入る（site/src/lib/phrase.js）。
+   keep-all で、<wbr> の所以外では改行しない。1つの文節が行より長いときだけ、どこででも改行する（anywhere） */
+.ph {
+  word-break: keep-all;
+  line-break: strict; /* 行のはじめに「ー」「～」「ぁ」などが来ないようにする（禁則を厳しめに） */
+  overflow-wrap: break-word; /* anywhere に対応していない古いブラウザ向け */
+  overflow-wrap: anywhere;
 }
 
 .hero-lead {
@@ -1009,6 +1024,12 @@ html.lightbox-open {
   background: var(--ink-deep);
 }
 
+/* 開いた直後のフォーカスは枠そのもの（lightbox.js）。そこには輪を出さない（ボタンに Tab で移ったときは、いつもの輪が出る） */
+.lightbox:focus,
+.lightbox:focus-visible {
+  outline: none;
+}
+
 .lightbox-stage {
   position: relative;
   display: flex;
@@ -1141,17 +1162,27 @@ html.lightbox-open {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  /* 2つは、文字の大きさ・行の高さを同じにして、文字の高さがそろって見えるようにする（太さと色だけ変える） */
+  font-size: 13px;
+  line-height: 1.4;
+  text-underline-offset: 3px;
 }
 
 .cal-link {
-  font-size: 13px;
   font-weight: 700;
-  text-underline-offset: 3px;
 }
 
 .cal-help {
   color: var(--paper-dim);
-  font-size: 12px;
+  font-weight: 400;
+}
+
+/* 「発売日をカレンダーで受け取る」と「使い方」は、1つの組にして、狭い画面で別々の行に離れないようにする */
+.cal-set {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 16px;
 }
 
 .fav-banner {

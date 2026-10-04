@@ -44,9 +44,20 @@ def warn(name, ok, detail=""):
     print(("  ✅ " if ok else "  ⚠️ ") + name + (f"  → {detail}" if (detail and not ok) else ""))
 
 
-def read(path):
+def read_raw(path):
     with open(path, encoding="utf-8") as f:
         return f.read()
+
+
+def unphrase(text):
+    """日本語の文章に足した、文節の区切り（<wbr>）と包み（<span class="ph">）を取り除く（site/src/lib/phrase.js の逆。文字を探す検査が、区切りで途切れないように）"""
+    return re.sub(r'<span class="ph">([\s\S]*?)</span>', r"\1", re.sub(r"<wbr\s*/?>", "", text))
+
+
+def read(path):
+    """ファイルの中身。HTMLは、文節の区切りを取り除いた形で返す（区切りそのものの検査だけが read_raw を使う）"""
+    text = read_raw(path)
+    return unphrase(text) if path.endswith(".html") else text
 
 
 def tags(text, name):
@@ -201,6 +212,16 @@ for cid, x in valid.items():
     elif links or has_dialog:
         bad_samples.append((cid, 0, links, has_dialog, has_script))
 check("サンプル画像のある作品ページに、拡大表示の部品（リンク・ダイアログ・スクリプト）が揃っている", not bad_samples, bad_samples[:3])
+# 拡大表示を開いた直後のフォーカスは、枠そのもの（前へボタンに黄色い輪が付いて見えないように）。枠に tabindex="-1"、輪を消す CSS、lightbox.js の dialog.focus が揃っている
+bad_lb_focus = []
+for cid, x in valid.items():
+    page = os.path.join(DIST, "item", cid, "index.html")
+    if os.path.isfile(page) and 'id="lightbox"' in read(page):
+        dlg = next((t for t in tags(read(page), "dialog") if t.get("id") == "lightbox"), None)
+        if not dlg or dlg.get("tabindex") != "-1":
+            bad_lb_focus.append(cid)
+lb_js = read(os.path.join(DIST, "lightbox.js")) if os.path.isfile(os.path.join(DIST, "lightbox.js")) else ""
+check("拡大表示: 枠に tabindex=-1・開いた直後は枠にフォーカス（lightbox.js の dialog.focus）で、前へボタンに輪が付かない", not bad_lb_focus and "dialog.focus(" in lb_js, bad_lb_focus[:3])
 with_spine = [os.path.relpath(p, DIST) for p in glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True) if 'class="spine"' in read(p)]
 check("カードに、画像をさえぎるメーカーの縦帯（spine）が出ていない", not with_spine, with_spine[:3])
 
@@ -806,6 +827,33 @@ if os.path.isfile(ii):
         bad_img = [r["c"] for r in irows if r["i"] and not fanza_https(r["i"] if r["i"].startswith("https://") else "https://pics.dmm.co.jp/" + r["i"], ["dmm.co.jp"])]
         check("索引の画像が、FANZA(DMM)の画像に戻せる形（先頭を省いた形）", not bad_img, bad_img[:3])
         check("索引の大きさが 1.5MB 以内（検索ページを開くたびにダウンロードされるため）", os.path.getsize(ii) <= 1500 * 1024, os.path.getsize(ii))
+
+print("\n■ 日本語の文章の改行（文節の区切り）")
+# 日本語の文章は、ビルドの最後に、文節の区切り（<wbr>）と包み（<span class="ph">）が足される（site/src/lib/phrase.js・Astro の拡張 phrase-breaks）。
+# iPhone/iPadのSafari系には、CSSで文節ごとに改行する機能が無いため、「あ／り」のような語の途中の改行を、これで防いでいる
+html_files = glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True)
+PH_BLOCK = re.compile(r'<span class="ph">[\s\S]*?</span>')
+SKIP_EL = re.compile(r"<(script|style|title|textarea|button|option|select|pre|code|noscript|svg|template)\b[^>]*>[\s\S]*?</\1\s*>", re.I)
+stray_wbr, tag_in_ph, ph_in_skip, with_ph = [], [], [], 0
+for p in html_files:
+    raw = read_raw(p)
+    if PH_BLOCK.search(raw):
+        with_ph += 1
+    if "<wbr" in PH_BLOCK.sub("", raw):
+        stray_wbr.append(rel(p))
+    if any("<" in re.sub(r"<wbr>", "", m.group(0)[len('<span class="ph">'):-len("</span>")]) for m in PH_BLOCK.finditer(raw)):
+        tag_in_ph.append(rel(p))
+    if any('class="ph"' in m.group(0) or "<wbr" in m.group(0) for m in SKIP_EL.finditer(raw)):
+        ph_in_skip.append(rel(p))
+check("全ページで、文節の区切り（<wbr>）が、すべて <span class=\"ph\"> の中にある", not stray_wbr, stray_wbr[:3])
+check("<span class=\"ph\"> の中には、<wbr> のほか、タグが入っていない（文章だけ）", not tag_in_ph, tag_in_ph[:3])
+check("script・style・title・ボタン・コードなどの中には、区切りを入れていない", not ph_in_skip, ph_in_skip[:3])
+check(f"ほとんどのページ（9割以上）の日本語の文章に、文節の区切りが入っている（Astro の拡張が動いた証拠。{with_ph}/{len(html_files)}）", html_files and with_ph >= len(html_files) * 0.9, (with_ph, len(html_files)))
+for path_, label in [("index.html", "トップ"), ("actress/index.html", "出演者一覧（運営者が見つけた説明文）"), ("calendar/index.html", "カレンダーの使い方")]:
+    f = os.path.join(DIST, path_)
+    check(f"{label}の説明文に、文節の区切り（<wbr>）が入っている", os.path.isfile(f) and bool(re.search(r'<span class="ph">[^<]*<wbr>', read_raw(f))), path_)
+ph_rules = [body for sels, body in css_rules if ".ph" in sels]
+check("CSS: .ph は word-break: keep-all（<wbr> の所以外では改行しない）・overflow-wrap（長すぎるときだけ、どこででも）・line-break: strict（禁則を厳しめに）", any(re.search(r"word-break\s*:\s*keep-all", b) and re.search(r"overflow-wrap\s*:\s*(anywhere|break-word)", b) and re.search(r"line-break\s*:\s*strict", b) for b in ph_rules), ph_rules[:1])
 
 print("\n■ 検索エンジン向けの点検（SEO）")
 # Search Console の所有権の確認コード（config.js の値）が、全ページの <head> に出ている（確認はトップページで行われる）
