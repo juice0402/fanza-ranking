@@ -110,5 +110,21 @@ if (py) {
 }
 fs.rmSync(tmp, { recursive: true, force: true });
 
+console.log('\n■ トップの右の欄の「週のまとめ」（概要だけ）');
+check('短い期間（年を入れない）', R.weekRangeShort('2026-09-28') === '9月28日〜10月4日' && R.weekRangeShort('2026-10-05') === '10月5日〜11日' && R.weekRangeShort('2026-12-28') === '12月28日〜1月3日');
+check('概要は導入文のはじめの1文', R.roundupSummary({ lead: '今週は12本でした。メーカーは…です。' }) === '今週は12本でした。' && R.roundupSummary({ lead: '句点の無い文' }) === '句点の無い文' && R.roundupSummary(null) === '');
+check('概要が長ければ切る', R.roundupSummary({ lead: 'あ'.repeat(100) + '。' }, 20).length <= 20);
+const cvItems = normalizeItems([
+  { cid: 'c1', title: '作品1', date: '2026-09-29', image_url: 'https://pics.dmm.co.jp/digital/video/c1/c1pl.jpg' },
+  { cid: 'c2', title: '【VR】作品2', date: '2026-09-29', image_url: 'https://pics.dmm.co.jp/digital/video/c2/c2pl.jpg' },
+  { cid: 'c3', title: '作品3', date: '2026-09-30', image_url: '' },
+  { cid: 'c4', title: '作品4', date: '2026-09-30', image_url: 'https://pics.dmm.co.jp/digital/video/c4/c4pl.jpg' },
+  { cid: 'c5', title: '作品5', date: '2026-10-01', image_url: 'https://pics.dmm.co.jp/digital/video/c5/c5pl.jpg' },
+  { cid: 'c6', title: '作品6', date: '2026-10-01', image_url: 'https://pics.dmm.co.jp/digital/video/c6/c6pl.jpg' },
+]);
+const cv = R.roundupCovers({ picks: ['c2', 'c1', 'c3', 'zz', 'c4', 'c5', 'c6'].map((cid) => ({ cid, note: 'n' })) }, cvItems);
+check('表紙は記事の順に、画像があってVRでない作品を3本（「VR作品を隠す」でも並びがくずれない）', cv.map((i) => i.cid).join() === 'c1,c4,c5', cv.map((i) => i.cid).join());
+check('注目の作品が無ければ空', R.roundupCovers({ picks: [] }, cvItems).length === 0 && R.roundupCovers(undefined, cvItems).length === 0);
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

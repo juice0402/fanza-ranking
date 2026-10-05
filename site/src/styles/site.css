@@ -1232,12 +1232,119 @@ summary:focus-visible {
   font-size: 12px;
 }
 
+/* 注目の作品: 横長のカード「小さな表紙｜タイトル・出演者/メーカー/発売日・ひとこと・FANZAへ」。スマホ1列・広い画面2列 */
+.pick-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pick-card {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  grid-template-areas:
+    'cover head'
+    'note note'
+    'btn btn';
+  column-gap: 14px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--board);
+}
+
+.pick-cover {
+  grid-area: cover;
+  align-self: start;
+}
+
+.pick-head {
+  grid-area: head;
+  min-width: 0;
+}
+
+.pick-title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.pick-meta {
+  margin: 4px 0 0;
+  color: var(--paper-dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .pick-note {
-  margin: 8px 0 0;
+  grid-area: note;
+  margin: 12px 0 0;
   padding-left: 10px;
   border-left: 2px solid var(--pop);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.pick-btn {
+  grid-area: btn;
+  justify-self: start;
+  margin-top: 12px;
+}
+
+/* 広い画面: 表紙を左に縦に通し、右にタイトル → ひとこと → FANZAへ */
+@media (min-width: 900px) {
+  .pick-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .pick-card {
+    grid-template-columns: 110px minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'cover head'
+      'cover note'
+      'cover btn';
+  }
+
+  .pick-btn {
+    align-self: end;
+  }
+}
+
+/* この週に紹介した作品の一覧は、行を低めに（本数が多いので） */
+.week-list .ws-row .item {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+
+/* この週のデータの、メーカー別・出演が多かった人（「名前 ○本」を1つずつ。名前の途中や「（2本）」の前で折り返さない） */
+.stat-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stat {
+  white-space: nowrap;
+}
+
+.stat-n {
+  margin-left: 6px;
   color: var(--paper-dim);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .week-day {
@@ -1251,22 +1358,7 @@ summary:focus-visible {
 }
 
 .week-list {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 13px;
-}
-
-.week-list-link {
-  text-underline-offset: 3px;
-}
-
-.week-list-cast {
-  margin-left: 8px;
-  color: var(--paper-dim);
-  font-size: 12px;
+  margin-top: 8px;
 }
 
 .week-cards {
@@ -2114,9 +2206,19 @@ html.lightbox-open {
 }
 
 .home > .today-top,
-.home > .home-side,
-.home > .find {
+.home > .home-side {
   margin-top: 36px;
+}
+
+/* 作品を探すは、右の欄の中（パソコンでは右の欄のいちばん上）。スマホでは、きょうの話題の下（前と同じ場所） */
+.home-side > .find {
+  order: 1;
+  margin-top: 0;
+}
+
+/* 週のまとめ・月のまとめの欄は、パソコンの右の欄だけ（スマホは「作品を探す」の「週のまとめ」「月ごと」から） */
+.side-only {
+  display: none;
 }
 
 .home-side {
@@ -3080,16 +3182,44 @@ a.reel-card:hover .reel-title {
     border-top: 1px solid var(--line);
   }
 
-  /* きょうの話題を、いちばん上に */
+  .home-side > .side-only {
+    display: block;
+  }
+
+  /* いちばん上に作品を探す、その下にきょうの話題（ほかは HTML の順） */
+  .home-side > .find {
+    order: -2;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
   .home-side > .today-topics {
     order: -1;
   }
 
-  .home-side > .today-topics,
-  .home-side:not(:has(> .today-topics)) > section:first-child {
-    margin-top: 0;
-    padding-top: 0;
-    border-top: 0;
+  /* 週のまとめは、すぐ下に専用の欄があるので、パソコンのきょうの話題には出さない（スマホでは出す） */
+  .home-side .topic-weekly {
+    display: none;
+  }
+
+  .home-side .hero-search {
+    max-width: none;
+    margin-top: 14px;
+  }
+
+  /* 探し方のリンクは2列（「月ごと」「週のまとめ」は、右の欄に専用の欄があるので出さない） */
+  .home-side .hero-jump {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-side .hero-jump .chip-link {
+    padding: 0 8px;
+  }
+
+  .hero-jump .only-narrow {
+    display: none;
   }
 
   .home-side .topics {
@@ -3151,6 +3281,107 @@ a.reel-card:hover .reel-title {
     background: none;
     box-shadow: none;
   }
+}
+
+/* ---------- 右の欄の「週のまとめ」（概要だけ。くわしくは記事のページ）と「月のまとめ」（バックナンバー） ---------- */
+
+.weekly-latest {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.weekly-latest-title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* 注目の作品の表紙3枚（ほかの3つ並びの欄と同じ3列） */
+.weekly-covers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.weekly-cover {
+  position: relative;
+  display: block;
+  aspect-ratio: var(--cover-ratio);
+  overflow: hidden;
+  border-radius: var(--r-media);
+  background: var(--board);
+}
+
+.weekly-latest-lead {
+  color: var(--paper-dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.weekly-latest-more {
+  color: var(--pop);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.weekly-latest:hover .weekly-latest-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.side-links {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px dashed var(--line);
+}
+
+.side-link,
+.backnumber-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  border-bottom: 1px dashed var(--line);
+  color: inherit;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.side-link::after {
+  content: '›';
+  color: var(--paper-dim);
+}
+
+.side-link:hover,
+.backnumber-link:hover {
+  color: var(--pop);
+}
+
+.side-more {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+
+.backnumber {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px dashed var(--line);
+}
+
+.backnumber-name {
+  font-weight: 700;
+}
+
+.backnumber-count {
+  color: var(--paper-dim);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 /* ---------- 一覧の道具（VR作品を隠すスイッチ） ---------- */

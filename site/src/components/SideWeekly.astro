@@ -1,0 +1,41 @@
+---
+// トップの右の欄（パソコンだけ）の「週のまとめ」: いちばん新しい週の概要（はじめの1文と、注目の作品の表紙3枚）だけを出し、くわしくは記事のページで。
+// その前の週は、期間のリンクだけ（運営者の希望「週のまとめは概要だけカラム内に書いて、詳細は別ページに」。2026-10-05）
+import { roundups, curated } from '../lib/data.js';
+import { WEEKLY_INDEX_PATH, roundupCovers, roundupSummary, weekRangeShort, weeklyPath } from '../lib/roundups.js';
+import { SMALL_IMG_ONERROR, smallImage } from '../lib/items.js';
+
+const OLDER_SHOWN = 3;
+const latest = roundups[0];
+const older = roundups.slice(1, 1 + OLDER_SHOWN);
+const covers = latest ? roundupCovers(latest, curated) : [];
+---
+
+{latest && (
+  <section id="weekly" class="side-weekly side-only" aria-labelledby="weekly-title">
+    <div class="today-sec-head">
+      <h2 id="weekly-title" class="today-sec-title">週のまとめ</h2>
+      <p class="section-note">毎週月曜に、前の週の新作をまとめています</p>
+    </div>
+    <a class="weekly-latest" href={weeklyPath(latest.week_start)}>
+      <span class="weekly-latest-title">{weekRangeShort(latest.week_start)}の新作まとめ</span>
+      {covers.length > 0 && (
+        <span class="weekly-covers" aria-hidden="true">
+          {covers.map((item) => (
+            <span class="weekly-cover">
+              <img class="item-img is-small" src={smallImage(item.image_url)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />
+            </span>
+          ))}
+        </span>
+      )}
+      <span class="weekly-latest-lead">{roundupSummary(latest)}</span>
+      <span class="weekly-latest-more">続きを読む ›</span>
+    </a>
+    {older.length > 0 && (
+      <ul class="side-links" aria-label="前の週のまとめ">
+        {older.map((r) => <li><a class="side-link" href={weeklyPath(r.week_start)}>{weekRangeShort(r.week_start)}の新作まとめ</a></li>)}
+      </ul>
+    )}
+    <p class="side-more"><a class="spec-link" href={WEEKLY_INDEX_PATH}>週のまとめをすべて見る</a></p>
+  </section>
+)}

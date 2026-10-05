@@ -30,6 +30,8 @@ import { SALE_PATH, saleGroups } from '../lib/sale.js';
 import { TOP_SHOWN, birthdaySoon, buildTopics, hotActresses, hotGenres, topEntries, weekDebuts } from '../lib/topics.js';
 import { gachaPool } from '../lib/gacha.js';
 import PickCorner from '../components/PickCorner.astro';
+import SideWeekly from '../components/SideWeekly.astro';
+import SideMonths from '../components/SideMonths.astro';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import { weeklyPath } from '../lib/roundups.js';
 import { SEARCH_PATH } from '../lib/search.js';
@@ -94,10 +96,10 @@ const saleCamps = saleGroups(all, sale, today, 0, { genres: contentGenres });
 const saleTotal = saleCamps.reduce((n, g) => n + g.total, 0);
 const saleDay = sale.date ? dateParts(sale.date) : null;
 import { assetUrl } from '../lib/assets.js';
-// パソコン（960px〜）の右の欄（きょうの話題 → いま人気の女優 → 人気のジャンル → おすすめのコーナー）。運営者の希望「右のカラム（きょうの話題）の下に全て並べる」。2026-10-05。
-// 右の欄は、左の欄（TOP3・作品を探す・セール・発売中・予約）の行をまたいで縦に伸ばす。またぐ行の数 = 左の欄の欄の数（site.css の .home.has-side）
-const hasSide = hot.length > 0 || genres.length > 0 || topics.length > 0 || hasCorner;
-const mainCount = [top.length > 0, true, saleCamps.length > 0, true, upcomingGroups.length > 0].filter(Boolean).length;
+// パソコン（960px〜）の右の欄（作品を探す → きょうの話題 → いま人気の女優 → 人気のジャンル → 週のまとめ → おすすめのコーナー → 月のまとめ）。
+// 運営者の希望「右のカラム（きょうの話題）の下に全て並べる」「作品を探すも右のカラムの上に」。2026-10-05。作品を探すがいつもあるので、右の欄はいつもある。
+// 右の欄は、左の欄（TOP3・セール・発売中・予約）の行をまたいで縦に伸ばす。またぐ行の数 = 左の欄の欄の数（site.css の .home.has-side）
+const mainCount = [top.length > 0, saleCamps.length > 0, true, upcomingGroups.length > 0].filter(Boolean).length;
 // おすすめのコーナーを、パソコンでは右の欄へ移す小さなスクリプト（コーナーのすぐ後ろで動くので、表示がずれない。幅が変われば戻す）
 const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner'),s=document.getElementById('side-corner'),h=document.getElementById('corner-home');if(!c||!s||!h||!window.matchMedia)return;var m=window.matchMedia('(min-width: 960px)');function place(){var t=m.matches?s:h;if(c.parentNode!==t)t.appendChild(c);}place();if(m.addEventListener)m.addEventListener('change',place);else if(m.addListener)m.addListener(place);})();";
 ---
@@ -111,9 +113,10 @@ const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner')
   <div class="wrap">
     <a id="fav-banner" class="fav-banner" href="/favorites/" hidden></a>
 
-    {/* スマホ: 見出し → TOP3 → いま人気の女優 → 人気のジャンル → きょうの話題 → 作品を探す → セール → 発売中（いちばん新しい日付の下におすすめのコーナー）→ 予約 の1列。
-        パソコン: 見出しを横いっぱいに、左に TOP3 → 作品を探す → セール → 発売中 → 予約、右の欄（.home-side）に きょうの話題 → いま人気の女優 → 人気のジャンル → おすすめのコーナー */}
-    <div class={hasSide ? 'home has-side' : 'home'} style={hasSide ? `--side-span: ${mainCount}` : undefined}>
+    {/* スマホ: 見出し → TOP3 → いま人気の女優 → 人気のジャンル → きょうの話題 → 作品を探す → セール → 発売中（いちばん新しい日付の下におすすめのコーナー）→ 予約 の1列
+        （右の欄の中の並びは site.css の order。週のまとめ・月のまとめの欄は、パソコンだけ。スマホは「作品を探す」のリンクから）。
+        パソコン: 見出しを横いっぱいに、左に TOP3 → セール → 発売中 → 予約、右の欄（.home-side）に 作品を探す → きょうの話題 → いま人気の女優 → 人気のジャンル → 週のまとめ → おすすめのコーナー → 月のまとめ */}
+    <div class="home has-side" style={`--side-span: ${mainCount}`}>
       <header class="today-head">
         <p class="today-date"><time datetime={today}>{day.m}月{day.d}日（{day.wd}）</time>の更新</p>
         <h1 class="today-title">きょうのFANZA新作</h1>
@@ -139,8 +142,24 @@ const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner')
         </section>
       )}
 
-      {hasSide && (
       <div class="home-side">
+      {/* 「月ごと」「週のまとめ」のリンク（only-narrow）は、スマホだけ。パソコンは、右の欄に専用の欄がある */}
+      <section class="find" aria-labelledby="find-title">
+        <h2 id="find-title" class="find-title">作品を探す</h2>
+        <form class="hero-search" action={SEARCH_PATH} method="get" role="search">
+          <label class="visually-hidden" for="hero-q">作品を探す（タイトル・出演者・メーカー・品番）</label>
+          <input id="hero-q" class="hero-search-input" type="search" name="q" placeholder="タイトル・出演者・品番" enterkeyhint="search" autocomplete="off" />
+          <button class="hero-search-btn" type="submit">探す</button>
+        </form>
+        <nav class="hero-jump" aria-label="探し方">
+          {tagGroups.length > 0 && <a class="chip-link" href={TAG_INDEX_PATH}>ジャンル</a>}
+          <a class="chip-link" href={ACTRESS_INDEX_PATH}>女優検索</a>
+          <a class="chip-link" href={MAKER_INDEX_PATH}>メーカー</a>
+          {monthGroups.length > 0 && <a class="chip-link only-narrow" href={MONTH_INDEX_PATH}>月ごと</a>}
+          {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約 {upcomingShown}本</a>}
+          {latestRoundup && <a class="chip-link only-narrow" href={weeklyPath(latestRoundup.week_start)}>週のまとめ</a>}
+        </nav>
+      </section>
       {hot.length > 0 && (
         <section id="hot" class="today-hot" aria-labelledby="hot-title">
           <div class="today-sec-head">
@@ -169,26 +188,11 @@ const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner')
         </section>
       )}
       {/* おすすめのコーナーは、パソコンのときだけ、ここへ移す（下の小さなスクリプト。スマホでは、発売中のいちばん新しい日付のすぐ下のまま） */}
+      <SideWeekly />
       {hasCorner && <div id="side-corner" class="side-corner"></div>}
+      <SideMonths />
       </div>
-      )}
 
-      <section class="find" aria-labelledby="find-title">
-        <h2 id="find-title" class="find-title">作品を探す</h2>
-        <form class="hero-search" action={SEARCH_PATH} method="get" role="search">
-          <label class="visually-hidden" for="hero-q">作品を探す（タイトル・出演者・メーカー・品番）</label>
-          <input id="hero-q" class="hero-search-input" type="search" name="q" placeholder="タイトル・出演者・品番" enterkeyhint="search" autocomplete="off" />
-          <button class="hero-search-btn" type="submit">探す</button>
-        </form>
-        <nav class="hero-jump" aria-label="探し方">
-          {tagGroups.length > 0 && <a class="chip-link" href={TAG_INDEX_PATH}>ジャンル</a>}
-          <a class="chip-link" href={ACTRESS_INDEX_PATH}>女優検索</a>
-          <a class="chip-link" href={MAKER_INDEX_PATH}>メーカー</a>
-          {monthGroups.length > 0 && <a class="chip-link" href={MONTH_INDEX_PATH}>月ごと</a>}
-          {upcoming.length > 0 && <a class="chip-link" href="#upcoming">予約 {upcomingShown}本</a>}
-          {latestRoundup && <a class="chip-link" href={weeklyPath(latestRoundup.week_start)}>週のまとめ</a>}
-        </nav>
-      </section>
 
     {saleCamps.length > 0 && (
       <section id="sale" class="section" aria-labelledby="sale-title" data-sale-group>
@@ -215,7 +219,7 @@ const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner')
               </div>
             )}
             {/* パソコン（960px〜）では、おすすめのコーナーを右の欄（#side-corner）へ移す。ページを読みながらすぐ動かすので、表示がずれない。画面の幅が変わったら（iPadの縦横など）戻す */}
-            {hasCorner && hasSide && <script is:inline set:html={CORNER_MOVE_JS} />}
+            {hasCorner && <script is:inline set:html={CORNER_MOVE_JS} />}
             <DaySection groups={releasedGroups.slice(1)} />
           </>
         : <p class="empty">発売中の作品を準備しています。毎日の更新をお待ちください。</p>}
