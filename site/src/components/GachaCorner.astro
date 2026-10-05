@@ -1,0 +1,26 @@
+---
+// 運命の作品（スロットで3本。public/gacha.js。運営者の希望「上から見ていって、作品が決まらなかった人にオススメしたい」「スロットマシンみたいに3本」。2026-10-05）。
+// スマホでは、発売中の新作のいちばん下（予約受付中の真上）に置く（運営者の希望。2026-10-05 夜）。
+// パソコンでは、index.astro の小さなスクリプトが、右の欄（#side-corner）のいちばん上（今週のデビュー作の上）へ移す。
+// JavaScript が使えないときは出さない（hidden。gacha.js が出す）
+import { gachaJson } from '../lib/gacha.js';
+
+// gacha: 運命の作品の候補（gachaPool）
+const { gacha } = Astro.props;
+---
+
+<section id="gacha" class="corner-block gacha gacha-solo" aria-labelledby="gacha-title" hidden>
+  <div class="corner-head">
+    <h3 id="gacha-title" class="corner-title">運命の作品</h3>
+    <p class="section-note">まだ決まらない人へ。人気の作品から3本えらびます</p>
+  </div>
+  <div class="slot">
+    <ol class="slot-reels" aria-live="polite">
+      {[0, 1, 2].map(() => (
+        <li class="reel"><span class="reel-card"><span class="reel-window reel-back" aria-hidden="true">?</span></span></li>
+      ))}
+    </ol>
+    <button type="button" class="btn btn-hot gacha-btn" data-gacha-draw>まわす</button>
+  </div>
+  <script is:inline type="application/json" id="gacha-data" set:html={gachaJson(gacha)} />
+</section>
