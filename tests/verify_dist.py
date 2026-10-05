@@ -8,6 +8,7 @@ import datetime
 import glob
 import hashlib as _hl
 import html as htmllib
+import importlib.util
 import json
 import os
 import re
@@ -575,6 +576,7 @@ check(f"出演者ページの所属事務所とSNS（{shown_agency}人）: デ�
       not bad_agency_pages, bad_agency_pages[:3])
 warn("所属事務所が付いた出演者ページがある（データがあれば出る）", shown_agency > 0 or not agency_by_name)
 
+
 # 個人情報: 生年月日そのものを、公開するファイルに出さない（出すのは、計算した年齢だけ）
 births = {str(r.get("birthday")) for r in profiles.values() if re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("birthday") or ""))}
 leaks = []
@@ -779,7 +781,10 @@ else:
 check("トップに「きょうの数字」（発売本数の欄）が無い", 'id="stats"' not in home_html and "FANZA動画（ビデオ）全体の本数" not in home_html)
 
 # きょうの話題: 種類ごとの札・リンク先（作品ページ・女優のページ・まとめ記事・セールのページ・FANZA）
-TOPIC_LABELS = {"rise": "急上昇", "today": "きょう発売", "upcoming": "予約で人気", "entry": "予約に初登場", "debut": "デビュー作", "actress": "人気の女優", "weekly": "週のまとめ", "salenew": "セール開始", "sale": "もうすぐ終わる"}
+TOPIC_LABELS = {"rise": "急上昇", "today": "きょう発売", "upcoming": "予約で人気", "entry": "予約に初登場", "debut": "デビュー作", "actress": "人気の女優", "weekly": "週のまとめ",
+                "salenew": "セール開始", "sale": "もうすぐ終わる", "salehot": "セールで人気", "event": "イベント"}
+TOPICS_LIMIT = int(re.search(r"TOPICS_LIMIT = (\d+)", read(os.path.join(ROOT, "site", "src", "lib", "topics.js"))).group(1))
+SALE_END_KINDS = ("sale", "salenew", "salehot")  # セールの終わりの時刻（data-sale-end）を持つ話題
 # 話題の作品がVR作品のときは、すぐ後ろに、同じ種類のVRでない次の作品（.topic-alt。「VR作品を隠す」のときだけ出る）が付くことがある
 topic_all = [(m.group(1), bool(m.group(2)), m.group(3), m.group(4)) for m in re.finditer(r'<li class="topic topic-([a-z]+)( topic-alt)?"([^>]*)>(.*?)</li>', home_html, re.S)]
 topic_cells = [(k, a, inner) for k, alt, a, inner in topic_all if not alt]
@@ -793,24 +798,82 @@ for kind, attrs, inner in [(k, a, inner) for k, _, a, inner in topic_all]:
     if kind not in TOPIC_LABELS or not label or label.group(1) != TOPIC_LABELS[kind]:
         bad_topic.append((kind, "札"))
     elif href.startswith("/"):
-        if not os.path.isfile(page_file(href)) or (kind not in ("actress", "weekly", "sale", "salenew") and not href.startswith("/item/")):
+        if not os.path.isfile(page_file(href)) or (kind not in ("actress", "weekly", "sale", "salenew", "event") and not href.startswith("/item/")):
             bad_topic.append((kind, href))
         elif kind in ("sale", "salenew") and not re.fullmatch(r"/sale/#sale-\d+", href):  # セールの話題は、セールのページの、その特集の見出しへ
             bad_topic.append((kind, href))
-    elif not (fanza_https(href, FANZA_LINK) and SPONSORED <= set(a_.get("rel", "").split()) and a_.get("target") == "_blank") or kind in ("weekly", "sale", "salenew"):
+        elif kind == "event" and not re.fullmatch(r"/event/#ev-\d{8}-[a-z0-9]+", href):  # イベントの話題は、イベント情報のページの、そのイベントの行へ
+            bad_topic.append((kind, href))
+    elif not (fanza_https(href, FANZA_LINK) and SPONSORED <= set(a_.get("rel", "").split()) and a_.get("target") == "_blank") or kind in ("weekly", "sale", "salenew", "event"):
         bad_topic.append((kind, href))
     if href in top_hrefs[:3]:
         bad_topic.append((kind, "TOP3と同じ作品"))
-    if ("data-sale-end" in attrs) != (kind in ("sale", "salenew")) or (kind in ("sale", "salenew") and not re.search(r'data-sale-end="\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:59\+09:00"', attrs)):
+    if ("data-sale-end" in attrs) != (kind in SALE_END_KINDS) or (kind in SALE_END_KINDS and not re.search(r'data-sale-end="\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:59\+09:00"', attrs)):
         bad_topic.append((kind, "セールの終わり"))
-check(f"きょうの話題（{len(topic_cells)}件。8件まで）: 種類ごとの札と、リンク先（サイトの中はあるページ・外はFANZAで広告のリンクの属性つき）。TOP3の作品は出さない",
-      len(topic_cells) <= 8 and not bad_topic and (not topic_cells or 'id="topics"' in home_html), bad_topic[:3])
+check(f"きょうの話題（{len(topic_cells)}件。{TOPICS_LIMIT}件まで）: 種類ごとの札と、リンク先（サイトの中はあるページ・外はFANZAで広告のリンクの属性つき）。TOP3の作品は出さない",
+      len(topic_cells) <= TOPICS_LIMIT and not bad_topic and (not topic_cells or 'id="topics"' in home_html), bad_topic[:3])
 # セールの話題の見出しは、FANZAの特集の名前そのまま（「今月のおすすめ30％OFF」など）なので、評価の言葉の検査からは外す
 topic_text = " ".join(re.sub(r"<[^>]+>", "", re.sub(r'<span class="topic-title">.*?</span>', "", inner, flags=re.S) if k in ("sale", "salenew") else inner) for k, _, _, inner in topic_all)
 check("きょうの話題: 評価の言葉を書かない（データで決まった形の文だけ）", not re.search(r"おすすめ|話題作|必見|最高傑作|大人気|神作", topic_text))
-if any(k in ("sale", "salenew") for k, _, _ in topic_cells):
-    check("きょうの話題に、セール開始・もうすぐ終わるセールがあるときは、終わったら隠すスクリプト（sale.js）がある", 'src="/sale.js?v=' in home_html)
+if any(k in SALE_END_KINDS for k, _, _ in topic_cells):
+    check("きょうの話題に、セール開始・もうすぐ終わるセール・セールで人気があるときは、終わったら隠すスクリプト（sale.js）がある", 'src="/sale.js?v=' in home_html)
 warn("きょうの話題が、トップにある（データがそろっていれば出る）", bool(topic_cells) or not pop_new)
+
+# 女優のイベント情報（data/events.json。所属事務所の公式サイトのイベントの一覧から毎日。運営者の希望。2026-10-05）。
+# 決まった項目だけ（住所・電話などは無い）・決まった事務所・URLは事務所の公式サイト・きょうから60日先までを、/event/ に日付ごとに。
+# 公式サイトへのリンクは広告ではない（sponsored を付けない）。トップの「きょうの話題」のイベントは、/event/ のそのイベントの行へ
+print("\n■ 女優のイベント情報")
+_events_src = read(os.path.join(ROOT, "site", "src", "lib", "events.js"))
+EVENT_KINDS = re.findall(r"'([^']+)'", re.search(r"EVENT_KINDS = \[([^\]]+)\]", _events_src).group(1))
+EVENT_DAYS = int(re.search(r"EVENT_DAYS = (\d+)", _events_src).group(1))
+try:
+    _events_data = json.load(open(os.path.join(ROOT, "site", "src", "data", "events.json"), encoding="utf-8"))
+except (OSError, ValueError):
+    _events_data = {}
+_event_rows = [r for r in (_events_data.get("rows") if isinstance(_events_data, dict) and isinstance(_events_data.get("rows"), list) else []) if isinstance(r, dict)]
+_cc_spec = importlib.util.spec_from_file_location("claude_comments_v", os.path.join(ROOT, "scripts", "claude_comments.py"))
+_cc = importlib.util.module_from_spec(_cc_spec)
+_cc_spec.loader.exec_module(_cc)
+_ev_end = (datetime.date.fromisoformat(JST_TODAY) + datetime.timedelta(days=EVENT_DAYS)).isoformat()
+_ev_ok = lambda r: (r.get("agency") in AGENCY_SITES and r.get("kind") in EVENT_KINDS and str(r.get("url", "")).startswith(AGENCY_SITES[r["agency"]][1])
+                    and not re.search(r"[\s\"'<>\\]", str(r.get("url", ""))) and isinstance(r.get("names"), list) and any(isinstance(n, str) and n.strip() for n in r["names"])
+                    and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("date", ""))) and _cc.title_block_reason({"title": r.get("title", "")}) != "minor"
+                    and _cc.title_block_reason({"title": r.get("place", "")}) != "minor")
+check("イベントのデータ（events.json）: 決まった項目だけ（住所・電話・料金などは無い）・決まった事務所・URLは事務所の公式サイト・知っている種類",
+      all(set(r) <= {"date", "time", "names", "agency", "kind", "title", "place", "url", "seen"} and _ev_ok(r) for r in _event_rows),
+      [r for r in _event_rows if not (set(r) <= {"date", "time", "names", "agency", "kind", "title", "place", "url", "seen"} and _ev_ok(r))][:2])
+event_want = [r for r in _event_rows if _ev_ok(r) and JST_TODAY <= r["date"] <= _ev_end]
+event_page = os.path.join(DIST, "event", "index.html")
+event_html = read(event_page) if os.path.isfile(event_page) else ""
+event_ids = re.findall(r'<li class="event-row" id="(ev-\d{8}-[a-z0-9]+)"', event_html)
+home_foot = re.search(r'<nav class="foot-nav"[\s\S]*?</nav>', home_html)
+if event_want:
+    check(f"イベント情報のページ（/event/）: きょうから{EVENT_DAYS}日先までのイベント（{len(event_want)}件）が1行ずつ・行の印（id）は1つずつ違う・検索エンジンに出す・sitemap にある",
+          len(event_ids) == len(event_want) and len(set(event_ids)) == len(event_ids) and 'name="robots" content="noindex' not in read_raw(event_page)
+          and (not os.path.isfile(sitemap_path) or "/event/" in sm_paths), (len(event_ids), len(event_want)))
+    src_links = [t for t in tags(event_html, "a") if has_class(t, "event-src")]
+    bad_src = [t.get("href") for t in src_links if set(t.get("rel", "").split()) != {"nofollow", "noopener", "noreferrer"} or t.get("target") != "_blank"
+               or not any(str(t.get("href", "")).startswith(u) for _, u in AGENCY_SITES.values())]
+    check("イベントの「公式サイトで見る」: 1行に1つ・事務所の公式サイトへ・広告ではないので sponsored なし（nofollow noopener noreferrer・新しいタブ）", len(src_links) == len(event_ids) and not bad_src, bad_src[:3])
+    check("イベント情報のページに「○日の時点」「公式サイトで確かめて」の注記・出どころの事務所の名前", "の時点" in event_html and "公式サイトで確かめて" in event_html and "出どころは" in event_html)
+    check("フッターに、イベント情報のページへのリンク", bool(home_foot) and 'href="/event/"' in home_foot.group(0))
+    ev_topics = [(re.search(r'href="([^"]+)"', inner) or [None, ""])[1] for k, _, _, inner in topic_all if k == "event"]
+    check(f"きょうの話題のイベント（{len(ev_topics)}件。2件まで）: イベント情報のページにある行へ", len(ev_topics) <= 2 and all(h.split("#", 1)[-1] in event_ids for h in ev_topics), ev_topics)
+    check("きょうの話題の下に「女優のイベントの予定（○件）」のリンク", f'href="/event/">女優のイベントの予定（{len(event_want)}件）' in re.sub(r"<wbr>|</?span[^>]*>", "", home_html))
+else:
+    check("イベントが無いあいだは、イベント情報のページが noindex で、sitemap・フッター・きょうの話題に出さない",
+          (not event_html or 'name="robots" content="noindex' in read_raw(event_page)) and (not os.path.isfile(sitemap_path) or "/event/" not in sm_paths)
+          and not (home_foot and 'href="/event/"' in home_foot.group(0)) and not any(k == "event" for k, _, _ in topic_cells))
+_ev_names = {n.strip() for r in event_want for n in r["names"] if isinstance(n, str)}
+bad_ev_actress = []
+for pth in actress_pages:
+    text = read(pth)
+    m = re.search(r'<h1 class="hero-title">(.*?)</h1>', text, re.S)
+    h1_text = htmllib.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip() if m else ""
+    name = h1_text[: -len("の新作・出演作品")] if h1_text.endswith("の新作・出演作品") else ""
+    if ('id="events-title"' in text) != (name in _ev_names):
+        bad_ev_actress.append(name)
+check("出演者のページの「イベントの予定」: イベントがある人だけ", not bad_ev_actress, bad_ev_actress[:3])
 
 # 女優の顔写真と誕生日の月日（site/src/lib/data.js の faceOfName・birthOfName と同じ決まり）: プロフィール（同じ名前で id が1つの人）を先に、
 # 無ければ名簿（同じ名前の人が1人だけ）。誕生日は、年齢が18〜80歳になるときだけ

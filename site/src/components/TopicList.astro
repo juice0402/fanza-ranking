@@ -1,6 +1,7 @@
 ---
-// きょうの話題（トップ）: 急上昇・きょう発売・予約で人気・予約に初登場・週のまとめ・セール開始・もうすぐ終わるセール（lib/topics.js の buildTopics）。
-// 1つずつ、画像（作品の表紙か、出演者の顔）・札・見出し・ひとことの1行。タップで、作品ページ（無ければFANZA）・女優のページ・まとめ記事・セールのページの、その特集の見出しへ。
+// きょうの話題（トップ）: 急上昇・きょう発売・予約で人気・予約に初登場・イベント・セールで人気・週のまとめ・セール開始・もうすぐ終わるセール（lib/topics.js の buildTopics）。
+// 1つずつ、画像（作品の表紙か、出演者の顔。どちらも無いイベントは、カレンダーの印）・札・見出し・ひとことの1行。
+// タップで、作品ページ（無ければFANZA）・まとめ記事・セールのページの、その特集の見出し・イベント情報のページの、そのイベントの行へ。
 // 話題の作品がVR作品のときは、すぐ後ろに、同じ種類のVRでない次の作品（.topic-alt）も入れておき、「VR作品を隠す」のときだけ出す（繰り上げ）
 import { OUTBOUND_ATTRS } from '../lib/plan.js';
 import { SMALL_IMG_ONERROR, smallImage } from '../lib/items.js';
@@ -13,9 +14,15 @@ const rows = topics.flatMap((t) => (t.alt ? [{ ...t, isAlt: false }, { ...t.alt,
   {rows.map((t) => (
     <li class={`topic topic-${t.kind}${t.isAlt ? ' topic-alt' : ''}`} {...(t.vr && !t.isAlt ? { 'data-vr': 'true' } : {})} {...(t.end ? { 'data-sale-end': t.end } : {})}>
       <a class="topic-link" href={t.href} {...(t.external ? OUTBOUND_ATTRS : {})}>
-        <span class={t.face ? 'topic-thumb is-face' : 'topic-thumb'}>
-          {t.face && <img class="topic-face" src={t.face} alt="" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'" />}
+        <span class={t.face ? 'topic-thumb is-face' : t.image ? 'topic-thumb' : 'topic-thumb is-icon'}>
+          {t.face && <img class="topic-face" src={t.face} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" />}
           {!t.face && t.image && <img class="item-img is-small" src={smallImage(t.image)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />}
+          {!t.face && !t.image && (
+            <svg class="topic-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <rect x="3.5" y="5" width="17" height="15.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.6" />
+              <path d="M3.5 9.5h17M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+          )}
         </span>
         <span class="topic-body">
           <span class="topic-tag">{t.label}</span>

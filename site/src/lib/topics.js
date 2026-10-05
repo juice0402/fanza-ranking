@@ -3,14 +3,16 @@
 // 「きょうの話題は、サクッと毎日の情報を仕入れられるように、見やすく。作品や女優さんの話題なら画像を使って」。
 // 材料は、毎日の更新が集めたデータだけ（FANZA公式のAPIの人気順・予約の人気順・キャンペーン）。文は、データから決まった形で作る（評価の言葉は書かない）。
 import { FANZA_HOSTS, FANZA_LINK_HOSTS, RANKING_SHOWN, addDays, dateParts, daysBetween, isDay, isVrWork, safeHttpsUrl, truncate } from './items.js';
-import { newRanking } from './popularity.js';
+import { bestRank, newRanking } from './popularity.js';
+import { isMinorTitle } from './gacha.js';
+import { eventTopics } from './events.js';
 import { RANKING_MAX } from './profiles.js';
 import { weeklyPath } from './roundups.js';
-import { endIso, endLabel, saleGroups, saleHref } from './sale.js';
+import { endIso, endLabel, offPercent, saleGroups, saleHref } from './sale.js';
 
 export const TOP_SHOWN = RANKING_SHOWN; // トップに出す本数（3本）
 export const TOP_DATA = RANKING_MAX; // データに持つ本数（VR作品を隠したときの差し替え用に、多めの6本）
-export const TOPICS_LIMIT = 8; // 「きょうの話題」の最大数
+export const TOPICS_LIMIT = 10; // 「きょうの話題」の最大数（イベント・セールで人気を足したので 8 → 10。2026-10-05）
 export const RISE_MIN = 10; // 「急上昇」: 前の日から、この順位以上あがった作品
 export const RISE_WITHIN = 50; // 「急上昇」: きょうの新着の人気順が、この順位までの作品
 export const SALE_SOON_DAYS = 2; // 「もうすぐ終わるセール」: 終わりがこの日数以内のキャンペーン
@@ -176,16 +178,18 @@ export function birthdaySoon(items, today, { birthOf, hasFace, days = BIRTHDAY_D
 
 /**
  * きょうの話題: [{ kind, label, title, text, image, face, href, external, vr, alt? }]（大事な順に、最大 limit 件）。
- *   kind: rise 急上昇 / today きょう発売 / upcoming 予約で人気 / entry 予約に初登場 / weekly 週のまとめ / salenew セール開始 / sale もうすぐ終わるセール
+ *   kind: rise 急上昇 / today きょう発売 / upcoming 予約で人気 / entry 予約に初登場 / event イベント / salehot セールで人気 / weekly 週のまとめ /
+ *         salenew セール開始 / sale もうすぐ終わるセール
  *   image: 作品の表紙（パッケージ画像。表紙の部分を切り出して見せる）、face: 出演者の顔写真（あるときだけ。image より先に使う）
  *   end: セールの終わりの時刻（salenew・sale だけ。ブラウザが、すぎたら隠す /sale.js）
  *   alt: 話題の作品がVR作品のとき、「VR作品を隠す」を選んだ人に代わりに出す、同じ種類のVRでない次の作品の話題（繰り上げ。運営者の希望。2026-10-05）
  * ctx: { items（このサイトの全作品）, today, popularity, todayData（normalizeToday）, sale（normalizeSale）, roundup（いちばん新しい週のまとめ）, linkOf(item) → {href, external},
- *        faceOf(name) → url | '', skip: Set（TOP3など、ほかの欄に出ている作品ID）,
+ *        faceOf(name) → url | '', coverOf(name) → その人の作品の表紙 | ''（イベントの話題で、顔写真が無いとき）, events（normalizeEvents。無ければ null）,
+ *        skip: Set（TOP3など、ほかの欄に出ている作品ID）,
  *        skipVrOff: Set（VR作品を隠したときにTOP3に出る作品ID。繰り上げの作品には使わない） }
  */
 export function buildTopics(ctx, limit = TOPICS_LIMIT) {
-  const { items, today, popularity, todayData, sale, roundup = null, linkOf, faceOf = () => '', skip = new Set(), skipVrOff = new Set() } = ctx;
+  const { items, today, popularity, todayData, sale, roundup = null, events = null, linkOf, faceOf = () => '', coverOf = () => '', skip = new Set(), skipVrOff = new Set() } = ctx;
   const topics = [];
   const used = new Set(skip);
   const workTopic = (item, kind, label, title, text) => ({ kind, label, title, text, image: item.image_url, face: '', vr: Boolean(item.vr), ...linkOf(item) });
@@ -243,6 +247,26 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
     const entries = up.filter((i) => !todayData.prevUpcoming.has(i.cid));
     pick(entries, (i) => workTopic(i, 'entry', '予約に初登場', truncate(i.title, 40), upText(i)), (i) => i.rank <= 10);
   }
+
+  // イベント: 所属事務所の公式サイトに載っている、近いうちのイベント（運営者の希望「女優さんのイベント情報…新鮮な情報を」。2026-10-05。lib/events.js）。
+  // 近い順に2件（同じ人は1件）。タップで、イベント情報のページの、そのイベントの行へ
+  if (events) topics.push(...eventTopics(events, today, { faceOf, coverOf }));
+
+  // セールで人気: いまセール中（値引きの分かる）の発売済みの作品の中で、人気（全体・新着の人気順の上のほう）がいちばん高い作品
+  // （運営者の希望「毎日の訪問に価値を」。2026-10-05。こちらから勧める話題なので、未成年を連想させるタイトルの作品は入れない）
+  const saleInfo = (i) => {
+    const s = sale.byCid.get(i.cid);
+    const c = s && sale.campaigns[s.k];
+    return s && s.price && c && c.end.slice(0, 10) >= today ? { ...s, end: c.end } : null;
+  };
+  const rankOf = (i) => bestRank(i.popAll ?? null, i.popNew ?? null);
+  const onSale = items
+    .filter((i) => i.dateKey <= today && rankOf(i) && saleInfo(i) && !isMinorTitle(i.title))
+    .sort((a, b) => rankOf(a) - rankOf(b) || b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid));
+  pick(onSale, (i) => {
+    const s = saleInfo(i);
+    return { ...workTopic(i, 'salehot', 'セールで人気', truncate(i.title, 40), `${offPercent(s.price, s.listPrice)}%OFF ${s.price.toLocaleString('ja-JP')}円〜｜${endLabel(s.end)}まで`), end: endIso(s.end) };
+  });
 
   // デビュー作は、発売中の新作の中の「今週のデビュー作」の欄で出す（話題には入れない。2026-10-05）
   // 人気の女優は、トップの「いま人気の女優」の欄で出す（話題には入れない。2026-10-05）

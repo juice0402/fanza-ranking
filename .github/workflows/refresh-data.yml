@@ -7,6 +7,7 @@ name: Refresh FANZA Data
 #   ・女優検索の名簿（FANZA公式の出演者検索の一覧）を、続きから取る。ふだんは毎日40回ずつ。
 #     「名簿の一覧を取る回数」を増やして実行すると、一気に集められる（全部で約200回。1回100人）
 #   ・（「所属事務所」を 1 にしたときだけ）所属事務所とSNSを、事務所の公式サイトから集め直す
+#   ・女優のイベント情報を、事務所の公式サイトのイベントの一覧から集め直す（毎回。4つのページを読むだけ）
 #   ・過去作品（FANZAの人気順の上位1.5万本の、発売済みの作品）を、その日の上位1,000本と新着の人気順を取り直してから、その下を続きから取る。
 #     ふだんは毎日30回ずつ（3,000本）。「過去作品の一覧を取る回数」を増やして実行すると、一気に集められる（140回で上位1.5万本が一回り）
 # 新しい機能のブランチで、本物のAPIを使った確認をするときにも使う（Run workflow で、ブランチを選んで実行）。
@@ -70,6 +71,11 @@ jobs:
         continue-on-error: true
         timeout-minutes: 30
         run: python scripts/agency_links.py --update --force
+
+      - name: Refresh events
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python scripts/agency_events.py --update
 
       - name: Commit and push if changed
         run: |

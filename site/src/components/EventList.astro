@@ -1,0 +1,50 @@
+---
+// イベントの行の一覧（イベント情報のページ /event/ と、出演者のページの「イベントの予定」。lib/events.js）。
+// 1行に1つ: 時刻（showDay なら日付も）・出る人の顔と名前（このサイトに出演者のページがあればリンク）・種類・見出し・会場・事務所・公式サイトへのリンク。
+// 公式サイトへのリンクは広告ではないので sponsored を付けない（nofollow noopener noreferrer・新しいタブ）
+import Face from './Face.astro';
+import { eventWhen } from '../lib/events.js';
+
+// self: その人のページで使うときの名前（行の名前の欄には、その人以外の、いっしょに出る人だけを出す）
+const { events, today, showDay = false, pageOf = () => '', faceOf = () => '', faces = true, self = '' } = Astro.props;
+const shownNames = (e) => e.names.filter((n) => n !== self);
+---
+
+<ul class={showDay ? 'event-list is-dated' : 'event-list'}>
+  {events.map((e) => (
+    <li class="event-row" id={e.id}>
+      <p class="event-when">
+        {showDay ? eventWhen(e, today) : e.time ? `${e.time}〜` : <><span aria-hidden="true">—</span><span class="visually-hidden">時刻は公式サイトで</span></>}
+      </p>
+      <div class="event-main">
+        {faces && (
+          <span class="event-faces" aria-hidden="true">
+            {e.names.slice(0, 3).map((n) => <Face name={n} src={faceOf(n)} size="sm" />)}
+          </span>
+        )}
+        <div class="event-body">
+          <p class="event-head">
+            <span class="event-kind">{e.kind}</span>
+            {shownNames(e).length > 0 && (
+              <span class="event-names">
+                {self && 'いっしょに出る人：'}
+                {shownNames(e).map((n, i) => (
+                  <>
+                    {i > 0 && '・'}
+                    {pageOf(n) ? <a class="spec-link" href={pageOf(n)}>{n}</a> : n}
+                  </>
+                ))}
+              </span>
+            )}
+          </p>
+          {e.title && <p class="event-title">{e.title}</p>}
+          <p class="event-meta">
+            {e.place && <span>会場：{e.place}</span>}
+            <span>{e.agencyName}</span>
+            <a class="event-src" href={e.url} target="_blank" rel="nofollow noopener noreferrer">公式サイトで見る</a>
+          </p>
+        </div>
+      </div>
+    </li>
+  ))}
+</ul>

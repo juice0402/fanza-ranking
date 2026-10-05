@@ -2,6 +2,7 @@
 import * as T from '../site/src/lib/topics.js';
 import { normalizePopularity } from '../site/src/lib/popularity.js';
 import { normalizeSale } from '../site/src/lib/sale.js';
+import { normalizeEvents } from '../site/src/lib/events.js';
 import { RANKING_SHOWN } from '../site/src/lib/items.js';
 
 let pass = 0, fail = 0;
@@ -111,6 +112,31 @@ check('始まって2日以上たったキャンペーン・このサイトの作
   saleWith([{ title: '前からのセール', begin: '2026-10-03 00:00', end: '2026-10-20 23:59' }, { title: '小さなセール', begin: TODAY, end: '2026-10-20 23:59' }], [{ c: 't1', k: 0 }, { c: 't2', k: 0 }, { c: 't3', k: 0 }, { c: 's1', k: 1 }, { c: 'r3', k: 1 }]) === '');
 check('始まったばかりで、もうすぐ終わるキャンペーンは、セール開始にだけ出す（もうすぐ終わるは、次のキャンペーン）',
   saleWith([{ title: '1日だけ', begin: TODAY, end: '2026-10-05 23:59' }, { title: '週末セール', begin: '2026-10-01', end: '2026-10-06 23:59' }], [{ c: 't1', k: 0 }, { c: 't2', k: 0 }, { c: 't3', k: 0 }, { c: 's1', k: 1 }]) === 'salenew:1日だけ,sale:週末セール');
+// セールで人気: 値引きの分かるセール中の作品の中で、人気のいちばん高い作品（発売済み・TOP3と同じ作品は出さない・未成年を連想させるタイトルは入れない）
+const pricedSale = normalizeSale({
+  date: TODAY,
+  campaigns: [{ title: '週末セール', begin: '2026-10-01 00:00', end: '2026-10-06 23:59' }],
+  items: [{ c: 't1', k: 0, p: 700, l: 1000 }, { c: 's1', k: 0, p: 1400, l: 2000 }, { c: 'r3', k: 0, p: 980, l: 1980 }, { c: 'm1', k: 0, p: 500, l: 1000 }, { c: 'r1', k: 0 }],
+});
+const withHot = T.buildTopics({ ...ctx, items: [...many, it('m1', '2026-09-01', null, { popAll: 1, title: '女子校生の作品' })], sale: pricedSale }, 20);
+const hotT = withHot.find((t) => t.kind === 'salehot');
+check('セールで人気: 値引きの分かる作品の中で人気のいちばん高い作品（TOP3・未成年を連想させるタイトル・値引きの分からない作品は除く）。「○%OFF ○円〜｜いつまで」',
+  hotT && hotT.label === 'セールで人気' && hotT.title === '作品 s1' && hotT.text === '30%OFF 1,400円〜｜10月6日 23:59まで' && hotT.end === '2026-10-06T23:59:59+09:00' && hotT.href === '/item/s1/', JSON.stringify(hotT));
+check('セールで人気: 予約に初登場のあと、週のまとめ・セールの特集の話題の前', withHot.map((t) => t.kind).indexOf('salehot') === withHot.map((t) => t.kind).indexOf('entry') + 1, withHot.map((t) => t.kind).join());
+check('セールで人気: 値引きの分かるセール中の作品が無ければ出さない', !topics.some((t) => t.kind === 'salehot'));
+// イベント: 予約に初登場のあと、セールで人気の前（2件まで。lib/events.js の eventTopics）
+const evData = normalizeEvents({ rows: [
+  { date: '2026-10-07', names: ['架空ゆめか'], agency: 'tpowers', kind: '撮影会', url: 'https://www.t-powers.co.jp/event/', seen: TODAY },
+  { date: '2026-10-08', names: ['見本はるな'], agency: 'capsule', kind: 'オフ会', url: 'https://capsule.bz/a/', seen: TODAY },
+  { date: '2026-10-09', names: ['三人目'], agency: 'capsule', kind: 'オフ会', url: 'https://capsule.bz/b/', seen: TODAY },
+] });
+const withEv = T.buildTopics({ ...ctx, items: [...many, it('m1', '2026-09-01', null, { popAll: 1 })], sale: pricedSale, events: evData }, 20);
+const evKinds = withEv.map((t) => t.kind);
+check('イベント: 予約に初登場のあと・セールで人気の前に、近い順に2件', evKinds.join().includes('entry,event,event,salehot') && withEv.filter((t) => t.kind === 'event').map((t) => t.title).join() === '架空ゆめか,見本はるな', evKinds.join());
+const evFull = T.buildTopics({ ...ctx, items: [...many, it('m1', '2026-09-01', null, { popAll: 1 })], sale: pricedSale, events: evData, roundup: { week_start: '2026-09-28', week_end: '2026-10-04', lead: 'x', picks: [], written: TODAY } });
+const evCut = T.buildTopics({ ...ctx, items: [...many, it('m1', '2026-09-01', null, { popAll: 1 })], sale: pricedSale, events: evData, roundup: { week_start: '2026-09-28', week_end: '2026-10-04', lead: 'x', picks: [], written: TODAY } }, 9);
+check('イベント: データが無ければ出さない・いろいろな種類がそろって10件・入りきらないときは、まず2つ目の急上昇を外す', !topics.some((t) => t.kind === 'event')
+  && evFull.length === T.TOPICS_LIMIT && evCut.filter((t) => t.kind === 'rise').length === 1 && evCut.filter((t) => t.kind === 'event').length === 2, evFull.map((t) => t.kind).join());
 const shownTitles = topics.flatMap((t) => [t, ...(t.alt ? [t.alt] : [])]).filter((t) => t.kind !== 'actress' && t.kind !== 'sale' && t.kind !== 'salenew').map((t) => t.title);
 check('同じ作品は2回出さない（繰り上げの作品も含めて）', new Set(shownTitles).size === shownTitles.length, shownTitles.join());
 check('人気の女優・デビュー作の話題は出さない（トップの「いま人気の女優」・発売中の新作の「今週のデビュー作」の欄で出す）', !topics.some((t) => t.kind === 'actress' || t.kind === 'debut'));
