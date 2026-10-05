@@ -72,5 +72,51 @@ check('終わりの時刻をすぎたら隠す・まだなら隠さない・読�
 const slots = (flags, n) => sandbox.module.exports.shownSlots(flags, n).map((v) => (v ? 1 : 0)).join('');
 check('トップの特集のカード: 終わっていないものを先頭からn個（終わった分は次が繰り上がる）', slots([false, false, false, false, false, false], 4) === '111100' && slots([true, true, false, false, false, false], 4) === '001111' && slots([true, false, true], 4) === '010' && slots([], 4) === '');
 
+
+console.log('\n■ 特集の最大の割引（saleGroups の maxOff）');
+const gs = S.saleGroups(items, sale, '2026-10-05', 12);
+check('値引きの分かる作品の、いちばん大きい割引・分からなければ null', gs.find((g) => g.title === 'メーカーA30％OFF').maxOff === 30 && gs.find((g) => g.title === '日替わりセール★').maxOff === 51, gs.map((g) => `${g.title}:${g.maxOff}`).join());
+
+console.log('\n■ セールの履歴（sale_history.json）');
+const hraw = {
+  updated: '2026-10-06',
+  campaigns: [
+    { title: 'メーカーA30％OFF', begin: '2026-10-03 10:00', end: '2026-10-06 09:59', first: '2026-10-05', last: '2026-10-06', count: 2, max_off: 30 },
+    { title: 'メーカーA30％OFF', begin: '2026-09-20 10:00', end: '2026-09-22 09:59', first: '2026-09-20', last: '2026-09-22', count: 5 },
+    { title: '日替わりセール★', begin: '2026-10-05 00:00', end: '2026-10-05 23:59', first: '2026-10-05', last: '2026-10-05', count: 1, max_off: 51 },
+    { title: '昔のセール', begin: '2026-05-01 00:00', end: '2026-05-03 23:59', first: '2026-05-01', last: '2026-05-03', count: 4 },
+    { title: '女子校生セール', begin: '2026-10-01 00:00', end: '2026-10-07 23:59', first: '2026-10-05', last: '2026-10-06', count: 9 },
+    { title: '', begin: 'x', end: 'y' }, { title: 'ok', begin: '', end: '2026-10-08', first: '2026-10-06', last: '2026-10-06', count: -3, max_off: 100 }, 'x',
+  ],
+};
+const hist = S.normalizeSaleHistory(hraw);
+check('履歴の読み方: 形の違う行は捨てる・本数が変なら0・割引は1〜99%だけ・新しい順', hist.updated === '2026-10-06' && hist.rows.length === 6
+  && hist.rows.find((r) => r.title === 'ok').count === 0 && hist.rows.find((r) => r.title === 'ok').maxOff === null && hist.rows.at(-1).title === '昔のセール', hist.rows.map((r) => r.title).join());
+check('無い・形が違うときは空', [null, [], { campaigns: 'x' }].every((v) => S.normalizeSaleHistory(v).rows.length === 0));
+check('特集のページの印: 名前ごと・全角/半角と空白の違いは同じ・10文字', S.campaignSlug('メーカーA30％OFF') === S.campaignSlug('メーカーＡ30%OFF') && S.campaignSlug('日替わり セール') === S.campaignSlug('日替わりセール')
+  && /^[0-9a-f]{10}$/.test(S.campaignSlug('x')) && S.campaignPath('x') === `/sale/${S.campaignSlug('x')}/` && S.campaignSlug('a') !== S.campaignSlug('b'));
+check('開催の日数・期間の文', S.runDays(hist.rows[0]) === 3 && S.runDays({ begin: '', first: '2026-10-06', end: '2026-10-08' }) === 3
+  && S.runRange({ begin: '2026-10-03 10:00', end: '2026-10-06 09:59' }) === '10月3日〜10月6日 9:59' && S.runRange({ begin: '', end: '2026-10-08' }) === '〜10月8日' && S.mdOf('x') === '');
+
+console.log('\n■ 特集ごとのページ（campaignPages）');
+const pages = S.campaignPages(items, sale, hist, '2026-10-05');
+const pOf = (t) => pages.find((p) => p.title === t);
+check('開催中の特集（終わりが近い順）→ 終わった特集（最後に見かけた日が新しい順）・名前ごとに1ページ',
+  pages.map((p) => p.title).join() === '日替わりセール★,メーカーA30％OFF,ok', pages.map((p) => p.title).join());
+check('開催中の特集には、まとまり（作品・いつまで・最大の割引）と、これまでの開催（同じ名前の全部の回）', pOf('メーカーA30％OFF').active.total === 2 && pOf('メーカーA30％OFF').runs.length === 2 && pOf('メーカーA30％OFF').path === S.campaignPath('メーカーA30％OFF'));
+check('開催していない特集は、まとまりが無い（これまでの開催だけ）', pOf('ok').active === null && pOf('ok').runs.length === 1);
+check('最後に見かけてから90日をすぎた特集・未成年を連想させる名前の特集は、ページを作らない', !pOf('昔のセール') && !pOf('女子校生セール'));
+check('作品の本数の上限（perGroup）', S.campaignPages(items, sale, hist, '2026-10-05', { perGroup: 1 }).find((p) => p.title === 'メーカーA30％OFF').active.items.length === 1);
+
+console.log('\n■ 「FANZAのセールはいつ？」の材料（saleHistoryFacts）');
+const facts = S.saleHistoryFacts(hist, new Map(pages.map((p) => [p.slug, p])));
+check('未成年を連想させる名前の回は入れない・始まった月ごと（新しい月から）', facts.runs.length === 5 && facts.byMonth.map((m) => `${m.ym}:${m.runs.length}`).join() === '2026-10:3,2026-09:1,2026-05:1', facts.byMonth.map((m) => `${m.ym}:${m.runs.length}`).join());
+check('2回以上開かれた特集（ページがあればリンク先も）', facts.repeats.length === 1 && facts.repeats[0].title === 'メーカーA30％OFF' && facts.repeats[0].runs.length === 2 && facts.repeats[0].path === S.campaignPath('メーカーA30％OFF'));
+check('期間の日数（いちばん短い・長い・平均）・記録の始まり', facts.minDays === 1 && facts.maxDays === 4 && facts.avgDays === 2.8 && facts.since === '2026-05-01', JSON.stringify([facts.minDays, facts.maxDays, facts.avgDays, facts.since]));
+
+console.log('\n■ 出演者のページの「セール中の作品」（onSaleItems）');
+const os = S.onSaleItems([...items, it('f', '2026-12-01', 1)], sale, '2026-10-05');
+check('いまセール中の発売済みの作品だけ・人気の高い順・キャンペーンの終わりと名前つき', os.map((i) => i.cid).join() === 'c,b,a' && os[2].sale.price === 1884 && os[2].sale.end === '2026-10-06 09:59' && os[2].sale.title === 'メーカーA30％OFF', os.map((i) => i.cid).join());
+check('終わったキャンペーンの作品は入れない', S.onSaleItems(items, sale, '2026-10-07').length === 0);
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

@@ -1329,6 +1329,39 @@ m_s2 = load_module(s_path, catalog_calls=0, catalog_top=1)
 run_main_capture(m_s2, env_s2)
 check("一覧が取れなかった日は、セールの情報を書きかえない（前の日のまま）", open(os.path.join(s_dir, "sale.json"), encoding="utf-8").read() == before_sale)
 
+print("\n■ セールの履歴（「FANZAのセールはいつ？」・特集ごとのページに使う。毎日足していく）")
+hist = json.load(open(os.path.join(s_dir, "sale_history.json"), encoding="utf-8"))
+hrow = {r["title"]: r for r in hist["campaigns"]}
+check("sale_history.json: 今日見かけたキャンペーンの名前・始まり・終わり・見かけた日・このサイトの作品の本数・最大の割引",
+      hist["updated"] == TODAY_STR and set(hrow) == {"メーカーA30％OFF", "日替わりセール★"}
+      and hrow["メーカーA30％OFF"] == {"title": "メーカーA30％OFF", "begin": day(-2) + " 10:00", "end": day(1) + " 09:59", "first": TODAY_STR, "last": TODAY_STR, "count": 2, "max_off": 30}
+      and "max_off" not in hrow["日替わりセール★"] and hrow["日替わりセール★"]["count"] == 1, hist)
+check("一覧が取れなかった日は、セールの履歴も書きかえない", json.load(open(os.path.join(s_dir, "sale_history.json"), encoding="utf-8")) == hist)
+prev_h = {"updated": "2026-01-01", "campaigns": [
+    {"title": "週末セール", "begin": "2026-01-01 00:00", "end": "2026-01-03 23:59", "first": "2026-01-01", "last": "2026-01-02", "count": 5, "max_off": 50},
+    {"title": "とても古いセール", "begin": "2020-01-01 00:00", "end": "2020-01-03 23:59", "first": "2020-01-01", "last": "2020-01-02", "count": 1},
+    {"title": "", "begin": "x", "end": "y"}, "壊れた行"]}
+camp_w = {"title": "週末セール", "begin": "2026-01-01 00:00", "end": "2026-01-04 23:59"}
+camp_d = {"title": "日替わり", "begin": "2026-01-03 00:00", "end": "2026-01-03 23:59"}
+merged = m_s.merge_sale_history(prev_h, {"a": (camp_w, 700, 1000), "b": (camp_w, None, None), "c": (camp_d, 500, 1000)}, "2026-01-03")
+mrow = {(r["title"], r["begin"]): r for r in merged["campaigns"]}
+check("名前と始まりが同じなら同じキャンペーン（終わりが延びたら新しくする・本数と割引は大きいほう・最初に見かけた日はそのまま）",
+      mrow[("週末セール", "2026-01-01 00:00")] == {"title": "週末セール", "begin": "2026-01-01 00:00", "end": "2026-01-04 23:59", "first": "2026-01-01", "last": "2026-01-03", "count": 5, "max_off": 50}, mrow)
+check("同じ名前でも、始まりがちがえば別の回（毎日の「日替わり」など）・400日より前に最後に見かけたもの・形の違う行は消す・新しい順",
+      ("日替わり", "2026-01-03 00:00") in mrow and not any(t == "とても古いセール" for t, _ in mrow) and len(merged["campaigns"]) == 2
+      and merged["campaigns"][0]["title"] == "日替わり" and mrow[("日替わり", "2026-01-03 00:00")]["max_off"] == 50)
+check("割引の割合は四捨五入（サイトの offPercent と同じ）", m_s.off_percent(1884, 2692) == 30 and m_s.off_percent(675, 1350) == 50 and m_s.off_percent(1, 3) == 67 and m_s.off_percent(None, 100) == 0 and m_s.off_percent(100, 100) == 0)
+with tempfile.TemporaryDirectory() as tmp_h:
+    bad_h = os.path.join(tmp_h, "sale_history.json")
+    open(bad_h, "w").write("{壊れている")
+    with contextlib.redirect_stdout(io.StringIO()):
+        res_h = m_s.save_sale_history({"a": (camp_w, 700, 1000)}, "2026-01-03", bad_h)
+    check("前の履歴が壊れていたら、上書きしない（毎日の更新は止めない）", res_h is None and open(bad_h).read() == "{壊れている")
+    ok_h = os.path.join(tmp_h, "ok.json")
+    m_s.save_sale_history({"a": (camp_w, 700, 1000)}, "2026-01-03", ok_h)
+    text_h = open(ok_h, encoding="utf-8").read()
+    check("保存は1行に1つ・読み直せる", json.loads(text_h)["campaigns"][0]["title"] == "週末セール" and text_h.count("\n") == 4, text_h)
+
 print("\n■ きょうの数字（FANZA動画の日ごとの発売本数・予約受付中の本数）と、予約の人気順")
 t_dir = scenario_dir("today")
 t_path = write_archive(t_dir, c_seed)

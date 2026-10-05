@@ -95,6 +95,10 @@ NEW_RANK_DAYS = 7  # 運営者の希望で1週間（毎日たくさん発売さ�
 POPULAR_PREV_KEEP = 200  # 前の日の新着の人気順は、上位このくらいまで残す（「急上昇」を見つける用）
 POPULARITY_PATH = os.environ.get("POPULARITY_PATH", os.path.join(os.path.dirname(DATA_PATH), "popularity.json"))  # 新着の人気順と、毎日の更新の作品の全体の順位
 SALE_PATH = os.environ.get("SALE_PATH", os.path.join(os.path.dirname(DATA_PATH), "sale.json"))  # その日に見かけたセール・キャンペーン（FANZA公式のAPIの campaign・prices）
+# セールの履歴（運営者の希望「SEOを上位に」→「FANZAのセールはいつ？」のページと、特集ごとのページ。2026-10-06）。
+# 毎日、その日に見かけたキャンペーンの名前・期間・このサイトの作品の本数・最大の割引を足していく。SALE_HISTORY_DAYS 日より前に最後に見かけたものは消す
+SALE_HISTORY_PATH = os.environ.get("SALE_HISTORY_PATH", os.path.join(os.path.dirname(DATA_PATH), "sale_history.json"))
+SALE_HISTORY_DAYS = 400
 # きょうの数字・予約の人気（トップの「きょうの数字」「きょうの話題」に使う。Gemini は使わない）
 TODAY_PATH = os.environ.get("TODAY_PATH", os.path.join(os.path.dirname(DATA_PATH), "today.json"))
 TODAY_STATS = os.environ.get("TODAY_STATS", "1") != "0"
@@ -1128,6 +1132,86 @@ def sale_of(raw, today_str):
     return camp, price, list_price
 
 
+def off_percent(price, list_price):
+    """値引きの割合（%。四捨五入。サイトの offPercent と同じ）。分からなければ 0"""
+    if not price or not list_price or not 0 < price < list_price:
+        return 0
+    return int((1 - price / list_price) * 100 + 0.5)
+
+
+def clean_sale_history_row(r):
+    """セールの履歴の1行（決まった項目だけ・形を確かめる）。使えなければ None"""
+    if not isinstance(r, dict):
+        return None
+    title = str(r.get("title") or "").strip()[:60]
+    begin, end = str(r.get("begin") or ""), str(r.get("end") or "")
+    day = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+    if not title or (begin and not re.match(r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$", begin)) or not re.match(r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$", end) \
+            or not day.match(str(r.get("first") or "")) or not day.match(str(r.get("last") or "")):
+        return None
+    row = {"title": title, "begin": begin, "end": end, "first": r["first"], "last": r["last"],
+           "count": r["count"] if isinstance(r.get("count"), int) and r["count"] >= 0 else 0}
+    if isinstance(r.get("max_off"), int) and 0 < r["max_off"] < 100:
+        row["max_off"] = r["max_off"]
+    return row
+
+
+def merge_sale_history(history, sales, today_str):
+    """前のセールの履歴 {updated, campaigns}（無ければ None）と、今日見かけたセール中の作品 {cid: (キャンペーン, 価格, 定価)} → 新しい履歴。
+    キャンペーンは「名前と始まり」で1つ（終わりが延びたら、終わりを新しくする）。count は、このサイトの作品のうち、その日にセール中だった本数のいちばん多い日の数。
+    max_off は、値引きが確かめられた作品の、いちばん大きい割引（%）"""
+    rows = {}
+    for r in (history or {}).get("campaigns", []) if isinstance(history, dict) else []:
+        row = clean_sale_history_row(r)
+        if row:
+            rows[(row["title"], row["begin"])] = row
+    today_count = {}
+    for _cid, (camp, price, list_price) in sales.items():
+        key = (camp["title"], camp.get("begin") or "")
+        c = today_count.setdefault(key, {"camp": camp, "n": 0, "off": 0})
+        c["n"] += 1
+        c["off"] = max(c["off"], off_percent(price, list_price))
+    for key, c in today_count.items():
+        row = rows.get(key) or {"title": key[0], "begin": key[1], "first": today_str, "count": 0}
+        row["end"] = c["camp"]["end"]
+        row["last"] = today_str
+        row["count"] = max(row.get("count", 0), c["n"])
+        if c["off"]:
+            row["max_off"] = max(row.get("max_off", 0), c["off"])
+        rows[key] = clean_sale_history_row(row)
+    keep = []
+    for row in rows.values():
+        try:
+            age = (datetime.strptime(today_str, "%Y-%m-%d") - datetime.strptime(row["last"], "%Y-%m-%d")).days
+        except ValueError:
+            continue
+        if age <= SALE_HISTORY_DAYS:
+            keep.append(row)
+    keep.sort(key=lambda r: (r["begin"] or r["first"], r["end"], r["title"]), reverse=True)
+    return {"updated": today_str, "campaigns": keep}
+
+
+def dump_sale_history(history):
+    """1行に1つのキャンペーン（毎日の差分が小さくなるように）"""
+    rows = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in history["campaigns"])
+    return f'{{"updated":{json.dumps(history["updated"])},\n"campaigns":[\n{rows}\n]}}\n'
+
+
+def save_sale_history(sales, today_str, path=None):
+    """セールの履歴に今日の分を足して保存する。前の履歴が壊れていたら、上書きせずに知らせるだけ（セールの履歴が無くても、毎日の更新は止めない）"""
+    path = path or SALE_HISTORY_PATH
+    try:
+        history = read_json_file(path)
+    except ValueError as e:
+        print(f"  ⚠️ セールの履歴を読めなかったので、今回は足しません（{e}）")
+        return None
+    merged = merge_sale_history(history, sales, today_str)
+    with open(path + ".tmp", "w", encoding="utf-8") as f:
+        f.write(dump_sale_history(merged))
+    os.replace(path + ".tmp", path)
+    return merged
+
+
 def read_json_file(path):
     """JSONを読む。無ければ None。壊れていれば ValueError"""
     if not os.path.exists(path):
@@ -1246,6 +1330,8 @@ def save_catalog(state):
         with open(SALE_PATH + ".tmp", "w", encoding="utf-8") as f:
             f.write(text)
         os.replace(SALE_PATH + ".tmp", SALE_PATH)
+        if state.get("sales_date"):
+            save_sale_history(state["sales"], state["sales_date"])
     head = {"cursor": state["cursor"], "cycle": state["cycle"], "cycle_done": state["cycle_done"], "limit": CATALOG_LIMIT, "items": len(state["items"])}
     with open(CATALOG_STATE_PATH + ".tmp", "w", encoding="utf-8") as f:
         json.dump(head, f, ensure_ascii=False)

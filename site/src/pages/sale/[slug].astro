@@ -1,0 +1,138 @@
+---
+// 特集（キャンペーンの名前）ごとのページ（/sale/<印>/。運営者の希望「SEOを上位に」→ ①セールを検索の入り口に。2026-10-06）。
+// 「FANZA ○○セール 対象作品」のような検索の入り口。名前ごとに1ページで、同じ名前の特集がまた開かれたら、同じページに出る（lib/sale.js の campaignPages）。
+// 開催中: いつまで・最大の割引・このサイトの作品（人気の高い順）・おもなメーカーなど・これまでの開催。検索エンジンに出す（コメントのある作品があるとき）。
+// 開催していないあいだ: 「いまは開催していません」と、これまでの開催・開催中のほかの特集。検索エンジンには出さない（最後に見かけてから90日でページを消す）。
+// 終わりの時刻をすぎたら、ブラウザで作品の欄を隠し、「終わりました」を出す（/sale.js。ビルドは1日1回のため）
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import VrToggle from '../../components/VrToggle.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import CampaignFacts from '../../components/CampaignFacts.astro';
+import { sale, saleCampaignPages, today } from '../../lib/data.js';
+import { SALE_HISTORY_PATH, SALE_HISTORY_START, SALE_PATH, endIso, endLabel, endSoonTag, runDays, runRange, saleBadge, salePriceNote } from '../../lib/sale.js';
+import { listIndexable } from '../../lib/plan.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, daysBetween, filterAttrs, formatDateJp } from '../../lib/items.js';
+import { assetUrl } from '../../lib/assets.js';
+
+export function getStaticPaths() {
+  return saleCampaignPages.map((page) => ({ params: { slug: page.slug }, props: { page } }));
+}
+
+const { page } = Astro.props;
+const g = page.active;
+const md = (d) => {
+  const p = dateParts(d);
+  return `${p.m}月${p.d}日`;
+};
+const left = g ? daysBetween(g.end.slice(0, 10), today) : null;
+const others = saleCampaignPages.filter((p) => p.active && p.slug !== page.slug);
+const lastRun = page.runs[0];
+const noindex = !g || g.items.length === 0 || !listIndexable(g.items);
+// 名前に同じ割引が入っているとき（「妄想族30％OFF」）は、タイトルに「最大30%OFF」を重ねない
+const offInName = g?.maxOff && page.title.normalize('NFKC').toUpperCase().includes(`${g.maxOff}%OFF`);
+const title = g
+  ? `${page.title}の対象作品【${md(g.end.slice(0, 10))}まで】${g.maxOff && !offInName ? `最大${g.maxOff}%OFF` : ''}｜FANZAセール｜${SITE_NAME}`
+  : `${page.title}（いまは開催していません）これまでの開催｜FANZAセール｜${SITE_NAME}`;
+const description = g
+  ? `FANZA動画の「${page.title}」の対象作品のうち、このサイトに載っている${g.total}本を人気の高い順にまとめています。${endLabel(g.end)}まで${g.maxOff ? `・最大${g.maxOff}%OFF` : ''}。${sale.date ? `${md(sale.date)}の時点の情報で、` : ''}毎日更新します。`
+  : `FANZA動画の「${page.title}」がこれまでに開かれた期間（このサイトが記録したもの）と、いま開催中のほかのセールです。`;
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: 'セール・キャンペーン', path: SALE_PATH },
+  { name: page.title, path: page.path },
+];
+const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: page.title, url: SITE_URL + page.path, ...(sale.date ? { dateModified: sale.date } : {}) };
+---
+
+<Base title={title} description={description} path={page.path} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd]}>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{page.title}</h1>
+      {g
+        ? (
+          <p class="camp-status" data-sale-end={endIso(g.end)}>
+            {endSoonTag(g.end, today) && <span class="camp-soon">{endSoonTag(g.end, today)}</span>}
+            <strong>{endLabel(g.end)}まで</strong>
+            {left !== null && left > 1 && `（あと${left}日）`}
+            {g.maxOff && <>・<strong>最大{g.maxOff}%OFF</strong></>}
+            ・このサイトの作品{g.total}本
+          </p>
+        )
+        : <p class="camp-status">いまは開催していません{lastRun && `（前回: ${runRange(lastRun)}）`}</p>}
+      {g && <p class="camp-status sale-over" data-sale-over={endIso(g.end)} hidden>この特集は終わりました（{endLabel(g.end)}まで）。</p>}
+      <p class="hero-lead">
+        {sale.date && `${formatDateJp(sale.date)}の時点の、FANZA公式の情報です。`}価格や期間は変わることがあるので、くわしくはFANZAの作品ページで確かめてください。
+      </p>
+    </section>
+
+    {g && (
+      <section class="section" aria-labelledby="camp-items" data-sale-group data-vr-group>
+        <div class="section-head">
+          <h2 id="camp-items" class="section-title">対象の作品</h2>
+          <p class="section-note">{g.total > g.items.length ? `人気の高い${g.items.length}本（全${g.total}本）` : `人気の高い順・${g.total}本`}</p>
+        </div>
+        <CampaignFacts group={g} />
+        <div class="list-tools">
+          <VrToggle />
+        </div>
+        <ul class="shelf">
+          {g.items.map((item, i) => (
+            <li class="shelf-cell" data-sale-end={endIso(g.end)} {...filterAttrs(item)}>
+              <ItemCard item={item} level="h3" badge={saleBadge(item.sale)} note={salePriceNote(item.sale)} eager={i < 4} />
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {page.runs.length > 0 && (
+      <section class="section" aria-labelledby="camp-runs">
+        <div class="section-head">
+          <h2 id="camp-runs" class="section-title">これまでの開催</h2>
+          <p class="section-note">このサイトが記録したもの（{page.runs.length}回）</p>
+        </div>
+        <div class="table-scroll">
+          <table class="run-table">
+            <thead>
+              <tr><th scope="col">期間</th><th scope="col">日数</th><th scope="col">このサイトの作品</th><th scope="col">最大の割引</th></tr>
+            </thead>
+            <tbody>
+              {page.runs.map((r) => (
+                <tr>
+                  <td data-label="期間">{runRange(r)}</td>
+                  <td data-label="日数">{runDays(r)}日</td>
+                  <td data-label="このサイトの作品">{r.count}本</td>
+                  <td data-label="最大の割引">{r.maxOff ? `${r.maxOff}%OFF` : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="section-note run-note">記録は{formatDateJp(SALE_HISTORY_START)}から。本数は、その特集の対象作品のうち、このサイトに載っている作品の数です。</p>
+      </section>
+    )}
+
+    {others.length > 0 && (
+      <section class="section" aria-labelledby="camp-others">
+        <div class="section-head">
+          <h2 id="camp-others" class="section-title">開催中のほかのセール</h2>
+        </div>
+        <nav class="sale-jump" aria-label="開催中のほかのセール">
+          {others.map((p) => (
+            <a class="chip-link" href={p.path} data-sale-end={endIso(p.active.end)}>{p.title}{p.active.maxOff ? `（最大${p.active.maxOff}%OFF）` : ''}</a>
+          ))}
+        </nav>
+      </section>
+    )}
+
+    <p class="more camp-more">
+      <a class="btn btn-quiet" href={SALE_PATH}>開催中のセールをすべて見る</a>
+      <a class="btn btn-quiet" href={SALE_HISTORY_PATH}>FANZAのセールはいつ？（これまでの履歴）</a>
+    </p>
+  </div>
+
+  {g && <script is:inline src={assetUrl('/sale.js')} defer></script>}
+</Base>

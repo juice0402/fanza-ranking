@@ -287,6 +287,29 @@ else:
                       and (("p" not in r and "l" not in r) or (isinstance(r.get("p"), int) and isinstance(r.get("l"), int) and 0 < r["p"] < r["l"])) for r in rows),
               str(salej)[:80])
 
+SALE_HISTORY = os.path.join(ROOT, "site", "src", "data", "sale_history.json")
+if not os.path.exists(SALE_HISTORY):
+    print("  （sale_history.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        sh = json.load(open(SALE_HISTORY, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        sh = None
+        check("sale_history.json を読める", False, str(e))
+    if sh is not None:
+        rows_h = sh.get("campaigns") if isinstance(sh, dict) else None
+        _dt = r"\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?"
+        check("sale_history.json: 更新日・キャンペーン（名前・始まり・終わり・最初と最後に見かけた日・本数・最大の割引だけ）・名前と始まりの組は1つずつ・新しい順",
+              isinstance(rows_h, list) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(sh.get("updated", ""))) is not None
+              and all(isinstance(r, dict) and set(r) <= {"title", "begin", "end", "first", "last", "count", "max_off"} and str(r.get("title", "")).strip()
+                      and re.fullmatch(f"({_dt})?", str(r.get("begin", ""))) and re.fullmatch(_dt, str(r.get("end", "")))
+                      and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("first", ""))) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("last", "")))
+                      and r["first"] <= r["last"] and isinstance(r.get("count"), int) and r["count"] >= 0
+                      and ("max_off" not in r or (isinstance(r["max_off"], int) and 0 < r["max_off"] < 100)) for r in rows_h)
+              and len({(r["title"], r["begin"]) for r in rows_h}) == len(rows_h)
+              and [(r["begin"] or r["first"]) for r in rows_h] == sorted([(r["begin"] or r["first"]) for r in rows_h], reverse=True),
+              str(sh)[:120])
+
 # ---- 週のまとめ記事（roundups.json）。Claude が毎週書き足すので、壊れていないかを見張る ----
 print("\n■ 週のまとめ記事（roundups.json）")
 sys.path.insert(0, os.path.join(ROOT, "scripts"))

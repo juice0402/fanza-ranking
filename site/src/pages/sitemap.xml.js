@@ -1,11 +1,12 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
-import { all, allReleased, events, paged, popularity, sale, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, tagGroups } from '../lib/data.js';
+import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, tagGroups } from '../lib/data.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemIndexable, listIndexable } from '../lib/plan.js';
 import { RANKING_PATH, newRanking } from '../lib/popularity.js';
-import { SALE_PATH, saleGroups } from '../lib/sale.js';
+import { SALE_HISTORY_PATH, SALE_PATH, saleGroups } from '../lib/sale.js';
+import { isMinorTitle } from '../lib/gacha.js';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import {
   ACTRESS_INDEX_PATH,
@@ -33,6 +34,11 @@ export function GET() {
   // セール・キャンペーン（作品が無い・コメントのある作品が1本も無いあいだは、ページが noindex なので入れない）
   const saleItems = saleGroups(all, sale, today).flatMap((g) => g.items);
   if (saleItems.length > 0 && listIndexable(saleItems)) rankingPages.push({ path: SALE_PATH, lastmod: sale.date || today });
+  // 特集ごとのページ（開催中で、コメントのある作品があるものだけ。開催していないあいだは noindex）と「FANZAのセールはいつ？」
+  for (const p of saleCampaignPages) {
+    if (p.active && p.active.items.length > 0 && listIndexable(p.active.items)) rankingPages.push({ path: p.path, lastmod: sale.date || today });
+  }
+  if (saleHistory.rows.some((r) => !isMinorTitle(r.title))) rankingPages.push({ path: SALE_HISTORY_PATH, lastmod: saleHistory.updated || today });
   // 女優のイベント情報（1件も無いあいだは、ページが noindex なので入れない）
   if (upcomingEventList.length > 0) rankingPages.push({ path: EVENT_PATH, lastmod: events.updated || today });
   const groupPages = (groups) => groups.filter((g) => listIndexable(g.items)).map((g) => ({ path: g.path, lastmod: listLastmod(g.items, today) }));

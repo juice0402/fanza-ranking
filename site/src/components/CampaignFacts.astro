@@ -1,0 +1,30 @@
+---
+// 特集（キャンペーン）の中身: おもなメーカー・よく出ている女優・多いジャンル（このサイトの作品から数えた本数。lib/sale.js の campaignSummary）。
+// セールのページ（/sale/）と、特集ごとのページ（/sale/<印>/）で使う。このサイトのページがあれば、リンクにする
+import { actressByName, makerByName, tagByName } from '../lib/data.js';
+
+const { group } = Astro.props;
+const rows = [
+  { label: 'おもなメーカー', rows: group.makers, pageOf: (n) => makerByName.get(n)?.path },
+  { label: 'よく出ている女優', rows: group.actresses, pageOf: (n) => actressByName.get(n)?.path },
+  { label: '多いジャンル', rows: group.genres, pageOf: (n) => tagByName.get(n)?.path },
+].filter((f) => f.rows.length > 0);
+---
+
+{rows.length > 0 && (
+  <dl class="camp-facts">
+    {rows.map((f) => (
+      <div class="camp-fact">
+        <dt>{f.label}</dt>
+        <dd>
+          {f.rows.map((r, ri) => (
+            <>
+              {ri > 0 && '・'}
+              {f.pageOf(r.name) ? <a class="spec-link" href={f.pageOf(r.name)}>{r.name}</a> : r.name}<span class="camp-count">（{r.count}本）</span>
+            </>
+          ))}
+        </dd>
+      </div>
+    ))}
+  </dl>
+)}

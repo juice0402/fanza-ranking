@@ -167,7 +167,15 @@ check('出演者の紹介文: メーカーは3つまで＋「ほか」・形式�
 const mg = mGroups[0];
 check('メーカーの紹介文: 名前・本数が入る', L.makerSummary(mg).includes(mg.name) && L.makerSummary(mg).includes(`${mg.items.length}本`), L.makerSummary(mg));
 check('紹介文に作品タイトルを含めない', aGroups.every((g) => !g.items.some((i) => L.actressSummary(g).includes(i.title))) && mGroups.every((g) => !g.items.some((i) => L.makerSummary(g).includes(i.title))));
-check('ページのタイトル・説明文の長さ', L.actressPageTitle({ name: 'あ'.repeat(100), items: [1, 2] }).length < 70 && L.summaryDescription('い'.repeat(300)).length <= 120 && L.makerPageTitle(mg).includes(`${mg.items.length}本`));
+check('ページのタイトル・説明文の長さ', L.actressPageTitle({ name: 'あ'.repeat(100), items: [{ dateKey: '2026-12-01' }, { dateKey: '2026-01-01' }] }, '2026-10-06').length < 70 && L.summaryDescription('い'.repeat(300)).length <= 120 && L.makerPageTitle(mg).includes(`${mg.items.length}本`));
+check('出演者のページのタイトル: 年月（ビルドの日）・予約の作品があるときだけ「予約」・本数',
+  L.actressPageTitle({ name: '架空ゆめか', items: [{ dateKey: '2026-10-17' }, { dateKey: '2026-09-01' }] }, '2026-10-06').startsWith('架空ゆめかの新作・予約・出演作品一覧【2026年10月】（2本）')
+  && L.actressPageTitle({ name: '架空ゆめか', items: [{ dateKey: '2026-09-01' }] }, '2026-10-06').startsWith('架空ゆめかの新作・出演作品一覧【2026年10月】（1本）')
+  && L.actressPageTitle({ name: '架空ゆめか', items: [{ dateKey: '2026-09-01' }] }).startsWith('架空ゆめかの新作・出演作品一覧（1本）'));
+check('出演者のページの説明文: 次の新作の発売日・セール中の本数と最大の割引を先に（120文字まで・作品タイトルは入れない）',
+  L.actressDescription('紹介文です。', { next: { dateKey: '2026-10-17', title: '作品のタイトル' }, saleCount: 3, maxOff: 50 }) === '次の新作は10月17日発売。いまセール中の作品が3本（最大50%OFF）。紹介文です。'
+  && L.actressDescription('紹介文です。') === '紹介文です。' && L.actressDescription('あ'.repeat(300), { saleCount: 1 }).length <= 120
+  && !L.actressDescription('紹介文', { next: { dateKey: '2026-10-17', title: '作品のタイトル' } }).includes('作品のタイトル'));
 
 console.log('\n■ 構造化データ（JSON-LD）');
 const bc = L.breadcrumbLd([{ name: 'トップ', path: '/' }, { name: 'メーカー一覧', path: '/maker/' }, { name: 'A', path: '/maker/abc/' }]);

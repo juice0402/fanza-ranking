@@ -1,10 +1,10 @@
 ---
 // トップの「セール中の特集」: FANZAのキャンペーン（特集）ごとのカード（運営者の希望「何の特集で、どういう関連作品がセールなのか知りたい」。2026-10-05）。
 // 1枚に、特集の名前・いつまで（きょう・あすなら札）・このサイトの本数・おもなメーカー・人気作品の表紙（重ねて3枚）と、名前にある「○%OFF」の札。
-// タップで、セールのページの、その特集の見出しへ。見せるのは先頭の SALE_HOME_CAMPAIGNS 枚（5枚目からは sale-more で隠しておき、
+// タップで、その特集のページ（/sale/<印>/。2026-10-06〜。検索の入り口のページへ、トップからリンクする）。ページが無い特集は、セールのページの、その特集の見出しへ。見せるのは先頭の SALE_HOME_CAMPAIGNS 枚（5枚目からは sale-more で隠しておき、
 // 終わりの時刻をすぎた特集が隠れたら、次の特集が繰り上がる。/sale.js）
-import { SALE_HOME_CAMPAIGNS, endIso, endLabel, endSoonTag, saleHref } from '../lib/sale.js';
-import { today } from '../lib/data.js';
+import { SALE_HOME_CAMPAIGNS, campaignSlug, endIso, endLabel, endSoonTag, saleHref } from '../lib/sale.js';
+import { saleCampaignBySlug, today } from '../lib/data.js';
 import { SMALL_IMG_ONERROR, smallImage } from '../lib/items.js';
 
 const { groups } = Astro.props;
@@ -28,7 +28,7 @@ const makerLine = (g) => {
     const makers = makerLine(g);
     return (
       <li class={i < SALE_HOME_CAMPAIGNS ? 'camp' : 'camp sale-more'} data-sale-end={endIso(g.end)}>
-        <a class="camp-link" href={saleHref(g.k)}>
+        <a class="camp-link" href={saleCampaignBySlug.get(campaignSlug(g.title))?.path ?? saleHref(g.k)}>
           <span class="camp-art" aria-hidden="true">
             {g.covers.map((w) => (
               <span class="camp-cover" {...(w.vr ? { 'data-vr': 'true' } : {})}>
