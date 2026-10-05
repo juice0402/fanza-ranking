@@ -1,0 +1,29 @@
+name: News discovery (branch only)
+
+# 女優のニュース・イベント情報を、公式サイト（所属事務所・メーカー）から集められるかを調べる下調べ（運営者の希望。2026-10-05）。
+# このブランチに push したときだけ動く。結果（サイト名・URL・数・短い見出しの見本）を、このブランチの discovery/ に置くだけ。
+on:
+  push:
+    branches: ['claude/news-discovery']
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Survey news and event pages
+        run: python scripts/news_discover.py discovery/news.json | tee discovery/news.txt
+      - name: Save to this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add discovery/
+          git commit -m "ニュース・イベント情報の下調べ（結果）" || exit 0
+          git push
