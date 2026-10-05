@@ -1,7 +1,7 @@
 name: News discovery (branch only)
 
-# 女優のニュース・イベント情報を、公式サイト（所属事務所・メーカー）から集められるかを調べる下調べ（運営者の希望。2026-10-05）。
-# このブランチに push したときだけ動く。結果（サイト名・URL・数・短い見出しの見本）を、このブランチの discovery/ に置くだけ。
+# 女優のイベント情報を、所属事務所の公式サイトから集められるかを、本物のページで確かめる（運営者の希望。2026-10-05）。
+# このブランチに push したときだけ動く。結果を、このブランチの discovery/ に置くだけ（main には入れない）。
 on:
   push:
     branches: ['claude/news-discovery']
@@ -12,19 +12,29 @@ permissions:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Probe event pages
-        run: python scripts/events_probe.py discovery/events_probe.json
+      - name: Use main's data (FANZA names and agencies)
+        run: git checkout origin/main -- site/src/data
+      - name: Collect events (dry run into discovery/)
+        env:
+          EVENTS_PATH: discovery/events.json
+        run: |
+          mkdir -p discovery
+          python scripts/agency_events.py --update --report discovery/events_report.json
       - name: Save to this branch
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git reset -q -- site/src/data
+          git checkout -- site/src/data 2>/dev/null || true
           git add discovery/
-          git commit -m "ニュース・イベント情報の下調べ（結果）" || exit 0
-          git push
+          git commit -m "イベント情報の取得を本物のページで確認（結果）" || exit 0
+          git push origin HEAD:claude/news-discovery
