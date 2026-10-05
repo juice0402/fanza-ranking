@@ -64,7 +64,7 @@ KINDS = [
     ("オフ会", r"オフ会|宴会|飲み会|交流会|ファンミ"),
     ("トークイベント", r"トーク"),
     ("来店イベント", r"来店"),
-    ("配信", r"配信"),
+    ("配信", r"配信|ライブチャット"),
     ("誕生日イベント", r"生誕|誕生日|バースデー|birthday"),
     ("発売記念イベント", r"発売記念|発売イベント|リリースイベント|リリイベ|リリース記念"),
 ]
@@ -77,7 +77,12 @@ KANA_KANJI = re.compile(r"[぀-ヿ㐀-鿿々〆ー]")
 # 名前のすぐ後ろに続いてよい言葉（敬称・イベントの言葉・助詞）。これ以外の、かな・漢字が続くときは、ほかの言葉の一部とみて合わせない
 AFTER_OK = ("さん", "ちゃん", "くん", "様", "さま", "嬢", "氏", "の", "と", "が", "も", "は", "撮影", "サイン", "握手", "チェキ", "来店", "生誕",
             "誕生", "個人", "イベント", "発売", "単独", "出演", "主演", "トーク", "オフ会", "写真", "卒業", "引退", "初", "新作")
-BEFORE_OK = ("女優", "専属", "新人", "主演", "出演", "ゲスト", "の", "と", "は")
+BEFORE_OK = ("女優", "専属", "新人", "主演", "出演", "ゲスト", "さん", "ちゃん", "くん", "様", "さま", "の", "と", "は")
+# 【】の中が会場の名前らしいか（カプセルの見出しの最後の【】は、会場のこともメーカーのこともあるので、会場らしい言葉のあるときだけ会場にする）
+PLACE_WORDS = re.compile(r"店|館|会場|ホール|スタジオ|劇場|書店|ショップ|SHOP|STUDIO|BOX|HALL", re.I)
+# 住所らしい形（会場の欄に住所が書かれていることがある。住所は保存しない）
+ADDRESS = re.compile(r"\d+\s*[-－−ー]\s*\d+|(?:都|道|府|県).{0,8}?(?:市|区|町|村).{0,12}\d|丁目|番地")
+DIGITS = str.maketrans("０１２３４５６７８９", "0123456789")
 GENERIC_LABELS = {"イベント", "イベント情報", "EVENT", "PICK UP", "女優", "お知らせ", "NEWS", "ニュース", "メディア", "未分類"}
 
 
@@ -127,7 +132,8 @@ def find_date(text, base):
     if not day:
         return "", ""
     tm = TIME.search(t[m.end():m.end() + 24])
-    return day, (f"{int(tm.group(1)):02d}:{tm.group(2)}" if tm else "")
+    hhmm = f"{int(tm.group(1)):02d}:{tm.group(2)}" if tm else ""
+    return day, ("" if hhmm == "00:00" else hhmm)  # 「00:00」は時刻が決まっていない印として使われている
 
 
 def kind_of(title):
@@ -179,15 +185,19 @@ def names_in_title(title, roster):
 
 
 def clean_place(place):
-    p = re.sub(r"\s+", " ", str(place or "")).strip(" 　")
-    return p if 2 <= len(p) <= PLACE_MAX else ""
+    """会場の名前（長すぎる・住所らしいものは保存しない）"""
+    p = re.sub(r"[\s\u200b]+", " ", str(place or "")).strip(" 　")
+    return p if 2 <= len(p) <= PLACE_MAX and not ADDRESS.search(nfkc(p)) else ""
 
 
 def clean_title(title, names, place):
     """画面に出す短い見出し（日付・時刻・名前だけの【】・会場だけの【】を外す）"""
-    t = re.sub(r"\s+", " ", str(title or "")).strip()
-    t = re.sub(r"(?:20\d{2}\s*[年/.]\s*)?\d{1,2}\s*[月/]\s*\d{1,2}\s*日?\s*(?:[（(][月火水木金土日祝・]{1,3}[）)])?", " ", t)
-    t = re.sub(r"\d{1,2}\s*[:：]\s*\d{2}\s*(?:[〜～~\-－]\s*(?:\d{1,2}\s*[:：]\s*\d{2})?)?", " ", t)
+    t = re.sub(r"[\s\u200b]+", " ", str(title or "")).translate(DIGITS).strip()
+    wd = r"\s*(?:[（(][月火水木金土日祝,、・]{1,7}(?:曜日?)?[）)])?"
+    t = re.sub(r"(?:20\d{2}\s*[年/.]\s*)?\d{1,2}\s*[月/]\s*\d{1,2}\s*日?" + wd, " ", t)  # 10月3日（土）・10/3(土)
+    t = re.sub(r"[,、・&＆〜～~\-－]\s*\d{1,2}\s*(?:日" + wd + r"|(?=[（(][月火水木金土日祝]))", " ", t)  # 「,18日（土,日）」「〜18(日)」（続きの日）
+    t = re.sub(r"[（(][月火水木金土日祝,、・]{1,7}(?:曜日?)?[）)]|20\d{2}\s*年", " ", t)  # 残った曜日「（土,日）」「（土曜日）」・「2026年」
+    t = re.sub(r"\d{1,2}\s*(?:[:：]\s*\d{2}|時(?:\s*\d{1,2}\s*分)?)\s*(?:[〜～~\-－]\s*(?:\d{1,2}\s*(?:[:：]\s*\d{2}|時(?:\s*\d{1,2}\s*分)?))?)?", " ", t)  # 18:00〜・12時~・11時30分～
     keys = {A.norm_name(base_name(n)) for n in names} | ({A.norm_name(place)} if place else set())
 
     def drop(m):
@@ -197,7 +207,8 @@ def clean_title(title, names, place):
     if place:  # 「…＠会場」の会場は、会場の欄に出すので外す
         t = re.sub(r"\s*[@＠]\s*" + re.escape(place) + r"\s*$", "", t)
     t = re.sub(r"\s+", " ", t)
-    t = re.sub(r"(?<=】) | (?=【)", "", t).strip(" 　・|｜-－:：/／〜～~")
+    t = re.sub(r"(?<=】) | (?=【)", "", t)
+    t = re.sub(r"^[\s,、・&＆|｜\-－:：/／〜～~]+|[\s,、・&＆|｜\-－:：/／〜～~]+$", "", t)
     return t if len(t) <= TITLE_MAX else t[:TITLE_MAX - 1] + "…"
 
 
@@ -239,7 +250,8 @@ def parse_capsule(page, base_url):
         names = [A.text_of(x) for x in re.findall(r"<a\b[^>]*>(.*?)</a>", tags.group(1), re.I | re.S)] if tags else []
         title = A.text_of(m.group(2))
         brackets = re.findall(r"【([^】]{2,40})】", title)
-        place = brackets[-1] if brackets and title.rstrip().endswith("】") and A.norm_name(brackets[-1]) not in {A.norm_name(n) for n in names} else ""
+        place = brackets[-1] if brackets and title.rstrip().endswith("】") and PLACE_WORDS.search(brackets[-1]) \
+            and A.norm_name(brackets[-1]) not in {A.norm_name(n) for n in names} else ""
         out.append({"title": title, "url": url, "date_text": "", "place": place, "names": names, "base": "", "media": False})
     return out
 
