@@ -8,7 +8,7 @@ import { CALENDAR_PATH } from '../lib/calendar.js';
 import { WEEKLY_INDEX_PATH } from '../lib/roundups.js';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import { SEARCH_PATH } from '../lib/search.js';
-import { RANKING_ALL_PATH, RANKING_PATH } from '../lib/popularity.js';
+import { RANKING_PATH } from '../lib/popularity.js';
 import { SALE_PATH } from '../lib/sale.js';
 
 const {
@@ -171,7 +171,6 @@ import { assetUrl } from '../lib/assets.js';
           <a class="foot-link" href="/#released">発売中</a>
           {hasUpcoming && <a class="foot-link" href="/#upcoming">予約</a>}
           <a class="foot-link" href={RANKING_PATH}>新着の人気ランキング</a>
-          <a class="foot-link" href={RANKING_ALL_PATH}>全体の人気ランキング</a>
           <a class="foot-link" href={SALE_PATH}>セール・キャンペーン</a>
           <a class="foot-link" href="/archive/1/">過去の作品</a>
           <a class="foot-link" href={SEARCH_PATH}>作品を探す</a>

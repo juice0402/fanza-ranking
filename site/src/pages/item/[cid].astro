@@ -165,11 +165,13 @@ import { assetUrl } from '../../lib/assets.js';
           )}
         </dl>
 
-        {item.url && (
-          <a class="btn btn-hot btn-lg detail-cta" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>
-        )}
-
-        <FavButton type="work" favKey={item.cid} attrs={workFavoriteAttrs(item)} off="この作品をお気に入りに追加" on="お気に入りに追加済み" />
+        {/* FANZAへのボタンと、お気に入りのボタン（すき間をあけて並べる。せまい画面でFANZAへのボタンは、画面の下に固定のものを使う） */}
+        <div class="detail-actions">
+          {item.url && (
+            <a class="btn btn-hot btn-lg detail-cta" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>
+          )}
+          <FavButton type="work" favKey={item.cid} attrs={workFavoriteAttrs(item)} off="この作品をお気に入りに追加" on="お気に入りに追加済み" />
+        </div>
       </div>
     </article>
 

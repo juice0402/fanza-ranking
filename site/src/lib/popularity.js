@@ -1,4 +1,6 @@
 // 人気順（「新着の人気順」と「全体の人気順」）の部品（画面に依存しない。tests/test_popularity.mjs）。
+// ランキングのページは「新着の人気ランキング」（/ranking/）だけ。「全体の人気ランキング」（/ranking/all/）のページは、運営者の判断でやめた（2026-10-05。
+// 古いURLは public/_redirects で /ranking/ へ）。全体の人気順は、作品検索の並べ替え「人気順（全体）」に使っている
 // 順位は、毎日の更新が FANZA公式のAPIの人気順（sort=rank）を、その日に取り直したもの（get_new_releases.py）:
 //   ・新着の人気順: data/popularity.json の new（最近1週間に発売された作品の、その日の人気順）。prev は前の日の新着の人気順（急上昇を見つける用）
 //   ・全体の人気順: 過去作品は data/catalog_rank.json、毎日の更新の作品は data/popularity.json の all
@@ -6,7 +8,6 @@
 import { addDays } from './items.js';
 
 export const RANKING_PATH = '/ranking/'; // 新着の人気順
-export const RANKING_ALL_PATH = '/ranking/all/'; // 全体の人気順
 export const RANKING_LIMIT = 100; // ランキングのページに並べる本数
 export const NEW_RANK_DAYS = 7; // 「新着」の範囲（発売から何日まで。get_new_releases.py の NEW_RANK_DAYS と同じ。運営者の希望で1週間）
 const UNKNOWN_RANK = 50000; // 過去作品の順位の「まだ分からない」（新着の人気順だけで見つけた作品）
@@ -44,7 +45,3 @@ export function newRanking(items, today, limit = RANKING_LIMIT, days = NEW_RANK_
   return items.filter((i) => i.popNew && i.dateKey <= today && i.dateKey >= from).sort(byRank('popNew')).slice(0, limit);
 }
 
-/** 全体の人気順: 発売済みの作品を、全体の人気順に、limit 本まで */
-export function allRanking(items, today, limit = RANKING_LIMIT) {
-  return items.filter((i) => i.popAll && i.dateKey <= today).sort(byRank('popAll')).slice(0, limit);
-}

@@ -333,6 +333,13 @@ for cid, x in valid.items():
     elif links or has_dialog:
         bad_samples.append((cid, 0, links, has_dialog, has_script))
 check("サンプル画像のある作品ページに、拡大表示の部品（リンク・ダイアログ・スクリプト）が揃っている", not bad_samples, bad_samples[:3])
+bad_actions = []
+for p_ in sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))[:400]:
+    h_ = read_raw(p_)
+    m_ = re.search(r'<div class="detail-actions">([\s\S]*?)</div>', h_)
+    if not m_ or 'class="fav-btn' not in m_.group(1) or ('detail-cta' in h_ and 'detail-cta' not in m_.group(1)):
+        bad_actions.append(rel(p_))
+check("作品ページの「FANZAで詳細を見る」と「お気に入りに追加」は、すき間のある並び（.detail-actions）の中（くっつかない）", not bad_actions, bad_actions[:3])
 # 拡大表示を開いた直後のフォーカスは、枠そのもの（前へボタンに黄色い輪が付いて見えないように）。枠に tabindex="-1"、輪を消す CSS、lightbox.js の dialog.focus が揃っている
 bad_lb_focus = []
 for cid, x in valid.items():
@@ -762,7 +769,9 @@ if top_rows:
     check("TOP3: VR作品にだけ data-vr が付いている（VR作品を隠すと、次の順位から差し替える）", not bad_vr, bad_vr[:3])
     check("TOP3の見出しの横に、「VRを除く」の注記（最初は隠れている。VR作品を隠したとき、JavaScriptが出す）がある", re.search(r'<span class="rank-vr-note" hidden>｜VRを除く</span>', home_html) is not None)
     check("「人気順」と書いてある（FANZAのデイリーランキングと同じとは書かない）", "人気順" in home_html and "デイリーランキング" not in home_html)
-    check("TOP3の欄は、トップのはじめのほう（発売中の新作より前）にあり、ランキングのページ（新着・全体）への案内がある", home_html.find('id="ranking"') < home_html.find('id="released"') and 'class="today-links"' in home_html and 'href="/ranking/"' in home_html and 'href="/ranking/all/"' in home_html)
+    top3_html = re.search(r'<section id="ranking"[\s\S]*?</section>', home_html)
+    check("TOP3の欄は、トップのはじめのほう（発売中の新作より前）にあり、欄の中にランキングのページへのボタンは置かない（運営者の希望。2026-10-05）",
+          home_html.find('id="ranking"') < home_html.find('id="released"') and top3_html is not None and 'chip-link' not in top3_html.group(0) and 'today-links' not in home_html)
 else:
     check("新着の人気順も売れ筋（新しいもの）も無いときは、TOP3の欄を出さない", not home_sections and not medal_cells and 'href="#ranking"' not in home_html)
 
@@ -1229,6 +1238,13 @@ chip_hidden = [b for b in chip_rules if re.search(r"display\s*:\s*none|visibilit
 chip_small = [b for b in chip_rules for m in [re.search(r"font-size\s*:\s*(\d+(?:\.\d+)?)px", b)] if m and float(m.group(1)) < 11]
 check("CSS: 広告ラベル（.pr-chip）が、隠されていない・小さすぎない（11px以上）", bool(chip_rules) and not chip_hidden and not chip_small, (len(chip_rules), chip_hidden[:1], chip_small[:1]))
 check("CSS: 動画の枠（.movie-box）に contain: paint と isolation: isolate がある（枠の外に出ない）", movie_clip)
+# 余白（運営者の指摘「ボタン同士・ボタンと作品がくっついている」。2026-10-05）と、メーカー・ジャンル・月の一覧のタイル（「文字数の差でボコボコ」）
+def css_has(selector, pattern):
+    return any(selector in sels and re.search(pattern, body) for sels, body in css_rules)
+check("CSS: 一覧のタイル（.name-link）は、どれも同じ高さで、名前は2行まで（文字数でタイルの高さが変わらない）",
+      css_has(".name-link", r"(?<![-\w])height\s*:\s*\d+px") and css_has(".name-link-name", r"line-clamp\s*:\s*2") and css_has(".name-grid>li", r"display\s*:\s*grid") or (css_has(".name-link", r"(?<![-\w])height\s*:\s*\d+px") and css_has(".name-link-name", r"line-clamp\s*:\s*2") and css_has(".name-grid > li", r"display\s*:\s*grid")))
+check("CSS: すき間 — ジャンルなどの札（.chips）は8px以上・スイッチのすぐ下の作品（.list-tools + .shelf）・作品ページのボタンの並び（.detail-actions）にすき間がある",
+      css_has(".chips", r"gap\s*:\s*(8|9|1\d)px") and (css_has(".list-tools+.shelf", r"margin-top\s*:\s*\d{2}px") or css_has(".list-tools + .shelf", r"margin-top\s*:\s*\d{2}px")) and css_has(".detail-actions", r"gap\s*:\s*1\dpx"))
 # 18歳確認の背景: 真っ黒ではなく濃い曇りガラス（ぼかし）。ぼかしが弱すぎると後ろが読める・強すぎると画面のふちが逆にぼけない（Chromiumで確認済み）ので、10〜30pxに収める
 gate_rules = [body for sels, body in css_rules if ".gate" in sels]
 gate_blur = [float(m.group(1)) for b in gate_rules for m in [re.search(r"(?<![-\w])backdrop-filter\s*:\s*blur\(\s*(\d+(?:\.\d+)?)px", b)] if m]
@@ -1510,7 +1526,7 @@ else:
 no_sensitive_tag = [g for g, _ in tag_counts.values() if re.search(r"制服|校生|学生|少女|ロリ|幼|中出|顔射|フェラ|レイプ|痴漢|盗撮|調教|ドラッグ|放尿", g)]
 check("ジャンルのページに、過激な行為・未成年を連想させる名前のものが無い", not no_sensitive_tag, no_sensitive_tag)
 
-# 人気ランキング（/ranking/ 新着の人気順・/ranking/all/ 全体の人気順）
+# 人気ランキング（/ranking/ 新着の人気順。「全体の人気ランキング」（/ranking/all/）は運営者の判断でやめた。2026-10-05）
 print("\n■ 人気ランキング")
 JST_DAY = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime("%Y-%m-%d")
 _from = (datetime.date.fromisoformat(JST_DAY) - datetime.timedelta(days=7)).isoformat()  # 新着は1週間（lib/popularity.js の NEW_RANK_DAYS）
@@ -1518,7 +1534,7 @@ want_new = sorted((c for c in everything if c in pop_new and _from <= str(everyt
                   key=lambda c: (pop_new[c], -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:100]
 want_all = sorted((c for c in everything if all_rank_of(c) and str(everything[c]["date"])[:10] <= JST_DAY),
                   key=lambda c: (all_rank_of(c), -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:100]
-for path_, want, label in (("ranking/index.html", want_new, "新着の人気順"), ("ranking/all/index.html", want_all, "全体の人気順")):
+for path_, want, label in (("ranking/index.html", want_new, "新着の人気順"),):
     f = os.path.join(DIST, path_)
     if not os.path.isfile(f):
         check(f"{label}のページ（/{path_[:-10]}）がある", False)
@@ -1535,6 +1551,15 @@ for path_, want, label in (("ranking/index.html", want_new, "新着の人気順"
     has_noindex = 'name="robots" content="noindex' in read_raw(f)
     check(f"{label}: 作品が無い・コメントのある作品が1本も無いときだけ noindex", has_noindex == (not want or not any(has_comment(everything[c]) for c in want)))
 check("ヘッダーに人気ランキングへのリンクがある", 'href="/ranking/"' in home_html)
+redirects_ = read(os.path.join(DIST, "_redirects")) if os.path.isfile(os.path.join(DIST, "_redirects")) else ""
+check("全体の人気ランキングのページは無く、sitemap にも無く、古いURLは新着の人気ランキングへ移す（_redirects）",
+      not os.path.exists(os.path.join(DIST, "ranking", "all")) and "/ranking/all/" not in sm_paths and re.search(r"^/ranking/all/\s+/ranking/\s+301\s*$", redirects_, re.M) is not None)
+links_all = [rel(p) for p in glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True) if 'href="/ranking/all/"' in read_raw(p)]
+check("どのページからも、全体の人気ランキングへリンクしない", not links_all, links_all[:3])
+find_nav = re.search(r'<nav class="hero-jump"[\s\S]*?</nav>', home_html)
+check("作品を探すの1つ目は「新着の人気ランキング」（横いっぱい）。「予約○本」のボタンは置かない（運営者の希望。2026-10-05）",
+      bool(find_nav) and re.search(r'<a class="chip-link chip-link-wide" href="/ranking/">新着の人気ランキング</a>', find_nav.group(0)) is not None
+      and find_nav.group(0).find('chip-link-wide') < find_nav.group(0).find('href="/', find_nav.group(0).find('chip-link-wide') + 60) and 'href="#upcoming"' not in find_nav.group(0))
 
 # セール・キャンペーン（/sale/。sale.json から。キャンペーンは終わりが近い順・終わったものはブラウザで隠す）
 print("\n■ セール・キャンペーン")

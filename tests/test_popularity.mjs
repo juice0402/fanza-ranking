@@ -20,14 +20,14 @@ const items = [
   it('old', '2020-01-01', 1, null), it('new1', '2026-10-01', 40, 2), it('new2', '2026-09-20', null, 1), it('wait', '2026-10-20', 2, 3),
   it('past31', '2026-09-03', 5, 4), it('new3', '2026-10-04', 9, null),
 ];
+const P_DAY = (n) => { const d = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1, +today.slice(8, 10) + n)); return d.toISOString().slice(0, 10); };
 const today = '2026-10-04';
 check('新着の人気順: 最近1週間に発売された作品（予約・8日より前は除く）を、新着の順位の順に', P.newRanking(items, today).map((i) => i.cid).join() === 'new1', P.newRanking(items, today).map((i) => i.cid).join());
 check('期間を変えれば、その期間で（30日）', P.newRanking(items, today, 100, 30).map((i) => i.cid).join() === 'new2,new1');
-check('全体の人気順: 発売済みの作品を、全体の順位の順に（予約は除く）', P.allRanking(items, today).map((i) => i.cid).join() === 'old,past31,new3,new1', P.allRanking(items, today).map((i) => i.cid).join());
-check('本数の上限', P.allRanking(items, today, 2).length === 2 && P.newRanking(items, today, 1, 30).map((i) => i.cid).join() === 'new2');
-check('同じ順位なら、新しい作品から（並びがぶれない）', P.allRanking([it('x', '2026-01-01', 3), it('y', '2026-02-01', 3)], today).map((i) => i.cid).join() === 'y,x');
-check('元の並びは変えない・空でも落ちない', items[0].cid === 'old' && P.newRanking([], today).length === 0 && P.allRanking([], today).length === 0);
-check('ページの場所・新着は1週間', P.RANKING_PATH === '/ranking/' && P.RANKING_ALL_PATH === '/ranking/all/' && P.RANKING_LIMIT === 100 && P.NEW_RANK_DAYS === 7);
+check('本数の上限', P.newRanking(items, today, 1, 30).map((i) => i.cid).join() === 'new2');
+check('同じ順位なら、新しい作品から（並びがぶれない）', P.newRanking([it('x', P_DAY(-3), null, 3), it('y', P_DAY(-2), null, 3)], today).map((i) => i.cid).join() === 'y,x');
+check('元の並びは変えない・空でも落ちない', items[0].cid === 'old' && P.newRanking([], today).length === 0);
+check('ページの場所・新着は1週間。「全体の人気ランキング」のページはやめた（運営者の判断。2026-10-05）', P.RANKING_PATH === '/ranking/' && !('RANKING_ALL_PATH' in P) && !('allRanking' in P) && P.RANKING_LIMIT === 100 && P.NEW_RANK_DAYS === 7);
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

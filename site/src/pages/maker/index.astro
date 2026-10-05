@@ -36,7 +36,7 @@ const trail = [
           <ul class="name-grid">
             {shown.map((g) => (
               <li>
-                <a class="name-link" href={g.path}>
+                <a class="name-link" href={g.path} title={g.name}>
                   <span class="name-link-name">{g.name}</span>
                   <span class="name-link-count">{g.items.length}本</span>
                 </a>
