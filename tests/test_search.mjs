@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as L from '../site/src/lib/search.js';
-import { normalizeItems, RANKING_SHOWN, CAST_LIMIT, castLine, castParts } from '../site/src/lib/items.js';
+import { normalizeItems, RANKING_SHOWN, CAST_LIMIT, castLine, castParts, smallImage } from '../site/src/lib/items.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -39,8 +39,12 @@ const nameOf = (r) => r.g.map((n) => idx.genres[n]);
 check('作品のジャンルの番号が、元のジャンルに戻る（重複は1つにまとめる）', nameOf(idx.items.find((r) => r.c === 'a002')).sort().join() === ['人妻', '巨乳', '中出し'].sort().join() && nameOf(idx.items.find((r) => r.c === 'a005')).join() === '人妻');
 check('VR作品だけ v:1 が付く（それ以外は項目ごと無い）', idx.items.filter((r) => r.v === 1).map((r) => r.c).join() === 'a001' && idx.items.every((r) => r.v === undefined || r.v === 1));
 check('メーカーが「不明」のときは空・出演者が空でも配列', idx.items.find((r) => r.c === 'a003').m === '' && Array.isArray(idx.items.find((r) => r.c === 'a003').a));
-check('画像: DMMのURLの先頭を省く（DMM以外のホストの画像は、作品データの時点で外れて空になる）', idx.items.find((r) => r.c === 'a001').i === 'digital/video/a001/a001pl.jpg' && idx.items.find((r) => r.c === 'a004').i === '' && idx.items.find((r) => r.c === 'a005').i === '');
-check('画像: ブラウザ側で付け直すと、もとの画像URLに戻る（DMMのもの）', idx.items.filter((r) => r.i.startsWith('digital/')).every((r) => S.imageUrl(r.i) === 'https://pics.dmm.co.jp/' + r.i && items.find((i) => i.cid === r.c).image_url === S.imageUrl(r.i)));
+check('画像: 決まった形（digital/video/作品ID/作品IDpl.jpg）は項目ごと省く・画像が無い作品は空（DMM以外のホストの画像は、作品データの時点で外れて空になる）',
+  !('i' in idx.items.find((r) => r.c === 'a001')) && idx.items.find((r) => r.c === 'a004').i === '' && idx.items.find((r) => r.c === 'a005').i === '' && L.standardImage('a001') === 'digital/video/a001/a001pl.jpg');
+check('画像: ブラウザ側で付け直すと、もとの画像URLに戻る（省いた行も）・空なら画像なし', idx.items.filter((r) => r.i !== '').every((r) => S.rowImage(r) === items.find((i) => i.cid === r.c).image_url) && S.rowImage({ c: 'a004', i: '' }) === '' && S.rowImage({ c: '../x' }) === '' && S.rowImage(null) === '');
+const other = plain(L.buildItemsIndex([{ ...items.find((i) => i.cid === 'a001'), image_url: 'https://pics.dmm.co.jp/digital/video/zzz/zzzpl.jpg' }], today)).items[0];
+check('画像: 決まった形でない画像は、先頭を省いた形で入れる', other.i === 'digital/video/zzz/zzzpl.jpg' && S.rowImage(other) === 'https://pics.dmm.co.jp/digital/video/zzz/zzzpl.jpg');
+check('結果のサムネは表紙だけの軽い画像（ps.jpg）。サイト側の smallImage と同じ', S.smallImageUrl('https://pics.dmm.co.jp/digital/video/a/apl.jpg') === smallImage('https://pics.dmm.co.jp/digital/video/a/apl.jpg') && S.smallImageUrl('https://pics.dmm.co.jp/digital/video/a/apl.jpg').endsWith('aps.jpg') && S.smallImageUrl('https://example.net/apl.jpg') === 'https://example.net/apl.jpg');
 check('画像: DMM以外のホスト・ホスト名を似せたURL・空・数字は、ブラウザ側で使わない', ['https://example.net/img.jpg', 'https://dmm.co.jp.evil.example/a.jpg', 'https://evildmm.co.jp/a.jpg', '', null, 5].every((u) => S.imageUrl(u) === ''));
 check('画像: ホストを偽る形（https://dmm.co.jp:@evil…）も通さない', S.imageUrl('https://evil.example/x.jpg') === '' && S.imageUrl('https://pics.dmm.co.jp:@evil.example/x.jpg') === '' && S.imageUrl('') === '');
 check('個人情報や長い文（コメント・URL）は索引に入れない（短い名前 c,p,t,d,a,m,g,i,v だけ）', idx.items.every((r) => Object.keys(r).every((k) => 'cptdamgiv'.includes(k))) && !JSON.stringify(idx).includes('al.fanza.co.jp'));

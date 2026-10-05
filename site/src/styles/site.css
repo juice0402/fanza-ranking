@@ -18,7 +18,8 @@
   --hot-hover: #f0224f;
 
   --font-display: 'Dela Gothic One', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
-  --font-body: 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', Meiryo, sans-serif;
+  /* 本文は、端末に入っている日本語の書体（読み込みを軽くするため。2026-10-05）。見出しの Dela Gothic One だけ読み込む */
+  --font-body: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', 'Noto Sans CJK JP', Meiryo, 'Yu Gothic UI', sans-serif;
 
   --gutter: 16px;
   --maxw: 1180px;
@@ -377,6 +378,9 @@ summary:focus-visible {
 
 .day {
   margin-top: 26px;
+  /* 画面の外の日付のまとまりは、見えるところまで来てから描く（作品の多い一覧でも、開くのとスクロールが軽くなる） */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1400px;
 }
 
 .divider {
@@ -473,6 +477,11 @@ summary:focus-visible {
   height: 100%;
   object-fit: cover;
   object-position: 100% 50%; /* パッケージ画像の右端にそろえる（右が表紙。左の背表紙は切る） */
+}
+
+/* 小さなサムネは、表紙だけの軽い画像（…ps.jpg。lib/items.js の smallImage）。表紙の全体が入っているので、まん中で切る */
+.item-img.is-small {
+  object-position: 50% 50%;
 }
 
 .pop {
@@ -2032,6 +2041,11 @@ html.lightbox-open {
   list-style: none;
 }
 
+/* 同じ行のカードの高さをそろえる（中の文の行数が違っても、カードの下の端がそろう） */
+.actress-row {
+  display: grid;
+}
+
 .actress-row-link {
   display: flex;
   align-items: center;
@@ -2705,16 +2719,16 @@ html.lightbox-open {
     padding-top: 30px;
   }
 
+  /* 左の欄: TOP3 → 「いま人気の女優｜人気のジャンル」を横に並べる（縦に積むと右がスカスカだった。2026-10-05）→ 作品を探す。右の欄: きょうの話題 */
   .today.has-topics {
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    grid-template-rows: auto auto auto auto auto 1fr;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(0, 2fr);
+    grid-template-rows: auto auto auto auto 1fr;
     grid-template-areas:
-      'head head'
-      'top topics'
-      'hot topics'
-      'genres topics'
-      'find topics'
-      '. topics';
+      'head head head'
+      'top top topics'
+      'hot genres topics'
+      'find find topics'
+      '. . topics';
   }
 
   .today-head {
@@ -2727,6 +2741,18 @@ html.lightbox-open {
 
   .today-head > :not(.today-tools) {
     grid-column: 1;
+  }
+
+  /* いま人気の女優は、人気のジャンルと横に並べて欄が細くなるので、顔写真の丸を画面の幅に合わせる（3人が重ならないように） */
+  .today-hot .hot .face-lg {
+    width: clamp(64px, 7.4vw, 104px);
+    height: clamp(64px, 7.4vw, 104px);
+    font-size: clamp(26px, 3vw, 40px);
+  }
+
+  /* 広い画面では、説明の1文を1行で（34em だと、右のスイッチの手前で中途半端に折り返した） */
+  .today-lead {
+    max-width: 52em;
   }
 
   .today-tools {
@@ -2763,6 +2789,15 @@ html.lightbox-open {
   .today-sec-title,
   .find-title {
     font-size: 22px;
+  }
+
+  /* 話題が無い日（1列）も、女優とジャンルは横に並べる */
+  .today:not(.has-topics) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .today:not(.has-topics) > :not(.today-hot):not(.today-genres) {
+    grid-column: 1 / -1;
   }
 }
 
@@ -2997,6 +3032,44 @@ a.reel-card:hover .reel-title {
   }
 }
 
+/* パソコン（960px〜）: 運命の作品｜今週のデビュー作｜誕生日の近い女優 を横に並べる（縦に積むと、右半分がスカスカだった。運営者の希望。2026-10-05）。
+   運命の作品はボタンもあるので少し広く。上の基本の形（display: grid）より後ろに書くこと */
+@media (min-width: 960px) {
+  .corner {
+    display: flex;
+    align-items: stretch;
+    gap: 28px;
+    padding: 22px 24px 26px;
+  }
+
+  .corner-block {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .corner .gacha {
+    flex-grow: 1.35;
+  }
+
+  /* 区切りの線は、前に見えている欄があるときだけ（運命の作品は JavaScript が出すまで隠れている） */
+  .corner .corner-block:not([hidden]) ~ .corner-block {
+    padding-left: 28px;
+    border-left: 1px dashed rgba(255, 210, 63, 0.3);
+  }
+
+  .corner .slot-reels,
+  .corner .debut-list {
+    max-width: none;
+  }
+
+  /* 欄が細くなるので、誕生日の顔写真は少し小さく（3人が重ならないように） */
+  .corner .hot .face-lg {
+    width: 80px;
+    height: 80px;
+    font-size: 30px;
+  }
+}
+
 /* ---------- 一覧の道具（VR作品を隠すスイッチ） ---------- */
 
 .list-tools {
@@ -3011,6 +3084,7 @@ a.reel-card:hover .reel-title {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  white-space: nowrap; /* スイッチの中では折り返さない（スイッチどうしは、入らなければ次の行へ） */
   min-height: 44px;
   padding: 0 16px 0 12px;
   border: 1px solid var(--line);
@@ -3036,6 +3110,8 @@ a.reel-card:hover .reel-title {
 
 .vr-toggle[aria-pressed='true'] {
   border-color: var(--pop);
+  background: rgba(255, 210, 63, 0.12);
+  color: var(--pop);
 }
 
 .vr-toggle[aria-pressed='true'] .vr-toggle-mark {
@@ -3065,6 +3141,130 @@ a.reel-card:hover .reel-title {
 #ranking.vr-empty,
 .rank-podium .rank-cell.rank-off {
   display: none;
+}
+
+/* ---------- 検索のページ（作品検索・女優検索）の並び（2026-10-05。運営者の「スマホは説明・情報が多すぎて使いにくい」「パソコンならではの最適化を」） ----------
+   スマホ: 条件（たためる）→ 結果 の1列。パソコン（960px〜）: 左に条件（画面に固定して、結果をスクロールしても見える）｜右に結果 の2列 */
+.search-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.search-layout .as-form {
+  margin-top: 6px;
+}
+
+/* 「条件をクリア」は、目立たない文字のボタン */
+.clear-link {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--paper-dim);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.clear-link:hover {
+  color: var(--paper);
+}
+
+@media (min-width: 960px) {
+  .search-layout {
+    grid-template-columns: 300px minmax(0, 1fr);
+    align-items: start;
+    gap: 28px;
+  }
+
+  .search-side {
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  .search-layout .as-form {
+    margin-top: 0;
+  }
+
+  .search-main .as-count {
+    margin-top: 0;
+  }
+
+  /* 条件の欄は狭いので、年齢・身長は1つずつの行に */
+  .search-side .as-ranges {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 発売・並び順の2つは、欄の幅いっぱいに2つ並べる（3列だと、選んだ文字が切れた） */
+  .search-side .as-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 作品検索の結果: 小さな表紙（表紙だけの軽い画像）＋タイトル・出演者・発売日の行。スマホは1列、広い画面は2列（パソコンは右の欄に2〜3列） */
+.ws-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-row .item {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  column-gap: 12px;
+  height: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--board);
+}
+
+.ws-row .item-cover {
+  grid-row: 1 / span 3;
+  align-self: start;
+}
+
+.ws-row .item-title {
+  min-height: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ws-row .item-cast,
+.ws-row .item-meta {
+  margin: 2px 0 0;
+}
+
+.ws-row .pop {
+  top: 4px;
+  right: 4px;
+  padding: 1px 5px 0;
+  font-size: 10px;
+}
+
+@media (min-width: 640px) {
+  .ws-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .ws-row .item {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
 }
 
 /* ---------- 作品検索（/search/） ---------- */

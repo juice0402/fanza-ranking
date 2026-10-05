@@ -15,7 +15,8 @@ export const RANKING_SHOWN = 3;        // トップの「きょうの新着人�
 export const NEW_BADGE_DAYS = 6;       // 発売から何日間「新作」シールを付けるか
 export const ENTITY_MIN_ITEMS = 2;     // 出演者・メーカーのページを作る最小の作品数（1本だけだと内容が薄いので作らない）
 export const ENTITY_LIST_LIMIT = 120;  // 出演者・メーカーのページに並べる最大数（新しい順。過去作品が増えると、1ページが重くなりすぎるため）
-export const INDEX_LIST_LIMIT = 500;   // 「女優検索」（JavaScriptが使えないとき用の一覧）・「メーカーから探す」に並べる最大数（作品数の多い順）
+export const INDEX_LIST_LIMIT = 500;   // 「メーカーから探す」に並べる最大数（作品数の多い順）
+export const ACTRESS_FALLBACK_LIMIT = 150; // 「女優検索」の、JavaScriptが使えないとき用の一覧の最大数（作品数の多い順。ふだんは条件で探す画面に入れかわって隠れるので、ページを軽くするため少なめ。2026-10-05）
 
 // サイト全体のファイル数の上限。Cloudflare Pages の無料プランは、1つのサイトに2万ファイルまで（2026-10 に確認）。
 // 過去作品が増えても超えないよう、作品ページは、この数から「作品ページ以外のファイル」を引いた数だけ、新しい作品から作る

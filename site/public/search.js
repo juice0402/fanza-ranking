@@ -68,6 +68,18 @@
     return safeUrl(/^https:/.test(i) ? i : DMM_IMAGE_PREFIX + i, DMM);
   }
 
+  // 索引の1行の画像（i が無い行は、決まった形 digital/video/作品ID/作品IDpl.jpg。site/src/lib/search.js の standardImage と同じ）
+  function rowImage(row) {
+    if (!row || typeof row !== 'object') return '';
+    if (row.i === undefined) return CID.test(String(row.c || '')) ? imageUrl('digital/video/' + row.c + '/' + row.c + 'pl.jpg') : '';
+    return imageUrl(row.i);
+  }
+
+  // パッケージ画像（…pl.jpg）→ 表紙だけの軽い画像（…ps.jpg）。FANZA の画像でなければ、そのまま（site/src/lib/items.js の smallImage と同じ）
+  function smallImageUrl(url) {
+    return /^https:\/\/pics\.dmm\.co\.jp\/.+pl\.jpg$/.test(String(url || '')) ? String(url).replace(/pl\.jpg$/, 'ps.jpg') : String(url || '');
+  }
+
   // 索引の1行が、使える形か
   function isRow(row) {
     return Boolean(
@@ -216,6 +228,8 @@
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
+      smallImageUrl: smallImageUrl,
+      rowImage: rowImage,
       castShown: castShown,
       CAST_LIMIT: CAST_LIMIT,
       normalizeText: normalizeText,
@@ -298,7 +312,7 @@
   }
 
   function card(row, today) {
-    var li = el('li', 'shelf-cell');
+    var li = el('li', 'ws-row');
     var article = el('article', 'item');
     var href = '/item/' + row.c + '/';
 
@@ -306,15 +320,21 @@
     cover.href = href;
     cover.tabIndex = -1;
     cover.setAttribute('aria-hidden', 'true');
-    var src = imageUrl(row.i);
+    var src = smallImageUrl(rowImage(row));
     if (src) {
       var img = document.createElement('img');
-      img.className = 'item-img';
+      img.className = 'item-img is-small';
       img.alt = '';
       img.loading = 'lazy';
       img.decoding = 'async';
+      // 結果のサムネは小さいので、表紙だけの軽い画像（…ps.jpg）。読めなければパッケージ画像（…pl.jpg）に戻し、それも読めなければ隠す
       img.addEventListener('error', function () {
-        img.style.visibility = 'hidden';
+        if (/ps\.jpg$/.test(img.src)) {
+          img.src = img.src.replace(/ps\.jpg$/, 'pl.jpg');
+          img.classList.remove('is-small');
+        } else {
+          img.style.visibility = 'hidden';
+        }
       });
       img.src = src;
       cover.appendChild(img);

@@ -105,6 +105,15 @@ export function isSoloWork({ genres = [], actress = [] } = {}) {
 }
 
 /**
+ * 小さなサムネ（話題・セールの特集・今週のデビュー作・運命の作品・検索結果など）用の、軽い画像のURL。
+ * FANZA のパッケージ画像（…pl.jpg。800×538、表紙と背表紙と裏）を、表紙だけの小さな画像（…ps.jpg。147×200）に置きかえる
+ * （ファイルが数分の1になり、読み込みが軽くなる。運営者の「読み込みのストレスをフリーに」。2026-10-05）。形が違うURLはそのまま
+ */
+export const smallImage = (url) => (/^https:\/\/pics\.dmm\.co\.jp\/.+pl\.jpg$/.test(String(url ?? '')) ? String(url).replace(/pl\.jpg$/, 'ps.jpg') : String(url ?? ''));
+/** 小さな画像が読めなかったら、もとのパッケージ画像に戻す（それも読めなければ隠す）。img の onerror に入れる */
+export const SMALL_IMG_ONERROR = "if(/ps\\.jpg$/.test(this.src)){this.src=this.src.replace(/ps\\.jpg$/,'pl.jpg');this.classList.remove('is-small')}else{this.style.visibility='hidden'}";
+
+/**
  * 一覧の1マス（li）に付ける目印。VR作品に data-vr、単体作品に data-solo が付く（「VR作品を隠す」「単体作品のみ表示」スイッチが、これを目印に隠す。site/public/vr-filter.js）。
  * vr: false のときは data-vr を付けない（VR作品のページ。そこで全部が消えて空になるのを防ぐ）
  */

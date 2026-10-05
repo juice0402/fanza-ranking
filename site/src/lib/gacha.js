@@ -3,7 +3,7 @@
 // 候補は、ひとことコメントのある・作品ページのある・発売済みの作品を、人気の高い順に GACHA_POOL 本まで。
 // 未成年を連想させるタイトルの作品は、候補に入れない（こちらから「おすすめ」として出すため。判定は scripts/claude_comments.py の
 // タイトルの見方（title_block_reason の "minor"）と同じ言葉の一覧。tests/test_gacha.mjs で突き合わせている）
-import { castLine, truncate } from './items.js';
+import { castLine, smallImage, truncate } from './items.js';
 import { bestRank } from './popularity.js';
 import { namesPattern, phraseZwsp } from './phrase.js';
 
@@ -44,7 +44,7 @@ export function gachaPool(items, paged, today, limit = GACHA_POOL) {
   return picked.map((i) => ({
     c: i.cid,
     t: phraseZwsp(i.title, namesRe),
-    i: i.image_url,
+    i: smallImage(i.image_url), // 窓は小さいので、表紙だけの軽い画像（読めなければ public/gacha.js がパッケージ画像に戻す）
     a: castLine(i.actress, 3, ''),
     x: phraseZwsp(truncate(i.comment.trim(), GACHA_COMMENT_MAX), namesRe),
     ...(i.vr ? { v: 1 } : {}),

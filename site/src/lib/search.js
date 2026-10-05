@@ -24,6 +24,9 @@ export const searchPath = (tag = '') => (tag ? `${SEARCH_PATH}?tag=${encodeURICo
  * 出演者・メーカー・ジャンルは、作品ページと同じ名前。メーカーが「不明」のときは ''。
  * 画像は、DMMの画像のURLの先頭（https://pics.dmm.co.jp/）を省いた形（ほかのホストのURLはそのまま）。
  */
+/** 索引で省く、決まった形の画像のパス（DMM の URL の先頭を除いたもの） */
+export const standardImage = (cid) => `digital/video/${cid}/${cid}pl.jpg`;
+
 export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT, popularCount = ITEMS_INDEX_POPULAR) {
   const newest = (a, b) => b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid);
   const popular = items.filter((i) => i.popAll).sort((a, b) => a.popAll - b.popAll || newest(a, b)).slice(0, Math.min(popularCount, limit));
@@ -48,8 +51,11 @@ export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT, popular
         a: item.actress,
         m: item.maker === '不明' ? '' : item.maker,
         g: [...new Set(item.genres)].map((g) => numberOf.get(g)).sort((x, y) => x - y),
-        i: item.image_url.startsWith(DMM_IMAGE_PREFIX) ? item.image_url.slice(DMM_IMAGE_PREFIX.length) : item.image_url,
       };
+      // 画像: DMM の URL の先頭を省く。いちばん多い決まった形（digital/video/作品ID/作品IDpl.jpg）なら、項目ごと省く
+      // （ブラウザ側の public/search.js の rowImage が作り直す。索引を軽くするため。2026-10-05）。画像が無い作品は ''
+      const image = item.image_url.startsWith(DMM_IMAGE_PREFIX) ? item.image_url.slice(DMM_IMAGE_PREFIX.length) : item.image_url;
+      if (image !== standardImage(item.cid)) row.i = image;
       if (item.vr) row.v = 1;
       if (item.solo) row.o = 1; // 単体作品（「単体作品のみ表示」スイッチ）
       if (item.popAll) row.r = item.popAll;

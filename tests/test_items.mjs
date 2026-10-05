@@ -1,6 +1,10 @@
 // サイトの部品（site/src/lib/items.js）のテスト。実行: node tests/test_items.mjs
 import * as L from '../site/src/lib/items.js';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { assetUrl } from '../site/src/lib/assets.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -217,6 +221,18 @@ check('一覧の1マスの目印（filterAttrs）: VR作品だけ data-vr が付
 check('単体作品: ジャンル「単体作品」があれば単体。ジャンルがまだ無い作品は、出演者が1人なら単体', L.isSoloWork({ genres: ['単体作品', '巨乳'], actress: ['花子', '月子'] }) && !L.isSoloWork({ genres: ['企画'], actress: ['花子'] }) && L.isSoloWork({ genres: [], actress: ['花子'] }) && !L.isSoloWork({ genres: [], actress: ['花子', '月子'] }) && !L.isSoloWork({}));
 const soloItem = L.normalizeItems([{ cid: 's1', title: 'T', date: '2026-10-01', actress: ['花子'], genres: ['単体作品'] }])[0];
 check('一覧の1マスの目印（filterAttrs）: 単体作品に data-solo。VR作品のページ（vr: false）でも、単体の印は付く', soloItem.solo === true && L.filterAttrs(soloItem)['data-solo'] === 'true' && L.filterAttrs({ ...soloItem, vr: true }, { vr: false })['data-solo'] === 'true' && !('data-vr' in L.filterAttrs({ ...soloItem, vr: true }, { vr: false })));
+
+console.log('\n■ 小さな表紙（ps.jpg）と、スクリプトのURLの印（読み込みを軽くする）');
+check('smallImage: DMMの表紙（…pl.jpg）は、表紙だけの小さな画像（…ps.jpg）に', L.smallImage('https://pics.dmm.co.jp/digital/video/abc00001/abc00001pl.jpg') === 'https://pics.dmm.co.jp/digital/video/abc00001/abc00001ps.jpg' && L.smallImage('https://pics.dmm.co.jp/mono/movie/adult/x/xpl.jpg') === 'https://pics.dmm.co.jp/mono/movie/adult/x/xps.jpg');
+check('smallImage: DMM以外・pl.jpg でないもの・空は、そのまま', L.smallImage('https://example.net/apl.jpg') === 'https://example.net/apl.jpg' && L.smallImage('https://pics.dmm.co.jp/digital/video/a/a-1.jpg') === 'https://pics.dmm.co.jp/digital/video/a/a-1.jpg' && L.smallImage('') === '' && L.smallImage(undefined) === '');
+check('小さな画像が無いときは、大きい画像に戻す（onerror。2回目は隠す）', /ps\\\.jpg\$/.test(L.SMALL_IMG_ONERROR) && L.SMALL_IMG_ONERROR.includes("'pl.jpg'") && L.SMALL_IMG_ONERROR.includes("visibility='hidden'") && !L.SMALL_IMG_ONERROR.includes('"'));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'asset-'));
+fs.writeFileSync(path.join(tmp, 'x.js'), 'console.log(1)');
+const want = createHash('sha1').update('console.log(1)').digest('hex').slice(0, 8);
+check('assetUrl: public のファイルの中身から作った8文字の印を付ける', assetUrl('/x.js', [tmp]) === `/x.js?v=${want}`, assetUrl('/x.js', [tmp]));
+check('assetUrl: 見つからなければ、そのまま（ビルドは止めない）', assetUrl('/nothing.js', [tmp]) === '/nothing.js');
+check('assetUrl: 本物の public の vr-filter.js にも付く', /^\/vr-filter\.js\?v=[0-9a-f]{8}$/.test(assetUrl('/vr-filter.js', [path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'site', 'public')])));
+fs.rmSync(tmp, { recursive: true, force: true });
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

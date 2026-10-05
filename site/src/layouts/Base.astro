@@ -22,10 +22,12 @@ const {
 } = Astro.props;
 
 const canonical = SITE_URL + path;
-// 書体（Google Fonts）。表示を止めないよう、読み込み終わってから当てる（preload → onload で stylesheet に）。
-// 使う太さは 400 と 700 だけ（太さが増えるほど、読み込むファイルが増えるため）。JavaScript が無いときは <noscript> の中のふつうの読み込み
-const FONTS_URL = 'https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap';
+// 書体（Google Fonts）。表示を止めないよう、読み込み終わってから当てる（preload → onload で stylesheet に）。JavaScript が無いときは <noscript> の中のふつうの読み込み。
+// 読み込むのは見出し用の Dela Gothic One だけ（2026-10-05。本文の書体は、端末に入っている日本語の書体を使う。
+// 本文に日本語の書体を読み込むと、使う文字の分だけファイルが増えて重くなるため。運営者の「読み込みのストレスをフリーに」）
+const FONTS_URL = 'https://fonts.googleapis.com/css2?family=Dela+Gothic+One&display=swap';
 const hasUpcoming = upcoming.length > 0; // 予約の作品が無い日は、ヘッダー・フッターの「予約」（トップの #upcoming）を出さない（行き先が無いため）
+import { assetUrl } from '../lib/assets.js';
 ---
 
 <!doctype html>
@@ -186,7 +188,7 @@ const hasUpcoming = upcoming.length > 0; // 予約の作品が無い日は、ヘ
         </p>
       </div>
     </footer>
-    <script is:inline src="/favorites.js" defer></script>
-    <script is:inline src="/vr-filter.js" defer></script>
+    <script is:inline src={assetUrl('/favorites.js')} defer></script>
+    <script is:inline src={assetUrl('/vr-filter.js')} defer></script>
   </body>
 </html>

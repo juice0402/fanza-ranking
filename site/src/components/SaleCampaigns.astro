@@ -5,6 +5,7 @@
 // 終わりの時刻をすぎた特集が隠れたら、次の特集が繰り上がる。/sale.js）
 import { SALE_HOME_CAMPAIGNS, endIso, endLabel, endSoonTag, saleHref } from '../lib/sale.js';
 import { today } from '../lib/data.js';
+import { SMALL_IMG_ONERROR, smallImage } from '../lib/items.js';
 
 const { groups } = Astro.props;
 // 特集の名前にある値引き（「SODグループ30％OFF第2弾」→「30%OFF」）。名前に無ければ札は出さない
@@ -31,7 +32,7 @@ const makerLine = (g) => {
           <span class="camp-art" aria-hidden="true">
             {g.covers.map((w) => (
               <span class="camp-cover" {...(w.vr ? { 'data-vr': 'true' } : {})}>
-                <img class="item-img" src={w.image_url} alt="" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'" />
+                <img class="item-img is-small" src={smallImage(w.image_url)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />
               </span>
             ))}
             {off && <span class="camp-off">{off}</span>}
