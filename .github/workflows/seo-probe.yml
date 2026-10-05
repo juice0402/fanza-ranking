@@ -1,0 +1,32 @@
+name: SEO probe (branch only)
+
+# 「FANZA セール」などで上位に出るページの作りの下調べ（運営者の希望。2026-10-06）。このブランチに push したときだけ動き、結果を discovery/ に置くだけ。
+on:
+  push:
+    branches: ['claude/seo-probe']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe pages
+        run: |
+          mkdir -p discovery
+          python scripts/seo_probe.py discovery/seo_probe.json
+      - name: Save to this branch
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p discovery && touch discovery/.keep
+          git add discovery/
+          git commit -m "SEOの下調べ（結果）" || exit 0
+          git push origin HEAD:claude/seo-probe
