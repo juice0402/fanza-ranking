@@ -171,12 +171,21 @@ def survey(name, url, table):
     return res
 
 
+def safe_survey(name, url, table):
+    """思わぬ失敗（読み込みの途中で切れた など）でも止めずに、そのサイトだけ「失敗」と書く"""
+    try:
+        return survey(name, url, table)
+    except Exception as e:  # noqa: BLE001
+        import traceback
+        return {"name": name, "url": url, "robots_ok": None, "top": "", "feeds": [], "pages": [], "error": f"{type(e).__name__}: {str(e)[:80]}", "trace": traceback.format_exc()[-600:]}
+
+
 def main(argv):
     out = argv[1] if len(argv) > 1 else "discovery/news.json"
     table = A.fanza_names()
     targets = [(s["name"], s["url"]) for s in A.SITES] + MAKERS
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
-        results = list(ex.map(lambda t: survey(t[0], t[1], table), targets))
+        results = list(ex.map(lambda t: safe_survey(t[0], t[1], table), targets))
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
         json.dump({"checked": A.jst_today(), "sites": results}, f, ensure_ascii=False, indent=1)
@@ -187,4 +196,11 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    try:
+        main(sys.argv)
+    except Exception:  # noqa: BLE001
+        import traceback
+        os.makedirs("discovery", exist_ok=True)
+        with open("discovery/error.txt", "w", encoding="utf-8") as f:
+            f.write(traceback.format_exc())
+        raise

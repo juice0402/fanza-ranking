@@ -21,6 +21,7 @@ jobs:
       - name: Survey news and event pages
         run: python scripts/news_discover.py discovery/news.json | tee discovery/news.txt
       - name: Save to this branch
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
