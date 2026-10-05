@@ -21,7 +21,7 @@ jobs:
       - name: Probe maker sites
         run: |
           mkdir -p discovery
-          python scripts/maker_probe2.py discovery/maker_probe2.json
+          python scripts/maker_probe3.py discovery/maker_probe3.json
       - name: Save to this branch
         if: always()
         run: |
