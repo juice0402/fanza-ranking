@@ -44,7 +44,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "site", "src", "data")
 AGENCY_PATH = os.environ.get("AGENCY_PATH", os.path.join(DATA_DIR, "agencies.json"))
 
-# 事務所ごとの、公式サイト・一覧のページ・プロフィールのページのURLの形（2026-10-05 に下調べ。robots.txt で止められていない・プロフィールにSNSのリンクがある所）。
+# 事務所ごとの、公式サイト・一覧のページ・プロフィールのページのURLの形（2026-10-05 に下調べ。robots.txt で止められていない・所属女優の一覧がある所。
+# SNS が載っていない事務所も、所属は付ける（運営者の希望）。
 # 画面に出す名前・URLは site/src/lib/agencies.js の AGENCIES と同じ（tests/test_agencies.mjs で突き合わせている）
 SITES = [
     {"key": "tpowers", "name": "ティーパワーズ", "url": "https://www.t-powers.co.jp/", "roster": ["https://www.t-powers.co.jp/talent/"],
@@ -58,6 +59,23 @@ SITES = [
     {"key": "alive", "name": "プロダクションALIVE", "url": "https://alive-pro.tokyo/", "roster": ["https://alive-pro.tokyo/model"],
      "profile": r"^https://alive-pro\.tokyo/model/[A-Za-z0-9_-]+/?$",
      "name_prefix": r"^アライブ所属のモデル\s*"},  # 一覧のリンクの文字がローマ字なので、プロフィールの見出し「アライブ所属のモデル 石川 澪」から
+    # ここから下は 2026-10-05 の2回目の下調べ（scripts/agency_discover.py。日本プロダクション協会の加盟社などの公式サイト）で足したもの
+    {"key": "esflat", "name": "エスフラート", "url": "http://www.style-1.jp/", "roster": ["http://www.style-1.jp/"],
+     "profile": r"^http://www\.style-1\.jp/category/actress/[A-Za-z0-9_-]+/$", "via_profile": True},  # プロフィールの横に全員が並ぶ
+    {"key": "capsule", "name": "カプセルエージェンシー", "url": "https://capsule.bz/", "roster": ["https://capsule.bz/model/"],
+     "profile": r"^https://capsule\.bz/model/[A-Za-z0-9_-]+/$", "label_name": r"（([^）]{2,20})）"},  # 一覧の文字が「（七沢みあ）AV女優」
+    {"key": "cmore", "name": "C-more ENTERTAINMENT", "url": "https://cmore.jp/official/", "roster": ["https://cmore.jp/official/model.html"],
+     "profile": r"^https://cmore\.jp/official/model-[A-Za-z0-9_-]+\.html$"},
+    {"key": "light", "name": "LIGHT promotion", "url": "https://lightpro.jp/", "roster": ["https://lightpro.jp/talent"],
+     "profile": r"^https://lightpro\.jp/talent/[A-Za-z0-9_-]+\.html$"},
+    {"key": "life", "name": "ライフプロモーション", "url": "https://life-promotion.com/", "roster": ["https://life-promotion.com/"],
+     "profile": r"^https://life-promotion\.com/model/[A-Za-z0-9_-]+\.php$"},
+    {"key": "linx", "name": "LINX", "url": "https://pub.linx.live/", "roster": ["https://pub.linx.live/contents/"],
+     "profile": r"^https://pub\.linx\.live/contents/\?mode=model&model_id=\d+$"},
+    {"key": "nax", "name": "NAX", "url": "https://official.nax-pro.com/", "roster": ["https://official.nax-pro.com/model/"],
+     "profile": r"^https://official\.nax-pro\.com/model/\d+/?$", "title_name": r"^(.+?)\s*[|｜]\s*AVプロダクション"},  # 一覧が画像だけなので、タイトル「松永 あかり | AVプロダクション NAX」から
+    {"key": "duo", "name": "Duo Entertainment", "url": "https://www.duo-official.com/", "roster": ["https://www.duo-official.com/models/"],
+     "profile": r"^https://www\.duo-official\.com/models/[A-Za-z0-9_-]+/?$", "title_name": r"^(.+?)\s*[–—|｜-]\s*Duo"},  # タイトル「希島あいり Airi Kijima – Duo …」から
 ]
 
 X_LINK = re.compile(r"^https?://(?:www\.|mobile\.)?(?:twitter|x)\.com/(?:#!/)?@?([A-Za-z0-9_]{1,15})/?(?:\?.*)?$", re.I)
@@ -189,18 +207,35 @@ def sns_links(page_html, base_url):
     return xs, igs
 
 
-def agency_name(site, label, cands):
-    """プロフィール1つにつき、事務所の側の名前を1つだけ決める（ページの中のほかの女優の名前を拾わないように）。
-    一覧のリンクの文字（「美乃すずめ Suzume Mino」ならローマ字を外す）。ローマ字だけなら、事務所ごとの決まった見出しから"""
+def strip_romaji(name):
+    """「美乃すずめ Suzume Mino」→「美乃すずめ」（うしろのローマ字を外す）"""
+    return re.sub(r"(?:\s+[A-Za-z][A-Za-z.'-]*)+$", "", name).strip()
+
+
+def agency_name(site, label, cands, title=""):
+    """プロフィール1つにつき、事務所の側の名前を1つだけ決める（ページの中のほかの女優の名前を拾わないように）。順に:
+    1. 事務所ごとの決まった形の一覧のリンクの文字（label_name。「（七沢みあ）AV女優」→「七沢みあ」）
+    2. 一覧のリンクの文字（「美乃すずめ Suzume Mino」ならローマ字を外す）
+    3. 事務所ごとの決まった見出し（name_prefix。「アライブ所属のモデル 石川 澪」→「石川 澪」）
+    4. 事務所ごとの決まった形のページのタイトル（title_name。「松永 あかり | AVプロダクション NAX」→「松永 あかり」）
+    5. 一覧のリンクの文字（ローマ字だけ）"""
     label = re.sub(r"\s+", " ", label or "").strip()
-    if CJK.search(label):
-        return re.sub(r"(?:\s+[A-Za-z][A-Za-z.'-]*)+$", "", label).strip()
+    if site.get("label_name"):
+        m = re.search(site["label_name"], label)
+        if m and CJK.search(m.group(1)):
+            return strip_romaji(m.group(1).strip())
+    if CJK.search(label) and not site.get("label_name"):
+        return strip_romaji(label)
     if site.get("name_prefix"):
         for c in cands:
             m = re.match(site["name_prefix"], c)
             if m and CJK.search(c[m.end():]):
                 return c[m.end():].strip()
-    return label
+    if site.get("title_name"):
+        m = re.search(site["title_name"], re.sub(r"\s+", " ", title or "").strip())
+        if m and CJK.search(m.group(1)):
+            return strip_romaji(m.group(1).strip())
+    return "" if site.get("label_name") else label
 
 
 # ------------------------------------------------------------------
@@ -269,9 +304,10 @@ def lookup(table, name):
 
 
 def match_profiles(site, pages, table):
-    """読んだプロフィール [(URL, 一覧の文字, 見出しの候補, X, Instagram)] → 行（FANZA の名前と結びついたかどうかも）"""
+    """読んだプロフィール [(URL, 一覧の文字, 見出しの候補, X, Instagram, ページのタイトル)] → 行（FANZA の名前と結びついたかどうかも）"""
     count_x, count_ig = {}, {}
-    for _, _, _, xs, igs in pages:
+    for p in pages:
+        xs, igs = p[3], p[4]
         for h in {h.lower() for h in xs}:
             count_x[h] = count_x.get(h, 0) + 1
         for h in {h.lower() for h in igs}:
@@ -280,8 +316,9 @@ def match_profiles(site, pages, table):
     shared_x = {h for h, n in count_x.items() if n >= 2}
     shared_ig = {h for h, n in count_ig.items() if n >= 2}
     rows = []
-    for url, label, cands, xs, igs in pages:
-        name = agency_name(site, label, cands)
+    for p in pages:
+        url, label, cands, xs, igs = p[:5]
+        name = agency_name(site, label, cands, p[5] if len(p) > 5 else "")
         fanza, fid, how = lookup(table, name) if name else ("", "", "名前が読めない")
         rows.append({
             "agency": site["key"], "source": url, "agency_name": name, "fanza_name": fanza, "fanza_id": fid, "match": how,
@@ -307,6 +344,16 @@ def collect_site(site, table):
             url = url.split("#")[0]
             if pattern.match(url) and url not in [f[0] for f in found]:
                 found.append((url, label))
+    # 一覧のページに一部しか載らず、プロフィールのページの横に全員が並ぶ事務所（via_profile）は、最初のプロフィールのページも一覧として読む
+    if site.get("via_profile") and found:
+        try:
+            page = fetch_raw(found[0][0])
+            for url, label in links(page, found[0][0]):
+                url = url.split("#")[0]
+                if pattern.match(url) and url not in [f[0] for f in found]:
+                    found.append((url, label))
+        except (urllib.error.URLError, OSError, ValueError, PermissionError) as e:
+            report["errors"].append(f"一覧（プロフィールの横）: {type(e).__name__}: {e}"[:200])
     report["found"] = len(found)
     pages = []
     for url, label in found[:MAX_PROFILES]:
@@ -317,7 +364,8 @@ def collect_site(site, table):
             continue
         report["read"] += 1
         xs, igs = sns_links(page, url)
-        pages.append((url, label, name_candidates(page), xs, igs))
+        t = re.search(r"<title\b[^>]*>(.*?)</title>", page, re.I | re.S)
+        pages.append((url, label, name_candidates(page), xs, igs, text_of(t.group(1)) if t else ""))
     return report, match_profiles(site, pages, table)
 
 

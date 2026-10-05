@@ -12,22 +12,18 @@ permissions:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Discover (deep)
-        run: >-
-          python scripts/agency_discover.py --deep discovery/deep.json
-          http://www.style-1.jp/ https://capsule.bz/ https://cmore.jp/official/ https://lightpro.jp/ https://life-promotion.com/
-          https://pub.linx.live/ https://actentertainment.jp/ https://official.nax-pro.com/ http://www.duo-official.com/
-          https://girlule-pro.xyz/ http://attractive-llc.net/ https://www.glanzpro.com/ http://www.belltech-pro.com/ http://www.allurepro.com/
+      - name: Collect agencies (all sites)
+        run: python scripts/agency_links.py --update --force
       - name: Save to this branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add discovery/
+          git add discovery/ site/src/data/agencies.json
           git commit -m "所属事務所の下調べ（結果）" || exit 0
           git push
