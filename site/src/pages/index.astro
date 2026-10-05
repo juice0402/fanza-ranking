@@ -150,11 +150,12 @@ const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner')
         <nav class="hero-jump" aria-label="探し方">
           {/* 新着の人気ランキングは、横いっぱいの1つ目（運営者の希望。前は「予約○本」があった所。2026-10-05） */}
           <a class="chip-link chip-link-wide" href={RANKING_PATH}>新着の人気ランキング</a>
-          {tagGroups.length > 0 && <a class="chip-link" href={TAG_INDEX_PATH}>ジャンル</a>}
+          {/* 1行目: ○○検索の3つ。2行目（スマホだけ）: 週のまとめ（左）・月のまとめ（右）。運営者の希望。2026-10-05 */}
+          {tagGroups.length > 0 && <a class="chip-link" href={TAG_INDEX_PATH}>ジャンル検索</a>}
           <a class="chip-link" href={ACTRESS_INDEX_PATH}>女優検索</a>
-          <a class="chip-link" href={MAKER_INDEX_PATH}>メーカー</a>
-          {monthGroups.length > 0 && <a class="chip-link only-narrow" href={MONTH_INDEX_PATH}>月ごと</a>}
+          <a class="chip-link" href={MAKER_INDEX_PATH}>メーカー検索</a>
           {latestRoundup && <a class="chip-link only-narrow" href={weeklyPath(latestRoundup.week_start)}>週のまとめ</a>}
+          {monthGroups.length > 0 && <a class="chip-link only-narrow" href={MONTH_INDEX_PATH}>月のまとめ</a>}
         </nav>
       </section>
       {hot.length > 0 && (
