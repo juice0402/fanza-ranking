@@ -1,0 +1,2618 @@
+{
+ "generated": "2026-10-05",
+ "reports": [
+  {
+   "start": "http://www.style-1.jp/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "http://www.style-1.jp/",
+     "title": "S Flirt エスフラート",
+     "links": 95
+    },
+    {
+     "url": "http://www.style-1.jp/entry/",
+     "title": "応募 | S Flirt エスフラート",
+     "links": 41
+    },
+    {
+     "url": "http://www.style-1.jp/category/actress/rukawaharuka/",
+     "title": "流川はる香 | S Flirt エスフラート",
+     "links": 152
+    },
+    {
+     "url": "http://www.style-1.jp/category/actress/hinatayura/",
+     "title": "日向ゆら | S Flirt エスフラート",
+     "links": 152
+    },
+    {
+     "url": "http://www.style-1.jp/category/actress/komatsuan/",
+     "title": "小松杏 | S Flirt エスフラート",
+     "links": 152
+    },
+    {
+     "url": "http://www.style-1.jp/category/actress/ayaizumi/",
+     "title": "泉あや | S Flirt エスフラート",
+     "links": 151
+    },
+    {
+     "url": "http://www.style-1.jp/category/actress/yuakawaei/",
+     "title": "川栄結愛 | S Flirt エスフラート",
+     "links": 148
+    },
+    {
+     "url": "http://www.style-1.jp/category/actress/naritatsumugi/",
+     "title": "成田つむぎ | S Flirt エスフラート",
+     "links": 152
+    }
+   ],
+   "groups": [
+    {
+     "pattern": "http://www.style-1.jp/category/actress/*",
+     "count": 51,
+     "cjk": 51,
+     "matched": 39,
+     "on": "http://www.style-1.jp/category/actress/rukawaharuka/",
+     "sample": [
+      "流川はる香",
+      "一ノ瀬クレハ",
+      "七海まの",
+      "七瀬栞",
+      "三好佑香",
+      "中村心"
+     ],
+     "sample_urls": [
+      "http://www.style-1.jp/category/actress/rukawaharuka/",
+      "http://www.style-1.jp/category/actress/ichinosekureha/",
+      "http://www.style-1.jp/category/actress/nanamimano/"
+     ]
+    },
+    {
+     "pattern": "http://www.style-1.jp/category/actress/*",
+     "count": 51,
+     "cjk": 51,
+     "matched": 39,
+     "on": "http://www.style-1.jp/category/actress/hinatayura/",
+     "sample": [
+      "日向ゆら",
+      "一ノ瀬クレハ",
+      "七海まの",
+      "七瀬栞",
+      "三好佑香",
+      "中村心"
+     ],
+     "sample_urls": [
+      "http://www.style-1.jp/category/actress/hinatayura/",
+      "http://www.style-1.jp/category/actress/ichinosekureha/",
+      "http://www.style-1.jp/category/actress/nanamimano/"
+     ]
+    },
+    {
+     "pattern": "http://www.style-1.jp/category/actress/*",
+     "count": 51,
+     "cjk": 51,
+     "matched": 39,
+     "on": "http://www.style-1.jp/category/actress/komatsuan/",
+     "sample": [
+      "小松杏",
+      "一ノ瀬クレハ",
+      "七海まの",
+      "七瀬栞",
+      "三好佑香",
+      "中村心"
+     ],
+     "sample_urls": [
+      "http://www.style-1.jp/category/actress/komatsuan/",
+      "http://www.style-1.jp/category/actress/ichinosekureha/",
+      "http://www.style-1.jp/category/actress/nanamimano/"
+     ]
+    },
+    {
+     "pattern": "http://www.style-1.jp/category/actress/*",
+     "count": 51,
+     "cjk": 51,
+     "matched": 39,
+     "on": "http://www.style-1.jp/category/actress/ayaizumi/",
+     "sample": [
+      "泉あや",
+      "一ノ瀬クレハ",
+      "七海まの",
+      "七瀬栞",
+      "三好佑香",
+      "中村心"
+     ],
+     "sample_urls": [
+      "http://www.style-1.jp/category/actress/ayaizumi/",
+      "http://www.style-1.jp/category/actress/ichinosekureha/",
+      "http://www.style-1.jp/category/actress/nanamimano/"
+     ]
+    },
+    {
+     "pattern": "http://www.style-1.jp/category/actress/*",
+     "count": 51,
+     "cjk": 51,
+     "matched": 39,
+     "on": "http://www.style-1.jp/category/actress/yuakawaei/",
+     "sample": [
+      "川栄結愛",
+      "一ノ瀬クレハ",
+      "七海まの",
+      "七瀬栞",
+      "三好佑香",
+      "中村心"
+     ],
+     "sample_urls": [
+      "http://www.style-1.jp/category/actress/yuakawaei/",
+      "http://www.style-1.jp/category/actress/ichinosekureha/",
+      "http://www.style-1.jp/category/actress/nanamimano/"
+     ]
+    },
+    {
+     "pattern": "http://www.style-1.jp/category/actress/*",
+     "count": 51,
+     "cjk": 51,
+     "matched": 39,
+     "on": "http://www.style-1.jp/category/actress/naritatsumugi/",
+     "sample": [
+      "成田つむぎ",
+      "一ノ瀬クレハ",
+      "七海まの",
+      "七瀬栞",
+      "三好佑香",
+      "中村心"
+     ],
+     "sample_urls": [
+      "http://www.style-1.jp/category/actress/naritatsumugi/",
+      "http://www.style-1.jp/category/actress/ichinosekureha/",
+      "http://www.style-1.jp/category/actress/nanamimano/"
+     ]
+    }
+   ],
+   "profiles": [
+    {
+     "url": "http://www.style-1.jp/category/actress/rukawaharuka/",
+     "label": "流川はる香",
+     "title": "流川はる香 | S Flirt エスフラート",
+     "x": [
+      "sflirt_tokyo"
+     ],
+     "ig": [],
+     "h": [
+      "流川はる香",
+      "MENU",
+      "カテゴリー",
+      "S Flirt エスフラート"
+     ]
+    },
+    {
+     "url": "http://www.style-1.jp/category/actress/ichinosekureha/",
+     "label": "一ノ瀬クレハ",
+     "title": "一ノ瀬クレハ | S Flirt エスフラート",
+     "x": [
+      "sflirt_tokyo"
+     ],
+     "ig": [],
+     "h": [
+      "一ノ瀬クレハ",
+      "MENU",
+      "カテゴリー",
+      "S Flirt エスフラート"
+     ]
+    },
+    {
+     "url": "http://www.style-1.jp/category/actress/nanamimano/",
+     "label": "七海まの",
+     "title": "七海まの | S Flirt エスフラート",
+     "x": [
+      "sflirt_tokyo"
+     ],
+     "ig": [],
+     "h": [
+      "七海まの",
+      "MENU",
+      "カテゴリー",
+      "S Flirt エスフラート"
+     ]
+    },
+    {
+     "url": "http://www.style-1.jp/category/actress/nanasesiori/",
+     "label": "七瀬栞",
+     "title": "七瀬栞 | S Flirt エスフラート",
+     "x": [
+      "sflirt_tokyo"
+     ],
+     "ig": [],
+     "h": [
+      "七瀬栞",
+      "MENU",
+      "カテゴリー",
+      "S Flirt エスフラート"
+     ]
+    },
+    {
+     "url": "http://www.style-1.jp/category/actress/miyoshiyuka/",
+     "label": "三好佑香",
+     "title": "三好佑香 | S Flirt エスフラート",
+     "x": [
+      "sflirt_tokyo"
+     ],
+     "ig": [],
+     "h": [
+      "三好佑香",
+      "MENU",
+      "カテゴリー",
+      "S Flirt エスフラート"
+     ]
+    },
+    {
+     "url": "http://www.style-1.jp/category/actress/nakamurakokoro/",
+     "label": "中村心",
+     "title": "中村心 | S Flirt エスフラート",
+     "x": [
+      "sflirt_tokyo"
+     ],
+     "ig": [],
+     "h": [
+      "中村心",
+      "MENU",
+      "カテゴリー",
+      "S Flirt エスフラート"
+     ]
+    }
+   ]
+  },
+  {
+   "start": "https://capsule.bz/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "https://capsule.bz/",
+     "title": "AVプロダクション【カプセルエージェンシー】公式サイト",
+     "links": 509
+    },
+    {
+     "url": "https://capsule.bz/model/",
+     "title": "所属モデル - AVプロダクション【カプセルエージェンシー】公式サイト",
+     "links": 202
+    },
+    {
+     "url": "https://capsule.bz/model/miananasawa/",
+     "title": "七沢みあ - AVプロダクション【カプセルエージェンシー】公式サイト",
+     "links": 615
+    }
+   ],
+   "groups": [
+    {
+     "pattern": "https://capsule.bz/tag/*",
+     "count": 59,
+     "cjk": 58,
+     "matched": 40,
+     "on": "https://capsule.bz/",
+     "sample": [
+      "稲森美優",
+      "風間ゆみ",
+      "七沢みあ",
+      "桜みお",
+      "小松空",
+      "園田すい"
+     ],
+     "sample_urls": [
+      "https://capsule.bz/tag/%e7%a8%b2%e6%a3%ae%e7%be%8e%e5%84%aa/",
+      "https://capsule.bz/tag/%e9%a2%a8%e9%96%93%e3%82%86%e3%81%bf/",
+      "https://capsule.bz/tag/%e4%b8%83%e6%b2%a2%e3%81%bf%e3%81%82/"
+     ]
+    },
+    {
+     "pattern": "https://capsule.bz/model/*",
+     "count": 36,
+     "cjk": 36,
+     "matched": 0,
+     "on": "https://capsule.bz/model/",
+     "sample": [
+      "（七沢みあ）AV女優",
+      "（渚あいり）AV女優",
+      "（風間ゆみ）AV女優",
+      "（桜みお）AV女優",
+      "（小松空）AV女優",
+      "（満島アンナ）AV女優"
+     ],
+     "sample_urls": [
+      "https://capsule.bz/model/miananasawa/",
+      "https://capsule.bz/model/airinagisa/",
+      "https://capsule.bz/model/yumikazama/"
+     ]
+    }
+   ],
+   "profiles": [
+    {
+     "url": "https://capsule.bz/tag/%e7%a8%b2%e6%a3%ae%e7%be%8e%e5%84%aa/",
+     "label": "稲森美優",
+     "title": "稲森美優 - AVプロダクション【カプセルエージェンシー】公式サイト",
+     "x": [
+      "av_detai",
+      "iishacho",
+      "capsule_pr",
+      "capsule_shop"
+     ],
+     "ig": [
+      "capsuleagency.official",
+      "recruit_capsule",
+      "capsuleagency.shop"
+     ],
+     "h": [
+      "稲森美優",
+      "CONTACT",
+      "AVプロダクション",
+      "カプセルエージェンシー"
+     ]
+    },
+    {
+     "url": "https://capsule.bz/tag/%e9%a2%a8%e9%96%93%e3%82%86%e3%81%bf/",
+     "label": "風間ゆみ",
+     "title": "風間ゆみ - AVプロダクション【カプセルエージェンシー】公式サイト",
+     "x": [
+      "av_detai",
+      "iishacho",
+      "capsule_pr",
+      "capsule_shop"
+     ],
+     "ig": [
+      "capsuleagency.official",
+      "recruit_capsule",
+      "capsuleagency.shop"
+     ],
+     "h": [
+      "風間ゆみ",
+      "CONTACT",
+      "AVプロダクション",
+      "カプセルエージェンシー"
+     ]
+    },
+    {
+     "url": "https://capsule.bz/tag/%e4%b8%83%e6%b2%a2%e3%81%bf%e3%81%82/",
+     "label": "七沢みあ",
+     "title": "七沢みあ - AVプロダクション【カプセルエージェンシー】公式サイト",
+     "x": [
+      "av_detai",
+      "iishacho",
+      "capsule_pr",
+      "capsule_shop"
+     ],
+     "ig": [
+      "capsuleagency.official",
+      "recruit_capsule",
+      "capsuleagency.shop"
+     ],
+     "h": [
+      "七沢みあ",
+      "CONTACT",
+      "AVプロダクション",
+      "カプセルエージェンシー"
+     ]
+    },
+    {
+     "url": "https://capsule.bz/tag/%e6%a1%9c%e3%81%bf%e3%81%8a/",
+     "label": "桜みお",
+     "title": "桜みお - AVプロダクション【カプセルエージェンシー】公式サイト",
+     "x": [
+      "av_detai",
+      "iishacho",
+      "capsule_pr",
+      "capsule_shop"
+     ],
+     "ig": [
+      "capsuleagency.official",
+      "recruit_capsule",
+      "capsuleagency.shop"
+     ],
+     "h": [
+      "桜みお",
+      "CONTACT",
+      "AVプロダクション",
+      "カプセルエージェンシー"
+     ]
+    },
+    {
+     "url": "https://capsule.bz/tag/%e5%b0%8f%e6%9d%be%e7%a9%ba/",
+     "label": "小松空",
+     "title": "小松空 - AVプロダクション【カプセルエージェンシー】公式サイト",
+     "x": [
+      "av_detai",
+      "iishacho",
+      "capsule_pr",
+      "capsule_shop"
+     ],
+     "ig": [
+      "capsuleagency.official",
+      "recruit_capsule",
+      "capsuleagency.shop"
+     ],
+     "h": [
+      "小松空",
+      "CONTACT",
+      "AVプロダクション",
+      "カプセルエージェンシー"
+     ]
+    },
+    {
+     "url": "https://capsule.bz/tag/%e5%9c%92%e7%94%b0%e3%81%99%e3%81%84/",
+     "label": "園田すい",
+     "title": "園田すい - AVプロダクション【カプセルエージェンシー】公式サイト",
+     "x": [
+      "av_detai",
+      "iishacho",
+      "capsule_pr",
+      "capsule_shop"
+     ],
+     "ig": [
+      "capsuleagency.official",
+      "recruit_capsule",
+      "capsuleagency.shop"
+     ],
+     "h": [
+      "園田すい",
+      "CONTACT",
+      "AVプロダクション",
+      "カプセルエージェンシー"
+     ]
+    }
+   ]
+  },
+  {
+   "start": "https://cmore.jp/official/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "https://cmore.jp/official/",
+     "title": "C-more Entertainment｜AVプロダクション C-more シーモア エンターテイメント",
+     "links": 47
+    },
+    {
+     "url": "https://cmore.jp/official/model.html",
+     "title": "所属女優SNS紹介｜AVプロダクション C-more シーモア エンターテイメント",
+     "links": 122
+    },
+    {
+     "url": "https://cmore.jp/recruit/",
+     "title": "【AV女優募集・求人】｜AVプロダクション C-more シーモア エンターテイメント",
+     "links": 62
+    },
+    {
+     "url": "https://cmore.jp/official/model-julia.html",
+     "title": "JULIA｜AVプロダクション C-more シーモア エンターテイメント",
+     "links": 30
+    },
+    {
+     "url": "https://cmore.jp/official/model-akari.html",
+     "title": "明里つむぎ｜AVプロダクション C-more シーモア エンターテイメント",
+     "links": 22
+    },
+    {
+     "url": "https://cmore.jp/official/model-honjo.html",
+     "title": "本庄鈴｜AVプロダクション C-more シーモア エンターテイメント",
+     "links": 30
+    },
+    {
+     "url": "https://cmore.jp/official/model-miru.html",
+     "title": "miru｜AVプロダクション C-more シーモア エンターテイメント",
+     "links": 23
+    },
+    {
+     "url": "https://cmore.jp/official/model-aozora.html",
+     "title": "青空ひかり｜AVプロダクション C-more シーモア エンターテイメント",
+     "links": 23
+    }
+   ],
+   "groups": [
+    {
+     "pattern": "https://cmore.jp/official/*",
+     "count": 52,
+     "cjk": 50,
+     "matched": 33,
+     "on": "https://cmore.jp/official/model.html",
+     "sample": [
+      "ニュース",
+      "イベント情報",
+      "所属女優紹介",
+      "動画コンテンツ",
+      "JULIA",
+      "明里つむぎ"
+     ],
+     "sample_urls": [
+      "https://cmore.jp/official/release.html",
+      "https://cmore.jp/official/event.html",
+      "https://cmore.jp/official/model.html"
+     ]
+    },
+    {
+     "pattern": "https://cmore.jp/recruit/*",
+     "count": 20,
+     "cjk": 18,
+     "matched": 0,
+     "on": "https://cmore.jp/recruit/",
+     "sample": [
+      "お仕事内容",
+      "お仕事の流れ",
+      "サポート体制",
+      "アクセス",
+      "コンタクト",
+      "AV女優・AVモデル募集中 未経験・初心者歓迎"
+     ],
+     "sample_urls": [
+      "https://cmore.jp/recruit/work.html",
+      "https://cmore.jp/recruit/flow.html",
+      "https://cmore.jp/recruit/support.html"
+     ]
+    },
+    {
+     "pattern": "https://cmore.jp/official/*",
+     "count": 14,
+     "cjk": 11,
+     "matched": 0,
+     "on": "https://cmore.jp/official/",
+     "sample": [
+      "ニュース",
+      "イベント情報",
+      "所属女優紹介",
+      "動画コンテンツ",
+      "多田有花【REbecca】秋葉原イベント開催",
+      "明里つむぎ【FALENO】秋葉原イベント開催"
+     ],
+     "sample_urls": [
+      "https://cmore.jp/official/release.html",
+      "https://cmore.jp/official/event.html",
+      "https://cmore.jp/official/model.html"
+     ]
+    },
+    {
+     "pattern": "https://cmore.jp/official/*",
+     "count": 6,
+     "cjk": 6,
+     "matched": 0,
+     "on": "https://cmore.jp/official/model-julia.html",
+     "sample": [
+      "ニュース",
+      "イベント情報",
+      "所属女優紹介",
+      "動画コンテンツ",
+      "会社概要",
+      "よくある質問"
+     ],
+     "sample_urls": [
+      "https://cmore.jp/official/news.html",
+      "https://cmore.jp/official/event.html",
+      "https://cmore.jp/official/model.html"
+     ]
+    },
+    {
+     "pattern": "https://cmore.jp/official/*",
+     "count": 6,
+     "cjk": 6,
+     "matched": 0,
+     "on": "https://cmore.jp/official/model-akari.html",
+     "sample": [
+      "ニュース",
+      "イベント情報",
+      "所属女優紹介",
+      "動画コンテンツ",
+      "会社概要",
+      "よくある質問"
+     ],
+     "sample_urls": [
+      "https://cmore.jp/official/news.html",
+      "https://cmore.jp/official/event.html",
+      "https://cmore.jp/official/model.html"
+     ]
+    },
+    {
+     "pattern": "https://cmore.jp/official/*",
+     "count": 6,
+     "cjk": 6,
+     "matched": 0,
+     "on": "https://cmore.jp/official/model-honjo.html",
+     "sample": [
+      "ニュース",
+      "イベント情報",
+      "所属女優紹介",
+      "動画コンテンツ",
+      "会社概要",
+      "よくある質問"
+     ],
+     "sample_urls": [
+      "https://cmore.jp/official/news.html",
+      "https://cmore.jp/official/event.html",
+      "https://cmore.jp/official/model.html"
+     ]
+    }
+   ],
+   "profiles": [
+    {
+     "url": "https://cmore.jp/official/release.html",
+     "label": "ニュース",
+     "title": "新作情報｜AVプロダクション C-more シーモア エンターテイメント",
+     "x": [
+      "Cmore_GROUP",
+      "harajuku_king_",
+      "cmore_a69",
+      "takedasun"
+     ],
+     "ig": [
+      "cmore_ent"
+     ],
+     "h": [
+      "出演作品新作情報",
+      "デジタル写真集",
+      "x月xx日発売",
+      "10月20日発売"
+     ]
+    },
+    {
+     "url": "https://cmore.jp/official/event.html",
+     "label": "イベント情報",
+     "title": "イベント一覧｜AVプロダクション C-more シーモア エンターテイメント",
+     "x": [
+      "Cmore_GROUP",
+      "harajuku_king_",
+      "cmore_a69",
+      "takedasun"
+     ],
+     "ig": [
+      "cmore_ent"
+     ],
+     "h": [
+      "イベント一覧",
+      "現在開催予定のイベントはございません",
+      "AVプロダクション C",
+      "more シーモア エンターテイメント"
+     ]
+    },
+    {
+     "url": "https://cmore.jp/official/model.html",
+     "label": "所属女優紹介",
+     "title": "所属女優SNS紹介｜AVプロダクション C-more シーモア エンターテイメント",
+     "x": [
+      "tokita_cmore",
+      "shitara_yuuhi",
+      "shiina_cmore",
+      "mizuiro_noa"
+     ],
+     "ig": [
+      "tokita_ami",
+      "shitara_yuuhi",
+      "mori_ayami_",
+      "ayano_kato929"
+     ],
+     "h": [
+      "所属女優紹介",
+      "more Entertainment 所属女優のご紹介",
+      "所属女優SNS紹介",
+      "AVプロダクション C"
+     ]
+    },
+    {
+     "url": "https://cmore.jp/official/movie.html",
+     "label": "動画コンテンツ",
+     "title": "動画コンテンツ｜AVプロダクション C-more シーモア エンターテイメント",
+     "x": [
+      "Cmore_GROUP",
+      "harajuku_king_",
+      "cmore_a69",
+      "takedasun"
+     ],
+     "ig": [
+      "cmore_ent"
+     ],
+     "h": [
+      "動画コンテンツ",
+      "フェチ系コンテンツ",
+      "女優インタビュー",
+      "ミュージックPV"
+     ]
+    },
+    {
+     "url": "https://cmore.jp/official/model-julia.html",
+     "label": "JULIA",
+     "title": "JULIA｜AVプロダクション C-more シーモア エンターテイメント",
+     "x": [
+      "JULIA_1stid",
+      "JULIA_2ndid",
+      "Cmore_GROUP",
+      "harajuku_king_"
+     ],
+     "ig": [
+      "julia_cmore_official",
+      "cmore_ent"
+     ],
+     "h": [
+      "JULIA",
+      "プロフィール",
+      "DISCOGRAPHY",
+      "MUSIC VIDEO"
+     ]
+    },
+    {
+     "url": "https://cmore.jp/official/model-akari.html",
+     "label": "明里つむぎ",
+     "title": "明里つむぎ｜AVプロダクション C-more シーモア エンターテイメント",
+     "x": [
+      "akari_tsumugi__",
+      "Cmore_GROUP",
+      "harajuku_king_",
+      "cmore_a69"
+     ],
+     "ig": [
+      "akari.tsumugi",
+      "cmore_ent"
+     ],
+     "h": [
+      "明里つむぎ",
+      "プロフィール",
+      "DISCOGRAPHY",
+      "SNS LINK"
+     ]
+    }
+   ]
+  },
+  {
+   "start": "https://lightpro.jp/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "https://lightpro.jp/",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "links": 262
+    },
+    {
+     "url": "https://lightpro.jp/talent",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "links": 70
+    },
+    {
+     "url": "https://lightpro.jp/talent/ishiharanozomi.html",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "links": 22
+    },
+    {
+     "url": "https://lightpro.jp/talent/nishimiyayume.html",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "links": 22
+    },
+    {
+     "url": "https://lightpro.jp/talent/matsumotoichika.html",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "links": 22
+    },
+    {
+     "url": "https://lightpro.jp/talent/nakayamafumika.html",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "links": 22
+    },
+    {
+     "url": "https://lightpro.jp/talent/kururugiaoi.html",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "links": 22
+    },
+    {
+     "url": "https://lightpro.jp/talent/yayoimizuki.html",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "links": 22
+    }
+   ],
+   "groups": [
+    {
+     "pattern": "https://lightpro.jp/talent/*",
+     "count": 51,
+     "cjk": 51,
+     "matched": 41,
+     "on": "https://lightpro.jp/talent",
+     "sample": [
+      "逢月ひまり Himari Aizuki",
+      "新井リマ Rima Arai",
+      "五十嵐美月 Mitsuki Igarashi",
+      "幾野まち Machi ikuno",
+      "石原希望 Nozomi Ishihara",
+      "岩沢香代 Kayo Iwasawa"
+     ],
+     "sample_urls": [
+      "https://lightpro.jp/talent/aizukihimari.html",
+      "https://lightpro.jp/talent/arairima.html",
+      "https://lightpro.jp/talent/igarashimitsuki.html"
+     ]
+    },
+    {
+     "pattern": "https://lightpro.jp/talent/*",
+     "count": 46,
+     "cjk": 46,
+     "matched": 36,
+     "on": "https://lightpro.jp/",
+     "sample": [
+      "石原希望 Nozomi Ishihara",
+      "西宮ゆめ Yume Nishimiya",
+      "松本いちか Ichika Matsumoto",
+      "中山ふみか Fumika Nakayama",
+      "枢木あおい Aoi Kururugi",
+      "弥生みづき Mizuki Yayoi"
+     ],
+     "sample_urls": [
+      "https://lightpro.jp/talent/ishiharanozomi.html",
+      "https://lightpro.jp/talent/nishimiyayume.html",
+      "https://lightpro.jp/talent/matsumotoichika.html"
+     ]
+    },
+    {
+     "pattern": "https://lightpro.jp/news/*",
+     "count": 193,
+     "cjk": 192,
+     "matched": 6,
+     "on": "https://lightpro.jp/",
+     "sample": [
+      "9.9(火)堀北桃愛情報！",
+      "10.25(土)村上悠華情報！",
+      "9.13(土)石原希望情報！",
+      "9.27(土)望月つぼみ、宮城りえ、夕木こいろ情報！",
+      "9.20(日)西宮ゆめ情報！",
+      "10.19(日)村上悠華情報！"
+     ],
+     "sample_urls": [
+      "https://lightpro.jp/news/272.html",
+      "https://lightpro.jp/news/271.html",
+      "https://lightpro.jp/news/270.html"
+     ]
+    },
+    {
+     "pattern": "https://lightpro.jp/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "https://lightpro.jp/",
+     "sample": [
+      "RECRUIT 求人ページ",
+      "NEWS ニュース",
+      "TALENT タレント一覧",
+      "SNS LIST SNS一覧",
+      "CONTACT お問い合わせ",
+      "PRIVACY POLICY プライバシーポリシー"
+     ],
+     "sample_urls": [
+      "https://lightpro.jp/recruit",
+      "https://lightpro.jp/news",
+      "https://lightpro.jp/talent"
+     ]
+    },
+    {
+     "pattern": "https://lightpro.jp/*",
+     "count": 6,
+     "cjk": 6,
+     "matched": 0,
+     "on": "https://lightpro.jp/talent",
+     "sample": [
+      "RECRUIT 求人ページ",
+      "NEWS ニュース",
+      "TALENT タレント一覧",
+      "SNS LIST SNS一覧",
+      "CONTACT お問い合わせ",
+      "PRIVACY POLICY プライバシーポリシー"
+     ],
+     "sample_urls": [
+      "https://lightpro.jp/recruit",
+      "https://lightpro.jp/news",
+      "https://lightpro.jp/talent"
+     ]
+    },
+    {
+     "pattern": "https://lightpro.jp/*",
+     "count": 6,
+     "cjk": 6,
+     "matched": 0,
+     "on": "https://lightpro.jp/talent/ishiharanozomi.html",
+     "sample": [
+      "RECRUIT 求人ページ",
+      "NEWS ニュース",
+      "TALENT タレント一覧",
+      "SNS LIST SNS一覧",
+      "CONTACT お問い合わせ",
+      "PRIVACY POLICY プライバシーポリシー"
+     ],
+     "sample_urls": [
+      "https://lightpro.jp/recruit",
+      "https://lightpro.jp/news",
+      "https://lightpro.jp/talent"
+     ]
+    }
+   ],
+   "profiles": [
+    {
+     "url": "https://lightpro.jp/talent/aizukihimari.html",
+     "label": "逢月ひまり Himari Aizuki",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "x": [
+      "aizuki_himari",
+      "light_promg"
+     ],
+     "ig": [
+      "info.lightpro"
+     ],
+     "h": [
+      "TA L ENT タレント一覧",
+      "逢月ひまり",
+      "Himari Aizuki",
+      "AVプロダクション"
+     ]
+    },
+    {
+     "url": "https://lightpro.jp/talent/arairima.html",
+     "label": "新井リマ Rima Arai",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "x": [
+      "Arai_rima",
+      "light_promg"
+     ],
+     "ig": [
+      "arai_rima",
+      "info.lightpro"
+     ],
+     "h": [
+      "TA L ENT タレント一覧",
+      "新井リマ",
+      "Rima Arai",
+      "AVプロダクション"
+     ]
+    },
+    {
+     "url": "https://lightpro.jp/talent/igarashimitsuki.html",
+     "label": "五十嵐美月 Mitsuki Igarashi",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "x": [
+      "i_mitsuki77",
+      "light_promg"
+     ],
+     "ig": [
+      "info.lightpro"
+     ],
+     "h": [
+      "TA L ENT タレント一覧",
+      "五十嵐美月",
+      "Mitsuki Igarashi",
+      "AVプロダクション"
+     ]
+    },
+    {
+     "url": "https://lightpro.jp/talent/ikunomachi.html",
+     "label": "幾野まち Machi ikuno",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "x": [
+      "Ikuno_Machi_",
+      "light_promg"
+     ],
+     "ig": [
+      "info.lightpro"
+     ],
+     "h": [
+      "TA L ENT タレント一覧",
+      "幾野まち",
+      "Machi Ikuno",
+      "AVプロダクション"
+     ]
+    },
+    {
+     "url": "https://lightpro.jp/talent/ishiharanozomi.html",
+     "label": "石原希望 Nozomi Ishihara",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "x": [
+      "nozomi_ishihara",
+      "light_promg"
+     ],
+     "ig": [
+      "nozomi_ishihara.official",
+      "info.lightpro"
+     ],
+     "h": [
+      "TA L ENT タレント一覧",
+      "石原希望",
+      "Nozomi Ishihara",
+      "AVプロダクション"
+     ]
+    },
+    {
+     "url": "https://lightpro.jp/talent/iwasawakayo.html",
+     "label": "岩沢香代 Kayo Iwasawa",
+     "title": "AVプロダクション【LIGHT promotion(ライトプロモーション)】公式サイト",
+     "x": [
+      "iwasawa_kayo",
+      "light_promg"
+     ],
+     "ig": [
+      "kayo_iwasawa",
+      "info.lightpro"
+     ],
+     "h": [
+      "TA L ENT タレント一覧",
+      "岩沢香代",
+      "Kayo Iwasawa",
+      "AVプロダクション"
+     ]
+    }
+   ]
+  },
+  {
+   "start": "https://life-promotion.com/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "https://life-promotion.com/",
+     "title": "AV事務所・AVプロダクション ライフプロモーション【公式サイト】",
+     "links": 143
+    },
+    {
+     "url": "https://life-promotion.com/recruit/",
+     "title": "AV女優募集・求人なら【応募専門】AVプロダクション ライフプロモーション",
+     "links": 106
+    },
+    {
+     "url": "https://life-promotion.com/area/",
+     "title": "全国からAV女優募集中！地方エリア一覧｜AV事務所ライフプロモーション",
+     "links": 87
+    },
+    {
+     "url": "https://life-promotion.com/manga/",
+     "title": "マンガで見るAV女優応募｜AVプロダクション ライフプロモーション",
+     "links": 81
+    },
+    {
+     "url": "https://life-promotion.com/video/",
+     "title": "動画で見るAV女優募集｜AVプロダクション ライフプロモーション",
+     "links": 84
+    },
+    {
+     "url": "https://life-promotion.com/gravure/",
+     "title": "水着グラビアモデル・撮影会モデル募集｜ライフプロモーション グラビア部",
+     "links": 75
+    },
+    {
+     "url": "https://life-promotion.com/method/",
+     "title": "AV女優になりたい人へ！事務所の選び方とデビュー方法【2026年版】",
+     "links": 99
+    },
+    {
+     "url": "https://life-promotion.com/popular/",
+     "title": "有名になりたいAV女優へ！売れる方法を教えます【2026年版】",
+     "links": 88
+    }
+   ],
+   "groups": [
+    {
+     "pattern": "https://life-promotion.com/model/*",
+     "count": 27,
+     "cjk": 27,
+     "matched": 17,
+     "on": "https://life-promotion.com/",
+     "sample": [
+      "恋渕 ももな Momona Koibuchi",
+      "楓 カレン Karen Kaede",
+      "栄川 乃亜 Noa Eikawa",
+      "根尾 あかり Akari Neo",
+      "もなみ 鈴 Suzu Monami",
+      "竹内 有紀 Yuki Takeuchi"
+     ],
+     "sample_urls": [
+      "https://life-promotion.com/model/koibuchi-momona.php",
+      "https://life-promotion.com/model/kaede-karen.php",
+      "https://life-promotion.com/model/eikawa-noa.php"
+     ]
+    },
+    {
+     "pattern": "https://life-promotion.com/*",
+     "count": 30,
+     "cjk": 23,
+     "matched": 0,
+     "on": "https://life-promotion.com/area/",
+     "sample": [
+      "AV女優募集・求人",
+      "地方のAV女優募集一覧",
+      "マンガ版 AV女優応募",
+      "動画版 AV女優募集",
+      "グラビア水着モデル募集",
+      "AV以外のお仕事募集"
+     ],
+     "sample_urls": [
+      "https://life-promotion.com/recruit/",
+      "https://life-promotion.com/area/",
+      "https://life-promotion.com/manga/"
+     ]
+    },
+    {
+     "pattern": "https://life-promotion.com/*",
+     "count": 21,
+     "cjk": 21,
+     "matched": 0,
+     "on": "https://life-promotion.com/",
+     "sample": [
+      "AV女優募集・求人",
+      "地方のAV女優募集一覧",
+      "マンガ版 AV女優応募",
+      "動画版 AV女優募集",
+      "グラビア水着モデル募集",
+      "AV以外のお仕事募集"
+     ],
+     "sample_urls": [
+      "https://life-promotion.com/recruit/",
+      "https://life-promotion.com/area/",
+      "https://life-promotion.com/manga/"
+     ]
+    },
+    {
+     "pattern": "https://life-promotion.com/*",
+     "count": 21,
+     "cjk": 21,
+     "matched": 0,
+     "on": "https://life-promotion.com/recruit/",
+     "sample": [
+      "AV女優募集・求人",
+      "地方のAV女優募集一覧",
+      "マンガ版 AV女優応募",
+      "動画版 AV女優募集",
+      "グラビア水着モデル募集",
+      "AV以外のお仕事募集"
+     ],
+     "sample_urls": [
+      "https://life-promotion.com/recruit/",
+      "https://life-promotion.com/area/",
+      "https://life-promotion.com/manga/"
+     ]
+    },
+    {
+     "pattern": "https://life-promotion.com/*",
+     "count": 21,
+     "cjk": 21,
+     "matched": 0,
+     "on": "https://life-promotion.com/manga/",
+     "sample": [
+      "AV女優募集・求人",
+      "地方のAV女優募集一覧",
+      "マンガ版 AV女優応募",
+      "動画版 AV女優募集",
+      "グラビア水着モデル募集",
+      "AV以外のお仕事募集"
+     ],
+     "sample_urls": [
+      "https://life-promotion.com/recruit/",
+      "https://life-promotion.com/area/",
+      "https://life-promotion.com/manga/"
+     ]
+    },
+    {
+     "pattern": "https://life-promotion.com/*",
+     "count": 21,
+     "cjk": 21,
+     "matched": 0,
+     "on": "https://life-promotion.com/video/",
+     "sample": [
+      "AV女優募集・求人",
+      "地方のAV女優募集一覧",
+      "マンガ版 AV女優応募",
+      "動画版 AV女優募集",
+      "グラビア水着モデル募集",
+      "AV以外のお仕事募集"
+     ],
+     "sample_urls": [
+      "https://life-promotion.com/recruit/",
+      "https://life-promotion.com/area/",
+      "https://life-promotion.com/manga/"
+     ]
+    }
+   ],
+   "profiles": [
+    {
+     "url": "https://life-promotion.com/model/koibuchi-momona.php",
+     "label": "恋渕 ももな Momona Koibuchi",
+     "title": "恋渕ももな｜AV女優プロフィール・SNS・出演作・画像【公式】",
+     "x": [
+      "lifepromotion",
+      "lifepro1230",
+      "lifenewarrival",
+      "momona_koibuchi"
+     ],
+     "ig": [
+      "lifepromotion",
+      "lifestaff422",
+      "koibuchimomona"
+     ],
+     "h": [
+      "恋渕ももな Momona Koibuchi",
+      "PROFILE",
+      "SNS",
+      "サンプル動画をまとめて観る"
+     ]
+    },
+    {
+     "url": "https://life-promotion.com/model/kaede-karen.php",
+     "label": "楓 カレン Karen Kaede",
+     "title": "楓カレン｜AV女優プロフィール・SNS・出演作・画像【公式】",
+     "x": [
+      "lifepromotion",
+      "lifepro1230",
+      "lifenewarrival",
+      "honmononokaren"
+     ],
+     "ig": [
+      "lifepromotion",
+      "lifestaff422",
+      "kaedekaren0825"
+     ],
+     "h": [
+      "楓カレン Karen Kaede",
+      "PROFILE",
+      "SNS",
+      "AV作品"
+     ]
+    },
+    {
+     "url": "https://life-promotion.com/model/eikawa-noa.php",
+     "label": "栄川 乃亜 Noa Eikawa",
+     "title": "栄川乃亜｜AV女優プロフィール・SNS・出演作・画像【公式】",
+     "x": [
+      "lifepromotion",
+      "lifepro1230",
+      "lifenewarrival",
+      "noa_eikawa"
+     ],
+     "ig": [
+      "lifepromotion",
+      "lifestaff422",
+      "noa_eikawa"
+     ],
+     "h": [
+      "栄川乃亜 Noa Eikawa",
+      "PROFILE",
+      "SNS",
+      "AV作品"
+     ]
+    },
+    {
+     "url": "https://life-promotion.com/model/neo-akari.php",
+     "label": "根尾 あかり Akari Neo",
+     "title": "根尾あかり｜AV女優プロフィール・SNS・出演作・画像【公式】",
+     "x": [
+      "lifepromotion",
+      "lifepro1230",
+      "lifenewarrival",
+      "AkariNeo"
+     ],
+     "ig": [
+      "lifepromotion",
+      "lifestaff422"
+     ],
+     "h": [
+      "根尾あかり Akari Neo",
+      "PROFILE",
+      "SNS",
+      "AV作品"
+     ]
+    },
+    {
+     "url": "https://life-promotion.com/model/monami-suzu.php",
+     "label": "もなみ 鈴 Suzu Monami",
+     "title": "もなみ鈴｜AV女優プロフィール・SNS・出演作・画像【公式】",
+     "x": [
+      "lifepromotion",
+      "lifepro1230",
+      "lifenewarrival",
+      "monamisuzu_life"
+     ],
+     "ig": [
+      "lifepromotion",
+      "lifestaff422",
+      "monamisuzu_life"
+     ],
+     "h": [
+      "もなみ鈴 Suzu Monami",
+      "PROFILE",
+      "SNS",
+      "AV作品"
+     ]
+    },
+    {
+     "url": "https://life-promotion.com/model/takeuchi-yuki.php",
+     "label": "竹内 有紀 Yuki Takeuchi",
+     "title": "竹内有紀｜AV女優プロフィール・SNS・出演作・画像【公式】",
+     "x": [
+      "lifepromotion",
+      "lifepro1230",
+      "lifenewarrival",
+      "YukiTake_life"
+     ],
+     "ig": [
+      "lifepromotion",
+      "lifestaff422",
+      "yuki.takeuchi_life"
+     ],
+     "h": [
+      "竹内有紀 Yuki Takeuchi",
+      "PROFILE",
+      "SNS",
+      "AV作品"
+     ]
+    }
+   ]
+  },
+  {
+   "start": "https://pub.linx.live/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "https://pub.linx.live/",
+     "title": "Team LINX | AVプロダクション・LINX（リンクス）公式・所属AV女優の情報サイト",
+     "links": 3
+    },
+    {
+     "url": "https://pub.linx.live/contents/",
+     "title": "Team LINX | AVプロダクション・LINX（リンクス）公式・所属AV女優の情報サイト",
+     "links": 370
+    },
+    {
+     "url": "https://pub.linx.live/contents/model_all",
+     "title": "所属AV女優・モデル一覧｜AVプロダクション・LINX（リンクス）公式・所属AV女優の情報サイト",
+     "links": 775
+    },
+    {
+     "url": "https://pub.linx.live/contents/?mode=model_all",
+     "title": "所属AV女優・モデル一覧｜AVプロダクション・LINX（リンクス）公式・所属AV女優の情報サイト",
+     "links": 775
+    },
+    {
+     "url": "https://pub.linx.live/contents/model_all/",
+     "title": "所属AV女優・モデル一覧｜AVプロダクション・LINX（リンクス）公式・所属AV女優の情報サイト",
+     "links": 775
+    },
+    {
+     "url": "https://pub.linx.live/contents/model/6086/",
+     "title": "朝羽穂乃（あさはほの）｜モデル・AV女優のプロフィール｜AVプロダクション・LINX（リンクス）公式・所属AV女優の情報",
+     "links": 343
+    },
+    {
+     "url": "https://pub.linx.live/contents/model/1384/",
+     "title": "LINX（りんくす）｜モデル・AV女優のプロフィール｜AVプロダクション・LINX（リンクス）公式・所属AV女優の情報サ",
+     "links": 348
+    },
+    {
+     "url": "https://pub.linx.live/contents/model/6075/",
+     "title": "柏木雫（かしわぎしずく）｜モデル・AV女優のプロフィール｜AVプロダクション・LINX（リンクス）公式・所属AV女優の情",
+     "links": 354
+    }
+   ],
+   "groups": [
+    {
+     "pattern": "https://pub.linx.live/contents/model/1384/model/*",
+     "count": 83,
+     "cjk": 82,
+     "matched": 60,
+     "on": "https://pub.linx.live/contents/model/1384/",
+     "sample": [
+      "",
+      "柴崎はる",
+      "柏木雫",
+      "東條なつ",
+      "結城花乃羽",
+      "沙月恵奈"
+     ],
+     "sample_urls": [
+      "https://pub.linx.live/contents/model/1384/model/1384/",
+      "https://pub.linx.live/contents/model/1384/model/5470/",
+      "https://pub.linx.live/contents/model/1384/model/6075/"
+     ]
+    },
+    {
+     "pattern": "https://pub.linx.live/*?mode=*&model_id=*",
+     "count": 81,
+     "cjk": 81,
+     "matched": 60,
+     "on": "https://pub.linx.live/contents/",
+     "sample": [
+      "柴崎はる",
+      "柏木雫",
+      "東條なつ",
+      "結城花乃羽",
+      "沙月恵奈",
+      "一乃あおい"
+     ],
+     "sample_urls": [
+      "https://pub.linx.live/contents/?mode=model&model_id=5470",
+      "https://pub.linx.live/contents/?mode=model&model_id=6075",
+      "https://pub.linx.live/contents/?mode=model&model_id=4915"
+     ]
+    },
+    {
+     "pattern": "https://pub.linx.live/*?mode=*&model_id=*",
+     "count": 81,
+     "cjk": 81,
+     "matched": 60,
+     "on": "https://pub.linx.live/contents/model_all",
+     "sample": [
+      "柴崎はる",
+      "柏木雫",
+      "東條なつ",
+      "結城花乃羽",
+      "沙月恵奈",
+      "一乃あおい"
+     ],
+     "sample_urls": [
+      "https://pub.linx.live/contents/?mode=model&model_id=5470",
+      "https://pub.linx.live/contents/?mode=model&model_id=6075",
+      "https://pub.linx.live/contents/?mode=model&model_id=4915"
+     ]
+    },
+    {
+     "pattern": "https://pub.linx.live/*?mode=*&model_id=*",
+     "count": 81,
+     "cjk": 81,
+     "matched": 60,
+     "on": "https://pub.linx.live/contents/?mode=model_all",
+     "sample": [
+      "柴崎はる",
+      "柏木雫",
+      "東條なつ",
+      "結城花乃羽",
+      "沙月恵奈",
+      "一乃あおい"
+     ],
+     "sample_urls": [
+      "https://pub.linx.live/contents/?mode=model&model_id=5470",
+      "https://pub.linx.live/contents/?mode=model&model_id=6075",
+      "https://pub.linx.live/contents/?mode=model&model_id=4915"
+     ]
+    },
+    {
+     "pattern": "https://pub.linx.live/contents/*?mode=*&model_id=*",
+     "count": 81,
+     "cjk": 81,
+     "matched": 60,
+     "on": "https://pub.linx.live/contents/model_all/",
+     "sample": [
+      "柴崎はる",
+      "柏木雫",
+      "東條なつ",
+      "結城花乃羽",
+      "沙月恵奈",
+      "一乃あおい"
+     ],
+     "sample_urls": [
+      "https://pub.linx.live/contents/model_all/?mode=model&model_id=5470",
+      "https://pub.linx.live/contents/model_all/?mode=model&model_id=6075",
+      "https://pub.linx.live/contents/model_all/?mode=model&model_id=4915"
+     ]
+    },
+    {
+     "pattern": "https://pub.linx.live/contents/model/*?mode=*&model_id=*",
+     "count": 82,
+     "cjk": 81,
+     "matched": 60,
+     "on": "https://pub.linx.live/contents/model/6086/",
+     "sample": [
+      "MORE",
+      "柴崎はる",
+      "柏木雫",
+      "東條なつ",
+      "結城花乃羽",
+      "沙月恵奈"
+     ],
+     "sample_urls": [
+      "https://pub.linx.live/contents/model/6086/?mode=release&model_id=6086",
+      "https://pub.linx.live/contents/model/6086/?mode=model&model_id=5470",
+      "https://pub.linx.live/contents/model/6086/?mode=model&model_id=6075"
+     ]
+    }
+   ],
+   "profiles": []
+  },
+  {
+   "start": "https://actentertainment.jp/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "https://actentertainment.jp/",
+     "title": "HOME - 最初はみんな普通の女の子！【新人AV女優募集】ACT ENTERTAINMENT！高収入◎安心サポート完備",
+     "links": 27
+    },
+    {
+     "url": "https://actentertainment.jp/actmodel/",
+     "title": "ACTモデル一覧 -",
+     "links": 70
+    }
+   ],
+   "groups": [
+    {
+     "pattern": "https://actentertainment.jp/*",
+     "count": 52,
+     "cjk": 13,
+     "matched": 0,
+     "on": "https://actentertainment.jp/actmodel/",
+     "sample": [
+      "タレント一覧",
+      "リリース情報一覧",
+      "Event & Topics",
+      "各種リンク",
+      "会社概要",
+      ""
+     ],
+     "sample_urls": [
+      "https://actentertainment.jp/actmodel/",
+      "https://actentertainment.jp/release-info/",
+      "https://actentertainment.jp/event-list/"
+     ]
+    }
+   ],
+   "profiles": [
+    {
+     "url": "https://actentertainment.jp/actmodel/",
+     "label": "タレント一覧",
+     "title": "ACTモデル一覧 -",
+     "x": [
+      "info_actent"
+     ],
+     "ig": [
+      "act_enter_"
+     ],
+     "h": [
+      "ACTモデル一覧"
+     ]
+    },
+    {
+     "url": "https://actentertainment.jp/release-info/",
+     "label": "リリース情報一覧",
+     "title": "リリース情報一覧 -",
+     "x": [
+      "info_actent"
+     ],
+     "ig": [
+      "act_enter_"
+     ],
+     "h": [
+      "リリース情報一覧"
+     ]
+    },
+    {
+     "url": "https://actentertainment.jp/event-list/",
+     "label": "Event & Topics",
+     "title": "event list -",
+     "x": [
+      "info_actent"
+     ],
+     "ig": [
+      "act_enter_"
+     ],
+     "h": [
+      "2026",
+      "11",
+      "13",
+      "今井美優『Miyu 純情ボディバースト』"
+     ]
+    },
+    {
+     "url": "https://actentertainment.jp/link/",
+     "label": "各種リンク",
+     "title": "各種リンク｜ACT所属タレントのグッズ・オークション - ACT ENTERTAINMENT",
+     "x": [
+      "info_actent"
+     ],
+     "ig": [
+      "act_enter_"
+     ],
+     "h": [
+      "ACT STORE",
+      "STORES",
+      "ACT AUCTION",
+      "FANZAオークション"
+     ]
+    },
+    {
+     "url": "https://actentertainment.jp/%e4%bc%9a%e7%a4%be%e6%a6%82%e8%a6%81-2/",
+     "label": "会社概要",
+     "title": "会社概要 -",
+     "x": [
+      "info_actent"
+     ],
+     "ig": [
+      "act_enter_"
+     ],
+     "h": [
+      "代表挨拶",
+      "会社概要",
+      "アクセス",
+      "お問い合わせ"
+     ]
+    },
+    {
+     "url": "https://actentertainment.jp/kanon-hinano/",
+     "label": "",
+     "title": "ひなの花音 -",
+     "x": [
+      "nishimotomeisa",
+      "Hinano_kanonn",
+      "info_actent"
+     ],
+     "ig": [
+      "hinano_kanonn_",
+      "act_enter_"
+     ],
+     "h": [
+      "ひなの花音 Kanon Hinano",
+      "ひなの花音"
+     ]
+    }
+   ]
+  },
+  {
+   "start": "https://official.nax-pro.com/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "https://official.nax-pro.com/",
+     "title": "AVプロダクション NAX(ナックス)公式",
+     "links": 60
+    },
+    {
+     "url": "https://official.nax-pro.com/model/",
+     "title": "モデル | AVプロダクション NAX(ナックス)公式",
+     "links": 230
+    },
+    {
+     "url": "https://official.nax-pro.com/model/19648",
+     "title": "松永 あかり | AVプロダクション NAX(ナックス)公式",
+     "links": 37
+    },
+    {
+     "url": "https://official.nax-pro.com/model/19402",
+     "title": "小梅 えな | AVプロダクション NAX(ナックス)公式",
+     "links": 33
+    },
+    {
+     "url": "https://official.nax-pro.com/model/19325",
+     "title": "西田 瑞希 | AVプロダクション NAX(ナックス)公式",
+     "links": 30
+    },
+    {
+     "url": "https://official.nax-pro.com/model/19317",
+     "title": "黒澤 ななみ | AVプロダクション NAX(ナックス)公式",
+     "links": 26
+    },
+    {
+     "url": "https://official.nax-pro.com/model/17596",
+     "title": "石田 紗季 | AVプロダクション NAX(ナックス)公式",
+     "links": 27
+    },
+    {
+     "url": "https://official.nax-pro.com/model/17401",
+     "title": "白石 まゆ | AVプロダクション NAX(ナックス)公式",
+     "links": 30
+    }
+   ],
+   "groups": [
+    {
+     "pattern": "https://official.nax-pro.com/*",
+     "count": 10,
+     "cjk": 9,
+     "matched": 0,
+     "on": "https://official.nax-pro.com/",
+     "sample": [
+      "モデル",
+      "イベント&トピックス",
+      "利用規約",
+      "プレゼントについて",
+      "プライバシーポリシー",
+      "お問い合わせ"
+     ],
+     "sample_urls": [
+      "https://official.nax-pro.com/model/",
+      "https://official.nax-pro.com/news/",
+      "https://official.nax-pro.com/terms/"
+     ]
+    },
+    {
+     "pattern": "https://official.nax-pro.com/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "https://official.nax-pro.com/model/",
+     "sample": [
+      "モデル",
+      "イベント&トピックス",
+      "利用規約",
+      "プレゼントについて",
+      "プライバシーポリシー",
+      "お問い合わせ"
+     ],
+     "sample_urls": [
+      "https://official.nax-pro.com/model/",
+      "https://official.nax-pro.com/news/",
+      "https://official.nax-pro.com/terms/"
+     ]
+    },
+    {
+     "pattern": "https://official.nax-pro.com/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "https://official.nax-pro.com/model/19648",
+     "sample": [
+      "モデル",
+      "イベント&トピックス",
+      "利用規約",
+      "プレゼントについて",
+      "プライバシーポリシー",
+      "お問い合わせ"
+     ],
+     "sample_urls": [
+      "https://official.nax-pro.com/model/",
+      "https://official.nax-pro.com/news/",
+      "https://official.nax-pro.com/terms/"
+     ]
+    },
+    {
+     "pattern": "https://official.nax-pro.com/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "https://official.nax-pro.com/model/19402",
+     "sample": [
+      "モデル",
+      "イベント&トピックス",
+      "利用規約",
+      "プレゼントについて",
+      "プライバシーポリシー",
+      "お問い合わせ"
+     ],
+     "sample_urls": [
+      "https://official.nax-pro.com/model/",
+      "https://official.nax-pro.com/news/",
+      "https://official.nax-pro.com/terms/"
+     ]
+    },
+    {
+     "pattern": "https://official.nax-pro.com/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "https://official.nax-pro.com/model/19325",
+     "sample": [
+      "モデル",
+      "イベント&トピックス",
+      "利用規約",
+      "プレゼントについて",
+      "プライバシーポリシー",
+      "お問い合わせ"
+     ],
+     "sample_urls": [
+      "https://official.nax-pro.com/model/",
+      "https://official.nax-pro.com/news/",
+      "https://official.nax-pro.com/terms/"
+     ]
+    },
+    {
+     "pattern": "https://official.nax-pro.com/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "https://official.nax-pro.com/model/19317",
+     "sample": [
+      "モデル",
+      "イベント&トピックス",
+      "利用規約",
+      "プレゼントについて",
+      "プライバシーポリシー",
+      "お問い合わせ"
+     ],
+     "sample_urls": [
+      "https://official.nax-pro.com/model/",
+      "https://official.nax-pro.com/news/",
+      "https://official.nax-pro.com/terms/"
+     ]
+    }
+   ],
+   "profiles": [
+    {
+     "url": "https://official.nax-pro.com/model/",
+     "label": "モデル",
+     "title": "モデル | AVプロダクション NAX(ナックス)公式",
+     "x": [],
+     "ig": [],
+     "h": [
+      "Model モデル",
+      "当サイトは18歳以上向けの内容が含まれます。",
+      "西田 瑞希",
+      "黒澤 ななみ"
+     ]
+    },
+    {
+     "url": "https://official.nax-pro.com/news/",
+     "label": "イベント&トピックス",
+     "title": "イベント & トピックス | AVプロダクション NAX(ナックス)公式",
+     "x": [],
+     "ig": [],
+     "h": [
+      "Event and Topics イベント & トピックス",
+      "当サイトは18歳以上向けの内容が含まれます。",
+      "千川とわ",
+      "七原さゆ 、 白姫 かんな"
+     ]
+    },
+    {
+     "url": "https://official.nax-pro.com/terms/",
+     "label": "利用規約",
+     "title": "利用規約 | AVプロダクション NAX(ナックス)公式",
+     "x": [],
+     "ig": [],
+     "h": [
+      "利用規約",
+      "当サイトは18歳以上向けの内容が含まれます。",
+      "第1条",
+      "適用"
+     ]
+    },
+    {
+     "url": "https://official.nax-pro.com/gift/",
+     "label": "プレゼントについて",
+     "title": "タレントへのプレゼントについてのお知らせ | AVプロダクション NAX(ナックス)公式",
+     "x": [],
+     "ig": [],
+     "h": [
+      "タレントへのプレゼントについてのお知らせ",
+      "当サイトは18歳以上向けの内容が含まれます。",
+      "AVプロダクション NAX",
+      "ナックス"
+     ]
+    },
+    {
+     "url": "https://official.nax-pro.com/policy/",
+     "label": "プライバシーポリシー",
+     "title": "プライバシーポリシー | AVプロダクション NAX(ナックス)公式",
+     "x": [],
+     "ig": [],
+     "h": [
+      "プライバシーポリシー",
+      "当サイトは18歳以上向けの内容が含まれます。",
+      "AVプロダクション NAX",
+      "ナックス"
+     ]
+    },
+    {
+     "url": "https://official.nax-pro.com/contact/",
+     "label": "お問い合わせ",
+     "title": "お問い合わせ | AVプロダクション NAX(ナックス)公式",
+     "x": [],
+     "ig": [],
+     "h": [
+      "お問い合わせ",
+      "当サイトは18歳以上向けの内容が含まれます。",
+      "AVプロダクション NAX",
+      "ナックス"
+     ]
+    }
+   ]
+  },
+  {
+   "start": "http://www.duo-official.com/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "http://www.duo-official.com/",
+     "title": "Duo Entertainment 株式会社Duoエンターテイメント公式ホームページ – モデルプロダクション Duo ",
+     "links": 22
+    },
+    {
+     "url": "https://www.duo-official.com/models/",
+     "title": "MODELS – Duo Entertainment 株式会社Duoエンターテイメント公式ホームページ",
+     "links": 26
+    },
+    {
+     "url": "https://www.duo-official.com/models/airi-kijima/",
+     "title": "希島あいり Airi Kijima – Duo Entertainment 株式会社Duoエンターテイメント公式ホームペ",
+     "links": 27
+    },
+    {
+     "url": "https://www.duo-official.com/models/mayu_nozomi/",
+     "title": "希美まゆ Mayu Nozomi – Duo Entertainment 株式会社Duoエンターテイメント公式ホームペー",
+     "links": 19
+    },
+    {
+     "url": "https://www.duo-official.com/models/mitsuhahanagishi/",
+     "title": "花岸みつは Mitsuha Hanagishi – Duo Entertainment 株式会社Duoエンターテイメント",
+     "links": 16
+    },
+    {
+     "url": "https://www.duo-official.com/models/riku-fujisaki/",
+     "title": "藤咲りく Riku Fujisaki – Duo Entertainment 株式会社Duoエンターテイメント公式ホーム",
+     "links": 16
+    },
+    {
+     "url": "https://www.duo-official.com/models/rina-saegusa/",
+     "title": "三枝りな Rina Saegusa – Duo Entertainment 株式会社Duoエンターテイメント公式ホームペ",
+     "links": 16
+    },
+    {
+     "url": "https://www.duo-official.com/models/riana-yuzuki/",
+     "title": "悠月リアナ Riana Yuzuki – Duo Entertainment 株式会社Duoエンターテイメント公式ホーム",
+     "links": 16
+    }
+   ],
+   "groups": [
+    {
+     "pattern": "https://www.duo-official.com/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "http://www.duo-official.com/",
+     "sample": [
+      "EVENT イベント",
+      "MODELS モデル",
+      "GOODS 通販",
+      "ITEM 作品情報",
+      "GALLERY ギャラリー",
+      "COMPANY 会社概要"
+     ],
+     "sample_urls": [
+      "https://www.duo-official.com/event/",
+      "https://www.duo-official.com/models/",
+      "https://www.duo-official.com/goods/"
+     ]
+    },
+    {
+     "pattern": "https://www.duo-official.com/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "https://www.duo-official.com/models/",
+     "sample": [
+      "EVENT イベント",
+      "MODELS モデル",
+      "GOODS 通販",
+      "ITEM 作品情報",
+      "GALLERY ギャラリー",
+      "COMPANY 会社概要"
+     ],
+     "sample_urls": [
+      "https://www.duo-official.com/event/",
+      "https://www.duo-official.com/models/",
+      "https://www.duo-official.com/goods/"
+     ]
+    },
+    {
+     "pattern": "https://www.duo-official.com/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "https://www.duo-official.com/models/airi-kijima/",
+     "sample": [
+      "EVENT イベント",
+      "MODELS モデル",
+      "GOODS 通販",
+      "ITEM 作品情報",
+      "GALLERY ギャラリー",
+      "COMPANY 会社概要"
+     ],
+     "sample_urls": [
+      "https://www.duo-official.com/event/",
+      "https://www.duo-official.com/models/",
+      "https://www.duo-official.com/goods/"
+     ]
+    },
+    {
+     "pattern": "https://www.duo-official.com/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "https://www.duo-official.com/models/mayu_nozomi/",
+     "sample": [
+      "EVENT イベント",
+      "MODELS モデル",
+      "GOODS 通販",
+      "ITEM 作品情報",
+      "GALLERY ギャラリー",
+      "COMPANY 会社概要"
+     ],
+     "sample_urls": [
+      "https://www.duo-official.com/event/",
+      "https://www.duo-official.com/models/",
+      "https://www.duo-official.com/goods/"
+     ]
+    },
+    {
+     "pattern": "https://www.duo-official.com/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "https://www.duo-official.com/models/mitsuhahanagishi/",
+     "sample": [
+      "EVENT イベント",
+      "MODELS モデル",
+      "GOODS 通販",
+      "ITEM 作品情報",
+      "GALLERY ギャラリー",
+      "COMPANY 会社概要"
+     ],
+     "sample_urls": [
+      "https://www.duo-official.com/event/",
+      "https://www.duo-official.com/models/",
+      "https://www.duo-official.com/goods/"
+     ]
+    },
+    {
+     "pattern": "https://www.duo-official.com/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "https://www.duo-official.com/models/riku-fujisaki/",
+     "sample": [
+      "EVENT イベント",
+      "MODELS モデル",
+      "GOODS 通販",
+      "ITEM 作品情報",
+      "GALLERY ギャラリー",
+      "COMPANY 会社概要"
+     ],
+     "sample_urls": [
+      "https://www.duo-official.com/event/",
+      "https://www.duo-official.com/models/",
+      "https://www.duo-official.com/goods/"
+     ]
+    }
+   ],
+   "profiles": [
+    {
+     "url": "https://www.duo-official.com/event/",
+     "label": "EVENT イベント",
+     "title": "EVENT – Duo Entertainment 株式会社Duoエンターテイメント公式ホームページ",
+     "x": [],
+     "ig": [],
+     "h": [
+      "EVENT",
+      "EVENT INFOMATION"
+     ]
+    },
+    {
+     "url": "https://www.duo-official.com/models/",
+     "label": "MODELS モデル",
+     "title": "MODELS – Duo Entertainment 株式会社Duoエンターテイメント公式ホームページ",
+     "x": [],
+     "ig": [],
+     "h": [
+      "MODELS",
+      "希島あいり",
+      "Airi Kijima",
+      "希美まゆ"
+     ]
+    },
+    {
+     "url": "https://www.duo-official.com/goods/",
+     "label": "GOODS 通販",
+     "title": "GOODS – Duo Entertainment 株式会社Duoエンターテイメント公式ホームページ",
+     "x": [],
+     "ig": [],
+     "h": [
+      "GOODS",
+      "モデルデザイングッズ",
+      "CD",
+      "商品のご購入方法"
+     ]
+    },
+    {
+     "url": "https://www.duo-official.com/item/",
+     "label": "ITEM 作品情報",
+     "title": "ITEM – Duo Entertainment 株式会社Duoエンターテイメント公式ホームページ",
+     "x": [],
+     "ig": [],
+     "h": [
+      "ITEM"
+     ]
+    },
+    {
+     "url": "https://www.duo-official.com/gallery/",
+     "label": "GALLERY ギャラリー",
+     "title": "GALLERY – Duo Entertainment 株式会社Duoエンターテイメント公式ホームページ",
+     "x": [],
+     "ig": [],
+     "h": [
+      "GALLERY"
+     ]
+    },
+    {
+     "url": "https://www.duo-official.com/company/",
+     "label": "COMPANY 会社概要",
+     "title": "COMPANY – Duo Entertainment 株式会社Duoエンターテイメント公式ホームページ",
+     "x": [],
+     "ig": [],
+     "h": [
+      "COMPANY"
+     ]
+    }
+   ]
+  },
+  {
+   "start": "https://girlule-pro.xyz/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "https://girlule-pro.xyz/",
+     "title": "AV女優 求人 募集 AVプロダクション・ガールールプロ",
+     "links": 61
+    },
+    {
+     "url": "https://girlule-pro.xyz/job/",
+     "title": "AV女優の仕事の内容 | AVプロダクション・ガールールプロ",
+     "links": 44
+    },
+    {
+     "url": "https://girlule-pro.xyz/column/",
+     "title": "AV女優の募集・求人コラム | AVプロダクション・ガールールプロ",
+     "links": 50
+    },
+    {
+     "url": "https://girlule-pro.xyz/flow/",
+     "title": "AV女優の仕事の流れ | AVプロダクション・ガールールプロ",
+     "links": 44
+    },
+    {
+     "url": "https://girlule-pro.xyz/model/",
+     "title": "所属AV女優のご紹介とコメント | AVプロダクション・ガールールプロ",
+     "links": 46
+    },
+    {
+     "url": "https://girlule-pro.xyz/column/201001/",
+     "title": "AV女優のお仕事の流れ | AVプロダクション・ガールールプロ",
+     "links": 51
+    },
+    {
+     "url": "https://girlule-pro.xyz/column/201027/",
+     "title": "AV女優（セクシー女優）のお仕事内容 | AVプロダクション・ガールールプロ",
+     "links": 51
+    },
+    {
+     "url": "https://girlule-pro.xyz/contact/",
+     "title": "AV女優の応募・お問い合わせ | AVプロダクション・ガールールプロ",
+     "links": 46
+    }
+   ],
+   "groups": [
+    {
+     "pattern": "https://girlule-pro.xyz/*",
+     "count": 18,
+     "cjk": 17,
+     "matched": 0,
+     "on": "https://girlule-pro.xyz/",
+     "sample": [
+      "初めての方のために",
+      "AV女優の仕事の内容",
+      "AV女優の募集・求人コラム",
+      "AV女優の仕事の流れ",
+      "サポート体制",
+      "所属AV女優"
+     ],
+     "sample_urls": [
+      "https://girlule-pro.xyz/immediate/",
+      "https://girlule-pro.xyz/job/",
+      "https://girlule-pro.xyz/column/"
+     ]
+    },
+    {
+     "pattern": "https://girlule-pro.xyz/*",
+     "count": 13,
+     "cjk": 13,
+     "matched": 0,
+     "on": "https://girlule-pro.xyz/job/",
+     "sample": [
+      "初めての方のために",
+      "AV女優の仕事の内容",
+      "AV女優の募集・求人コラム",
+      "AV女優の仕事の流れ",
+      "サポート体制",
+      "所属AV女優"
+     ],
+     "sample_urls": [
+      "https://girlule-pro.xyz/immediate/",
+      "https://girlule-pro.xyz/job/",
+      "https://girlule-pro.xyz/column/"
+     ]
+    },
+    {
+     "pattern": "https://girlule-pro.xyz/*",
+     "count": 13,
+     "cjk": 13,
+     "matched": 0,
+     "on": "https://girlule-pro.xyz/column/",
+     "sample": [
+      "初めての方のために",
+      "AV女優の仕事の内容",
+      "AV女優の募集・求人コラム",
+      "AV女優の仕事の流れ",
+      "サポート体制",
+      "所属AV女優"
+     ],
+     "sample_urls": [
+      "https://girlule-pro.xyz/immediate/",
+      "https://girlule-pro.xyz/job/",
+      "https://girlule-pro.xyz/column/"
+     ]
+    },
+    {
+     "pattern": "https://girlule-pro.xyz/*",
+     "count": 13,
+     "cjk": 13,
+     "matched": 0,
+     "on": "https://girlule-pro.xyz/flow/",
+     "sample": [
+      "初めての方のために",
+      "AV女優の仕事の内容",
+      "AV女優の募集・求人コラム",
+      "AV女優の仕事の流れ",
+      "サポート体制",
+      "所属AV女優"
+     ],
+     "sample_urls": [
+      "https://girlule-pro.xyz/immediate/",
+      "https://girlule-pro.xyz/job/",
+      "https://girlule-pro.xyz/column/"
+     ]
+    },
+    {
+     "pattern": "https://girlule-pro.xyz/*",
+     "count": 13,
+     "cjk": 13,
+     "matched": 0,
+     "on": "https://girlule-pro.xyz/model/",
+     "sample": [
+      "初めての方のために",
+      "AV女優の仕事の内容",
+      "AV女優の募集・求人コラム",
+      "AV女優の仕事の流れ",
+      "サポート体制",
+      "所属AV女優"
+     ],
+     "sample_urls": [
+      "https://girlule-pro.xyz/immediate/",
+      "https://girlule-pro.xyz/job/",
+      "https://girlule-pro.xyz/column/"
+     ]
+    },
+    {
+     "pattern": "https://girlule-pro.xyz/*",
+     "count": 13,
+     "cjk": 13,
+     "matched": 0,
+     "on": "https://girlule-pro.xyz/column/201001/",
+     "sample": [
+      "初めての方のために",
+      "AV女優の仕事の内容",
+      "AV女優の募集・求人コラム",
+      "AV女優の仕事の流れ",
+      "サポート体制",
+      "所属AV女優"
+     ],
+     "sample_urls": [
+      "https://girlule-pro.xyz/immediate/",
+      "https://girlule-pro.xyz/job/",
+      "https://girlule-pro.xyz/column/"
+     ]
+    }
+   ],
+   "profiles": [
+    {
+     "url": "https://girlule-pro.xyz/immediate/",
+     "label": "初めての方のために",
+     "title": "初めての方のために | AVプロダクション・ガールールプロ",
+     "x": [
+      "girlulepro"
+     ],
+     "ig": [
+      "girlule_pro"
+     ],
+     "h": [
+      "初めての方のために Immediate",
+      "AV業界の歴史は30年以上にもなります。",
+      "AV女優",
+      "モデル"
+     ]
+    },
+    {
+     "url": "https://girlule-pro.xyz/job/",
+     "label": "AV女優の仕事の内容",
+     "title": "AV女優の仕事の内容 | AVプロダクション・ガールールプロ",
+     "x": [
+      "girlulepro"
+     ],
+     "ig": [
+      "girlule_pro"
+     ],
+     "h": [
+      "AV女優の仕事の内容 Job",
+      "AV女優",
+      "単体女優 100万円以上",
+      "企画単体女優 50～80万円"
+     ]
+    },
+    {
+     "url": "https://girlule-pro.xyz/column/",
+     "label": "AV女優の募集・求人コラム",
+     "title": "AV女優の募集・求人コラム | AVプロダクション・ガールールプロ",
+     "x": [
+      "girlulepro"
+     ],
+     "ig": [
+      "girlule_pro"
+     ],
+     "h": [
+      "AV女優の募集・求人コラム column",
+      "仕事としてAV",
+      "アダルトビデオ",
+      "を選ぶ理由"
+     ]
+    },
+    {
+     "url": "https://girlule-pro.xyz/flow/",
+     "label": "AV女優の仕事の流れ",
+     "title": "AV女優の仕事の流れ | AVプロダクション・ガールールプロ",
+     "x": [
+      "girlulepro"
+     ],
+     "ig": [
+      "girlule_pro"
+     ],
+     "h": [
+      "AV女優の仕事の流れ Flow",
+      "1 面接予約",
+      "2 面接",
+      "3 写真撮影"
+     ]
+    },
+    {
+     "url": "https://girlule-pro.xyz/support/",
+     "label": "サポート体制",
+     "title": "所属AV女優へのサポート体制 | AVプロダクション・ガールールプロ",
+     "x": [
+      "girlulepro"
+     ],
+     "ig": [
+      "girlule_pro"
+     ],
+     "h": [
+      "所属AV女優へのサポート体制 Support",
+      "宿泊先・ホテル",
+      "不動産会社提携",
+      "ヘアメイク・カメラマン常駐"
+     ]
+    },
+    {
+     "url": "https://girlule-pro.xyz/model/",
+     "label": "所属AV女優",
+     "title": "所属AV女優のご紹介とコメント | AVプロダクション・ガールールプロ",
+     "x": [
+      "girlulepro",
+      "nonnon_nozomi__",
+      "msz_mfn_"
+     ],
+     "ig": [
+      "girlule_pro"
+     ],
+     "h": [
+      "所属AV女優のご紹介とコメント Model",
+      "秋元 いおり Akimoto Iori",
+      "石田 かほり Ishida kahori",
+      "神楽 美来 Kagura Miki"
+     ]
+    }
+   ]
+  },
+  {
+   "start": "http://attractive-llc.net/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "http://attractive-llc.net/",
+     "title": "AV女優プロダクト | アトラクティブ合同会社",
+     "links": 23
+    },
+    {
+     "url": "https://attractive-llc.net/model/",
+     "title": "所属モデル | アトラクティブ合同会社",
+     "links": 32
+    },
+    {
+     "url": "http://attractive-llc.net/model",
+     "title": "所属モデル | アトラクティブ合同会社",
+     "links": 32
+    }
+   ],
+   "groups": [
+    {
+     "pattern": "https://attractive-llc.net/*",
+     "count": 8,
+     "cjk": 8,
+     "matched": 0,
+     "on": "http://attractive-llc.net/",
+     "sample": [
+      "会社概要 Company",
+      "所属モデル Model",
+      "お仕事の内容 Works",
+      "お仕事の流れ Flow",
+      "サポートについて Support",
+      "新着情報"
+     ],
+     "sample_urls": [
+      "https://attractive-llc.net/company/",
+      "https://attractive-llc.net/model/",
+      "https://attractive-llc.net/works/"
+     ]
+    },
+    {
+     "pattern": "https://attractive-llc.net/*",
+     "count": 8,
+     "cjk": 8,
+     "matched": 0,
+     "on": "https://attractive-llc.net/model/",
+     "sample": [
+      "メールでのお問い合わせはこちら",
+      "会社概要 Company",
+      "所属モデル Model",
+      "お仕事の内容 Works",
+      "お仕事の流れ Flow",
+      "サポートについて Support"
+     ],
+     "sample_urls": [
+      "https://attractive-llc.net/contact/",
+      "https://attractive-llc.net/company/",
+      "https://attractive-llc.net/model/"
+     ]
+    },
+    {
+     "pattern": "https://attractive-llc.net/*",
+     "count": 7,
+     "cjk": 7,
+     "matched": 0,
+     "on": "http://attractive-llc.net/model",
+     "sample": [
+      "会社概要 Company",
+      "所属モデル Model",
+      "お仕事の内容 Works",
+      "お仕事の流れ Flow",
+      "サポートについて Support",
+      "サイトマップ"
+     ],
+     "sample_urls": [
+      "https://attractive-llc.net/company/",
+      "https://attractive-llc.net/model/",
+      "https://attractive-llc.net/works/"
+     ]
+    }
+   ],
+   "profiles": [
+    {
+     "url": "https://attractive-llc.net/company/",
+     "label": "会社概要 Company",
+     "title": "会社概要 | アトラクティブ合同会社",
+     "x": [],
+     "ig": [],
+     "h": [
+      "会社概要",
+      "アトラクティブ合同会社"
+     ]
+    },
+    {
+     "url": "https://attractive-llc.net/model/",
+     "label": "所属モデル Model",
+     "title": "所属モデル | アトラクティブ合同会社",
+     "x": [
+      "aoi__ibuki",
+      "aise_ria",
+      "minase_akari_",
+      "emi_attractive"
+     ],
+     "ig": [
+      "aoi__ibuki",
+      "mmmnase314",
+      "nisino.emi",
+      "nozomi__arimura"
+     ],
+     "h": [
+      "所属モデル",
+      "葵 いぶき Ibuki Aoi",
+      "愛才 りあ Ria Aise",
+      "皆瀬 あかり Akari Minase"
+     ]
+    },
+    {
+     "url": "https://attractive-llc.net/works/",
+     "label": "お仕事の内容 Works",
+     "title": "お仕事の内容 | アトラクティブ合同会社",
+     "x": [],
+     "ig": [],
+     "h": [
+      "お仕事の内容",
+      "単体AVモデル",
+      "企画単体AVモデル",
+      "企画AVモデル"
+     ]
+    },
+    {
+     "url": "https://attractive-llc.net/flow/",
+     "label": "お仕事の流れ Flow",
+     "title": "お仕事の流れ | アトラクティブ合同会社",
+     "x": [],
+     "ig": [],
+     "h": [
+      "お仕事の流れ",
+      "STEP.01 ご応募",
+      "面接予約",
+      "STEP.02 面接と仕事説明"
+     ]
+    },
+    {
+     "url": "https://attractive-llc.net/support/",
+     "label": "サポートについて Support",
+     "title": "サポートについて | アトラクティブ合同会社",
+     "x": [],
+     "ig": [],
+     "h": [
+      "サポートについて",
+      "ヘアメイクスタジオ提携",
+      "不動産会社提携",
+      "高級マンション完備"
+     ]
+    },
+    {
+     "url": "https://attractive-llc.net/news/",
+     "label": "新着情報",
+     "title": "新着情報 | アトラクティブ合同会社",
+     "x": [],
+     "ig": [],
+     "h": [
+      "新着情報",
+      "ホームページ開設致しました。",
+      "アーカイブ",
+      "アトラクティブ合同会社"
+     ]
+    }
+   ]
+  },
+  {
+   "start": "https://www.glanzpro.com/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "https://www.glanzpro.com/",
+     "title": "",
+     "links": 0
+    }
+   ],
+   "groups": [],
+   "profiles": []
+  },
+  {
+   "start": "http://www.belltech-pro.com/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "http://www.belltech-pro.com/",
+     "title": "モデルプロダクション BELLTECH PRODUCTION ベルテック",
+     "links": 2
+    },
+    {
+     "url": "http://www.belltech-pro.com/model/list",
+     "error": "HTTPError"
+    }
+   ],
+   "groups": [],
+   "profiles": []
+  },
+  {
+   "start": "http://www.allurepro.com/",
+   "robots_ok": true,
+   "pages": [
+    {
+     "url": "http://www.allurepro.com/",
+     "title": "AllurePro.com is for sale | HugeDomains",
+     "links": 63
+    }
+   ],
+   "groups": [],
+   "profiles": []
+  }
+ ]
+}
