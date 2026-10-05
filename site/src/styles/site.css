@@ -148,17 +148,19 @@ summary:focus-visible {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
-  /* 高さは、左のタイトルの文字（約16px）に近い17px。枠の上下を、タイトルの文字の上下にそろえる。
-     「広告」の文字は、フォントの癖で少し上にずれて見えるので、上に1pxの余白を足して、枠の真ん中に見えるようにしている */
+  justify-content: center;
+  /* 左のタイトル（Dela Gothic One 20px）と同じ書体にして、なじませる（運営者の希望。2026-10-05）。
+     枠の上下は、タイトルの漢字（新作情報）の上の端・下の端にそろえる: 高さ 17px（漢字の高さ）。
+     タイトルの漢字は、行の真ん中より0.5px下にあるので、margin-top: 1px で枠を0.5px下げる（brand-row は真ん中ぞろえ）。
+     「広告」の文字は枠の真ん中より0.5px上に出るので、上に1pxの余白を足して真ん中にする（Chromiumで、文字の形の上下を測って合わせた） */
   height: 17px;
-  padding: 1px 6px 0;
+  margin-top: 1px;
+  padding: 1px 5px 0;
   border: 1px solid var(--paper);
   border-radius: var(--r-media);
   color: var(--paper);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.04em;
+  font: 400 12px/1 var(--font-display);
+  letter-spacing: 0.02em;
 }
 
 .site-head {
