@@ -1735,6 +1735,19 @@ html.lightbox-open {
   margin: 0;
 }
 
+/* 所属事務所の公式サイトに載っているSNS（X・Instagram。出演者のページ） */
+.sns-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 女優検索の結果の「所属：○○」 */
+.actress-row-agency {
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
 .profile-source {
   max-width: 44em; /* 広い画面で、1行が長くなりすぎないように */
   margin: 8px 0 0;

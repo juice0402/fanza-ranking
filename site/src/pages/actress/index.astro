@@ -6,6 +6,7 @@ import { actressGroups, actressSearchIndex, actressIndexCoverage, profilesByName
 import { ACTRESS_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
 import { ACTRESS_SEARCH_INDEX_PATH, SIZE_BUCKETS, commonSizeBucket, compactSpec, faceUrl, sizeBucketLabel } from '../../lib/profiles.js';
 import { INDEX_LIST_LIMIT } from '../../config.js';
+import { agencyCounts } from '../../lib/agencies.js';
 
 const trail = [
   { name: 'トップ', path: '/' },
@@ -29,6 +30,9 @@ const SIZES = [
   { name: 'waist', key: 'wa', label: 'ウエスト' },
   { name: 'hip', key: 'hi', label: 'ヒップ' },
 ].map((s) => ({ ...s, buckets: SIZE_BUCKETS[s.name], common: commonSizeBucket(actressSearchIndex.actresses, s.key, SIZE_BUCKETS[s.name]) }));
+// 所属事務所（事務所の公式サイトから週1回。lib/agencies.js）。選択肢は、所属が分かっている人の多い順
+const agencyOptions = agencyCounts(actressSearchIndex);
+const agencyTotal = agencyOptions.reduce((n, a) => n + a.count, 0);
 const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
 const SORTS = [
   ['works', 'このサイトの作品の多い順'],
@@ -73,7 +77,7 @@ const SORTS = [
           </label>
           {/* 年齢・身長・スリーサイズ・カップ・並び順は、たためる（スマホで、結果がすぐ見えるように。広い画面・条件つきで開いたときは開く。actress-search.js） */}
           <details id="as-filters" class="ws-filters">
-            <summary class="ws-filters-toggle">年齢・身長・スリーサイズ・カップで絞り込む<span id="as-filter-note" class="ws-filter-note"></span></summary>
+            <summary class="ws-filters-toggle">{agencyOptions.length > 0 ? '年齢・身長・スリーサイズ・カップ・所属で絞り込む' : '年齢・身長・スリーサイズ・カップで絞り込む'}<span id="as-filter-note" class="ws-filter-note"></span></summary>
             <div class="as-ranges">
               {RANGES.map((r) => (
                 <fieldset class="as-range">
@@ -108,6 +112,15 @@ const SORTS = [
                 <label class="as-cup"><input type="checkbox" name="cup" value="L+" /><span>L〜</span></label>
               </div>
             </fieldset>
+            {agencyOptions.length > 0 && (
+              <label class="as-field as-field-wide">
+                所属事務所（事務所の公式サイトに載っている人）
+                <select name="ag">
+                  <option value="">指定なし</option>
+                  {agencyOptions.map((a) => <option value={a.key}>{a.name}（{a.count}人）</option>)}
+                </select>
+              </label>
+            )}
             <div class="as-checks">
               <label class="as-check"><input type="checkbox" name="site" value="1" /> このサイトに作品がある人だけ</label>
               <label class="as-check"><input type="checkbox" name="face" value="1" /> 顔写真がある人だけ</label>
@@ -128,7 +141,8 @@ const SORTS = [
         <ul id="as-list" class="actress-list"></ul>
         <p class="more"><button id="as-more" type="button" class="btn btn-quiet more-btn" hidden>もっと見る</button></p>
         <p class="as-coverage">
-          プロフィールは、FANZA公式の出演者データです（ほかのサイトの情報や推測は使っていません）。いま探せる{fmt(cov.total)}人のうち、年齢が分かるのは{fmt(cov.withAge)}人、身長は{fmt(cov.withHeight)}人、スリーサイズは{fmt(cov.withSize)}人、カップは{fmt(cov.withCup)}人です。年齢は、FANZAに載っている生年月日から毎日計算しています。データは毎日、少しずつ新しくなります。
+          年齢・身長・スリーサイズ・カップは、FANZA公式の出演者データです（ほかのサイトの情報や推測は使っていません）。いま探せる{fmt(cov.total)}人のうち、年齢が分かるのは{fmt(cov.withAge)}人、身長は{fmt(cov.withHeight)}人、スリーサイズは{fmt(cov.withSize)}人、カップは{fmt(cov.withCup)}人です。年齢は、FANZAに載っている生年月日から毎日計算しています。データは毎日、少しずつ新しくなります。
+          {agencyTotal > 0 && `所属事務所は、${agencyOptions.length}つの事務所の公式サイトの所属女優のページに載っている${fmt(agencyTotal)}人に付けています（名前がFANZAとぴったり同じ人だけ。週に1回、新しくなります）。`}
         </p>
       </section>
     )}

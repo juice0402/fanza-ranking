@@ -5,7 +5,7 @@ import VrToggle from '../../components/VrToggle.astro';
 import DaySection from '../../components/DaySection.astro';
 import FavButton from '../../components/FavButton.astro';
 import Face from '../../components/Face.astro';
-import { actressGroups, makerByName, profilesByName } from '../../lib/data.js';
+import { actressGroups, agencyOfName, makerByName, profilesByName } from '../../lib/data.js';
 import {
   ACTRESS_INDEX_PATH,
   actressPageTitle,
@@ -19,6 +19,7 @@ import { ENTITY_LIST_LIMIT } from '../../config.js';
 import { entityListing, hasCalendar, listIndexable } from '../../lib/plan.js';
 import { CALENDAR_PATH, actressIcsPath, webcalUrl } from '../../lib/calendar.js';
 import { faceUrl, profileFacts } from '../../lib/profiles.js';
+import { instagramUrl, xUrl } from '../../lib/agencies.js';
 
 // 作品が2本以上ある出演者ごとに1ページ作る
 export function getStaticPaths() {
@@ -38,6 +39,9 @@ const makers = [...new Set(group.items.map((i) => i.maker).filter((m) => m !== '
 const formats = formatsOf(group.items);
 const profile = profilesByName.get(group.name); // FANZA公式の出演者データ（無い人もいる）
 const facts = profileFacts(profile);
+// 所属事務所とSNS（事務所の公式サイトの所属女優のページに載っているものだけ。scripts/agency_links.py が週1回集める）。無い人もいる
+const agency = agencyOfName(group.name);
+const seenDay = agency ? `${Number(agency.seen.slice(5, 7))}月${Number(agency.seen.slice(8, 10))}日` : '';
 const trail = [
   { name: 'トップ', path: '/' },
   { name: '女優検索', path: ACTRESS_INDEX_PATH },
@@ -80,6 +84,21 @@ const trail = [
     <dl class="spec section">
       <dt class="spec-term">掲載作品</dt>
       <dd class="spec-desc">{group.items.length}本</dd>
+      {agency && (
+        <>
+          <dt class="spec-term">所属</dt>
+          <dd class="spec-desc"><a class="spec-link" href={agency.source} target="_blank" rel="nofollow noopener noreferrer">{agency.agency}</a></dd>
+        </>
+      )}
+      {agency && (agency.x || agency.instagram) && (
+        <>
+          <dt class="spec-term">SNS</dt>
+          <dd class="spec-desc sns-links">
+            {agency.x && <a class="chip-link sns-link" href={xUrl(agency.x)} target="_blank" rel="nofollow noopener noreferrer" aria-label={`${group.name}さんのX（公式アカウント）`}>X（公式）</a>}
+            {agency.instagram && <a class="chip-link sns-link" href={instagramUrl(agency.instagram)} target="_blank" rel="nofollow noopener noreferrer" aria-label={`${group.name}さんのInstagram（公式アカウント）`}>Instagram（公式）</a>}
+          </dd>
+        </>
+      )}
       {facts.map(([label, value]) => (
         <>
           <dt class="spec-term">{label}</dt>
@@ -107,6 +126,7 @@ const trail = [
       )}
     </dl>
 
+    {agency && <p class="profile-source">所属とSNSは、所属事務所（{agency.agency}）の公式サイトに載っている情報です（{seenDay}時点）。移籍などで変わることがあります。</p>}
     {facts.length > 0 && <p class="profile-source">年齢・身長・サイズは、FANZAに載っている情報にもとづきます（載っていない項目は表示していません）。年齢は、FANZAに載っている生年月日から毎日計算しています。</p>}
 
     <section class="section" aria-labelledby="works-title">

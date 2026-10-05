@@ -41,6 +41,12 @@ node tests/test_calendar.mjs || failed=1
 step "お気に入りの部品 (Node.js)"
 node tests/test_favorites.mjs || failed=1
 
+step "所属事務所・SNSの道具 (Python)"
+python3 tests/test_agencies.py || failed=1
+
+step "所属事務所・SNSの部品 (Node.js)"
+node tests/test_agencies.mjs || failed=1
+
 step "出演者プロフィール・売れ筋・出演者検索の部品 (Node.js)"
 node tests/test_profiles.mjs || failed=1
 

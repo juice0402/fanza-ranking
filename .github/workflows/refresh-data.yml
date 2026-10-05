@@ -6,6 +6,7 @@ name: Refresh FANZA Data
 #   ・売れ筋ランキングを取り直す
 #   ・女優検索の名簿（FANZA公式の出演者検索の一覧）を、続きから取る。ふだんは毎日40回ずつ。
 #     「名簿の一覧を取る回数」を増やして実行すると、一気に集められる（全部で約200回。1回100人）
+#   ・（「所属事務所」を 1 にしたときだけ）所属事務所とSNSを、事務所の公式サイトから集め直す
 #   ・過去作品（FANZAの人気順の上位1.5万本の、発売済みの作品）を、その日の上位1,000本と新着の人気順を取り直してから、その下を続きから取る。
 #     ふだんは毎日30回ずつ（3,000本）。「過去作品の一覧を取る回数」を増やして実行すると、一気に集められる（140回で上位1.5万本が一回り）
 # 新しい機能のブランチで、本物のAPIを使った確認をするときにも使う（Run workflow で、ブランチを選んで実行）。
@@ -21,6 +22,10 @@ on:
         description: '過去作品の一覧を取る回数（上位1,000本より下を、1回100本。0〜500。ふだんは30、一気に上位1.5万本を集めるなら140）'
         required: false
         default: '30'
+      agencies:
+        description: '所属事務所とSNSを、いますぐ事務所の公式サイトから集め直す（1 で集め直す。ふだんは毎日の更新が週1回）'
+        required: false
+        default: '0'
 
 permissions:
   contents: write
@@ -59,6 +64,12 @@ jobs:
           case "$CATALOG_CALLS" in ''|*[!0-9]*) echo "過去作品の一覧を取る回数は、数字で入れてください（いま: $CATALOG_CALLS）"; exit 1;; esac
           if [ "$CATALOG_CALLS" -gt 500 ]; then echo "過去作品の一覧を取る回数は500回までです"; exit 1; fi
           python get_new_releases.py --refresh-only
+
+      - name: Refresh agencies
+        if: inputs.agencies == '1'
+        continue-on-error: true
+        timeout-minutes: 20
+        run: python scripts/agency_links.py --update --force
 
       - name: Commit and push if changed
         run: |

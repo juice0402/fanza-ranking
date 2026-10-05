@@ -503,6 +503,58 @@ for pth in actress_pages:
         bad_profile_pages.append((name or os.path.relpath(pth, DIST), here))
 check(f"出演者ページ（{len(actress_pages)}ページ）: 顔写真・年齢/身長/サイズの行・FANZAの全作品ボタンが、データのとおりに出ている", not bad_profile_pages, bad_profile_pages[:3])
 
+# 所属事務所とSNS（data/agencies.json。事務所の公式サイトから週1回。運営者の希望。2026-10-05）。
+# 決まった5つの事務所（site/src/lib/agencies.js の AGENCIES）だけ・出どころは事務所の公式サイト・アカウント名の形・同じ名前は1行だけ
+_agencies_src = read(os.path.join(ROOT, "site", "src", "lib", "agencies.js"))
+AGENCY_SITES = {k: (n, u) for k, n, u in re.findall(r"(\w+): \{ name: '([^']+)', url: '([^']+)' \}", _agencies_src)}
+try:
+    _agency_data = json.load(open(os.path.join(ROOT, "site", "src", "data", "agencies.json"), encoding="utf-8"))
+except (OSError, ValueError):
+    _agency_data = {}
+_agency_rows = [r for r in (_agency_data.get("rows") if isinstance(_agency_data, dict) and isinstance(_agency_data.get("rows"), list) else []) if isinstance(r, dict)]
+_agency_ok = lambda r: (r.get("agency") in AGENCY_SITES and isinstance(r.get("name"), str) and r["name"].strip() and str(r.get("source", "")).startswith(AGENCY_SITES[r["agency"]][1])
+                        and not re.search(r"[\s\"'<>\\]", str(r.get("source", ""))) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("seen", ""))))
+_agency_name_count = {}
+for r in _agency_rows:
+    if _agency_ok(r):
+        _agency_name_count[r["name"].strip()] = _agency_name_count.get(r["name"].strip(), 0) + 1
+agency_by_name = {r["name"].strip(): r for r in _agency_rows if _agency_ok(r) and _agency_name_count[r["name"].strip()] == 1}
+check("所属事務所のデータ（agencies.json）: 決まった5つの事務所だけ・出どころが事務所の公式サイト・生年月日などの項目は無い",
+      len(AGENCY_SITES) == 5 and all(_agency_ok(r) for r in _agency_rows) and not any(k in r for r in _agency_rows for k in ("birthday", "birth", "blood", "pref", "hobby")),
+      [r.get("name") for r in _agency_rows if not _agency_ok(r)][:3])
+bad_agency_pages = []
+shown_agency = 0
+for pth in actress_pages:
+    text = read(pth)
+    m = re.search(r'<h1 class="hero-title">(.*?)</h1>', text, re.S)
+    h1_text = htmllib.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip() if m else ""
+    name = h1_text[: -len("の新作・出演作品")] if h1_text.endswith("の新作・出演作品") else ""
+    row = agency_by_name.get(name)
+    has_row = '<dt class="spec-term">所属</dt>' in text
+    here = []
+    if has_row != bool(row):
+        here.append(f"所属の行の有無が、データと合わない（行={has_row}）")
+    if row:
+        shown_agency += 1
+        dd = re.search(r'<dt class="spec-term">所属</dt>\s*<dd class="spec-desc">(.*?)</dd>', text, re.S)
+        a_ = tags(dd.group(1), "a") if dd else []
+        if not a_ or a_[0].get("href") != row["source"] or a_[0].get("target") != "_blank" or not {"nofollow", "noopener", "noreferrer"} <= set(a_[0].get("rel", "").split()) or strip_tags(dd.group(1)).strip() != AGENCY_SITES[row["agency"]][0]:
+            here.append("所属のリンク（出どころ・名前・属性）")
+        want_sns = ([f"https://x.com/{row['x']}"] if re.fullmatch(r"[A-Za-z0-9_]{1,15}", str(row.get("x", ""))) else []) + ([f"https://www.instagram.com/{row['instagram']}/"] if re.fullmatch(r"[A-Za-z0-9_.]{1,30}", str(row.get("instagram", ""))) else [])
+        sns = re.search(r'<dt class="spec-term">SNS</dt>\s*<dd class="spec-desc sns-links">(.*?)</dd>', text, re.S)
+        got_sns = [t for t in tags(sns.group(1), "a")] if sns else []
+        if [t.get("href") for t in got_sns] != want_sns or any(t.get("target") != "_blank" or not {"nofollow", "noopener", "noreferrer"} <= set(t.get("rel", "").split()) for t in got_sns):
+            here.append(("SNSのリンク", [t.get("href") for t in got_sns], want_sns))
+        if f"所属とSNSは、所属事務所（{AGENCY_SITES[row['agency']][0]}）の公式サイトに載っている情報です" not in text or "時点" not in text:
+            here.append("出どころの注記")
+    elif '<dt class="spec-term">SNS</dt>' in text:
+        here.append("所属の無い人に SNS の行がある")
+    if here:
+        bad_agency_pages.append((name or os.path.relpath(pth, DIST), here))
+check(f"出演者ページの所属事務所とSNS（{shown_agency}人）: データのとおり・出どころの事務所のページへのリンク・SNS は x.com / instagram.com のアカウントだけ・出どころの注記",
+      not bad_agency_pages, bad_agency_pages[:3])
+warn("所属事務所が付いた出演者ページがある（データがあれば出る）", shown_agency > 0 or not agency_by_name)
+
 # 個人情報: 生年月日そのものを、公開するファイルに出さない（出すのは、計算した年齢だけ）
 births = {str(r.get("birthday")) for r in profiles.values() if re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("birthday") or ""))}
 leaks = []
@@ -528,7 +580,7 @@ check("女優検索の索引（/data/actresses-index.json）がある・形が�
       and act_index.get("img") == "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/"
       and (act_index.get("list") == "" or (str(act_index.get("list")).count("{ID}") == 1 and fanza_https(str(act_index.get("list")).replace("{ID}", "1"), FANZA_LINK))), str(act_index)[:120])
 rows = act_index["actresses"] if isinstance(act_index, dict) and isinstance(act_index.get("actresses"), list) else []
-ALLOWED_KEYS = {"n", "r", "id", "s", "k", "i", "a", "h", "b", "c", "wa", "hi", "l"}
+ALLOWED_KEYS = {"n", "r", "id", "s", "k", "i", "a", "h", "b", "c", "wa", "hi", "l", "g"}  # g: 所属事務所のキー（事務所の公式サイトから）
 DIRECTORY = os.path.join(ROOT, "site", "src", "data", "actress_directory.json")
 dir_raw = load_json(DIRECTORY) if os.path.isfile(DIRECTORY) else None
 dir_ids = {str(r.get("id")) for r in (dir_raw.get("rows") if isinstance(dir_raw, dict) and isinstance(dir_raw.get("rows"), list) else []) if isinstance(r, dict)}
@@ -611,9 +663,22 @@ if os.path.isfile(search_page):
             if any(t.get("name") in (f"{key_}_min", f"{key_}_max") for t in tags(stext, "input")):
                 bad_size.append((key_, "数字の欄が残っている"))
         check("スリーサイズは、幅（〜79・80〜84 など）をタップで選ぶ（数字を入れる欄は無い）。いちばん人数の多い幅を、目安として添える", not bad_size, bad_size[:3])
-        values = [t.get("value", "") for t in tags(stext, "option")]
+        sort_sel = re.search(r'<select name="sort">(.*?)</select>', stext, re.S)
+        values = [t.get("value", "") for t in tags(sort_sel.group(1) if sort_sel else "", "option")]
         bad_values = [v for v in values if v not in ("works", "bust", "cup", "young", "old", "tall", "short", "waist", "hip", "newest", "name")]
         check("並び順の値が、スクリプトの読める形だけ", not bad_values and len(values) == 11, bad_values[:5])
+        # 所属事務所で絞り込む（索引に所属の分かる人がいるときだけ）。選択肢は「指定なし」と、索引の agencies の事務所（人数の多い順）
+        ag_sel = re.search(r'<select name="ag">(.*?)</select>', stext, re.S)
+        idx_agencies = act_index.get("agencies", {}) if isinstance(act_index, dict) and isinstance(act_index.get("agencies"), dict) else {}
+        ag_counts = {}
+        for r in rows:
+            if isinstance(r, dict) and r.get("g"):
+                ag_counts[r["g"]] = ag_counts.get(r["g"], 0) + 1
+        want_opts = [("", "指定なし")] + [(k_, f"{idx_agencies.get(k_, k_)}（{c_}人）") for k_, c_ in sorted(ag_counts.items(), key=lambda kv: (-kv[1], idx_agencies.get(kv[0], kv[0])))]
+        got_opts = [(t_.get("value", ""), strip_tags(o_).strip()) for t_, o_ in zip(tags(ag_sel.group(1), "option"), re.findall(r"<option\b[^>]*>(.*?)</option>", ag_sel.group(1), re.S))] if ag_sel else []
+        check("所属事務所の選択肢（所属の分かる人がいるときだけ。「指定なし」と、事務所ごとの人数）", got_opts == want_opts if ag_counts else not ag_sel, (got_opts[:3], want_opts[:3]))
+        bad_g = [r.get("n") for r in rows if isinstance(r, dict) and r.get("g") and (r["g"] not in idx_agencies or r["g"] not in AGENCY_SITES or agency_by_name.get(r.get("n"), {}).get("agency") != r["g"])]
+        check("索引の所属（g）は、決まった事務所で、データのとおり（同じ名前の人がいれば付けない）", not bad_g and set(idx_agencies) <= set(AGENCY_SITES), bad_g[:3])
         cup_values = [t.get("value") for t in tags(stext, "input") if t.get("name") == "cup"]
         check("カップの選択肢: A〜K と L以上（L+）", cup_values == list("ABCDEFGHIJK") + ["L+"], cup_values)
         ids = {t.get("id") for tag in ("ul", "p", "button", "section") for t in tags(stext, tag)}
