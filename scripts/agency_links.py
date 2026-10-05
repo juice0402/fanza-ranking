@@ -42,7 +42,8 @@ SITES = [
     {"key": "soagent", "name": "SO MODELAGENT", "roster": ["https://so-agent.jp/model.php"],
      "profile": r"^https://so-agent\.jp/model/[A-Za-z0-9_-]+/?$"},
     {"key": "alive", "name": "プロダクションALIVE", "roster": ["https://alive-pro.tokyo/model"],
-     "profile": r"^https://alive-pro\.tokyo/model/[A-Za-z0-9_-]+/?$"},
+     "profile": r"^https://alive-pro\.tokyo/model/[A-Za-z0-9_-]+/?$",
+     "name_prefix": r"^アライブ所属のモデル\s*"},  # 一覧のリンクの文字がローマ字なので、プロフィールの見出し「アライブ所属のモデル 石川 澪」から
 ]
 
 X_LINK = re.compile(r"^https?://(?:www\.|mobile\.)?(?:twitter|x)\.com/(?:#!/)?@?([A-Za-z0-9_]{1,15})/?(?:\?.*)?$", re.I)
@@ -166,14 +167,14 @@ def sns_links(page_html, base_url):
 
 def fanza_names():
     """FANZA 公式の名前（女優検索の名簿・出演者プロフィール・このサイトの作品の出演者）→ { 照らし合わせ用の名前: { FANZAの名前: {id, …} } }。
-    「河北彩花（河北彩伽）」のような、かっこの中の別名でも引けるようにする（かっこの前の名前と、かっこの中の名前の両方）"""
+    「河北彩花（河北彩伽）」のような名前は、かっこの前の名前でも引けるようにする"""
     table = {}
 
     def add(name, id_=""):
         name = str(name or "").strip()
         if not name:
             return
-        keys = [name] + re.split(r"[（(]", name)[:1] + re.findall(r"[（(]([^）)]+)[）)]", name)
+        keys = [name] + re.split(r"[（(]", name)[:1]  # かっこの中（前の名前など）では引かない（「小春」→「夏川未来（小春）」のような取り違えを防ぐ）
         for key in keys:
             k = norm_name(key)
             if len(k) >= 2:
@@ -210,6 +211,23 @@ def lookup(table, cand):
         return "", "", "FANZAに同じ名前が何人もいる"
     (name, ids), = hits.items()
     return name, next(iter(ids), ""), "一致"
+
+
+CJK = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]")
+
+
+def agency_name(site, label, cands):
+    """プロフィール1つにつき、事務所の側の名前を1つだけ決める（ページの中のほかの女優の名前を拾わないように）。
+    一覧のリンクの文字（「美乃すずめ Suzume Mino」ならローマ字を外す）。ローマ字だけなら、事務所ごとの決まった見出しから"""
+    label = re.sub(r"\s+", " ", label or "").strip()
+    if CJK.search(label):
+        return re.sub(r"(?:\s+[A-Za-z][A-Za-z.'-]*)+$", "", label).strip()
+    if site.get("name_prefix"):
+        for c in cands:
+            m = re.match(site["name_prefix"], c)
+            if m and CJK.search(c[m.end():]):
+                return c[m.end():].strip()
+    return label
 
 
 def collect_site(site, table):
@@ -255,32 +273,19 @@ def collect_site(site, table):
     wide_x = {h for h, n in count_x.items() if n >= limit}
     wide_ig = {h for h, n in count_ig.items() if n >= limit}
     report["site_wide"] = {"x": sorted(wide_x), "instagram": sorted(wide_ig)}
-    # どのページにも出てくる文字（事務所の名前・見出しなど）は、名前の候補にしない
-    count_c = {}
-    for _, _, cands, _, _ in pages:
-        for c in set(norm_name(c) for c in cands):
-            count_c[c] = count_c.get(c, 0) + 1
-    wide_c = {c for c, n in count_c.items() if n >= limit}
-    report["site_wide_text"] = sorted(wide_c)[:20]
+    # 2人以上のプロフィールに出てくるSNSも、だれのものか決められないので外す（共演の紹介などで、ほかの女優のアカウントが載っていることがある）
+    wide_x |= {h for h, n in count_x.items() if n >= 2}
+    wide_ig |= {h for h, n in count_ig.items() if n >= 2}
     for url, label, cands, xs, igs in pages:
         xs = [h for h in xs if h.lower() not in wide_x]
         igs = [h for h in igs if h.lower() not in wide_ig]
-        tried = [c for c in ([label] if label else []) + cands if norm_name(c) not in wide_c]
-        # 名前は、候補の文字の全体（空白を除く）が FANZA の名前と完全に同じときだけ。文字の一部（「河北 彩花」の「彩花」など）では合わせない（人違いを防ぐ）
-        found_names, how = {}, "FANZAの名前と合わない"
-        for cand in tried:
-            name, id_, why = lookup(table, cand)
-            if name:
-                found_names[name] = id_
-            elif why != "FANZAの名前と合わない":
-                how = why
-        match = None
-        if len(found_names) == 1 and how == "FANZAの名前と合わない":
-            match, how = next(iter(found_names.items())), "一致"
-        elif len(found_names) > 1:
-            how = "名前の候補が何人もいる"
+        # 名前は、事務所の側の名前（1つ）の全体（空白を除く）が、FANZA の名前（かっこの前）と完全に同じときだけ。
+        # 文字の一部（「河北 彩花」の「彩花」など）や、ページの中のほかの見出しでは合わせない（人違いを防ぐ）
+        name = agency_name(site, label, cands)
+        fanza, fid, how = lookup(table, name) if name else ("", "", "名前が読めない")
+        match = (fanza, fid) if fanza else None
         rows.append({
-            "agency": site["name"], "profile": url, "label": label[:40], "candidates": cands[:6],
+            "agency": site["name"], "profile": url, "name": name, "label": label[:40], "candidates": cands[:6],
             "x": xs[:2], "instagram": igs[:2],
             "fanza_name": match[0] if match else "", "fanza_id": match[1] if match else "", "match": how,
         })
