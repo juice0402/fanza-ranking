@@ -178,7 +178,88 @@ def probe(name, url, table):
     return rep
 
 
+def groups_of(page_html, page_url, table):
+    """ページの中の、同じ形のリンクのまとまり（日本語の名前らしい文字が5つ以上のもの）→ [{pattern, count, matched, urls}]"""
+    host = urllib.parse.urlsplit(page_url).netloc
+    groups = {}
+    for url, label in A.links(page_html, page_url):
+        url = url.split("#")[0]
+        if urllib.parse.urlsplit(url).netloc != host:
+            continue
+        groups.setdefault(pattern_of(url), {}).setdefault(url, label)
+    out = []
+    for pat, links_ in groups.items():
+        cjk = [lb for lb in links_.values() if A.CJK.search(lb or "") and len(lb) <= 30]
+        names = [A.agency_name({}, lb, []) for lb in links_.values()]
+        matched = [n for n in names if n and A.lookup(table, n)[0]]
+        if len(cjk) >= 5 or len(matched) >= 3:
+            out.append({"pattern": pat, "count": len(links_), "cjk": len(cjk), "matched": len(matched), "urls": list(links_.items())})
+    return sorted(out, key=lambda g: (-g["matched"], -g["cjk"]))
+
+
+def deep(start, table, max_pages=8):
+    """入口のURLから2段まで（キーワードのあるリンクだけ）たどって、名前のリンクのまとまりを探す。いちばん良いまとまりの、プロフィール6人分のSNSとタイトルも"""
+    rep = {"start": start, "robots_ok": A.allowed(start), "pages": [], "groups": [], "profiles": []}
+    if not rep["robots_ok"]:
+        return rep
+    host = urllib.parse.urlsplit(start).netloc
+    queue, seen = [start], set()
+    while queue and len(seen) < max_pages:
+        u = queue.pop(0)
+        if u in seen:
+            continue
+        seen.add(u)
+        try:
+            if not A.allowed(u):
+                continue
+            page = A.fetch_raw(u)
+        except (urllib.error.URLError, OSError, ValueError, PermissionError) as e:
+            rep["pages"].append({"url": u, "error": f"{type(e).__name__}"})
+            continue
+        t = re.search(r"<title\b[^>]*>(.*?)</title>", page, re.I | re.S)
+        rep["pages"].append({"url": u, "title": A.text_of(t.group(1))[:60] if t else "", "links": len(A.links(page, u))})
+        for g in groups_of(page, u, table):
+            rep["groups"].append({**{k: v for k, v in g.items() if k != "urls"}, "on": u, "sample": [lb for _, lb in g["urls"][:6]], "sample_urls": [x for x, _ in g["urls"][:3]], "_urls": g["urls"]})
+        if u == start or len(seen) <= 3:
+            for v, label in A.links(page, u):
+                v = v.split("#")[0]
+                if urllib.parse.urlsplit(v).netloc == host and v not in seen and (KEYWORDS.search(urllib.parse.urlsplit(v).path) or KEYWORDS.search(label or "")):
+                    queue.append(v)
+    rep["groups"].sort(key=lambda g: (-g["matched"], -g["cjk"]))
+    if rep["groups"]:
+        best = rep["groups"][0]
+        pages = []
+        for v, label in best["_urls"][:6]:
+            try:
+                if A.allowed(v):
+                    page = A.fetch_raw(v)
+                    t = re.search(r"<title\b[^>]*>(.*?)</title>", page, re.I | re.S)
+                    xs, igs = A.sns_links(page, v)
+                    pages.append({"url": v, "label": label, "title": A.text_of(t.group(1))[:60] if t else "", "x": xs[:4], "ig": igs[:4], "h": A.name_candidates(page)[:4]})
+            except (urllib.error.URLError, OSError, ValueError, PermissionError):
+                continue
+        rep["profiles"] = pages
+    for g in rep["groups"]:
+        g.pop("_urls", None)
+    rep["groups"] = rep["groups"][:6]
+    return rep
+
+
 def main():
+    if len(sys.argv) > 2 and sys.argv[1] == "--deep":
+        table = A.fanza_names()
+        out = sys.argv[2]
+        reports = []
+        for start in sys.argv[3:]:
+            rep = deep(start, table)
+            reports.append(rep)
+            g = rep["groups"][0] if rep["groups"] else {}
+            print(f"{start}: robots={rep['robots_ok']} best={g.get('pattern')} matched={g.get('matched')}")
+        os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump({"generated": A.jst_today(), "reports": reports}, f, ensure_ascii=False, indent=1)
+            f.write("\n")
+        return
     out = sys.argv[1] if len(sys.argv) > 1 else "agency_discover.json"
     table = A.fanza_names()
     titles, cands = candidates()
