@@ -1,4 +1,4 @@
-// 女優検索（/actress/）。名前・年齢・身長（下限〜上限の数字）・バスト・ウエスト・ヒップ（「80〜84cm」のような幅を、いくつでも）・カップ（いくつでも）で絞り込み、並べ替える。
+// 女優検索（/actress/）。名前・年齢・身長（下限〜上限の数字）・バスト・ウエスト・ヒップ（「80〜84cm」のような幅を、いくつでも）・カップ（いくつでも）・所属事務所で絞り込み、並べ替える。
 // 検索のもとになるデータは /data/actresses-index.json（ビルドごとに作る。項目は site/src/lib/profiles.js の buildActressSearchIndex の説明を参照）。
 //   FANZA公式の出演者検索で、体型・身長・生年月日が載っている人（約1万人）と、このサイトの作品の出演者が入っている。
 // 条件は URL（?q=&age=20-25&bust=85-89,90-94&cup=E,F&sort=…）にも書くので、その条件のまま、ほかの人に送ったり、あとで開き直したりできる。
@@ -147,7 +147,10 @@
     };
   }
 
-  // 条件: { q 名前, age/height "下限-上限", bust/waist/hip "幅,幅"（どれかに入る人。"80-84,90-"）, cup "E,F,L+", sort, site "1"（このサイトに作品がある人だけ）, face "1"（顔写真がある人だけ） }
+  // 所属事務所のキー（索引の g。site/src/lib/agencies.js の AGENCIES のキー）の形
+  var AGENCY_KEY = /^[a-z]{2,12}$/;
+
+  // 条件: { q 名前, age/height "下限-上限", bust/waist/hip "幅,幅"（どれかに入る人。"80-84,90-"）, cup "E,F,L+", ag 所属事務所のキー, sort, site "1"（このサイトに作品がある人だけ）, face "1"（顔写真がある人だけ） }
   function filterRows(rows, query) {
     var q = query || {};
     var text = normalizeText(q.q);
@@ -157,7 +160,9 @@
     var cups = parseCups(q.cup);
     var onlySite = q.site === '1';
     var onlyFace = q.face === '1';
+    var agency = AGENCY_KEY.test(String(q.ag || '')) ? q.ag : '';
     var out = rows.filter(function (row) {
+      if (agency && row.g !== agency) return false;
       if (text && normalizeText(row.n).indexOf(text) < 0 && normalizeText(row.r).indexOf(text) < 0) return false;
       if (onlySite && !(row.k > 0)) return false;
       if (onlyFace && !row.i) return false;
@@ -191,6 +196,7 @@
     });
     q.site = params.get('site') === '1' ? '1' : '';
     q.face = params.get('face') === '1' ? '1' : '';
+    q.ag = AGENCY_KEY.test(params.get('ag') || '') ? params.get('ag') : '';
     return q;
   }
 
@@ -202,6 +208,7 @@
       if (q[r.name]) parts.push(r.name + '=' + encodeURIComponent(q[r.name]));
     });
     if (q.cup) parts.push('cup=' + encodeURIComponent(q.cup));
+    if (q.ag) parts.push('ag=' + encodeURIComponent(q.ag));
     if (q.site === '1') parts.push('site=1');
     if (q.face === '1') parts.push('face=1');
     if (q.sort && q.sort !== 'works') parts.push('sort=' + encodeURIComponent(q.sort));
@@ -250,6 +257,13 @@
     return safeUrl(template.replace('{ID}', String(row.id)), ['fanza.co.jp', 'dmm.co.jp']);
   }
 
+  // 検索結果の「所属：○○」（索引の agencies にある事務所だけ）
+  function agencyLabel(row, names) {
+    if (!row || !AGENCY_KEY.test(String(row.g || '')) || !names || !Object.prototype.hasOwnProperty.call(names, row.g)) return '';
+    var name = String(names[row.g] || '');
+    return name ? '所属：' + name : '';
+  }
+
   // 出演者ページの短い名前（10桁の英数字）からパスを作る。それ以外なら ''
   function pagePath(slug) {
     return typeof slug === 'string' && /^[0-9a-f]{10}$/.test(slug) ? '/actress/' + slug + '/' : '';
@@ -271,6 +285,7 @@
       imageUrl: imageUrl,
       listUrl: listUrl,
       pagePath: pagePath,
+      agencyLabel: agencyLabel,
       PAGE_SIZE: PAGE_SIZE,
       CUPS: CUPS,
       BUCKETS: BUCKETS,
@@ -299,6 +314,7 @@
   var rows = [];
   var imgBase = '';
   var template = '';
+  var agencyNames = {};
   var shown = PAGE_SIZE;
 
   function field(name) {
@@ -330,6 +346,7 @@
     q.cup = cups.join(',');
     q.site = field('site') && field('site').checked ? '1' : '';
     q.face = field('face') && field('face').checked ? '1' : '';
+    q.ag = field('ag') ? String(field('ag').value || '') : '';
     return q;
   }
 
@@ -355,6 +372,10 @@
     });
     if (field('site')) field('site').checked = q.site === '1';
     if (field('face')) field('face').checked = q.face === '1';
+    if (field('ag')) {
+      field('ag').value = q.ag || '';
+      if (field('ag').value !== (q.ag || '')) field('ag').value = ''; // 選択肢に無い事務所（いまは所属の分かる人がいない）は、指定なしに
+    }
   }
 
   function el(tag, className, text) {
@@ -404,6 +425,8 @@
     text.appendChild(el('span', 'actress-row-name', row.n));
     var spec = specText(row);
     if (spec) text.appendChild(el('span', 'actress-row-spec', spec)); // 数字が載っていない人は、行ごと出さない（同じ文が何十行も並ばないように）
+    var agency = agencyLabel(row, agencyNames);
+    if (agency) text.appendChild(el('span', 'actress-row-agency', agency));
     text.appendChild(el('span', 'actress-row-meta', page ? 'このサイトの作品 ' + row.k + '本 ›' : row.k ? 'このサイトの作品 ' + row.k + '本・FANZAで全作品を見る ›' : 'FANZAで全作品を見る ›'));
     a.appendChild(text);
     li.appendChild(a);
@@ -433,7 +456,7 @@
     if (filterNote) {
       var active = RANGES.filter(function (r) {
         return q[r.name];
-      }).length + (q.cup ? 1 : 0) + (q.site ? 1 : 0) + (q.face ? 1 : 0);
+      }).length + (q.cup ? 1 : 0) + (q.ag ? 1 : 0) + (q.site ? 1 : 0) + (q.face ? 1 : 0);
       filterNote.textContent = active ? '（' + active + '件を指定中）' : '';
     }
     writeUrl(q);
@@ -474,6 +497,7 @@
       if (!rows.length) return; // データが無いときは、最初から載っている一覧のまま
       imgBase = data && typeof data.img === 'string' ? data.img : '';
       template = data && typeof data.list === 'string' ? data.list : '';
+      agencyNames = data && data.agencies && typeof data.agencies === 'object' ? data.agencies : {};
       var first = parseQuery(window.location.search);
       writeForm(first);
       // 広い画面か、条件つきで開いたときは、くわしい条件の欄を最初から開いておく（スマホでは、たたんだまま。結果がすぐ見えるように）
