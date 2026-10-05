@@ -129,6 +129,7 @@ cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
 
 - 表示件数・サイト名・URL・ページを作るジャンル → `site/src/config.js`
 - デザイン → `site/src/styles/site.css`、部品は `site/src/components/`、全ページ共通部分は `site/src/layouts/Base.astro`
+  - **どんな画面の大きさにも**（運営者の希望。2026-10-05）: 3つ並び（TOP3・いま人気の女優・人気のジャンル・運命の作品・今週のデビュー作・誕生日の近い女優）は、どれも「3等分の列」（`--trio-gap`・`--trio-max`）で、中身は列の幅に合わせて大きさが変わる（丸は列の74%、四角・表紙は列いっぱい。順位の丸・名前は `cqi` で少し大きく）。作品の棚・作品検索の結果・週のまとめの注目の作品は、**置かれた場所の幅で列の数を決める**（コンテナクエリ。`site.css` のいちばん下。使えない古いブラウザには画面の幅の予備）。新しい3つ並びや棚を足すときも、この決まりに合わせる。ページの幅は 1180px（1440px〜は1320px、1760px〜は1440px）、パソコンのトップの右の欄は `clamp(300px, 30%, 380px)`
 - コメントの文体・代替文 → `get_new_releases.py`（`ANGLES`/`OPENINGS`/`CLOSINGS`、`HYPE_WORDS`、`template_comment`、`build_prompt`。**切り口・書き出し・結びを作品ごとに変えて、似た文章の量産にならないようにしている**。確かめられない評価が入った答えは採用しない）。Claude が書くコメントの書き方・手順 → `docs/claude-comments.md`。週のまとめ記事の書き方・手順 → `docs/claude-roundups.md`
 - 取得する件数・日数 → `get_new_releases.py` 冒頭の定数（`NEW_ITEMS_PER_RUN` など。Geminiの回数上限とセットで考える → 守ること8）
 

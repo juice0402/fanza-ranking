@@ -23,6 +23,10 @@
 
   --gutter: 16px;
   --maxw: 1180px;
+  /* 3つ並び（TOP3・いま人気の女優・人気のジャンル・運命の作品・今週のデビュー作・誕生日の近い女優）の共通の決まり（運営者の希望「どんな画面サイズにも」。2026-10-05）:
+     どれも「3等分の列」にして、中身は列の幅に合わせて大きさが変わる（TOP3・運命の作品と同じ原理）。すき間と最大の幅も共通にして、列の縦の線がそろうように */
+  --trio-gap: 10px;
+  --trio-max: 760px;
 
   /* 角の丸みは、この3つだけを使う（サイト全体の見た目をそろえるため）
      ・押せるもの（ボタン・チップ・切り替え・ページ送り）… 丸い端（--r-pill）
@@ -271,7 +275,7 @@ summary:focus-visible {
 .hero-search {
   display: flex;
   gap: 8px;
-  max-width: 560px;
+  max-width: var(--trio-max); /* TOP3 と同じ幅まで（タブレットで、TOP3 とそろう） */
   margin-top: 18px;
 }
 
@@ -315,7 +319,7 @@ summary:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  max-width: 560px;
+  max-width: var(--trio-max);
   margin-top: 12px;
 }
 
@@ -444,20 +448,41 @@ summary:focus-visible {
 
 @media (min-width: 640px) {
   .shelf {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 28px 16px;
   }
 }
 
-@media (min-width: 900px) {
-  .shelf {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+/* 棚の列の数は、ふつうは「棚が置かれた場所の幅」で決める（このファイルのいちばん下の「どんな画面の大きさにも」）。
+   その仕組み（コンテナクエリ）が使えない古いブラウザだけ、画面の幅で決める */
+@supports not ((container-type: inline-size) and selector(:has(*))) {
+  @media (min-width: 640px) {
+    .shelf {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
-}
 
-@media (min-width: 1100px) {
-  .shelf {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+  @media (min-width: 900px) {
+    .shelf {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .shelf {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 960px) {
+    .home.has-side .shelf {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .home.has-side .shelf {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
 }
 
@@ -1336,9 +1361,16 @@ summary:focus-visible {
 }
 
 /* 広い画面: 表紙を左に縦に通し、右にタイトル → ひとこと → FANZAへ */
+@supports not ((container-type: inline-size) and selector(:has(*))) {
+  @media (min-width: 900px) {
+    .pick-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
 @media (min-width: 900px) {
   .pick-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
   }
 
@@ -2323,8 +2355,8 @@ html.lightbox-open {
 .medals {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  max-width: 760px; /* 広い画面で1列のとき（タブレット・きょうの数字が無い日）に、表紙が大きくなりすぎないように */
+  gap: var(--trio-gap);
+  max-width: var(--trio-max); /* タブレット（1列）で、表紙が大きくなりすぎないように */
   margin: 14px 0 0;
   padding: 0;
   list-style: none;
@@ -2508,7 +2540,8 @@ html.lightbox-open {
 .hot {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--trio-gap);
+  max-width: var(--trio-max);
   margin: 14px 0 0;
   padding: 0;
   list-style: none;
@@ -2529,6 +2562,7 @@ html.lightbox-open {
 
 .hot-cell {
   min-width: 0;
+  container-type: inline-size; /* 中の順位の丸・名前の大きさを、列の幅に合わせる（cqi） */
 }
 
 .hot-link {
@@ -2543,12 +2577,14 @@ html.lightbox-open {
 
 .hot-face {
   position: relative;
+  width: 74%; /* 丸の大きさは列の幅に合わせる（画面の幅で変わる） */
   margin-bottom: 6px;
 }
 
 .hot .face-lg {
-  width: 84px;
-  height: 84px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
   font-size: 32px;
   box-shadow: 0 0 0 2px var(--line);
 }
@@ -2560,18 +2596,22 @@ html.lightbox-open {
   display: grid;
   place-items: center;
   width: 26px;
-  height: 26px;
+  width: clamp(24px, 18cqi, 40px); /* 丸・四角が大きい画面（タブレット）では、順位の丸も大きく */
+  height: auto;
+  aspect-ratio: 1;
   border-radius: 50%;
   background: var(--pop);
   box-shadow: 0 0 0 2px var(--ink);
   color: var(--ink);
   font: 400 14px/1 var(--font-display);
+  font-size: clamp(13px, 9cqi, 20px);
 }
 
 .hot-name {
   max-width: 100%;
   overflow: hidden;
   font-size: 13px;
+  font-size: clamp(13px, 6.4cqi, 16px); /* 列の幅に合わせて少し大きく */
   font-weight: 700;
   line-height: 1.5;
   text-overflow: ellipsis;
@@ -2592,7 +2632,8 @@ html.lightbox-open {
 .hot-genres {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--trio-gap);
+  max-width: var(--trio-max);
   margin: 14px 0 0;
   padding: 0;
   list-style: none;
@@ -2600,6 +2641,7 @@ html.lightbox-open {
 
 .genre-cell {
   min-width: 0;
+  container-type: inline-size;
 }
 
 .genre-link {
@@ -2614,8 +2656,7 @@ html.lightbox-open {
 .genre-thumb {
   position: relative;
   display: block;
-  width: 100%;
-  max-width: 120px;
+  width: 100%; /* 四角は列の幅いっぱい（画面の幅で変わる） */
   aspect-ratio: 1;
   border-radius: var(--r-panel);
   background: var(--board);
@@ -2648,6 +2689,7 @@ html.lightbox-open {
   max-width: 100%;
   overflow: hidden;
   font-size: 14px;
+  font-size: clamp(13px, 6.4cqi, 16px);
   font-weight: 700;
   line-height: 1.4;
   text-align: center;
@@ -2793,8 +2835,13 @@ html.lightbox-open {
 }
 
 @media (min-width: 640px) {
-  .medals {
-    gap: 18px;
+  :root {
+    --trio-gap: 18px;
+  }
+
+  /* タブレットより広い画面では、説明の1文を1行で（34em だと、中途半端に折り返した） */
+  .today-lead {
+    max-width: 52em;
   }
 
   .medals .medal {
@@ -2817,26 +2864,6 @@ html.lightbox-open {
     font-size: 12px;
   }
 
-  .hot {
-    gap: 18px;
-    max-width: 560px;
-  }
-
-  .hot .face-lg {
-    width: 104px;
-    height: 104px;
-    font-size: 40px;
-  }
-
-  .hot-genres {
-    gap: 18px;
-    max-width: 560px;
-  }
-
-  .hot-name {
-    font-size: 14px;
-  }
-
   .topics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 28px;
@@ -2853,7 +2880,7 @@ html.lightbox-open {
 
   .home.has-side {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) clamp(300px, 30%, 344px);
+    grid-template-columns: minmax(0, 1fr) clamp(300px, 30%, 380px);
     column-gap: 48px;
     align-items: start;
   }
@@ -2883,10 +2910,6 @@ html.lightbox-open {
     grid-column: 1;
   }
 
-  /* 広い画面では、説明の1文を1行で（34em だと、右のスイッチの手前で中途半端に折り返した） */
-  .today-lead {
-    max-width: 52em;
-  }
 
   .today-tools {
     grid-column: 2;
@@ -2900,15 +2923,9 @@ html.lightbox-open {
     font-size: 22px;
   }
 
-  /* 左の欄の棚は、右の欄のぶん狭いので3列（1100px〜は4列） */
-  .home.has-side .shelf {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1100px) {
-  .home.has-side .shelf {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* TOP3 は、左の欄の幅いっぱい（大きな画面でも、右にすき間を残さない） */
+  .home.has-side .medals {
+    max-width: none;
   }
 }
 
@@ -2952,8 +2969,8 @@ html.lightbox-open {
 .slot-reels {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  max-width: 560px;
+  gap: var(--trio-gap);
+  max-width: var(--trio-max);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -3046,8 +3063,8 @@ a.reel-card:hover .reel-title {
 .debut-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  max-width: 560px;
+  gap: var(--trio-gap);
+  max-width: var(--trio-max);
   margin: 12px 0 0;
   padding: 0;
   list-style: none;
@@ -3123,11 +3140,6 @@ a.reel-card:hover .reel-title {
     padding: 18px 20px 20px;
   }
 
-  .slot-reels,
-  .debut-list {
-    gap: 18px;
-  }
-
   .reel-title {
     font-size: 13px;
   }
@@ -3173,12 +3185,6 @@ a.reel-card:hover .reel-title {
     max-width: none;
   }
 
-  /* 欄が細くなるので、誕生日の顔写真は少し小さく（3人が重ならないように） */
-  .corner .hot .face-lg {
-    width: 80px;
-    height: 80px;
-    font-size: 30px;
-  }
 }
 
 /* パソコンの右の欄（.home-side）: どの欄も同じ形にそろえる（運営者の指摘「表示方法に統一感がなくて、ガタガタ」。2026-10-05）。
@@ -3276,15 +3282,6 @@ a.reel-card:hover .reel-title {
     margin-top: 14px;
   }
 
-  .home-side .hot .face-lg {
-    width: 84px;
-    height: 84px;
-    font-size: 32px;
-  }
-
-  .home-side .genre-thumb {
-    max-width: none;
-  }
 
   /* 運命の作品: 枠の箱をやめて、窓の列を、デビュー作の表紙の列とそろえる */
   .home-side .slot {
@@ -3587,8 +3584,15 @@ a.reel-card:hover .reel-title {
 
 @media (min-width: 640px) {
   .ws-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+}
+
+@supports not ((container-type: inline-size) and selector(:has(*))) {
+  @media (min-width: 640px) {
+    .ws-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 }
 
@@ -3937,5 +3941,75 @@ a.reel-card:hover .reel-title {
 
   .camp-fact dt {
     font-size: 13px;
+  }
+}
+
+/* ---------- どんな画面の大きさにも（運営者の希望「スマホもパソコンも、色んな画面サイズに最適化」。2026-10-05） ----------
+   ・3つ並び（TOP3・いま人気の女優・人気のジャンル・運命の作品・今週のデビュー作・誕生日の近い女優）は、列の幅に合わせて大きさが変わる（上の --trio-gap・--trio-max）
+   ・作品の棚・作品検索の結果・週のまとめの注目の作品は、置かれた場所の幅で列の数を決める（コンテナクエリ）。
+     同じ棚が、トップの左の欄（右の欄のぶん狭い）でも、ほかのページ（横いっぱい）でも、ちょうどよい列の数になる
+   ・大きな画面では、ページの幅を少し広げる（1440px〜・1760px〜）。それより大きな画面では、まん中にそろえる */
+@media (min-width: 1440px) {
+  :root {
+    --maxw: 1320px;
+  }
+}
+
+@media (min-width: 1760px) {
+  :root {
+    --maxw: 1440px;
+  }
+}
+
+@supports (container-type: inline-size) and selector(:has(*)) {
+  :has(> .shelf),
+  :has(> .ws-list),
+  :has(> .pick-list) {
+    container-type: inline-size;
+  }
+
+  /* 棚: 1マスがおよそ180〜250pxになるように */
+  @container (min-width: 600px) {
+    .shelf {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 740px) {
+    .shelf {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 1000px) {
+    .shelf {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 1250px) {
+    .shelf {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+
+  /* 作品検索の結果・週のまとめの全作品（小さな表紙の行） */
+  @container (min-width: 560px) {
+    .ws-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 1000px) {
+    .ws-list {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  /* 週のまとめの注目の作品（横長のカード） */
+  @container (min-width: 700px) {
+    .pick-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 }
