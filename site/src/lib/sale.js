@@ -2,6 +2,8 @@
 // データは data/sale.json（毎日の更新が、FANZA公式のAPIの campaign・prices から、その日に見かけたセール中の作品を保存したもの）。
 // 価格・期間は、その日の 0:05 ごろの情報。変わることがあるので、画面には「○日時点」と「最新はFANZAで」を必ず添える。
 import { bestRank } from './popularity.js';
+import { addDays, daysBetween, entitySlug, isDay } from './items.js';
+import { isMinorTitle } from './gacha.js';
 
 export const SALE_PATH = '/sale/';
 export const SALE_GROUP_LIMIT = 12; // 1つのキャンペーンに並べる本数（人気の高い作品から）
@@ -108,7 +110,8 @@ export function campaignCovers(sortedWorks, n = SALE_COVERS) {
 /**
  * キャンペーンごとのまとまり（終わりが近い順）。items: このサイトの作品（人気の高い順に、perGroup 本まで）。
  * 今日より前に終わったキャンペーンは入れない（データが古いとき用）。
- * [{ k（キャンペーンの番号）, title, begin, end, items, total, covers, makers, actresses, genres }]（makers などは campaignSummary。全部の作品から数える）
+ * [{ k（キャンペーンの番号）, title, begin, end, items, total, covers, maxOff（値引きの分かる作品の、いちばん大きい割引。無ければ null）, makers, actresses, genres }]
+ * （makers などは campaignSummary。全部の作品から数える）
  */
 export function saleGroups(items, sale, today, perGroup = SALE_GROUP_LIMIT, { genres = new Set() } = {}) {
   const groups = new Map();
@@ -123,10 +126,131 @@ export function saleGroups(items, sale, today, perGroup = SALE_GROUP_LIMIT, { ge
   return [...groups.values()]
     .map((g) => {
       const sorted = [...g.items].sort(byPopular);
-      return { ...g, total: sorted.length, items: sorted.slice(0, perGroup), covers: campaignCovers(sorted), ...campaignSummary(sorted, { genres }) };
+      const offs = sorted.map((i) => offPercent(i.sale.price, i.sale.listPrice)).filter(Boolean);
+      return { ...g, total: sorted.length, items: sorted.slice(0, perGroup), covers: campaignCovers(sorted), maxOff: offs.length ? Math.max(...offs) : null, ...campaignSummary(sorted, { genres }) };
     })
     .sort((a, b) => a.end.localeCompare(b.end) || b.total - a.total || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0));
 }
 
 /** セール中の作品の数（今日より前に終わったキャンペーンは除く） */
 export const saleCount = (items, sale, today) => saleGroups(items, sale, today, 0).reduce((n, g) => n + g.total, 0);
+
+// ---------- セールの履歴・特集ごとのページ（運営者の希望「SEOを上位に」→「FANZAのセールはいつ？」と特集ごとのページ。2026-10-06） ----------
+// 履歴は data/sale_history.json（毎日の更新が、その日に見かけたキャンペーンの名前・期間・このサイトの作品の本数・最大の割引を足していく。get_new_releases.py）。
+// 記録は 2026-10-05 から。昔の履歴をほかのサイトから写すことはしない。
+
+export const SALE_HISTORY_PATH = '/sale/history/';
+export const CAMPAIGN_PAGE_DAYS = 90; // 特集のページは、最後に見かけてから、この日数のあいだ残す（開催中でないあいだは、検索エンジンに出さない）
+export const CAMPAIGN_ITEM_LIMIT = 48; // 特集のページに並べる本数（人気の高い作品から）
+export const SALE_HISTORY_START = '2026-10-05'; // 記録を始めた日
+
+/** 特集の名前 → ページの印（名前ごとに1ページ。同じ名前の特集が、また開かれたら、同じページ）。全角・半角と空白の違いは同じあつかい */
+export const campaignSlug = (title) => entitySlug(String(title ?? '').normalize('NFKC').replace(/\s+/g, ''));
+export const campaignPath = (title) => `${SALE_PATH}${campaignSlug(title)}/`;
+
+const DT = /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/;
+
+/** sale_history.json → { updated, rows: [{ title, begin, end, first, last, count, maxOff }]（新しい順） }。形が違う行は捨てる */
+export function normalizeSaleHistory(raw) {
+  const ok = raw && typeof raw === 'object' && !Array.isArray(raw);
+  const rows = [];
+  for (const r of ok && Array.isArray(raw.campaigns) ? raw.campaigns : []) {
+    if (!r || typeof r !== 'object') continue;
+    const title = String(r.title ?? '').trim().slice(0, 60);
+    const begin = String(r.begin ?? '');
+    const end = String(r.end ?? '');
+    if (!title || (begin && !DT.test(begin)) || !DT.test(end) || !isDay(r.first) || !isDay(r.last)) continue;
+    rows.push({
+      title, begin, end, first: r.first, last: r.last,
+      count: Number.isInteger(r.count) && r.count >= 0 ? r.count : 0,
+      maxOff: Number.isInteger(r.max_off) && r.max_off > 0 && r.max_off < 100 ? r.max_off : null,
+    });
+  }
+  rows.sort((a, b) => (b.begin || b.first).localeCompare(a.begin || a.first) || b.end.localeCompare(a.end) || (a.title < b.title ? -1 : 1));
+  return { updated: ok && isDay(raw.updated) ? raw.updated : '', rows };
+}
+
+/** 1回の開催の日数（始まりの日から終わりの日まで。両方の日を数える。始まりが分からなければ、最初に見かけた日から） */
+export const runDays = (run) => daysBetween(run.end.slice(0, 10), (run.begin || run.first).slice(0, 10)) + 1;
+
+/** "2026-10-05 10:00" → "10月5日"（日付だけ） */
+export const mdOf = (dt) => (DT.test(String(dt ?? '')) ? `${+dt.slice(5, 7)}月${+dt.slice(8, 10)}日` : '');
+
+/** 期間の短い文字: 「10月2日〜10月5日 9:59」（始まりが分からなければ「〜10月5日 9:59」） */
+export const runRange = (run) => `${run.begin ? mdOf(run.begin) : ''}〜${endLabel(run.end)}`;
+
+/**
+ * 特集（キャンペーンの名前）ごとのページ: [{ slug, path, title, active（開催中なら saleGroups のまとまり。無ければ null）, runs（これまでの開催。新しい順）, lastSeen }]。
+ * 開催中のもの（終わりが近い順）→ 終わったもの（最後に見かけた日が新しい順）。最後に見かけてから days 日をすぎたもの・未成年を連想させる名前は作らない
+ * （こちらから案内するページのため。セールのページの一覧には、これまでどおり出る）
+ */
+export function campaignPages(items, sale, history, today, { genres = new Set(), days = CAMPAIGN_PAGE_DAYS, perGroup = CAMPAIGN_ITEM_LIMIT } = {}) {
+  const pages = new Map();
+  const add = (title) => {
+    const slug = campaignSlug(title);
+    if (!pages.has(slug)) pages.set(slug, { slug, path: `${SALE_PATH}${slug}/`, title, active: null, runs: [], lastSeen: '' });
+    return pages.get(slug);
+  };
+  for (const g of saleGroups(items, sale, today, perGroup, { genres })) {
+    if (isMinorTitle(g.title)) continue;
+    const p = add(g.title);
+    if (!p.active || g.end < p.active.end) p.active = g; // 同じ名前の特集が2つ同時に開いていたら、早く終わるほう
+    p.lastSeen = sale.date || today;
+  }
+  const since = addDays(today, -days);
+  for (const r of history.rows) {
+    if (isMinorTitle(r.title) || (r.last < since && !pages.has(campaignSlug(r.title)))) continue;
+    const p = add(r.title);
+    p.runs.push(r);
+    if (r.last > p.lastSeen) p.lastSeen = r.last;
+  }
+  return [...pages.values()].sort((a, b) =>
+    (a.active ? 0 : 1) - (b.active ? 0 : 1)
+    || (a.active && b.active ? a.active.end.localeCompare(b.active.end) || b.active.total - a.active.total : b.lastSeen.localeCompare(a.lastSeen))
+    || (a.title < b.title ? -1 : 1)); // 開催中は、セールのページと同じ並び（終わりが近い順・同じなら本数の多い順）
+}
+
+/**
+ * 「FANZAのセールはいつ？」のページの材料（データから数えた事実だけ。予想はしない）:
+ * { runs（未成年を連想させる名前を除いた全部の開催。新しい順）, byMonth: [{ ym, runs }], repeats: [{ title, path, runs }]（2回以上開かれた名前。回数の多い順）,
+ *   minDays, maxDays, avgDays（期間の日数）, since（記録の始まり） }
+ */
+export function saleHistoryFacts(history, pagesBySlug = new Map()) {
+  const runs = history.rows.filter((r) => !isMinorTitle(r.title));
+  const byMonth = [];
+  for (const r of runs) {
+    const ym = (r.begin || r.first).slice(0, 7);
+    if (byMonth.at(-1)?.ym !== ym) byMonth.push({ ym, runs: [] });
+    byMonth.at(-1).runs.push(r);
+  }
+  const titles = new Map();
+  for (const r of runs) titles.set(r.title, [...(titles.get(r.title) ?? []), r]);
+  const repeats = [...titles]
+    .filter(([, rs]) => rs.length >= 2)
+    .map(([title, rs]) => ({ title, path: pagesBySlug.get(campaignSlug(title))?.path ?? '', runs: rs }))
+    .sort((a, b) => b.runs.length - a.runs.length || (b.runs[0].begin || b.runs[0].first).localeCompare(a.runs[0].begin || a.runs[0].first) || (a.title < b.title ? -1 : 1));
+  const lens = runs.map(runDays).filter((n) => Number.isFinite(n) && n > 0);
+  const since = runs.length ? runs.map((r) => r.first).sort()[0] : '';
+  return {
+    runs, byMonth, repeats,
+    minDays: lens.length ? Math.min(...lens) : null,
+    maxDays: lens.length ? Math.max(...lens) : null,
+    avgDays: lens.length ? Math.round((lens.reduce((a, b) => a + b, 0) / lens.length) * 10) / 10 : null,
+    since,
+  };
+}
+
+/**
+ * 作品の中で、いまセール中のもの（出演者のページの「セール中の作品」。2026-10-06）: 人気の高い順に [{ ...作品, sale: { k, price, listPrice, end, title } }]。
+ * 終わったキャンペーンの作品は入れない
+ */
+export function onSaleItems(items, sale, today) {
+  const out = [];
+  for (const item of items) {
+    const info = sale.byCid.get(item.cid);
+    const camp = info && sale.campaigns[info.k];
+    if (!camp || camp.end.slice(0, 10) < today || item.dateKey > today) continue;
+    out.push({ ...item, sale: { ...info, end: camp.end, title: camp.title } });
+  }
+  return out.sort(byPopular);
+}

@@ -1,5 +1,6 @@
 // セールのページ・トップの「セール中の特集」で、終わりの時刻をすぎたキャンペーンを隠す（ビルドは1日1回なので、終わったあとも次の更新まで残るため）。
 // 印: data-sale-end="2026-10-05T09:59:59+09:00"（lib/sale.js の endIso）。隠すのは、見た目のクラス（sale-ended）を付けるだけ。
+// data-sale-over（特集ごとのページの「この特集は終わりました」）は、反対に、終わったら出す。
 // トップの特集のカード（data-sale-show="4" の一覧）は、終わっていないものを先頭から4つだけ見せる（終わった特集の分は、次の特集が繰り上がる。
 // ふだん隠してある5つ目からのカードには sale-more が付いている）
 (function () {
@@ -40,6 +41,11 @@
     for (var s = 0; s < rows.length; s++) {
       if (!flags[s]) rows[s].classList.toggle('sale-more', !show[s]);
     }
+  }
+  // 「この特集は終わりました」（特集ごとのページ）: 終わりの時刻をすぎたら出す
+  var overs = document.querySelectorAll('[data-sale-over]');
+  for (var o = 0; o < overs.length; o++) {
+    if (ended(overs[o].getAttribute('data-sale-over'), now)) overs[o].hidden = false;
   }
   // まとまり（キャンペーン・トップの欄）の中が全部終わっていたら、まとまりごと隠す
   var groups = document.querySelectorAll('[data-sale-group]');

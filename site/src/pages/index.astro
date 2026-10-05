@@ -26,11 +26,12 @@ import {
   contentGenres,
   events,
   upcomingEventList,
+  saleCampaignBySlug,
 } from '../lib/data.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemHref } from '../lib/plan.js';
 import { RANKING_PATH } from '../lib/popularity.js';
-import { SALE_PATH, saleGroups } from '../lib/sale.js';
+import { SALE_PATH, campaignSlug, saleGroups, saleHref } from '../lib/sale.js';
 import { TOP_SHOWN, birthdaySoon, buildTopics, hotActresses, hotGenres, topEntries, weekDebuts } from '../lib/topics.js';
 import { gachaPool } from '../lib/gacha.js';
 import PickCorner from '../components/PickCorner.astro';
@@ -80,6 +81,7 @@ const topics = buildTopics({
   linkOf: (item) => itemHref(item, paged),
   faceOf: (name) => faceOfName(name),
   coverOf: coverOfName,
+  campaignHref: (g) => saleCampaignBySlug.get(campaignSlug(g.title))?.path ?? saleHref(g.k),
   skip: new Set([...top.slice(0, TOP_SHOWN).map((i) => i.cid), ...topVrOff]),
   skipVrOff: new Set(topVrOff),
 });

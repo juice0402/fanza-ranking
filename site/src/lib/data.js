@@ -8,7 +8,7 @@ import { buildFactsContext } from './facts.js';
 import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay, ACTRESS_IMAGE_BASE, faceUrl } from './profiles.js';
 import { hasCalendar, planPages } from './plan.js';
 import { bestRank, catalogAllRank, normalizePopularity } from './popularity.js';
-import { normalizeSale } from './sale.js';
+import { campaignPages, normalizeSale, normalizeSaleHistory } from './sale.js';
 import { normalizeAgencies, withAgencies } from './agencies.js';
 import { eventsByName, normalizeEvents, upcomingEvents } from './events.js';
 import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
@@ -16,7 +16,7 @@ import { TAG_PAGE_GENRES } from '../config.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,today,agencies,events}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -29,6 +29,8 @@ export const today = jstToday();
 export const popularity = normalizePopularity(optionalData('popularity'));
 // セール・キャンペーン（毎日の更新が、FANZA公式のAPIから、その日に見かけたセール中の作品を保存したもの。lib/sale.js）
 export const sale = normalizeSale(optionalData('sale'));
+// セールの履歴（毎日の更新が、その日に見かけたキャンペーンを足していく。2026-10-05 から。lib/sale.js）
+export const saleHistory = normalizeSaleHistory(optionalData('sale_history'));
 // きょうの数字・予約の人気順（毎日の更新が集めたもの。lib/topics.js）
 export const todayData = normalizeToday(optionalData('today'));
 const catalogRanks = optionalData('catalog_rank');
@@ -66,6 +68,9 @@ export const tagByName = indexByName(tagGroups);
 // 中身のジャンル（トップの「人気のジャンル」と、セールの特集の「多いジャンル」で数える）: ジャンルのページを作るジャンルから、ベスト・総集編を除いたもの。
 // ハイビジョン・単体作品のような形式のジャンルは、いつも上に来てしまうので数えない
 export const contentGenres = new Set(TAG_PAGE_GENRES.filter((g) => !HOT_GENRE_SKIP.includes(g)));
+// 特集（キャンペーンの名前）ごとのページ（/sale/<印>/。開催中のものと、最後に見かけてから90日のあいだのもの。lib/sale.js）
+export const saleCampaignPages = campaignPages(all, sale, saleHistory, today, { genres: contentGenres });
+export const saleCampaignBySlug = new Map(saleCampaignPages.map((p) => [p.slug, p]));
 export const factsContext = buildFactsContext(all);
 
 // 週のまとめ記事（Claudeが毎週月曜に書く。まだ1本も無いときは空）
@@ -78,6 +83,7 @@ export const pagePlan = planPages(all, {
   month: monthGroups.length,
   tag: tagGroups.length,
   weekly: roundups.length,
+  sale: saleCampaignPages.length + 1, // 特集ごとのページと「セールはいつ？」のページ
   ics: calendarActressGroups.length + calendarMakerGroups.length,
   archiveItems: allReleased.length,
 });

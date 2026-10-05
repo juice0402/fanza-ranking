@@ -107,6 +107,8 @@ check('もうすぐ終わるセール: 終わりが2日以内のキャンペー�
 const salenew = topics.find((t) => t.kind === 'salenew');
 check('セール開始: きのう・きょう始まったキャンペーン（このサイトの作品が3本以上）。始まりと終わり・本数・その特集の見出しへ・表紙',
   salenew.label === 'セール開始' && salenew.title === '秋の新作セール' && salenew.text === '10月4日から10月10日 23:59まで｜3本がセール中' && salenew.href === '/sale/#sale-2' && salenew.end === '2026-10-10T23:59:59+09:00' && salenew.image === 'https://pics.dmm.co.jp/t1pl.jpg', JSON.stringify(salenew));
+const viaPage = T.buildTopics({ ...ctx, campaignHref: (g) => `/sale/page-${g.k}/` }).find((t) => t.kind === 'sale');
+check('セールの話題のリンク先は、特集のページを渡せばそこへ（渡さなければ、セールのページの、その特集の見出し）', viaPage.href === '/sale/page-0/' && sale.href === '/sale/#sale-0', viaPage.href);
 const saleWith = (campaigns, rows) => T.buildTopics({ ...ctx, sale: normalizeSale({ date: TODAY, campaigns, items: rows }) }).filter((t) => t.kind === 'salenew' || t.kind === 'sale').map((t) => `${t.kind}:${t.title}`).join();
 check('始まって2日以上たったキャンペーン・このサイトの作品が3本より少ないキャンペーンは、セール開始にしない',
   saleWith([{ title: '前からのセール', begin: '2026-10-03 00:00', end: '2026-10-20 23:59' }, { title: '小さなセール', begin: TODAY, end: '2026-10-20 23:59' }], [{ c: 't1', k: 0 }, { c: 't2', k: 0 }, { c: 't3', k: 0 }, { c: 's1', k: 1 }, { c: 'r3', k: 1 }]) === '');

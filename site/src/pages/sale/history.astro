@@ -1,0 +1,169 @@
+---
+// 「FANZAのセールはいつ？」（/sale/history/。運営者の希望「SEOを上位に」→ ①セールを検索の入り口に。2026-10-06）。
+// 「FANZA セール いつ」で上位のページは、年間の予定・過去の履歴・次の予想を手で書いている。このページは、このサイトが毎日記録している
+// 本物の履歴（data/sale_history.json）から、毎日自動で作る。データから数えた事実だけを書き、予想はしない（記録は 2026-10-05 から）。
+//   よくある質問（いま開催中は？・割引がいちばん大きいのは？・どのくらいの期間？・何度も開かれる特集は？・次はいつ？）→ 開催中の特集 → 何度も開かれた特集 → 月ごとの履歴
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { sale, saleCampaignBySlug, saleCampaignPages, saleHistory, today } from '../../lib/data.js';
+import { SALE_HISTORY_PATH, SALE_HISTORY_START, SALE_PATH, campaignSlug, endIso, endLabel, endSoonTag, runDays, runRange, saleHistoryFacts } from '../../lib/sale.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
+import { assetUrl } from '../../lib/assets.js';
+
+const facts = saleHistoryFacts(saleHistory, saleCampaignBySlug);
+const active = saleCampaignPages.filter((p) => p.active);
+const soonest = active[0] ?? null;
+const biggest = [...active].filter((p) => p.active.maxOff).sort((a, b) => b.active.maxOff - a.active.maxOff || a.active.end.localeCompare(b.active.end))[0] ?? null;
+const pathOf = (title) => saleCampaignBySlug.get(campaignSlug(title))?.path ?? '';
+const ymLabel = (ym) => `${+ym.slice(0, 4)}年${+ym.slice(5, 7)}月`;
+const day = sale.date ? dateParts(sale.date) : null;
+const updated = saleHistory.updated || sale.date || today;
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: 'セール・キャンペーン', path: SALE_PATH },
+  { name: 'セールはいつ？', path: SALE_HISTORY_PATH },
+];
+const pageLd = { '@context': 'https://schema.org', '@type': 'WebPage', name: 'FANZAのセールはいつ？これまでのセールの履歴', url: SITE_URL + SALE_HISTORY_PATH, dateModified: updated };
+---
+
+<Base
+  title={`FANZAのセールはいつ？開催中・これまでのセールの履歴【${day ? `${day.m}月${day.d}日` : '毎日'}更新】｜${SITE_NAME}`}
+  description={`FANZA動画のセール・キャンペーンが、いつ・どのくらいの期間・何%OFFで開かれたかを、このサイトが毎日記録した履歴から自動でまとめています。いま開催中のセール${active.length}件と、何度も開かれる特集も。`}
+  path={SALE_HISTORY_PATH}
+  noindex={facts.runs.length === 0}
+  jsonLd={[breadcrumbLd(trail), pageLd]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">FANZAのセールはいつ？</h1>
+      <p class="hero-lead">
+        FANZA動画のセール・キャンペーンを、このサイトが毎日記録している履歴です（{formatDateJp(SALE_HISTORY_START)}から・{formatDateJp(updated)}更新）。
+        本数と割引は、対象の作品のうち、このサイトに載っている作品で数えています。
+      </p>
+    </section>
+
+    <section class="section" aria-labelledby="faq-title">
+      <div class="section-head">
+        <h2 id="faq-title" class="section-title">よくある質問</h2>
+      </div>
+      <dl class="faq">
+        <div class="faq-row">
+          <dt>いま開催中のFANZAのセールは？</dt>
+          <dd>
+            {active.length > 0
+              ? <>{day && `${day.m}月${day.d}日の時点で`}{active.length}件の特集が開催中です。いちばん早く終わるのは<a class="spec-link" href={soonest.path}>「{soonest.title}」</a>（{endLabel(soonest.active.end)}まで）です。</>
+              : 'いまは、このサイトに載っている作品で開催中のセールはありません。'}
+          </dd>
+        </div>
+        {biggest && (
+          <div class="faq-row">
+            <dt>いちばん割引が大きいセールは？</dt>
+            <dd>開催中の特集の中では、<a class="spec-link" href={biggest.path}>「{biggest.title}」</a>の最大{biggest.active.maxOff}%OFFです（このサイトに載っている作品の中で）。</dd>
+          </div>
+        )}
+        {facts.minDays && (
+          <div class="faq-row">
+            <dt>セールはどのくらいの期間ですか？</dt>
+            <dd>記録した{facts.runs.length}回の期間は、短いもので{facts.minDays}日、長いもので{facts.maxDays}日（平均{facts.avgDays}日）でした。</dd>
+          </div>
+        )}
+        <div class="faq-row">
+          <dt>何度も開かれるセールは？</dt>
+          <dd>
+            {facts.repeats.length > 0
+              ? <>記録の中で2回以上開かれたのは{facts.repeats.slice(0, 3).map((r, i) => <>{i > 0 && '・'}「{r.title}」（{r.runs.length}回）</>)}{facts.repeats.length > 3 && ` ほか${facts.repeats.length - 3}件`}です。下の「何度も開かれた特集」で、それぞれの期間を確かめられます。</>
+              : 'まだ記録が短いため、2回以上開かれた特集はありません。記録は毎日増えていきます。'}
+          </dd>
+        </div>
+        <div class="faq-row">
+          <dt>次のセールはいつ？</dt>
+          <dd>このサイトでは、始まったセールだけを記録しているため、次の開催日は分かりません。同じ名前の特集がこれまでにいつ開かれたかは、下の履歴で確かめられます。新しいセールは、始まったあとの毎日の更新（日付が変わったあと）で、このページに出ます。</dd>
+        </div>
+      </dl>
+    </section>
+
+    {active.length > 0 && (
+      <section class="section" aria-labelledby="active-title" data-sale-group>
+        <div class="section-head">
+          <h2 id="active-title" class="section-title">開催中のセール</h2>
+          <p class="section-note">終わりが近い順・{active.length}件</p>
+        </div>
+        <div class="table-scroll">
+          <table class="run-table">
+            <thead>
+              <tr><th scope="col">特集</th><th scope="col">いつまで</th><th scope="col">このサイトの作品</th><th scope="col">最大の割引</th></tr>
+            </thead>
+            <tbody>
+              {active.map((p) => (
+                <tr data-sale-end={endIso(p.active.end)}>
+                  <th scope="row"><a class="spec-link" href={p.path}>{p.title}</a></th>
+                  <td data-label="いつまで">{endSoonTag(p.active.end, today) && <span class="camp-soon">{endSoonTag(p.active.end, today)}</span>} {endLabel(p.active.end)}</td>
+                  <td data-label="このサイトの作品">{p.active.total}本</td>
+                  <td data-label="最大の割引">{p.active.maxOff ? `${p.active.maxOff}%OFF` : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
+
+    {facts.repeats.length > 0 && (
+      <section class="section" aria-labelledby="repeat-title">
+        <div class="section-head">
+          <h2 id="repeat-title" class="section-title">何度も開かれた特集</h2>
+          <p class="section-note">記録の中で2回以上</p>
+        </div>
+        <ul class="repeat-list">
+          {facts.repeats.map((r) => (
+            <li class="repeat-row">
+              <p class="repeat-name">{r.path ? <a class="spec-link" href={r.path}>{r.title}</a> : r.title}<span class="repeat-count">{r.runs.length}回</span></p>
+              <p class="repeat-runs">{r.runs.map((x, i) => <>{i > 0 && '／'}{runRange(x)}</>)}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {facts.byMonth.map((m) => (
+      <section class="section" aria-labelledby={`ym-${m.ym}`}>
+        <div class="section-head">
+          <h2 id={`ym-${m.ym}`} class="section-title">{ymLabel(m.ym)}に始まったセール</h2>
+          <p class="section-note">{m.runs.length}件</p>
+        </div>
+        <div class="table-scroll">
+          <table class="run-table">
+            <thead>
+              <tr><th scope="col">特集</th><th scope="col">期間</th><th scope="col">日数</th><th scope="col">このサイトの作品</th><th scope="col">最大の割引</th></tr>
+            </thead>
+            <tbody>
+              {m.runs.map((r) => (
+                <tr>
+                  <th scope="row">{pathOf(r.title) ? <a class="spec-link" href={pathOf(r.title)}>{r.title}</a> : r.title}</th>
+                  <td data-label="期間">{runRange(r)}</td>
+                  <td data-label="日数">{runDays(r)}日</td>
+                  <td data-label="このサイトの作品">{r.count}本</td>
+                  <td data-label="最大の割引">{r.maxOff ? `${r.maxOff}%OFF` : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    ))}
+
+    {facts.runs.length === 0 && <p class="empty">セールの記録は、毎日の更新でたまっていきます。</p>}
+
+    <p class="section-note run-note">
+      記録は{formatDateJp(SALE_HISTORY_START)}から、毎日、日付が変わったあとに、その日に開催中のセールを足しています。それより前のセールは載っていません。
+      期間と割引は、その日の0:05ごろのFANZA公式の情報です。くわしくはFANZAの作品ページで確かめてください。
+    </p>
+    <p class="more camp-more">
+      <a class="btn btn-quiet" href={SALE_PATH}>開催中のセールの作品を見る</a>
+    </p>
+  </div>
+
+  {active.length > 0 && <script is:inline src={assetUrl('/sale.js')} defer></script>}
+</Base>

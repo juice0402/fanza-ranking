@@ -185,11 +185,12 @@ export function birthdaySoon(items, today, { birthOf, hasFace, days = BIRTHDAY_D
  *   alt: 話題の作品がVR作品のとき、「VR作品を隠す」を選んだ人に代わりに出す、同じ種類のVRでない次の作品の話題（繰り上げ。運営者の希望。2026-10-05）
  * ctx: { items（このサイトの全作品）, today, popularity, todayData（normalizeToday）, sale（normalizeSale）, roundup（いちばん新しい週のまとめ）, linkOf(item) → {href, external},
  *        faceOf(name) → url | '', coverOf(name) → その人の作品の表紙 | ''（イベントの話題で、顔写真が無いとき）, events（normalizeEvents。無ければ null）,
+ *        campaignHref(group) → セールの話題のリンク先（特集ごとのページ。無ければセールのページの、その特集の見出し）,
  *        skip: Set（TOP3など、ほかの欄に出ている作品ID）,
  *        skipVrOff: Set（VR作品を隠したときにTOP3に出る作品ID。繰り上げの作品には使わない） }
  */
 export function buildTopics(ctx, limit = TOPICS_LIMIT) {
-  const { items, today, popularity, todayData, sale, roundup = null, events = null, linkOf, faceOf = () => '', coverOf = () => '', skip = new Set(), skipVrOff = new Set() } = ctx;
+  const { items, today, popularity, todayData, sale, roundup = null, events = null, linkOf, faceOf = () => '', coverOf = () => '', campaignHref = (g) => saleHref(g.k), skip = new Set(), skipVrOff = new Set() } = ctx;
   const topics = [];
   const used = new Set(skip);
   const workTopic = (item, kind, label, title, text) => ({ kind, label, title, text, image: item.image_url, face: '', vr: Boolean(item.vr), ...linkOf(item) });
@@ -280,9 +281,9 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
     });
   }
 
-  // セールの話題は、セールのページの、その特集（キャンペーン）の見出しへ
+  // セールの話題は、その特集のページへ（無ければ、セールのページの、その特集の見出しへ）
   const campaigns = saleGroups(items, sale, today, 0);
-  const saleTopic = (g, kind, label, text) => ({ kind, label, title: g.title, text, image: g.covers[0]?.image_url ?? '', face: '', vr: false, href: saleHref(g.k), external: false, end: endIso(g.end) });
+  const saleTopic = (g, kind, label, text) => ({ kind, label, title: g.title, text, image: g.covers[0]?.image_url ?? '', face: '', vr: false, href: campaignHref(g), external: false, end: endIso(g.end) });
 
   // セール開始: きのう・きょう始まったキャンペーン（前の日の更新のあとに始まったもの）。このサイトの作品が SALE_NEW_MIN 本以上のうち、いちばん多いもの
   const fresh = campaigns

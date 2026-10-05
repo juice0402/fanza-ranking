@@ -20,7 +20,7 @@ check('固定のファイルの見積もり・一覧の上限が正の数', FIXE
 console.log('\n■ 作品ページ以外のファイルの数');
 check('何も無いときは、固定分＋過去の作品の1ページ目', P.nonItemFileCount({}) === FIXED_FILES + 1);
 check('出演者・メーカー・月・ジャンル・まとめ記事・カレンダーのページと、過去の作品のページ数を足す',
-  P.nonItemFileCount({ actress: 10, maker: 5, month: 2, tag: 3, weekly: 1, ics: 7, archiveItems: ARCHIVE_PAGE_SIZE * 2 + 1 }) === FIXED_FILES + 10 + 5 + 2 + 3 + 1 + 7 + 3);
+  P.nonItemFileCount({ actress: 10, maker: 5, month: 2, tag: 3, weekly: 1, sale: 4, ics: 7, archiveItems: ARCHIVE_PAGE_SIZE * 2 + 1 }) === FIXED_FILES + 10 + 5 + 2 + 3 + 1 + 4 + 7 + 3);
 
 console.log('\n■ 作品ページの優先順');
 const curatedNew = it('new01', '2026-10-05', { comment: 'こめんと' });
