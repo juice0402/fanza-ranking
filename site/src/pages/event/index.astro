@@ -1,0 +1,63 @@
+---
+// 女優のイベント情報（/event/）。所属事務所の公式サイトのイベントの一覧から、scripts/agency_events.py が毎日集めたもの（lib/events.js）。
+// 運営者の希望「女優さんのニュースとかイベント情報…できるだけ毎日の訪問に価値を見出してほしいから、新鮮な情報がほしい」（2026-10-05）。
+// きょうから EVENT_DAYS 日先までを、日付ごとに。トップの「きょうの話題」のイベントは、このページの、そのイベントの行（id）へリンクする。
+// 情報はその日の 0:05 ごろのもの。中止・変更がありうるので「○日時点」「くわしくは公式サイトで」を添える。1件も無いあいだは検索エンジンに出さない
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import EventList from '../../components/EventList.astro';
+import { actressByName, events, faceOfName, today, upcomingEventList } from '../../lib/data.js';
+import { EVENT_DAYS, EVENT_PATH, eventDayLabel, eventsByDay } from '../../lib/events.js';
+import { SITE_NAME, breadcrumbLd, daysBetween, formatDateJp } from '../../lib/items.js';
+
+const days = eventsByDay(upcomingEventList);
+const sources = [...new Set(upcomingEventList.map((e) => e.agencyName))];
+const soon = (date) => ({ 0: 'きょう', 1: 'あす' })[daysBetween(date, today)] ?? '';
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: 'イベント情報', path: EVENT_PATH },
+];
+---
+
+<Base
+  title={`女優のイベント情報（サイン会・撮影会・発売記念イベント）｜${SITE_NAME}`}
+  description="所属事務所の公式サイトに載っている、女優のサイン会・撮影会・発売記念イベント・来店などの予定を、日付ごとにまとめています。毎日、日付が変わったあとに更新します。"
+  path={EVENT_PATH}
+  noindex={upcomingEventList.length === 0}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">女優のイベント情報</h1>
+      <p class="hero-lead">
+        所属事務所の公式サイトに載っている、これから{EVENT_DAYS}日のうちのイベントの予定です{events.updated && `（${formatDateJp(events.updated)}の時点）`}。
+        参加のしかたや最新の情報は、各事務所の公式サイトで確かめてください。
+      </p>
+    </section>
+
+    {days.length > 0
+      ? (
+        <>
+          {days.map((g) => (
+            <section class="section event-day" aria-labelledby={`day-${g.date}`}>
+              <div class="section-head">
+                <h2 id={`day-${g.date}`} class="section-title">
+                  {soon(g.date) && <span class="event-soon">{soon(g.date)}</span>}
+                  {eventDayLabel(g.date, today, { dayOnly: true })}
+                </h2>
+                <p class="section-note">{g.events.length}件</p>
+              </div>
+              <EventList events={g.events} today={today} pageOf={(n) => actressByName.get(n)?.path ?? ''} faceOf={(n) => faceOfName(n)} />
+            </section>
+          ))}
+          <p class="section-note event-note">
+            出どころは、{sources.join('・')}の公式サイトのイベントの一覧です。所属の女優の名前が、FANZAに載っている名前とそのまま同じイベントだけを載せています。
+            中止・変更になることがあります。
+          </p>
+        </>
+      )
+      : <p class="empty">いまは、載せられるイベントの予定がありません。毎日、日付が変わったあとに集め直します。</p>}
+  </div>
+</Base>

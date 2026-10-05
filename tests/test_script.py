@@ -1037,12 +1037,17 @@ check("今日の「データ更新」があれば、済んでいる（0）", gua
 check("前の日の更新・取り直し・似た件名だけなら、まだ（1）",
       guard_in_temp_repo(["データ更新: 2026-10-03", "データの取り直し: 2026-10-04", "データ更新: 2026-10-04（テスト）"], "2026-10-04") == 1)
 check("記録を読めないとき（無い名前）は、まだとして扱う（1）", guard_in_temp_repo(["データ更新: 2026-10-04"], "2026-10-04", ref="no-such-ref") == 1)
-check("update.yml: 定時実行のときだけ調べ、済んでいたら更新と保存をしない（Python の準備・更新・所属事務所・保存の4つ）",
+check("update.yml: 定時実行のときだけ調べ、済んでいたら更新と保存をしない（Python の準備・更新・所属事務所・イベント・保存の5つ）",
       "if: github.event_name == 'schedule'" in yml_update and "already_updated.sh FETCH_HEAD" in yml_update
-      and yml_update.count("if: steps.guard.outputs.skip != '1'") == 4 and 'git commit -m "データ更新: $(TZ=Asia/Tokyo date +%Y-%m-%d)"' in yml_update)
+      and yml_update.count("if: steps.guard.outputs.skip != '1'") == 5 and 'git commit -m "データ更新: $(TZ=Asia/Tokyo date +%Y-%m-%d)"' in yml_update)
 check("update.yml: 所属事務所は、週1回（--update は7日ごと）・失敗しても更新を止めない・保存の前",
       "python scripts/agency_links.py --update" in yml_update and "--force" not in yml_update and "continue-on-error: true" in yml_update
       and yml_update.index("agency_links.py") < yml_update.index("git add -A -- site/src/data"))
+
+check("update.yml: イベント情報は毎日・所属事務所のあと（所属の名前を使う）・失敗しても更新を止めない・保存の前",
+      "python scripts/agency_events.py --update" in yml_update
+      and yml_update.index("python scripts/agency_links.py") < yml_update.index("python scripts/agency_events.py") < yml_update.index("git add -A -- site/src/data")
+      and "continue-on-error: true" in yml_update[yml_update.index("Update events"):yml_update.index("python scripts/agency_events.py")])
 
 yml_refresh = open(os.path.join(ROOT, ".github", "workflows", "refresh-data.yml"), encoding="utf-8").read() if os.path.exists(os.path.join(ROOT, ".github", "workflows", "refresh-data.yml")) else ""
 check("refresh-data.yml は --refresh-only で動かし、Gemini のキーを渡さない", "--refresh-only" in yml_refresh and "GEMINI_API_KEY" not in yml_refresh)

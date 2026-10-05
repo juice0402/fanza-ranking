@@ -22,8 +22,12 @@ import {
   todayData,
   faceOfName,
   birthOfName,
+  coverOfName,
   contentGenres,
+  events,
+  upcomingEventList,
 } from '../lib/data.js';
+import { EVENT_PATH } from '../lib/events.js';
 import { itemHref } from '../lib/plan.js';
 import { RANKING_PATH } from '../lib/popularity.js';
 import { SALE_PATH, saleGroups } from '../lib/sale.js';
@@ -71,8 +75,10 @@ const topics = buildTopics({
   todayData,
   sale,
   roundup: latestRoundup ?? null,
+  events,
   linkOf: (item) => itemHref(item, paged),
   faceOf: (name) => faceOfName(name),
+  coverOf: coverOfName,
   skip: new Set([...top.slice(0, TOP_SHOWN).map((i) => i.cid), ...topVrOff]),
   skipVrOff: new Set(topVrOff),
 });
@@ -180,9 +186,14 @@ const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner')
         <section id="topics" class="today-topics" aria-labelledby="topics-title">
           <div class="today-sec-head">
             <h2 id="topics-title" class="today-sec-title">きょうの話題</h2>
-            <p class="section-note">FANZAの人気順・予約・セールから｜毎日入れかわります</p>
+            <p class="section-note">人気順・予約・セール・イベント情報から｜毎日入れかわります</p>
           </div>
           <TopicList topics={topics} />
+          {upcomingEventList.length > 0 && (
+            <ul class="side-links topic-more">
+              <li><a class="side-link" href={EVENT_PATH}>女優のイベントの予定（{upcomingEventList.length}件）</a></li>
+            </ul>
+          )}
         </section>
       )}
       {/* おすすめのコーナーは、パソコンのときだけ、ここへ移す（下の小さなスクリプト。スマホでは、発売中のいちばん新しい日付のすぐ下のまま） */}

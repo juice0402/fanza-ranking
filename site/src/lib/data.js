@@ -10,12 +10,13 @@ import { hasCalendar, planPages } from './plan.js';
 import { bestRank, catalogAllRank, normalizePopularity } from './popularity.js';
 import { normalizeSale } from './sale.js';
 import { normalizeAgencies, withAgencies } from './agencies.js';
+import { eventsByName, normalizeEvents, upcomingEvents } from './events.js';
 import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
 import { TAG_PAGE_GENRES } from '../config.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,today,agencies}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,today,agencies,events}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -100,6 +101,12 @@ export const birthOfName = (name) => profilesByName.get(name)?.birthMD || direct
 // 所属事務所とSNS（事務所の公式サイトから週1回。scripts/agency_links.py）。まだ無ければ空
 export const agencies = normalizeAgencies(optionalData('agencies'));
 export const agencyOfName = (name) => agencies.byName.get(name) ?? null;
+// イベント情報（所属事務所の公式サイトのイベントの一覧から。scripts/agency_events.py が毎日集める。lib/events.js）。きょうから先のものだけ使う
+export const events = normalizeEvents(optionalData('events'));
+export const upcomingEventList = upcomingEvents(events, today);
+export const eventsOfName = eventsByName(upcomingEventList);
+// その人の、このサイトのいちばん新しい発売済みの作品の表紙（VRでない作品。顔写真が無い人の、きょうの話題のイベントの画像に使う）
+export const coverOfName = (name) => actressByName.get(name)?.items.find((i) => !i.vr && i.image_url && i.dateKey <= today)?.image_url ?? '';
 export const actressSearchIndex = withAgencies(buildActressSearchIndex(profiles, all, actressByName, today, directory), agencies);
 export const actressIndexCoverage = indexCoverage(actressSearchIndex);
 

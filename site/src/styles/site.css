@@ -2771,17 +2771,39 @@ html.lightbox-open {
   line-height: 1.6;
 }
 
-/* 札の色: 急上昇・もうすぐ終わる は赤、きょう発売・予約に初登場・セール開始 は黄色、ほかは紙の色 */
+/* 札の色: 急上昇・もうすぐ終わる・セールで人気 は赤、きょう発売・予約に初登場・セール開始・イベント は黄色、ほかは紙の色 */
 .topic-rise .topic-tag,
-.topic-sale .topic-tag {
+.topic-sale .topic-tag,
+.topic-salehot .topic-tag {
   background: var(--hot);
   color: #fff;
 }
 
 .topic-today .topic-tag,
 .topic-entry .topic-tag,
-.topic-salenew .topic-tag {
+.topic-salenew .topic-tag,
+.topic-event .topic-tag {
   background: var(--pop);
+}
+
+/* 顔写真も作品の表紙も無いイベントの話題は、カレンダーの印 */
+.topic-thumb.is-icon {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  color: var(--pop);
+}
+
+.topic-icon {
+  width: 52%;
+  height: auto;
+}
+
+/* 「女優のイベントの予定（○件）」: 話題の一覧のすぐ下（話題の行の線と重ならないよう、上の線は付けない） */
+.topic-more {
+  margin-top: 0;
+  border-top: 0;
 }
 
 .topic-title {
@@ -4011,5 +4033,146 @@ a.reel-card:hover .reel-title {
     .pick-list {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+  }
+}
+
+/* ---------- 女優のイベント情報（/event/ と、出演者のページの「イベントの予定」。components/EventList.astro） ----------
+   1行に1つ: 左に時刻、右に「出る人の顔・種類の札・名前」「見出し」「会場・事務所・公式サイトへのリンク」。
+   出演者のページ（is-dated）は、日付と時刻を上の行に出す */
+.event-day + .event-day {
+  margin-top: 32px;
+}
+
+.event-soon {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 10px 0;
+  border-radius: var(--r-pill);
+  background: var(--pop);
+  color: var(--ink);
+  font: 700 13px/1.6 var(--font-body);
+  vertical-align: 3px;
+}
+
+.event-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.event-row {
+  display: grid;
+  grid-template-columns: 4.4em minmax(0, 1fr);
+  gap: 4px 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: 24px;
+}
+
+/* トップの「きょうの話題」から来たときの、そのイベントの行 */
+.event-row:target {
+  box-shadow: inset 3px 0 0 var(--pop);
+  padding-left: 12px;
+}
+
+.is-dated .event-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.event-when {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+}
+
+.event-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.event-faces {
+  display: flex;
+  flex: none;
+  padding-top: 1px;
+}
+
+.event-faces .face + .face {
+  margin-left: -10px;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.event-body {
+  min-width: 0;
+}
+
+.event-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.event-kind {
+  padding: 1px 9px 0;
+  border-radius: var(--r-pill);
+  background: var(--pop);
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.event-title {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 6px 0 0;
+  color: var(--paper-dim);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.event-src {
+  color: var(--paper);
+  text-underline-offset: 3px;
+}
+
+.event-src:hover {
+  color: var(--pop);
+}
+
+.event-note {
+  margin-top: 28px;
+}
+
+.event-names {
+  min-width: 0;
+}
+
+.is-dated .event-names {
+  font-weight: 400;
+  font-size: 13px;
+}
+
+/* パソコン（960px〜）は、行を2列に（1行が横に長くなりすぎないように） */
+@media (min-width: 960px) {
+  .event-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 40px;
   }
 }

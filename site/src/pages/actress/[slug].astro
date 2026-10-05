@@ -5,7 +5,9 @@ import VrToggle from '../../components/VrToggle.astro';
 import DaySection from '../../components/DaySection.astro';
 import FavButton from '../../components/FavButton.astro';
 import Face from '../../components/Face.astro';
-import { actressGroups, agencyOfName, makerByName, profilesByName } from '../../lib/data.js';
+import EventList from '../../components/EventList.astro';
+import { actressByName, actressGroups, agencyOfName, events, eventsOfName, makerByName, profilesByName, today } from '../../lib/data.js';
+import { EVENT_ACTRESS_LIMIT, EVENT_PATH } from '../../lib/events.js';
 import {
   ACTRESS_INDEX_PATH,
   actressPageTitle,
@@ -42,6 +44,9 @@ const facts = profileFacts(profile);
 // 所属事務所とSNS（事務所の公式サイトの所属女優のページに載っているものだけ。scripts/agency_links.py が週1回集める）。無い人もいる
 const agency = agencyOfName(group.name);
 const seenDay = agency ? `${Number(agency.seen.slice(5, 7))}月${Number(agency.seen.slice(8, 10))}日` : '';
+// イベントの予定（所属事務所の公式サイトのイベントの一覧から。scripts/agency_events.py が毎日集める）。無い人がほとんど
+const myEvents = eventsOfName.get(group.name) ?? [];
+const eventsDay = events.updated ? `${Number(events.updated.slice(5, 7))}月${Number(events.updated.slice(8, 10))}日` : '';
 const trail = [
   { name: 'トップ', path: '/' },
   { name: '女優検索', path: ACTRESS_INDEX_PATH },
@@ -128,6 +133,24 @@ const trail = [
 
     {agency && <p class="profile-source">所属とSNSは、所属事務所（{agency.agency}）の公式サイトに載っている情報です（{seenDay}時点）。移籍などで変わることがあります。</p>}
     {facts.length > 0 && <p class="profile-source">年齢・身長・サイズは、FANZAに載っている情報にもとづきます（載っていない項目は表示していません）。年齢は、FANZAに載っている生年月日から毎日計算しています。</p>}
+
+    {myEvents.length > 0 && (
+      <section class="section" aria-labelledby="events-title">
+        <div class="section-head">
+          <h2 id="events-title" class="section-title">イベントの予定</h2>
+          <p class="section-note">所属事務所の公式サイトから{eventsDay && `｜${eventsDay}時点`}</p>
+        </div>
+        <EventList
+          events={myEvents.slice(0, EVENT_ACTRESS_LIMIT)}
+          today={today}
+          showDay
+          faces={false}
+          self={group.name}
+          pageOf={(n) => actressByName.get(n)?.path ?? ''}
+        />
+        <p class="side-more"><a class="spec-link" href={EVENT_PATH}>{myEvents.length > EVENT_ACTRESS_LIMIT ? `ほか${myEvents.length - EVENT_ACTRESS_LIMIT}件と、` : ''}ほかの女優のイベントの予定</a></p>
+      </section>
+    )}
 
     <section class="section" aria-labelledby="works-title">
       <div class="section-head">

@@ -58,6 +58,14 @@ jobs:
         timeout-minutes: 30
         run: python scripts/agency_links.py --update
 
+      # 女優のイベント情報（所属事務所の公式サイトのイベントの一覧から。毎日。4つのページを読むだけなので、すぐ終わる）。
+      # 所属の名前（agencies.json）を使うので、所属事務所のあと。失敗しても、ほかの更新は止めない（前のデータを残す。scripts/agency_events.py）
+      - name: Update events (daily)
+        if: steps.guard.outputs.skip != '1'
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python scripts/agency_events.py --update
+
       - name: Commit and push if changed
         if: steps.guard.outputs.skip != '1'
         run: |
