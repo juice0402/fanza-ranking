@@ -1,13 +1,13 @@
 {
  "generated": "2026-10-05",
- "fanza_names": 9255,
+ "fanza_names": 10963,
  "sites": [
   {
    "key": "tpowers",
    "name": "ティーパワーズ",
    "roster_pages": 1,
-   "profiles_found": 14,
-   "profiles_read": 14,
+   "profiles_found": 107,
+   "profiles_read": 107,
    "errors": [],
    "site_wide": {
     "x": [],
@@ -25,35 +25,7 @@
     "https://www.t-powers.co.jp/event/",
     "https://www.t-powers.co.jp/link/",
     "https://www.t-powers.co.jp/recruit/",
-    "https://client.t-powers.co.jp/",
-    "https://www.t-powers.co.jp/talent/%e8%92%bc%e9%87%8e%e7%be%8e%e6%9c%88/",
-    "https://www.t-powers.co.jp/talent/%e6%99%b6%e3%82%a8%e3%83%aa%e3%83%bc/",
-    "https://www.t-powers.co.jp/talent/%e3%81%82%e3%81%95%e3%81%bf%e3%82%93/",
-    "https://www.t-powers.co.jp/talent/%e6%98%8e%e6%97%a5%e8%91%89%e3%81%bf%e3%81%a4%e3%81%af/",
-    "https://www.t-powers.co.jp/talent/%e8%b6%b3%e7%ab%8b%e3%82%81%e3%82%8b/",
-    "https://www.t-powers.co.jp/talent/%e5%a4%a9%e6%b5%b7%e3%81%a4%e3%81%b0%e3%81%95/",
-    "https://www.t-powers.co.jp/talent/%e5%a4%a9%e5%ae%ae%e8%8a%b1%e5%8d%97/",
-    "https://www.t-powers.co.jp/talent/%e9%9b%a8%e5%ae%ae%e3%81%b2%e3%81%b3%e3%81%8d/",
-    "https://www.t-powers.co.jp/talent/%e6%9c%89%e5%b2%a1%e3%81%bf%e3%81%86/",
-    "https://www.t-powers.co.jp/talent/%e5%ae%89%e8%97%a4%e3%82%82%e3%81%82/",
-    "https://www.t-powers.co.jp/talent/%e6%b3%89%e3%82%82%e3%82%82%e3%81%8b/",
-    "https://www.t-powers.co.jp/talent/%e5%b8%82%e5%b7%9d%e3%81%be%e3%81%95%e3%81%bf/",
-    "https://www.t-powers.co.jp/talent/%e4%bb%8a%e4%ba%95%e6%a0%9e%e8%8f%9c/",
-    "https://www.t-powers.co.jp/talent/%e7%be%bd%e5%92%b2%e3%81%bf%e3%81%af%e3%82%8b/",
-    "https://www.t-powers.co.jp/talent/%e7%be%bd%e4%bd%90%e7%be%8e%e3%82%81%e3%81%84/",
-    "https://www.t-powers.co.jp/talent/%e7%a2%93%e4%ba%95%e3%81%9b%e3%82%8a%e3%81%aa/",
-    "https://www.t-powers.co.jp/talent/%e5%a4%a7%e6%b5%a6%e7%9c%9f%e5%a5%88%e7%be%8e/",
-    "https://www.t-powers.co.jp/talent/%e5%a4%a7%e6%a7%bb%e3%81%b2%e3%81%b3%e3%81%8d/",
-    "https://www.t-powers.co.jp/talent/%e5%b0%8f%e7%ac%a0%e5%8e%9f%e8%8f%9c%e4%b9%83/",
-    "https://www.t-powers.co.jp/talent/%e6%8e%a8%e5%b7%9d%e3%82%86%e3%81%86%e3%82%8a/",
-    "https://www.t-powers.co.jp/talent/%e7%b9%94%e7%94%b0%e7%9c%9f%e5%ad%90/",
-    "https://www.t-powers.co.jp/talent/%e5%b0%8f%e9%87%8e%e5%9d%82-%e3%82%86%e3%81%84%e3%81%8b/",
-    "https://www.t-powers.co.jp/talent/%e3%81%8b%e3%81%99%e3%81%bf%e3%82%8a%e3%81%95/",
-    "https://www.t-powers.co.jp/talent/%e4%bd%b3%e8%8b%97%e3%82%8b%e3%81%8b/",
-    "https://www.t-powers.co.jp/talent/%e7%a5%9e%e8%8f%9c%e7%be%8e%e3%81%be%e3%81%84/",
-    "https://www.t-powers.co.jp/talent/%e9%b9%bf%e9%87%8e%e3%81%82%e3%82%82/",
-    "https://www.t-powers.co.jp/talent/%e6%b2%b3%e5%90%88%e3%81%82%e3%81%99%e3%81%aa/",
-    "https://www.t-powers.co.jp/talent/%e8%8f%8a%e4%b9%83%e3%82%89%e3%82%93/"
+    "https://client.t-powers.co.jp/"
    ],
    "site_wide_text": [
     "AVプロダクション",
@@ -219,8 +191,50 @@
    "instagram": [
     "aika_honmono"
    ],
-   "fanza_name": "AIKA",
-   "fanza_id": "1008887",
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAに同じ名前が何人もいる"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e8%92%bc%e9%87%8e%e7%be%8e%e6%9c%88/",
+   "label": "蒼乃 美月",
+   "candidates": [
+    "TALENT タレント詳細",
+    "蒼乃 美月",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "夫の親友と危険日にヤリまくる不倫受胎ゲーム 蒼乃美月"
+   ],
+   "x": [
+    "mizumizu2563"
+   ],
+   "instagram": [
+    "mizumizu1030"
+   ],
+   "fanza_name": "蒼乃美月",
+   "fanza_id": "1088685",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%99%b6%e3%82%a8%e3%83%aa%e3%83%bc/",
+   "label": "晶 エリー",
+   "candidates": [
+    "TALENT タレント詳細",
+    "晶 エリー",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "まるっと！"
+   ],
+   "x": [
+    "_akiraelly_"
+   ],
+   "instagram": [],
+   "fanza_name": "晶エリー（新井エリー、大沢佑香）",
+   "fanza_id": "14495",
    "match": "一致"
   },
   {
@@ -242,6 +256,505 @@
    "fanza_name": "",
    "fanza_id": "",
    "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e3%81%82%e3%81%95%e3%81%bf%e3%82%93/",
+   "label": "あさみん",
+   "candidates": [
+    "TALENT タレント詳細",
+    "あさみん",
+    "Asamin",
+    "AVプロダクション",
+    "ティーパワーズ",
+    "公式サイト"
+   ],
+   "x": [
+    "asamin0411"
+   ],
+   "instagram": [
+    "asamin.0411"
+   ],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%98%8e%e6%97%a5%e8%91%89%e3%81%bf%e3%81%a4%e3%81%af/",
+   "label": "明日葉 みつは",
+   "candidates": [
+    "TALENT タレント詳細",
+    "明日葉 みつは",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "明日葉みつは史上"
+   ],
+   "x": [
+    "ashitaba_taba"
+   ],
+   "instagram": [],
+   "fanza_name": "明日葉みつは",
+   "fanza_id": "1084920",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e8%b6%b3%e7%ab%8b%e3%82%81%e3%82%8b/",
+   "label": "足立 める",
+   "candidates": [
+    "TALENT タレント詳細",
+    "足立 める",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "リベンジ誘淫学園"
+   ],
+   "x": [
+    "urameru666"
+   ],
+   "instagram": [
+    "urameru_666"
+   ],
+   "fanza_name": "鹿野あも",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%a4%a9%e6%b5%b7%e3%81%a4%e3%81%b0%e3%81%95/",
+   "label": "天海 つばさ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "天海 つばさ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "XV"
+   ],
+   "x": [
+    "Amamitsubasa000"
+   ],
+   "instagram": [
+    "amami_tsubasa000"
+   ],
+   "fanza_name": "天海つばさ",
+   "fanza_id": "1001592",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%a4%a9%e5%ae%ae%e8%8a%b1%e5%8d%97/",
+   "label": "天宮 花南",
+   "candidates": [
+    "TALENT タレント詳細",
+    "天宮 花南",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "天宮花南の凄テクを我慢できれば生★中出しSEX！"
+   ],
+   "x": [
+    "amamiya_kanan"
+   ],
+   "instagram": [
+    "amamiya_kanan"
+   ],
+   "fanza_name": "天宮花南",
+   "fanza_id": "1070500",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e9%9b%a8%e5%ae%ae%e3%81%b2%e3%81%b3%e3%81%8d/",
+   "label": "雨宮 ひびき",
+   "candidates": [
+    "TALENT タレント詳細",
+    "雨宮 ひびき",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "地味メガネ美爆乳お姉さんは弟専用のド変態痴女 雨宮ひびき"
+   ],
+   "x": [
+    "Amamiya_816"
+   ],
+   "instagram": [
+    "amamiya_hibiki816"
+   ],
+   "fanza_name": "雨宮ひびき",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%9c%89%e5%b2%a1%e3%81%bf%e3%81%86/",
+   "label": "有岡 みう",
+   "candidates": [
+    "TALENT タレント詳細",
+    "有岡 みう",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "早漏素人×最強女優"
+   ],
+   "x": [
+    "miu_arioka"
+   ],
+   "instagram": [
+    "miu_arioka"
+   ],
+   "fanza_name": "有岡みう",
+   "fanza_id": "1065327",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%ae%89%e8%97%a4%e3%82%82%e3%81%82/",
+   "label": "安藤 もあ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "安藤 もあ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "都会で恥をかかないようにお前たちの為にやるんだ！"
+   ],
+   "x": [
+    "ando_moachan"
+   ],
+   "instagram": [
+    "ando_moachan"
+   ],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%b3%89%e3%82%82%e3%82%82%e3%81%8b/",
+   "label": "泉 ももか",
+   "candidates": [
+    "TALENT タレント詳細",
+    "泉 ももか",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "二人でぎゅうぎゅうに挟んで搾り取ってあげるね♪"
+   ],
+   "x": [
+    "momoca_izm"
+   ],
+   "instagram": [
+    "momoca_izm",
+    "misserguotou"
+   ],
+   "fanza_name": "泉ももか",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%b8%82%e5%b7%9d%e3%81%be%e3%81%95%e3%81%bf/",
+   "label": "市川 まさみ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "市川 まさみ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "3枚組"
+   ],
+   "x": [
+    "ichikawa_masami"
+   ],
+   "instagram": [
+    "ichii710"
+   ],
+   "fanza_name": "市川まさみ",
+   "fanza_id": "1028568",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e4%bb%8a%e4%ba%95%e6%a0%9e%e8%8f%9c/",
+   "label": "今井 栞菜",
+   "candidates": [
+    "TALENT タレント詳細",
+    "今井 栞菜",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "VR"
+   ],
+   "x": [
+    "kannaimai"
+   ],
+   "instagram": [
+    "kanna_imai"
+   ],
+   "fanza_name": "今井栞菜",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e7%be%bd%e5%92%b2%e3%81%bf%e3%81%af%e3%82%8b/",
+   "label": "羽咲 みはる",
+   "candidates": [
+    "TALENT タレント詳細",
+    "羽咲 みはる",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "僕にだけ優しい先輩が何度もヌイて慰めてくれた夜"
+   ],
+   "x": [
+    "usa_miharu_"
+   ],
+   "instagram": [
+    "miharu_usa"
+   ],
+   "fanza_name": "羽咲みはる",
+   "fanza_id": "1033976",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e7%be%bd%e4%bd%90%e7%be%8e%e3%82%81%e3%81%84/",
+   "label": "羽佐美 めい",
+   "candidates": [
+    "TALENT タレント詳細",
+    "羽佐美 めい",
+    "NEW RELEASE 新着リリース情報",
+    "パンストの誘惑",
+    "はだかの家政婦 全裸家政婦紹介所",
+    "Usami Mei"
+   ],
+   "x": [
+    "usami_mei_22"
+   ],
+   "instagram": [],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e7%a2%93%e4%ba%95%e3%81%9b%e3%82%8a%e3%81%aa/",
+   "label": "碓井 せりな",
+   "candidates": [
+    "TALENT タレント詳細",
+    "碓井 せりな",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "巨乳デリヘル Hカップ 碓井せりな"
+   ],
+   "x": [
+    "usui_serina"
+   ],
+   "instagram": [
+    "serina__usui623"
+   ],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%a4%a7%e6%b5%a6%e7%9c%9f%e5%a5%88%e7%be%8e/",
+   "label": "大浦 真奈美",
+   "candidates": [
+    "TALENT タレント詳細",
+    "大浦 真奈美",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "仮名"
+   ],
+   "x": [
+    "manami_oura"
+   ],
+   "instagram": [
+    "manami.oura"
+   ],
+   "fanza_name": "大浦真奈美",
+   "fanza_id": "1046882",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%a4%a7%e6%a7%bb%e3%81%b2%e3%81%b3%e3%81%8d/",
+   "label": "大槻 ひびき",
+   "candidates": [
+    "TALENT タレント詳細",
+    "大槻 ひびき",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "レズ解禁"
+   ],
+   "x": [
+    "hibiki0221"
+   ],
+   "instagram": [
+    "yanhibi0221"
+   ],
+   "fanza_name": "大槻ひびき",
+   "fanza_id": "30130",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%b0%8f%e7%ac%a0%e5%8e%9f%e8%8f%9c%e4%b9%83/",
+   "label": "小笠原 菜乃",
+   "candidates": [
+    "TALENT タレント詳細",
+    "小笠原 菜乃",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "Ogasawara Nano"
+   ],
+   "x": [
+    "nano_ogasawara"
+   ],
+   "instagram": [
+    "nano_ogasawara"
+   ],
+   "fanza_name": "小笠原菜乃",
+   "fanza_id": "1104833",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%8e%a8%e5%b7%9d%e3%82%86%e3%81%86%e3%82%8a/",
+   "label": "推川 ゆうり",
+   "candidates": [
+    "TALENT タレント詳細",
+    "推川 ゆうり",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "妻に内緒で女将に寝取られた一泊二日の超穴場温泉旅行 2"
+   ],
+   "x": [
+    "yuri_oshikawa"
+   ],
+   "instagram": [],
+   "fanza_name": "推川ゆうり",
+   "fanza_id": "1020973",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e7%b9%94%e7%94%b0%e7%9c%9f%e5%ad%90/",
+   "label": "織田 真子",
+   "candidates": [
+    "TALENT タレント詳細",
+    "織田 真子",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "ギリギリ近親相姦 私は義父と義息の性処理肉便器 織田真子"
+   ],
+   "x": [
+    "odamako1217"
+   ],
+   "instagram": [
+    "odamako1217"
+   ],
+   "fanza_name": "織田真子",
+   "fanza_id": "18878",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%b0%8f%e9%87%8e%e5%9d%82-%e3%82%86%e3%81%84%e3%81%8b/",
+   "label": "小野坂 ゆいか",
+   "candidates": [
+    "TALENT タレント詳細",
+    "小野坂 ゆいか",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "小野坂ゆいか",
+    "イベント 10"
+   ],
+   "x": [
+    "yuika_onosaka"
+   ],
+   "instagram": [
+    "yuika_onosaka"
+   ],
+   "fanza_name": "小野坂ゆいか",
+   "fanza_id": "1093790",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e3%81%8b%e3%81%99%e3%81%bf%e3%82%8a%e3%81%95/",
+   "label": "かすみ りさ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "かすみ りさ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "凄腕テクでイカされる濃厚射精と男の潮吹き"
+   ],
+   "x": [
+    "risa_kasumi"
+   ],
+   "instagram": [
+    "risa_kasumi"
+   ],
+   "fanza_name": "かすみりさ",
+   "fanza_id": "22196",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e4%bd%b3%e8%8b%97%e3%82%8b%e3%81%8b/",
+   "label": "佳苗 るか",
+   "candidates": [
+    "TALENT タレント詳細",
+    "佳苗 るか",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "本気で赤面する美少女の放尿！！ 佳苗るか"
+   ],
+   "x": [
+    "rukaKANAE"
+   ],
+   "instagram": [
+    "pipimaruka"
+   ],
+   "fanza_name": "佳苗るか",
+   "fanza_id": "1014936",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e7%a5%9e%e8%8f%9c%e7%be%8e%e3%81%be%e3%81%84/",
+   "label": "神菜美 まい",
+   "candidates": [
+    "TALENT タレント詳細",
+    "神菜美 まい",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "終わらない負の連鎖 非道な追姦劇 ハイレグRQレ●プ"
+   ],
+   "x": [
+    "kanami_mai_"
+   ],
+   "instagram": [],
+   "fanza_name": "神菜美まい",
+   "fanza_id": "1071052",
+   "match": "一致"
   },
   {
    "agency": "ティーパワーズ",
@@ -267,6 +780,50 @@
   },
   {
    "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e9%b9%bf%e9%87%8e%e3%81%82%e3%82%82/",
+   "label": "鹿野 あも",
+   "candidates": [
+    "TALENT タレント詳細",
+    "鹿野 あも",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "リベンジ誘淫学園"
+   ],
+   "x": [
+    "KANOAMO_"
+   ],
+   "instagram": [
+    "KANOAMO_"
+   ],
+   "fanza_name": "鹿野あも",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%b2%b3%e5%90%88%e3%81%82%e3%81%99%e3%81%aa/",
+   "label": "河合 あすな",
+   "candidates": [
+    "TALENT タレント詳細",
+    "河合 あすな",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "究極のぬるぬるオーガズム"
+   ],
+   "x": [
+    "kawai_asuna"
+   ],
+   "instagram": [
+    "kawai__asuna"
+   ],
+   "fanza_name": "河合あすな",
+   "fanza_id": "1044046",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
    "profile": "https://www.t-powers.co.jp/talent/kawakitasaika/",
    "label": "河北 彩花",
    "candidates": [
@@ -283,9 +840,31 @@
    "instagram": [
     "saika_kawakita__official"
    ],
-   "fanza_name": "",
+   "fanza_name": "河北彩花（河北彩伽）",
+   "fanza_id": "1044864",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e8%8f%8a%e4%b9%83%e3%82%89%e3%82%93/",
+   "label": "菊乃 らん",
+   "candidates": [
+    "TALENT タレント詳細",
+    "菊乃 らん",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "完全主観"
+   ],
+   "x": [
+    "ran_tpowers"
+   ],
+   "instagram": [
+    "ran_t_powers"
+   ],
+   "fanza_name": "菊乃らん",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "ティーパワーズ",
@@ -305,6 +884,267 @@
    "instagram": [],
    "fanza_name": "希月あまね",
    "fanza_id": "1114478",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%90%9b%e5%b3%b6%e3%81%bf%e3%81%8a/",
+   "label": "君島 みお",
+   "candidates": [
+    "TALENT タレント詳細",
+    "君島 みお",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "妻子持ちの部下を弄ぶ痴女上司"
+   ],
+   "x": [
+    "mio_kimijima"
+   ],
+   "instagram": [
+    "mio.kimijima_"
+   ],
+   "fanza_name": "君島みお",
+   "fanza_id": "1040946",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e4%b9%9d%e9%87%8e%e3%81%b2%e3%81%aa%e3%81%ae/",
+   "label": "九野 ひなの",
+   "candidates": [
+    "TALENT タレント詳細",
+    "九野 ひなの",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "金桜九舞 最高峰な妻たち。令和の専属ドリーム大共演"
+   ],
+   "x": [
+    "hinano_kuno0525"
+   ],
+   "instagram": [
+    "hinano_kuno0525"
+   ],
+   "fanza_name": "九野ひなの",
+   "fanza_id": "1078407",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%80%89%e6%9c%a8%e8%8f%af/",
+   "label": "倉木 華",
+   "candidates": [
+    "TALENT タレント詳細",
+    "倉木 華",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "他の患者さんにはナイショっすよ"
+   ],
+   "x": [
+    "hana_kuraki87"
+   ],
+   "instagram": [
+    "hana_kuraki87"
+   ],
+   "fanza_name": "倉木華",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e8%83%a1%e6%a1%83%e3%81%95%e3%81%8f%e3%82%89/",
+   "label": "胡桃 さくら",
+   "candidates": [
+    "TALENT タレント詳細",
+    "胡桃 さくら",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "VR"
+   ],
+   "x": [
+    "kurumi__sakura"
+   ],
+   "instagram": [
+    "sakurakuru3"
+   ],
+   "fanza_name": "胡桃さくら",
+   "fanza_id": "1075066",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e9%bb%92%e5%92%b2%e8%8f%af/",
+   "label": "黒咲 華",
+   "candidates": [
+    "TALENT タレント詳細",
+    "黒咲 華",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "ジムで出会ったタダマン人妻トレーニー"
+   ],
+   "x": [
+    "kurohana_gal"
+   ],
+   "instagram": [
+    "hana_kurosaki_sub"
+   ],
+   "fanza_name": "黒咲華",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e4%ba%94%e6%9d%a1%e6%81%8b/",
+   "label": "五条 恋",
+   "candidates": [
+    "TALENT タレント詳細",
+    "五条 恋",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "空前絶後の超絶怒涛の超乳大怪獣大乱交SPECIAL 五条恋"
+   ],
+   "x": [
+    "ren_gojo_"
+   ],
+   "instagram": [
+    "ren_gojo",
+    "adultopia_taiwan"
+   ],
+   "fanza_name": "五条恋",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%b0%8f%e9%88%b4-%e3%81%bf%e3%81%8b%e3%82%93/",
+   "label": "小鈴 みかん",
+   "candidates": [
+    "TALENT タレント詳細",
+    "小鈴 みかん",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "リベンジ誘淫学園"
+   ],
+   "x": [
+    "ksz_mican"
+   ],
+   "instagram": [
+    "kosz_mican"
+   ],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "名前の候補が何人もいる"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%85%92%e7%8e%89%e4%b8%83%e6%b5%b7/",
+   "label": "兒玉 七海",
+   "candidates": [
+    "TALENT タレント詳細",
+    "兒玉 七海",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "王様の命令は絶対だよ"
+   ],
+   "x": [
+    "_KodamaNanami_"
+   ],
+   "instagram": [],
+   "fanza_name": "兒玉七海",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%85%90%e7%8e%89%e3%82%8b%e3%81%bf/",
+   "label": "児玉 るみ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "児玉 るみ",
+    "NEW RELEASE 新着リリース情報",
+    "Kodama Rumi",
+    "AVプロダクション",
+    "ティーパワーズ"
+   ],
+   "x": [
+    "Rumi0503"
+   ],
+   "instagram": [
+    "rumi_kodama"
+   ],
+   "fanza_name": "児玉るみ",
+   "fanza_id": "1031972",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%b0%8f%e6%98%a5/",
+   "label": "小春",
+   "candidates": [
+    "TALENT タレント詳細",
+    "小春",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "12",
+    "小春 Flower撮影会"
+   ],
+   "x": [
+    "kohharuu"
+   ],
+   "instagram": [],
+   "fanza_name": "夏川未来（小春）",
+   "fanza_id": "1003746",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%b0%8f%e6%97%a5%e5%90%91%e3%81%bf%e3%82%86%e3%81%86/",
+   "label": "小日向 みゆう",
+   "candidates": [
+    "TALENT タレント詳細",
+    "小日向 みゆう",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "VR"
+   ],
+   "x": [
+    "miyu_kohinata"
+   ],
+   "instagram": [
+    "miyu__kohinata"
+   ],
+   "fanza_name": "小日向みゆう（清原みゆう）",
+   "fanza_id": "1084111",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%b0%8f%e6%b9%8a%e3%82%88%e3%81%a4%e8%91%89/",
+   "label": "小湊 よつ葉",
+   "candidates": [
+    "TALENT タレント詳細",
+    "小湊 よつ葉",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "催罠光線で支配された金髪ギャル 小湊よつ葉"
+   ],
+   "x": [
+    "YKm0529"
+   ],
+   "instagram": [
+    "yotsuha_km0529"
+   ],
+   "fanza_name": "小湊よつ葉",
+   "fanza_id": "",
    "match": "一致"
   },
   {
@@ -331,6 +1171,132 @@
   },
   {
    "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%96%8e%e6%9c%a8-%e9%a6%99%e4%bd%8f/",
+   "label": "斎木 香住",
+   "candidates": [
+    "TALENT タレント詳細",
+    "斎木 香住",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "お姉さんの巨尻が猥褻過ぎて秒殺で悩殺！！斎木香住"
+   ],
+   "x": [],
+   "instagram": [],
+   "fanza_name": "斎木香住",
+   "fanza_id": "1100720",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%96%89%e8%97%a4%e5%b8%86%e5%a4%8f/",
+   "label": "斉藤 帆夏",
+   "candidates": [
+    "TALENT タレント詳細",
+    "斉藤 帆夏",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "ザ・マジックミラースーツ 陸上部編 これを着れば"
+   ],
+   "x": [
+    "honomaru_hono"
+   ],
+   "instagram": [
+    "ho.noka0722"
+   ],
+   "fanza_name": "斉藤帆夏",
+   "fanza_id": "1087427",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%a1%9c%e7%a9%ba%e3%82%82%e3%82%82/",
+   "label": "桜空 もも",
+   "candidates": [
+    "TALENT タレント詳細",
+    "桜空 もも",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "金桜九舞 最高峰な妻たち。令和の専属ドリーム大共演"
+   ],
+   "x": [
+    "sakumomo1203"
+   ],
+   "instagram": [
+    "sakuramomo_official"
+   ],
+   "fanza_name": "桜空もも",
+   "fanza_id": "1039157",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e9%87%8c%e7%be%8e%e3%82%86%e3%82%8a%e3%81%82/",
+   "label": "里美 ゆりあ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "里美 ゆりあ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "BUSINESS CAREER"
+   ],
+   "x": [
+    "satomiyuria1217"
+   ],
+   "instagram": [
+    "satomiyuria"
+   ],
+   "fanza_name": "里美ゆりあ",
+   "fanza_id": "28011",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e4%bd%90%e5%b1%b1%e6%84%9b/",
+   "label": "佐山 愛",
+   "candidates": [
+    "TALENT タレント詳細",
+    "佐山 愛",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "奥さんこんなことしてくれないでしょ"
+   ],
+   "x": [
+    "aisayama"
+   ],
+   "instagram": [
+    "ai_sayama0108"
+   ],
+   "fanza_name": "佐山愛",
+   "fanza_id": "21549",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%b3%b6%e6%b4%a5%e3%81%8b%e3%81%8a%e3%82%8b/",
+   "label": "島津 かおる",
+   "candidates": [
+    "TALENT タレント詳細",
+    "島津 かおる",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "新・麗しの熟女湯屋 濃厚ねっとり高級ソープ 島津かおる"
+   ],
+   "x": [
+    "kaoru_shimazu"
+   ],
+   "instagram": [],
+   "fanza_name": "島津かおる",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
    "profile": "https://www.t-powers.co.jp/talent/shiraishiruna/",
    "label": "白石 るな",
    "candidates": [
@@ -345,9 +1311,141 @@
     "shira_runa119"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "白石るな",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e9%88%b4%e3%81%ae%e5%ae%b6%e3%82%8a%e3%82%93/",
+   "label": "鈴の家 りん",
+   "candidates": [
+    "TALENT タレント詳細",
+    "鈴の家 りん",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "Suzunoya Rin"
+   ],
+   "x": [
+    "rinrin_dayou"
+   ],
+   "instagram": [
+    "rinrin._.insta"
+   ],
+   "fanza_name": "鈴の家りん",
+   "fanza_id": "1081600",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%b6%bc%e6%a3%ae%e3%82%8c%e3%82%80/",
+   "label": "涼森 れむ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "涼森 れむ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "今日も清楚ぶって看護師してます。"
+   ],
+   "x": [
+    "remu19971203"
+   ],
+   "instagram": [
+    "remu19971203"
+   ],
+   "fanza_name": "涼森れむ",
+   "fanza_id": "1051912",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e9%b7%b2%e8%a6%8b%e3%81%99%e3%81%bf%e3%82%8c/",
+   "label": "鷲見 すみれ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "鷲見 すみれ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "性欲強めの人妻は、お泊まり翌日も求めまくる 鷲見すみれ"
+   ],
+   "x": [
+    "sumi_sumire__"
+   ],
+   "instagram": [
+    "sumi_sumire__"
+   ],
+   "fanza_name": "鷲見すみれ",
+   "fanza_id": "1076817",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e7%9a%87%e3%82%86%e3%81%9a/",
+   "label": "皇 ゆず",
+   "candidates": [
+    "TALENT タレント詳細",
+    "皇 ゆず",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "都会で恥をかかないようにお前たちの為にやるんだ！"
+   ],
+   "x": [
+    "asukayuzuna1"
+   ],
+   "instagram": [
+    "sumeragi_yuzu"
+   ],
+   "fanza_name": "皇ゆず",
+   "fanza_id": "1071712",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e7%80%a7%e6%9c%ac%e9%9b%ab%e8%91%89/",
+   "label": "瀧本 雫葉",
+   "candidates": [
+    "TALENT タレント詳細",
+    "瀧本 雫葉",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "究極のぬるぬるオーガズム"
+   ],
+   "x": [
+    "shizuhatakimoto"
+   ],
+   "instagram": [
+    "shizuha_takimoto"
+   ],
+   "fanza_name": "瀧本雫葉",
+   "fanza_id": "1086883",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e8%b0%b7%e3%81%82%e3%81%a5%e3%81%95/",
+   "label": "谷 あづさ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "谷 あづさ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "Tani Azusa"
+   ],
+   "x": [
+    "_adus4"
+   ],
+   "instagram": [
+    "_adus4"
+   ],
+   "fanza_name": "谷あづさ",
+   "fanza_id": "",
+   "match": "一致"
   },
   {
    "agency": "ティーパワーズ",
@@ -373,6 +1471,158 @@
   },
   {
    "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%9c%88%e9%87%8e%e6%b1%9f%e3%81%99%e3%81%84/",
+   "label": "月野江 すい",
+   "candidates": [
+    "TALENT タレント詳細",
+    "月野江 すい",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "ドスケベ潮吹きクイーンの鬼ハイレグ着衣ファック 月野江すい"
+   ],
+   "x": [
+    "Suuuuuisui22"
+   ],
+   "instagram": [
+    "suuuuuisui22"
+   ],
+   "fanza_name": "月野江すい",
+   "fanza_id": "1087778",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e8%be%bb%e4%ba%95%e3%81%bb%e3%81%ae%e3%81%8b/",
+   "label": "辻井 ほのか",
+   "candidates": [
+    "TALENT タレント詳細",
+    "辻井 ほのか",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "身長差ベロチューセックス！ 《高身長女子×低身長男子》"
+   ],
+   "x": [
+    "tsujiiHonoka",
+    "undress_01"
+   ],
+   "instagram": [
+    "5.tsujihoka",
+    "adultopia_taiwan"
+   ],
+   "fanza_name": "辻井ほのか",
+   "fanza_id": "1056460",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%a4%bf%e3%82%8a%e3%82%87%e3%81%86/",
+   "label": "椿 りょう",
+   "candidates": [
+    "TALENT タレント詳細",
+    "椿 りょう",
+    "NEW RELEASE 新着リリース情報",
+    "淫語で●す自画撮り着衣痴女",
+    "2人合わせてフォロワー7万人！",
+    "皇ゆず 椿りょう"
+   ],
+   "x": [
+    "_tsubaki_ryo"
+   ],
+   "instagram": [],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e7%b4%ac%e3%82%8a%e3%81%8a/",
+   "label": "紬 りお",
+   "candidates": [
+    "TALENT タレント詳細",
+    "紬 りお",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "湯けむり天獄～縄情の宿～16 天縄凛央 編"
+   ],
+   "x": [
+    "tsumugi_rio"
+   ],
+   "instagram": [
+    "rio_ccha_"
+   ],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e9%83%bd%ef%a8%91%e3%81%82%e3%82%84%e3%82%81/",
+   "label": "都﨑 あやめ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "都﨑 あやめ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "社員寮のゲス管理人に嵌められ肉便器化した女子社員"
+   ],
+   "x": [
+    "tozaki_ayame"
+   ],
+   "instagram": [],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e9%95%b7%e6%b5%9c%e3%81%bf%e3%81%a4%e3%82%8a/",
+   "label": "長浜 みつり",
+   "candidates": [
+    "TALENT タレント詳細",
+    "長浜 みつり",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "Nagahama Mitsuri"
+   ],
+   "x": [
+    "mitsuri_n0601"
+   ],
+   "instagram": [
+    "mitsuri_nagahama"
+   ],
+   "fanza_name": "長浜みつり",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e4%bb%b2%e6%9d%91%e3%81%bf%e3%81%86/",
+   "label": "仲村 みう",
+   "candidates": [
+    "TALENT タレント詳細",
+    "仲村 みう",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "最近元気がないパート先の人妻"
+   ],
+   "x": [
+    "nakamura__miu"
+   ],
+   "instagram": [
+    "nakamura__miu"
+   ],
+   "fanza_name": "仲村みう",
+   "fanza_id": "20640",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
    "profile": "https://www.t-powers.co.jp/talent/nagisaaika/",
    "label": "渚あいか",
    "candidates": [
@@ -392,6 +1642,364 @@
    "fanza_name": "",
    "fanza_id": "",
    "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%a4%8f%e7%9b%ae%e5%bd%a9%e6%98%a5/",
+   "label": "夏目 彩春",
+   "candidates": [
+    "TALENT タレント詳細",
+    "夏目 彩春",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "誰の子供か分からないほど種付けされた人妻女教師。"
+   ],
+   "x": [],
+   "instagram": [],
+   "fanza_name": "夏目彩春",
+   "fanza_id": "1021359",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%a4%8f%e8%8a%bd-%e3%81%95%e3%81%8d/",
+   "label": "夏芽 さき",
+   "candidates": [
+    "TALENT タレント詳細",
+    "夏芽 さき",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "VR"
+   ],
+   "x": [
+    "natume_saki000"
+   ],
+   "instagram": [
+    "natumesaki_00213"
+   ],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e4%b8%83%e5%b6%8b%e8%88%9e/",
+   "label": "七嶋 舞",
+   "candidates": [
+    "TALENT タレント詳細",
+    "七嶋 舞",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "俺の従順ペット候補生 09"
+   ],
+   "x": [
+    "nanashima_mai"
+   ],
+   "instagram": [
+    "nanashima_mai"
+   ],
+   "fanza_name": "七嶋舞",
+   "fanza_id": "1072130",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e4%b8%83%e3%83%84%e6%a3%ae%e3%82%8a%e3%82%8a/",
+   "label": "七ツ森 りり",
+   "candidates": [
+    "TALENT タレント詳細",
+    "七ツ森 りり",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "Nanatsumori Riri"
+   ],
+   "x": [
+    "riri_nntmr"
+   ],
+   "instagram": [
+    "riri_nanatsumori"
+   ],
+   "fanza_name": "七ツ森りり",
+   "fanza_id": "1063214",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%88%90%e7%80%ac%e5%bf%83%e7%be%8e/",
+   "label": "成瀬 心美",
+   "candidates": [
+    "TALENT タレント詳細",
+    "成瀬 心美",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "27",
+    "成瀬心美 Nikko大分中央店"
+   ],
+   "x": [
+    "coco3n"
+   ],
+   "instagram": [
+    "coco3ndazo"
+   ],
+   "fanza_name": "成瀬心美（ここみ）",
+   "fanza_id": "28135",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%88%90%e5%ae%9f%e3%81%be%e3%81%82%e3%82%8a/",
+   "label": "成実 まあり",
+   "candidates": [
+    "TALENT タレント詳細",
+    "成実 まあり",
+    "NEW RELEASE 新着リリース情報",
+    "Narumi Maari",
+    "AVプロダクション",
+    "ティーパワーズ"
+   ],
+   "x": [
+    "narumi_maari929"
+   ],
+   "instagram": [],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e8%99%b9%e6%9d%91%e3%82%86%e3%81%bf/",
+   "label": "虹村 ゆみ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "虹村 ゆみ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "VR"
+   ],
+   "x": [
+    "nijimurayumi710"
+   ],
+   "instagram": [
+    "nijimurayumi710"
+   ],
+   "fanza_name": "虹村ゆみ",
+   "fanza_id": "1094993",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e4%b9%83%e6%9c%a8%e7%b5%a2%e6%84%9b/",
+   "label": "乃木 絢愛",
+   "candidates": [
+    "TALENT タレント詳細",
+    "乃木 絢愛",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "放課後に自撮り露出する優等生J系を見つけたので…4名撮影"
+   ],
+   "x": [
+    "_nogi_ayame_"
+   ],
+   "instagram": [
+    "a1010_2020a"
+   ],
+   "fanza_name": "乃木絢愛",
+   "fanza_id": "1075202",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e9%87%8e%e3%80%85%e6%b5%a6%e6%9a%96/",
+   "label": "野々浦 暖",
+   "candidates": [
+    "TALENT タレント詳細",
+    "野々浦 暖",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "耳元でそっとささやく家庭崩壊確定な不倫のお誘い。"
+   ],
+   "x": [
+    "nonoura_non"
+   ],
+   "instagram": [
+    "nonoura_non"
+   ],
+   "fanza_name": "野々浦暖",
+   "fanza_id": "1050585",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%b3%a2%e5%a4%9a%e9%87%8e%e7%b5%90%e8%a1%a3/",
+   "label": "波多野 結衣",
+   "candidates": [
+    "TALENT タレント詳細",
+    "波多野 結衣",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "長回し"
+   ],
+   "x": [
+    "hatano_yui"
+   ],
+   "instagram": [
+    "hatachan524"
+   ],
+   "fanza_name": "波多野結衣",
+   "fanza_id": "26225",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%88%9d%e5%b7%9d%e3%81%bf%e3%81%aa%e3%81%bf/",
+   "label": "初川 みなみ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "初川 みなみ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "現役AV女優！！照れカワ、ふんわり26歳 最後の引退作！！"
+   ],
+   "x": [
+    "hatsukawa_mnm"
+   ],
+   "instagram": [
+    "hatsukaw_aminami"
+   ],
+   "fanza_name": "初川みなみ",
+   "fanza_id": "1023847",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e8%8a%b1%e5%92%b2-%e3%82%86%e3%82%89/",
+   "label": "花咲 ゆら",
+   "candidates": [
+    "TALENT タレント詳細",
+    "花咲 ゆら",
+    "NEW RELEASE 新着リリース情報",
+    "Hanasaki Yura",
+    "AVプロダクション",
+    "ティーパワーズ"
+   ],
+   "x": [
+    "yurachan_saki"
+   ],
+   "instagram": [],
+   "fanza_name": "花咲ゆら",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e8%8a%b1%e6%9f%b3%e6%9d%8f%e5%a5%88/",
+   "label": "花柳 杏奈",
+   "candidates": [
+    "TALENT タレント詳細",
+    "花柳 杏奈",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "VR"
+   ],
+   "x": [
+    "hanayagi_anna"
+   ],
+   "instagram": [
+    "hanayagi_official"
+   ],
+   "fanza_name": "花柳杏奈",
+   "fanza_id": "1075254",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%97%a9%e7%80%ac%e3%81%82%e3%82%8a%e3%81%99/",
+   "label": "早瀬 ありす",
+   "candidates": [
+    "TALENT タレント詳細",
+    "早瀬 ありす",
+    "Hayase Arisu",
+    "AVプロダクション",
+    "ティーパワーズ",
+    "公式サイト"
+   ],
+   "x": [
+    "alinko0930"
+   ],
+   "instagram": [],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%97%a9%e7%94%b0%e8%8f%9c%e3%80%85%e5%ad%90/",
+   "label": "早田 菜々子",
+   "candidates": [
+    "TALENT タレント詳細",
+    "早田 菜々子",
+    "NEW RELEASE 新着リリース情報",
+    "夫の弟に性奴●にされた兄嫁",
+    "Hayata Nanako",
+    "AVプロダクション"
+   ],
+   "x": [],
+   "instagram": [],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e7%be%bd%e6%9c%88-%e4%b9%83%e8%92%bc/",
+   "label": "羽月 乃蒼",
+   "candidates": [
+    "TALENT タレント詳細",
+    "羽月 乃蒼",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "しゃぶるだけならいいよ…"
+   ],
+   "x": [
+    "harunanoa1113"
+   ],
+   "instagram": [
+    "__hluna_noa"
+   ],
+   "fanza_name": "羽月乃蒼",
+   "fanza_id": "1084337",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e3%81%b2%e3%81%aa%e3%81%9f-%e3%81%aa%e3%81%a4/",
+   "label": "ひなた なつ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "ひなた なつ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "ナカに射精してぇえ"
+   ],
+   "x": [
+    "natsu_hinata_tp"
+   ],
+   "instagram": [],
+   "fanza_name": "ひなたなつ（日向なつ）",
+   "fanza_id": "",
+   "match": "一致"
   },
   {
    "agency": "ティーパワーズ",
@@ -415,6 +2023,48 @@
   },
   {
    "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%98%9f%e3%81%82%e3%82%93%e3%81%9a/",
+   "label": "星 あんず",
+   "candidates": [
+    "TALENT タレント詳細",
+    "星 あんず",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "風俗店で働くことを決めた人妻たち"
+   ],
+   "x": [
+    "HOSHItoANZU"
+   ],
+   "instagram": [],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%98%9f%e5%ae%ae%e8%8f%9c%e5%a5%88/",
+   "label": "星宮 菜奈",
+   "candidates": [
+    "TALENT タレント詳細",
+    "星宮 菜奈",
+    "Hoshimiya Nana",
+    "AVプロダクション",
+    "ティーパワーズ",
+    "公式サイト"
+   ],
+   "x": [
+    "hoshimiya_nana_"
+   ],
+   "instagram": [
+    "hoshimiya_nana_s2"
+   ],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
    "profile": "https://www.t-powers.co.jp/talent/homuraaine/",
    "label": "穂村 あいね",
    "candidates": [
@@ -427,6 +2077,44 @@
    ],
    "x": [
     "aine_homura"
+   ],
+   "instagram": [],
+   "fanza_name": "穂村あいね",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%b0%b4%e8%b0%b7%e5%bf%83%e9%9f%b3/",
+   "label": "水谷 心音",
+   "candidates": [
+    "TALENT タレント詳細",
+    "水谷 心音",
+    "NEW RELEASE 新着リリース情報",
+    "新・麗しの熟女湯屋 濃厚ねっとり高級ソープ 水谷心音",
+    "Mizutani Kokone",
+    "AVプロダクション"
+   ],
+   "x": [],
+   "instagram": [],
+   "fanza_name": "水谷心音（藤崎りお）",
+   "fanza_id": "28168",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e7%9a%86%e9%87%8e%e3%81%82%e3%81%84/",
+   "label": "皆野 あい",
+   "candidates": [
+    "TALENT タレント詳細",
+    "皆野 あい",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "湯けむり天獄～縄情の宿～14 天縄の愛 編"
+   ],
+   "x": [
+    "sexyidol01"
    ],
    "instagram": [],
    "fanza_name": "",
@@ -451,9 +2139,117 @@
    "instagram": [
     "minamo_j"
    ],
+   "fanza_name": "MINAMO",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%ae%ae%e6%be%a4-%e3%82%81%e3%81%90/",
+   "label": "宮澤 めぐ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "宮澤 めぐ",
+    "NEW RELEASE 新着リリース情報",
+    "Miyazawa Megu",
+    "AVプロダクション",
+    "ティーパワーズ"
+   ],
+   "x": [
+    "Megu_Miyazawa"
+   ],
+   "instagram": [
+    "megu_miyazawa"
+   ],
    "fanza_name": "",
    "fanza_id": "",
    "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%ae%ae%e4%b8%8b%e8%8f%af%e5%a5%88/",
+   "label": "宮下 華奈",
+   "candidates": [
+    "TALENT タレント詳細",
+    "宮下 華奈",
+    "NEW RELEASE 新着リリース情報",
+    "卒業式の後に…大人になった君へ義母からの贈り物―。 宮下華奈",
+    "Miyashita Kana",
+    "AVプロダクション"
+   ],
+   "x": [
+    "kana_miyashita"
+   ],
+   "instagram": [],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%ae%ae%e5%b3%b6%e3%82%81%e3%81%84/",
+   "label": "宮島 めい",
+   "candidates": [
+    "TALENT タレント詳細",
+    "宮島 めい",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "痙攣トランス状態！エビ反り絶頂開発ドキュメント！！"
+   ],
+   "x": [
+    "miyajima100"
+   ],
+   "instagram": [
+    "mei_miyajima"
+   ],
+   "fanza_name": "宮島めい",
+   "fanza_id": "1062074",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%ae%ae%e9%87%8e%e3%82%86%e3%81%8b%e3%81%aa/",
+   "label": "宮野 ゆかな",
+   "candidates": [
+    "TALENT タレント詳細",
+    "宮野 ゆかな",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "妊活中出し妻"
+   ],
+   "x": [
+    "yukana_miyano"
+   ],
+   "instagram": [
+    "yukana_miyano"
+   ],
+   "fanza_name": "",
+   "fanza_id": "",
+   "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e3%82%81%e3%81%90%e3%82%8a/",
+   "label": "めぐり",
+   "candidates": [
+    "TALENT タレント詳細",
+    "めぐり",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "童貞の僕が変態と化したワケ…隣に住む美しい人妻に"
+   ],
+   "x": [
+    "meguri0504"
+   ],
+   "instagram": [
+    "meguri.0504"
+   ],
+   "fanza_name": "めぐり（藤浦めぐ）",
+   "fanza_id": "22574",
+   "match": "一致"
   },
   {
    "agency": "ティーパワーズ",
@@ -473,9 +2269,141 @@
    "instagram": [
     "itsuha_1004"
    ],
+   "fanza_name": "五芭",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%a3%ae%e6%b2%a2%e3%81%8b%e3%81%aa/",
+   "label": "森沢 かな",
+   "candidates": [
+    "TALENT タレント詳細",
+    "森沢 かな",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "娘がごめんなさい…戻るまで家のこと私が代わりにしますから…"
+   ],
+   "x": [
+    "morisawa_kana"
+   ],
+   "instagram": [
+    "morisawa_kana"
+   ],
+   "fanza_name": "森沢かな（飯岡かなこ）",
+   "fanza_id": "1020685",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e5%85%ab%e6%8e%9b%e3%81%86%e3%81%bf/",
+   "label": "八掛 うみ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "八掛 うみ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "毒づきウェイトレス"
+   ],
+   "x": [
+    "umi_sea_0v0"
+   ],
+   "instagram": [
+    "yatsugake_umi"
+   ],
+   "fanza_name": "八掛うみ",
+   "fanza_id": "1064982",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e9%9b%aa%e7%be%8e-%e3%81%88%e3%81%bf%e3%82%8b/",
+   "label": "雪美 えみる",
+   "candidates": [
+    "TALENT タレント詳細",
+    "雪美 えみる",
+    "NEW RELEASE 新着リリース情報",
+    "美脚だけど感じるとすぐにおもらしする女は好きですか？",
+    "メタルウーマン 高飛車ヒロイン恥辱凌●",
+    "Yukimi Emiru"
+   ],
+   "x": [
+    "yui1122ribbon"
+   ],
+   "instagram": [
+    "yukimi_emiru1122"
+   ],
    "fanza_name": "",
    "fanza_id": "",
    "match": "FANZAの名前と合わない"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%9f%9a%e6%9c%a8-%e3%81%b2%e3%81%aa%e3%81%9f/",
+   "label": "柚木 ひなた",
+   "candidates": [
+    "TALENT タレント詳細",
+    "柚木 ひなた",
+    "NEW RELEASE 新着リリース情報",
+    "VR",
+    "女体開発悪徳クリニック 柚木ひなた",
+    "Yuzuki Hinata"
+   ],
+   "x": [
+    "yuzuhina0115"
+   ],
+   "instagram": [
+    "yuzuhina0115"
+   ],
+   "fanza_name": "柚木ひなた",
+   "fanza_id": "",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e6%a5%aa%e3%82%ab%e3%83%ac%e3%83%b3/",
+   "label": "楪 カレン",
+   "candidates": [
+    "TALENT タレント詳細",
+    "楪 カレン",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "寝取り痴女"
+   ],
+   "x": [
+    "_karenyuzuriha"
+   ],
+   "instagram": [
+    "karen_yuzuriha"
+   ],
+   "fanza_name": "楪カレン",
+   "fanza_id": "1067267",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e7%b5%90%e6%9c%88%e3%82%8a%e3%81%82/",
+   "label": "結月 りあ",
+   "candidates": [
+    "TALENT タレント詳細",
+    "結月 りあ",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "VR"
+   ],
+   "x": [
+    "yuzuki_ria"
+   ],
+   "instagram": [
+    "yuzuki_ria"
+   ],
+   "fanza_name": "結月りあ",
+   "fanza_id": "",
+   "match": "一致"
   },
   {
    "agency": "ティーパワーズ",
@@ -500,6 +2428,48 @@
    "match": "一致"
   },
   {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e4%be%9d%e6%9c%ac%e3%81%97%e3%81%8a%e3%82%8a/",
+   "label": "依本 しおり",
+   "candidates": [
+    "TALENT タレント詳細",
+    "依本 しおり",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "VR"
+   ],
+   "x": [
+    "yorimoto_s"
+   ],
+   "instagram": [
+    "yorimoto_s"
+   ],
+   "fanza_name": "依本しおり",
+   "fanza_id": "1097983",
+   "match": "一致"
+  },
+  {
+   "agency": "ティーパワーズ",
+   "profile": "https://www.t-powers.co.jp/talent/%e3%83%ad%e3%83%bc%e3%83%ac%e3%83%b3%e8%8a%b1%e6%81%8b/",
+   "label": "ローレン 花恋",
+   "candidates": [
+    "TALENT タレント詳細",
+    "ローレン 花恋",
+    "NEW RELEASE 新着リリース情報",
+    "EVENT",
+    "MEDIA イベント・メディア情報",
+    "サエない僕を不憫に思った美人な姉に"
+   ],
+   "x": [],
+   "instagram": [
+    "lauren_karenn_"
+   ],
+   "fanza_name": "ローレン花恋",
+   "fanza_id": "1072202",
+   "match": "一致"
+  },
+  {
    "agency": "マインズ",
    "profile": "https://mines-pro.jp/model/11014",
    "label": "相月 菜緒",
@@ -514,9 +2484,9 @@
     "nao_aizuki"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "相月菜緒",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -590,9 +2560,9 @@
     "nami_asami"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "浅海なみ",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -609,9 +2579,9 @@
     "Ayaka_Amamiya"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "雨宮あや花",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -727,9 +2697,9 @@
    "instagram": [
     "iritamaaya"
    ],
-   "fanza_name": "",
+   "fanza_name": "入田真綾",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -746,9 +2716,9 @@
     "hin0ri_uragam"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "浦上ひのり",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -830,9 +2800,9 @@
    "instagram": [
     "otohamisuzu"
    ],
-   "fanza_name": "",
+   "fanza_name": "音羽美鈴",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -919,9 +2889,9 @@
    ],
    "x": [],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "北乃衣織",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1039,9 +3009,9 @@
     "kuwaharaseira"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "久和原せいら",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1218,9 +3188,9 @@
    "instagram": [
     "shinoharu_mines"
    ],
-   "fanza_name": "",
+   "fanza_name": "東雲はる",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1252,9 +3222,9 @@
    ],
    "x": [],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "鈴北梨乃",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1311,9 +3281,9 @@
    "instagram": [
     "saki.seino"
    ],
-   "fanza_name": "",
+   "fanza_name": "清野咲",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1332,9 +3302,9 @@
    "instagram": [
     "mamizemba"
    ],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "善場まみ（茉城まみ）",
+   "fanza_id": "1096367",
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1374,9 +3344,9 @@
    "instagram": [
     "tan0.chan"
    ],
-   "fanza_name": "",
+   "fanza_name": "田野憂",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1410,9 +3380,9 @@
    ],
    "x": [],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "高山エミリ",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1450,9 +3420,9 @@
     "chinami_natsun0"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "那津乃ちなみ",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1549,9 +3519,9 @@
    "instagram": [
     "higuchi_mitsuha"
    ],
-   "fanza_name": "",
+   "fanza_name": "樋口みつは",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1608,9 +3578,9 @@
    "instagram": [
     "himari_moo2"
    ],
-   "fanza_name": "",
+   "fanza_name": "Himari",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1724,9 +3694,9 @@
     "mines_hanahonjo"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "本城はな",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1743,9 +3713,9 @@
     "mihi_nanami"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "三比菜々美",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1785,9 +3755,9 @@
    "instagram": [
     "mashiro_minori"
    ],
-   "fanza_name": "",
+   "fanza_name": "真白みのり",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1804,9 +3774,9 @@
     "Matsuoka_miou"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "松岡美桜",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -1884,9 +3854,9 @@
    "instagram": [
     "ri_minase_ta"
    ],
-   "fanza_name": "",
+   "fanza_name": "水瀬りた",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -2067,9 +4037,9 @@
    "instagram": [
     "suzuna._.0307"
    ],
-   "fanza_name": "",
+   "fanza_name": "山田鈴奈",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -2088,9 +4058,9 @@
    "instagram": [
     "wakana_yamori"
    ],
-   "fanza_name": "",
+   "fanza_name": "八森わか菜",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -2147,9 +4117,9 @@
    "instagram": [
     "totsuka_ruu"
    ],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "RUU（十束るう）",
+   "fanza_id": "1073408",
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -2187,9 +4157,9 @@
     "watanabe_h0n0"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "渡部ほの",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "マインズ",
@@ -2208,9 +4178,9 @@
    "instagram": [
     "fuu_watarai"
    ],
-   "fanza_name": "",
+   "fanza_name": "渡来ふう",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2231,9 +4201,9 @@
    "instagram": [
     "emika_shirakami"
    ],
-   "fanza_name": "",
+   "fanza_name": "白上咲花",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2253,9 +4223,9 @@
    "instagram": [
     "toa_kiyomiya"
    ],
-   "fanza_name": "",
+   "fanza_name": "清宮仁愛",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2273,9 +4243,9 @@
     "Minami_Harudayo"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "みなみ羽琉（みなと羽琉）",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2295,9 +4265,9 @@
    "instagram": [
     "yua_fucuda"
    ],
-   "fanza_name": "",
+   "fanza_name": "福田ゆあ",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2360,9 +4330,9 @@
    "instagram": [
     "_arisumai_"
    ],
-   "fanza_name": "",
+   "fanza_name": "有栖舞衣",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2426,9 +4396,9 @@
    "instagram": [
     "arisa_hanyu"
    ],
-   "fanza_name": "",
-   "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "fanza_name": "羽生アリサ（羽生ありさ）",
+   "fanza_id": "1059802",
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2448,9 +4418,9 @@
    "instagram": [
     "igarashi_kiyoka_"
    ],
-   "fanza_name": "",
+   "fanza_name": "五十嵐清華",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2486,9 +4456,9 @@
     "ak__hana"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "花里アカリ",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2508,9 +4478,9 @@
    "instagram": [
     "haru___kikuchi"
    ],
-   "fanza_name": "",
+   "fanza_name": "菊池はる",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2530,9 +4500,9 @@
    "instagram": [
     "himari_kosaka"
    ],
-   "fanza_name": "",
+   "fanza_name": "小坂ひまり",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2550,9 +4520,9 @@
     "ayumi_natsukawa"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "夏川あゆみ",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2668,9 +4638,9 @@
     "asami_nagisa_"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "朝海凪咲",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2751,9 +4721,9 @@
     "hanaido_butsuen"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "花井しずく",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2793,9 +4763,9 @@
    "instagram": [
     "karennagase_"
    ],
-   "fanza_name": "",
+   "fanza_name": "永瀬かれん",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2811,9 +4781,9 @@
    ],
    "x": [],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "花芽ありす",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -2847,9 +4817,9 @@
    ],
    "x": [],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "葉月保奈美",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "バンビプロモーション",
@@ -3120,9 +5090,9 @@
     "_yodarin_"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "与田りん",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "SO MODELAGENT",
@@ -3258,9 +5228,9 @@
    ],
    "x": [],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "中城葵",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "プロダクションALIVE",
@@ -3276,9 +5246,9 @@
    ],
    "x": [],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "有馬美玖",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   },
   {
    "agency": "プロダクションALIVE",
@@ -3316,9 +5286,9 @@
     "momoinoue99"
    ],
    "instagram": [],
-   "fanza_name": "",
+   "fanza_name": "井上もも",
    "fanza_id": "",
-   "match": "FANZAの名前と合わない"
+   "match": "一致"
   }
  ]
 }
