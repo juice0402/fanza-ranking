@@ -1245,6 +1245,13 @@ check("CSS: 一覧のタイル（.name-link）は、どれも同じ高さで、�
       css_has(".name-link", r"(?<![-\w])height\s*:\s*\d+px") and css_has(".name-link-name", r"line-clamp\s*:\s*2") and css_has(".name-grid>li", r"display\s*:\s*grid") or (css_has(".name-link", r"(?<![-\w])height\s*:\s*\d+px") and css_has(".name-link-name", r"line-clamp\s*:\s*2") and css_has(".name-grid > li", r"display\s*:\s*grid")))
 check("CSS: すき間 — ジャンルなどの札（.chips）は8px以上・スイッチのすぐ下の作品（.list-tools + .shelf）・作品ページのボタンの並び（.detail-actions）にすき間がある",
       css_has(".chips", r"gap\s*:\s*(8|9|1\d)px") and (css_has(".list-tools+.shelf", r"margin-top\s*:\s*\d{2}px") or css_has(".list-tools + .shelf", r"margin-top\s*:\s*\d{2}px")) and css_has(".detail-actions", r"gap\s*:\s*1\dpx"))
+# どんな画面の大きさにも（運営者の希望。2026-10-05）: 3つ並びは列の幅に合わせて大きさが変わる・棚などは置かれた場所の幅で列の数を決める
+trio_ok = all(css_has(sel, r"gap\s*:\s*var\(--trio-gap\)") and css_has(sel, r"max-width\s*:\s*var\(--trio-max\)") for sel in (".medals", ".hot", ".hot-genres", ".slot-reels", ".debut-list"))
+check("CSS: 3つ並び（TOP3・いま人気の女優・人気のジャンル・運命の作品・今週のデビュー作）は、同じすき間・同じ最大の幅の3等分の列で、丸は列の幅に合わせる（.hot-face は%）",
+      trio_ok and css_has(".hot-face", r"width\s*:\s*\d+%") and css_has(".genre-thumb", r"width\s*:\s*100%") and not css_has(".genre-thumb", r"max-width\s*:\s*\d+px"))
+all_css = "".join(read(p_) for p_ in glob.glob(os.path.join(DIST, "**", "*.css"), recursive=True))
+check("CSS: 棚・作品検索の結果・注目の作品は、置かれた場所の幅で列の数を決める（コンテナクエリ）。使えない古いブラウザには、画面の幅で決める予備がある",
+      re.search(r"container-type\s*:\s*inline-size", all_css) is not None and len(re.findall(r"@container\s*\(\s*min-width", all_css)) >= 6 and "@supports not" in all_css)
 # 18歳確認の背景: 真っ黒ではなく濃い曇りガラス（ぼかし）。ぼかしが弱すぎると後ろが読める・強すぎると画面のふちが逆にぼけない（Chromiumで確認済み）ので、10〜30pxに収める
 gate_rules = [body for sels, body in css_rules if ".gate" in sels]
 gate_blur = [float(m.group(1)) for b in gate_rules for m in [re.search(r"(?<![-\w])backdrop-filter\s*:\s*blur\(\s*(\d+(?:\.\d+)?)px", b)] if m]
