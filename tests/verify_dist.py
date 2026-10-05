@@ -519,8 +519,9 @@ for r in _agency_rows:
     if _agency_ok(r):
         _agency_name_count[r["name"].strip()] = _agency_name_count.get(r["name"].strip(), 0) + 1
 agency_by_name = {r["name"].strip(): r for r in _agency_rows if _agency_ok(r) and _agency_name_count[r["name"].strip()] == 1}
-check("所属事務所のデータ（agencies.json）: 決まった5つの事務所だけ・出どころが事務所の公式サイト・生年月日などの項目は無い",
-      len(AGENCY_SITES) == 5 and all(_agency_ok(r) for r in _agency_rows) and not any(k in r for r in _agency_rows for k in ("birthday", "birth", "blood", "pref", "hobby")),
+_py_sites = re.findall(r'\{"key": "([a-z]+)", "name": "([^"]+)", "url": "([^"]+)"', read(os.path.join(ROOT, "scripts", "agency_links.py")))
+check("所属事務所のデータ（agencies.json）: 決まった事務所だけ（画面の一覧と、集める道具の一覧が同じ）・出どころが事務所の公式サイト・生年月日などの項目は無い",
+      len(AGENCY_SITES) >= 5 and [(k, n, u) for k, (n, u) in AGENCY_SITES.items()] == _py_sites and all(_agency_ok(r) for r in _agency_rows) and not any(k in r for r in _agency_rows for k in ("birthday", "birth", "blood", "pref", "hobby")),
       [r.get("name") for r in _agency_rows if not _agency_ok(r)][:3])
 bad_agency_pages = []
 shown_agency = 0

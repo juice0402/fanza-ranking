@@ -42,6 +42,15 @@ check("SNS: アカウント名だけ・共有ボタンや投稿へのリンク�
 check("見出しの候補（h1・og:title・title。区切りで分ける）", A.name_candidates('<title>石川 澪 | ALIVE</title><h1>アライブ所属のモデル 石川 澪</h1>')[:3] == ["アライブ所属のモデル 石川 澪", "石川 澪", "ALIVE"], A.name_candidates('<title>石川 澪 | ALIVE</title><h1>アライブ所属のモデル 石川 澪</h1>'))
 check("事務所の側の名前: 一覧の文字（うしろのローマ字は外す）",
       A.agency_name(SITE_T, "美乃すずめ Suzume Mino", []) == "美乃すずめ" and A.agency_name(SITE_T, " 河北  彩花 ", ["鹿野あも"]) == "河北 彩花")
+SITE_CAPSULE = next(s for s in A.SITES if s["key"] == "capsule")
+SITE_NAX = next(s for s in A.SITES if s["key"] == "nax")
+SITE_DUO = next(s for s in A.SITES if s["key"] == "duo")
+check("事務所の側の名前: 決まった形の一覧の文字（「（七沢みあ）AV女優」→「七沢みあ」。形が違えば名前にしない）",
+      A.agency_name(SITE_CAPSULE, "（七沢みあ）AV女優", []) == "七沢みあ" and A.agency_name(SITE_CAPSULE, "七沢みあ", []) == "")
+check("事務所の側の名前: 一覧が画像だけの事務所は、決まった形のページのタイトルから（うしろのローマ字は外す）",
+      A.agency_name(SITE_NAX, "", ["鹿野あも"], "松永 あかり | AVプロダクション NAX(ナックス)公式") == "松永 あかり"
+      and A.agency_name(SITE_DUO, "", [], "希島あいり Airi Kijima – Duo Entertainment 株式会社") == "希島あいり"
+      and A.agency_name(SITE_NAX, "", [], "モデル一覧") == "")
 check("事務所の側の名前: 一覧の文字がローマ字だけなら、事務所ごとの決まった見出しから（無ければ、そのまま）",
       A.agency_name(SITE_ALIVE, "MIO ISHIKAWA", ["鹿野あも", "アライブ所属のモデル 石川 澪"]) == "石川 澪" and A.agency_name(SITE_T, "MINAMO", ["鹿野あも"]) == "MINAMO")
 
@@ -72,6 +81,52 @@ check("事務所のアカウント（どのページにもある）・2人以上
       rows[0]["x"] == ["Saika_Kawakita"] and rows[1]["x"] == ["M_I_N_A_M_O_"] and rows[2]["x"] == ["unknown_x"], [r["x"] for r in rows])
 check("結びついた人・結びつかない人と理由", rows[0]["fanza_name"] == "河北彩花（河北彩伽）" and rows[2]["fanza_name"] == "" and rows[2]["match"] == "FANZAの名前と合わない")
 
+print("\n■ 一覧の読み方（プロフィールの横に全員が並ぶ事務所）")
+SITE_ES = next(s for s in A.SITES if s["key"] == "esflat")
+fake_pages = {
+    "http://www.style-1.jp/": '<a href="/category/actress/a/">あ子さん</a><a href="/news/1/">お知らせ</a>',
+    "http://www.style-1.jp/category/actress/a/": '<title>あ子さん | S</title><a href="/category/actress/a/">あ子さん</a><a href="/category/actress/b/">び子さん</a><a href="/category/actress/c/">し子さん</a><a href="https://x.com/sflirt">x</a>',
+    "http://www.style-1.jp/category/actress/b/": '<a href="https://x.com/sflirt">x</a><a href="https://x.com/biko">x</a>',
+    "http://www.style-1.jp/category/actress/c/": '<a href="https://x.com/sflirt">x</a>',
+}
+saved_fetch = A.fetch_raw
+A.fetch_raw = lambda url, check_robots=True: fake_pages[url]
+rep_, rows_ = A.collect_site(SITE_ES, {})
+A.fetch_raw = saved_fetch
+check("一覧のページの分に、最初のプロフィールのページの横の全員を足す・プロフィールの形のリンクだけ",
+      rep_["found"] == 3 and rep_["read"] == 3 and [r["agency_name"] for r in rows_] == ["あ子さん", "び子さん", "し子さん"], (rep_, [r["agency_name"] for r in rows_]))
+check("事務所のアカウント（どのページにもある）は外し、本人のアカウントだけ残す", [r["x"] for r in rows_] == [[], ["biko"], []], [r["x"] for r in rows_])
+
+print("\n■ 相手のサイトに負担をかけない（同じサイトへは間をあける・事務所どうしは同時に）")
+import time as _time
+saved_urlopen, saved_interval = A.urllib.request.urlopen, A.INTERVAL_SEC
+
+
+class _Res:
+    headers = type("H", (), {"get_content_charset": lambda self: "utf-8"})()
+
+    def read(self, n):
+        return b"<html></html>"
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+A.urllib.request.urlopen = lambda req, timeout=30: _Res()
+A.INTERVAL_SEC = 0.3
+A._last.clear()
+t0 = _time.time()
+A.fetch_raw("https://same.example/a", check_robots=False)
+A.fetch_raw("https://other.example/a", check_robots=False)
+t1 = _time.time()
+A.fetch_raw("https://same.example/b", check_robots=False)
+t2 = _time.time()
+check("ちがうサイトは待たずに読む・同じサイトは間をあける", t1 - t0 < 0.25 and t2 - t1 >= 0.2, (round(t1 - t0, 2), round(t2 - t1, 2)))
+A.urllib.request.urlopen, A.INTERVAL_SEC = saved_urlopen, saved_interval
+A._last.clear()
 print("\n■ robots.txt を守る")
 saved_fetch = A.fetch_raw
 
@@ -152,12 +207,17 @@ with tempfile.TemporaryDirectory() as tmp:
     open(path, "w").write(A.dump_dataset({"updated": "2026-10-05", "sites": [], "rows": []}))
     check("前に集めてから7日たっていなければ、何もしない", run(["--update"]) == 0 and called == [])
     check("--force なら、すぐ集め直す（全部の事務所）・1つも読めなければ、集め直した日にしない（次の日にまた試す）",
-          run(["--update", "--force"]) == 0 and called == [s["key"] for s in A.SITES] and json.load(open(path))["updated"] == "2026-10-05")
+          run(["--update", "--force"]) == 0 and sorted(called) == sorted(s["key"] for s in A.SITES) and json.load(open(path))["updated"] == "2026-10-05")
     A.collect_site = lambda site, table: ({"roster_ok": True, "read": 1, "found": 1, "errors": []}, [])
     check("読めた事務所があれば、集め直した日になる", run(["--update", "--force"]) == 0 and json.load(open(path))["updated"] == "2026-10-08")
     open(path, "w").write("{壊れた")
     check("ファイルが壊れていたら、上書きしないで止まる", run(["--update", "--force"]) == 1 and open(path).read() == "{壊れた")
     check("--update が無ければ、使い方を出すだけ", run([]) == 2)
+    open(path, "w").write(A.dump_dataset({"updated": "2026-10-01", "sites": [{"key": "mines", "checked": "2026-10-01", "profiles": 10}],
+                                          "rows": [{"name": "残る人", "agency": "mines", "source": "https://mines-pro.jp/model/1", "seen": "2026-10-01"}]}))
+    A.collect_site = lambda site, table: (_ for _ in ()).throw(RuntimeError("こわれた")) if site["key"] == "mines" else ({"roster_ok": True, "read": 1, "found": 1, "errors": []}, [])
+    check("1つの事務所で思わぬ失敗があっても、止まらずに保存する（その事務所は前の情報を残す）",
+          run(["--update", "--force"]) == 0 and [r["name"] for r in json.load(open(path))["rows"]] == ["残る人"])
     A.collect_site = saved_collect
 
 print("\n■ 保存されているデータ（site/src/data/agencies.json）")
