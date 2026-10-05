@@ -38,7 +38,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 45  # 名簿（最大400回）と過去作品（最大500回）を一度に取ると、20分ほどかかる
+    timeout-minutes: 75  # 名簿（最大400回）と過去作品（最大500回）を一度に取ると、20分ほどかかる。所属事務所も集め直すと、さらに10分ほど
     steps:
       - uses: actions/checkout@v4
 
@@ -68,7 +68,7 @@ jobs:
       - name: Refresh agencies
         if: inputs.agencies == '1'
         continue-on-error: true
-        timeout-minutes: 20
+        timeout-minutes: 30
         run: python scripts/agency_links.py --update --force
 
       - name: Commit and push if changed

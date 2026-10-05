@@ -13,8 +13,8 @@ console.log('■ 事務所の一覧（Python の道具と同じ）');
 const py = fs.readFileSync(new URL('../scripts/agency_links.py', import.meta.url), 'utf-8');
 const pySites = [...py.matchAll(/\{"key": "([a-z]+)", "name": "([^"]+)", "url": "([^"]+)"/g)].map((m) => [m[1], m[2], m[3]]);
 const jsSites = Object.entries(G.AGENCIES).map(([k, v]) => [k, v.name, v.url]);
-check('キー・名前・公式サイトが scripts/agency_links.py の SITES と同じ', JSON.stringify(pySites) === JSON.stringify(jsSites) && jsSites.length === 5, JSON.stringify(pySites));
-check('公式サイトは https で、/ で終わる（出どころの確かめに使う）', jsSites.every(([, , u]) => /^https:\/\/[a-z0-9.-]+\/$/.test(u)));
+check('キー・名前・公式サイトが scripts/agency_links.py の SITES と同じ', JSON.stringify(pySites) === JSON.stringify(jsSites) && jsSites.length >= 5, JSON.stringify(pySites));
+check('公式サイトは、ホスト名（と決まった場所）のあとが / で終わる（出どころの確かめに使う。http のままのサイトもある）', jsSites.every(([, , u]) => /^https?:\/\/[a-z0-9.-]+\/([a-z0-9_-]+\/)*$/.test(u)), jsSites.map(([, , u]) => u).join());
 
 console.log('\n■ agencies.json の読み方');
 const raw = {

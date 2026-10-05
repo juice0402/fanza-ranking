@@ -9,6 +9,14 @@ export const AGENCIES = {
   bambi: { name: 'バンビプロモーション', url: 'https://bambi.ne.jp/' },
   soagent: { name: 'SO MODELAGENT', url: 'https://so-agent.jp/' },
   alive: { name: 'プロダクションALIVE', url: 'https://alive-pro.tokyo/' },
+  esflat: { name: 'エスフラート', url: 'http://www.style-1.jp/' },
+  capsule: { name: 'カプセルエージェンシー', url: 'https://capsule.bz/' },
+  cmore: { name: 'C-more ENTERTAINMENT', url: 'https://cmore.jp/official/' },
+  light: { name: 'LIGHT promotion', url: 'https://lightpro.jp/' },
+  life: { name: 'ライフプロモーション', url: 'https://life-promotion.com/' },
+  linx: { name: 'LINX', url: 'https://pub.linx.live/' },
+  nax: { name: 'NAX', url: 'https://official.nax-pro.com/' },
+  duo: { name: 'Duo Entertainment', url: 'https://www.duo-official.com/' },
 };
 
 const X_HANDLE = /^[A-Za-z0-9_]{1,15}$/;
