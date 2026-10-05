@@ -1567,6 +1567,10 @@ find_nav = re.search(r'<nav class="hero-jump"[\s\S]*?</nav>', home_html)
 check("作品を探すの1つ目は「新着の人気ランキング」（横いっぱい）。「予約○本」のボタンは置かない（運営者の希望。2026-10-05）",
       bool(find_nav) and re.search(r'<a class="chip-link chip-link-wide" href="/ranking/">新着の人気ランキング</a>', find_nav.group(0)) is not None
       and find_nav.group(0).find('chip-link-wide') < find_nav.group(0).find('href="/', find_nav.group(0).find('chip-link-wide') + 60) and 'href="#upcoming"' not in find_nav.group(0))
+if find_nav:
+    labels_ = [strip_tags(x) for x in re.findall(r'<a class="chip-link[^"]*" href="[^"]*">(.*?)</a>', find_nav.group(0))]
+    want_ = ["新着の人気ランキング"] + (["ジャンル検索"] if 'href="/tag/"' in find_nav.group(0) else []) + ["女優検索", "メーカー検索"] + (["週のまとめ"] if rounds else []) + (["月のまとめ"] if 'href="/month/"' in find_nav.group(0) else [])
+    check("作品を探すのボタンの並びと名前: 新着の人気ランキング → ジャンル検索・女優検索・メーカー検索 → 週のまとめ（左）・月のまとめ（右）（運営者の希望。2026-10-05）", labels_ == want_, labels_)
 
 # セール・キャンペーン（/sale/。sale.json から。キャンペーンは終わりが近い順・終わったものはブラウザで隠す）
 print("\n■ セール・キャンペーン")
