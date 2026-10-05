@@ -83,6 +83,8 @@ PLACE_WORDS = re.compile(r"店|館|会場|ホール|スタジオ|劇場|書店|�
 # 住所らしい形（会場の欄に住所が書かれていることがある。住所は保存しない）
 ADDRESS = re.compile(r"\d+\s*[-－−ー]\s*\d+|(?:都|道|府|県).{0,8}?(?:市|区|町|村).{0,12}\d|丁目|番地")
 DIGITS = str.maketrans("０１２３４５６７８９", "0123456789")
+# 見出しに出さない言葉（claude_comments.py の一覧に無い、くだけた性的な言い方。種類・日付・会場は出す）
+HIDE_WORDS = ["オカズ", "ヌキ", "エッチ", "えっち", "おっぱい", "ちくび", "乳"]
 GENERIC_LABELS = {"イベント", "イベント情報", "EVENT", "PICK UP", "女優", "お知らせ", "NEWS", "ニュース", "メディア", "未分類"}
 
 
@@ -150,7 +152,7 @@ def title_problem(text):
     if reason == "minor":
         return "minor"
     low = nfkc(text).lower()
-    if reason or any(w.lower() in low for w in CC.EXPLICIT_WORDS):
+    if reason or any(w.lower() in low for w in CC.EXPLICIT_WORDS + HIDE_WORDS):
         return "hide"
     return ""
 
@@ -181,7 +183,7 @@ def names_in_title(title, roster):
             found.append(full)
             spans.append((s, e))
             break
-    return found
+    return [n for _, n in sorted(zip(spans, found))]  # 見出しに出てくる順
 
 
 def clean_place(place):
