@@ -1,0 +1,33 @@
+---
+// トップの右の欄（パソコンだけ）のいちばん下の「月のまとめ」: 発売月ごとのページを、ブログのバックナンバーのように新しい月から並べる
+// （運営者の希望「月のまとめはカラムの一番下に、よくあるブログみたいに、バックナンバー形式で」。2026-10-05）。
+// バックナンバーなので、きょうの月まで（予約だけの先の月は、月の一覧のページから）
+import { monthGroups, today } from '../lib/data.js';
+import { MONTH_INDEX_PATH } from '../lib/collections.js';
+
+const SHOWN = 12;
+const months = monthGroups.filter((g) => g.ym <= today.slice(0, 7));
+const shown = months.slice(0, SHOWN);
+---
+
+{shown.length > 0 && (
+  <section id="months" class="side-months side-only" aria-labelledby="months-title">
+    <div class="today-sec-head">
+      <h2 id="months-title" class="today-sec-title">月のまとめ</h2>
+      <p class="section-note">発売月ごとのバックナンバー</p>
+    </div>
+    <ul class="backnumber">
+      {shown.map((g) => (
+        <li>
+          <a class="backnumber-link" href={g.path}>
+            <span class="backnumber-name">{g.name}</span>
+            <span class="backnumber-count">{g.items.length}本</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+    {(months.length > SHOWN || monthGroups.length > months.length) && (
+      <p class="side-more"><a class="spec-link" href={MONTH_INDEX_PATH}>すべての月を見る</a></p>
+    )}
+  </section>
+)}

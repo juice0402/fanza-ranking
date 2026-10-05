@@ -1,10 +1,9 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
-import ItemCard from '../../components/ItemCard.astro';
 import { curated, paged, roundups, actressByName, makerByName } from '../../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../../lib/plan.js';
-import { breadcrumbLd, dateParts, formatDateJp, groupByDate, filterAttrs, castLine, CAST_LIMIT } from '../../lib/items.js';
+import { breadcrumbLd, dateParts, formatDateJp, groupByDate, filterAttrs, castLine, CAST_LIMIT, SMALL_IMG_ONERROR, smallImage } from '../../lib/items.js';
 import {
   WEEKLY_INDEX_PATH,
   articleLd,
@@ -37,6 +36,10 @@ const trail = [
 const day = (dateKey) => {
   const p = dateParts(dateKey);
   return `${p.m}月${p.d}日（${p.wd}）`;
+};
+const md = (dateKey) => {
+  const p = dateParts(dateKey);
+  return `${p.m}月${p.d}日`;
 };
 ---
 
@@ -73,12 +76,14 @@ const day = (dateKey) => {
             <>
               <dt class="spec-term">メーカー別</dt>
               <dd class="spec-desc">
-                {stats.makers.map((m, i) => (
-                  <>
-                    {i > 0 && '、'}
-                    {makerByName.get(m.name) ? <a class="spec-link" href={makerByName.get(m.name).path}>{m.name}</a> : m.name}（{m.count}本）
-                  </>
-                ))}
+                <ul class="stat-list">
+                  {stats.makers.map((m) => (
+                    <li class="stat">
+                      {makerByName.get(m.name) ? <a class="spec-link" href={makerByName.get(m.name).path}>{m.name}</a> : m.name}
+                      <span class="stat-n">{m.count}本</span>
+                    </li>
+                  ))}
+                </ul>
               </dd>
             </>
           )}
@@ -86,12 +91,14 @@ const day = (dateKey) => {
             <>
               <dt class="spec-term">出演が多かった人</dt>
               <dd class="spec-desc">
-                {stats.actresses.map((a, i) => (
-                  <>
-                    {i > 0 && '、'}
-                    {actressByName.get(a.name) ? <a class="spec-link" href={actressByName.get(a.name).path}>{a.name}</a> : a.name}（{a.count}本）
-                  </>
-                ))}
+                <ul class="stat-list">
+                  {stats.actresses.map((a) => (
+                    <li class="stat">
+                      {actressByName.get(a.name) ? <a class="spec-link" href={actressByName.get(a.name).path}>{a.name}</a> : a.name}
+                      <span class="stat-n">{a.count}本</span>
+                    </li>
+                  ))}
+                </ul>
               </dd>
             </>
           )}
@@ -108,14 +115,30 @@ const day = (dateKey) => {
       {picks.length > 0 && (
         <section class="section" aria-labelledby="picks-title" data-vr-group>
           <h2 id="picks-title" class="section-title">注目の作品</h2>
-          <ul class="shelf">
-            {picks.map((p) => (
-              <li class="shelf-cell" {...filterAttrs(p.item)}>
-                <ItemCard item={p.item} level="h3" />
-                <p class="pick-note">{p.note}</p>
-              </li>
-            ))}
-          </ul>
+          {/* 1本ずつ「小さな表紙｜タイトル・出演者・メーカー・発売日・ひとこと・FANZAへ」の横長のカード（運営者の指摘「注目の作品がとても読みづらい」。2026-10-05。
+              前は棚のカードの横に文を並べていて、狭い所で縦に長く折り返していた）。スマホ1列（ひとことは横いっぱい）・広い画面2列 */}
+          <ol class="pick-list">
+            {picks.map((p) => {
+              const link = itemHref(p.item, paged);
+              const outbound = link.external ? OUTBOUND_ATTRS : {};
+              const meta = [castLine(p.item.actress, CAST_LIMIT, ''), p.item.maker && p.item.maker !== '不明' ? p.item.maker : '', `${md(p.item.dateKey)}発売`].filter(Boolean).join('・');
+              return (
+                <li class="shelf-cell pick" {...filterAttrs(p.item)}>
+                  <article class="pick-card">
+                    <a class="item-cover pick-cover" href={link.href} tabindex="-1" aria-hidden="true" {...outbound}>
+                      {p.item.image_url && <img class="item-img is-small" src={smallImage(p.item.image_url)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />}
+                    </a>
+                    <div class="pick-head">
+                      <h3 class="pick-title"><a class="item-title-link" href={link.href} {...outbound}>{p.item.title}</a></h3>
+                      <p class="pick-meta">{meta}</p>
+                    </div>
+                    <p class="pick-note">{p.note}</p>
+                    {p.item.url && <a class="btn btn-card pick-btn" href={p.item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで見る</a>}
+                  </article>
+                </li>
+              );
+            })}
+          </ol>
         </section>
       )}
 
@@ -124,13 +147,20 @@ const day = (dateKey) => {
         {groupByDate(week).map((g) => (
           <div class="week-day">
             <h3 class="week-day-title">{day(g.dateKey)}</h3>
-            <ul class="week-list">
+            {/* 作品検索の結果と同じ「小さな表紙＋タイトル・出演者」の行（スマホ1列・広い画面2列） */}
+            <ul class="ws-list week-list">
               {g.items.map((i) => {
                 const link = itemHref(i, paged); // 作品ページが無い作品（ほぼ無い）は、FANZAへ
+                const outbound = link.external ? OUTBOUND_ATTRS : {};
                 return (
-                  <li>
-                    <a class="week-list-link" href={link.href} {...(link.external ? OUTBOUND_ATTRS : {})}>{i.title}</a>
-                    {i.actress.length > 0 && <span class="week-list-cast">{castLine(i.actress, CAST_LIMIT, '')}</span>}
+                  <li class="ws-row">
+                    <article class="item">
+                      <a class="item-cover" href={link.href} tabindex="-1" aria-hidden="true" {...outbound}>
+                        {i.image_url && <img class="item-img is-small" src={smallImage(i.image_url)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />}
+                      </a>
+                      <h4 class="item-title"><a class="item-title-link week-list-link" href={link.href} {...outbound}>{i.title}</a></h4>
+                      <p class="item-cast">{castLine(i.actress, CAST_LIMIT, '出演者の記載なし')}</p>
+                    </article>
                   </li>
                 );
               })}

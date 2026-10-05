@@ -32,6 +32,32 @@ export function weekRangeJp(weekStart) {
 }
 
 export const roundupTitle = (r) => `${weekRangeJp(r.week_start)}のFANZA新作まとめ`;
+
+/** 年を入れない短い期間（トップの右の欄・話題用）。例: 9月28日〜10月4日 / 10月5日〜11日 */
+export function weekRangeShort(weekStart) {
+  const a = dateParts(weekStart);
+  const b = dateParts(weekEndOf(weekStart));
+  return a.m !== b.m ? `${a.m}月${a.d}日〜${b.m}月${b.d}日` : `${a.m}月${a.d}日〜${b.d}日`;
+}
+
+/** 導入文のはじめの1文（トップの右の欄の「週のまとめ」の概要。くわしくは記事のページで）。長ければ max 文字で切る */
+export function roundupSummary(r, max = 70) {
+  const lead = String(r?.lead ?? '').trim();
+  const end = lead.indexOf('。');
+  return truncate(end >= 0 ? lead.slice(0, end + 1) : lead, max);
+}
+
+/**
+ * トップの右の欄の「週のまとめ」に並べる、注目の作品の表紙（記事の順に、画像があってVRでない作品を n 本）。
+ * VR作品を入れないのは、「VR作品を隠す」を押しても、ここの3枚の並びがくずれないように
+ */
+export function roundupCovers(r, items, n = 3) {
+  const byCid = new Map(items.map((i) => [i.cid, i]));
+  return (r?.picks ?? [])
+    .map((p) => byCid.get(p.cid))
+    .filter((i) => i && i.image_url && !i.vr)
+    .slice(0, n);
+}
 export const roundupPageTitle = (r) => `${roundupTitle(r)}｜${SITE_NAME}`;
 export const roundupDescription = (r) => truncate(r.lead, 120);
 

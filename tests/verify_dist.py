@@ -83,6 +83,14 @@ def tags(text, name):
 strip_tags = lambda h: htmllib.unescape(re.sub(r"<[^>]+>", "", h))  # タグを外した文字だけ
 
 
+def config_value(name):
+    """site/src/config.js の export const NAME = … の値（数字・文字列のリスト）を読む"""
+    text_ = read(os.path.join(ROOT, "site", "src", "config.js"))
+    m_ = re.search(r"export const %s = (\[.*?\]|\d+);" % name, text_, re.S)
+    assert m_, name
+    return int(m_.group(1)) if m_.group(1).isdigit() else re.findall(r"'([^']+)'", m_.group(1))
+
+
 def has_class(attrs, name):
     return name in attrs.get("class", "").split()
 
@@ -300,6 +308,10 @@ else:
         check(f"{week}: 本数は「当サイトで紹介した」数と分かる書き方（FANZA全体の発売本数と誤解されない）", html.count("当サイトで紹介した") >= 2 and "FANZA全体の発売本数ではありません" in html, html.count("当サイトで紹介した"))
         picked = [q["cid"] for q in (r.get("picks") or []) if isinstance(q, dict) and q.get("cid") in valid]
         check(f"{week}: 注目の作品（{len(picked)}件）へのリンクが記事にある", all(f'href="/item/{c}/"' in html for c in picked), [c for c in picked if f'href="/item/{c}/"' not in html][:3])
+        if picked:
+            notes_ = [str(q.get("note", "")).strip() for q in r["picks"] if isinstance(q, dict) and q.get("cid") in valid]
+            check(f"{week}: 注目の作品は、横長のカード（表紙・タイトル・出演者/メーカー/発売日・ひとこと）で読みやすく（運営者の指摘。2026-10-05）",
+                  html.count('<article class="pick-card">') == len(picked) and html.count('class="pick-note"') == len(picked) and all(n[:15] in html for n in notes_), (html.count('<article class="pick-card">'), len(picked)))
 
 print("\n■ 作品ページの表示（サンプル画像の拡大・カード）")
 check("拡大表示のスクリプト（lightbox.js）が公開されている", os.path.isfile(os.path.join(DIST, "lightbox.js")))
@@ -898,25 +910,45 @@ check("おすすめのコーナーの目印（id=\"pick-corner\"）が、コー�
 if corner_at >= 0:
     check("おすすめのコーナーは、発売中の新作の、いちばん新しい日付のすぐ下（次の日付の上）", len(days_in_rel) >= 1 and days_in_rel[0] < corner_at and (len(days_in_rel) < 2 or corner_at < days_in_rel[1]), (days_in_rel[:2], corner_at))
 
-# パソコンの右の欄（運営者の希望「右のカラム（きょうの話題）の下に全て並べる」。2026-10-05）:
-# きょうの話題・いま人気の女優・人気のジャンルは .home-side の中。おすすめのコーナーは、HTMLではスマホの場所（発売中の中）にあり、パソコンのときだけ小さなスクリプトで右の欄へ移す
-home_m = re.search(r'<div class="home( has-side)?"( style="--side-span: (\d+)")?>', home_html)
-check("トップは .home で包まれている（パソコンの2列の土台）", home_m is not None, home_m.group(0) if home_m else None)
+# パソコンの右の欄（運営者の希望「右のカラム（きょうの話題）の下に全て並べる」「作品を探すも右のカラムの上に」「週のまとめは概要だけ」「月のまとめはバックナンバー」。2026-10-05）:
+# 作品を探す・いま人気の女優・人気のジャンル・きょうの話題・週のまとめ・月のまとめは .home-side の中。おすすめのコーナーは、HTMLではスマホの場所（発売中の中）にあり、パソコンのときだけ小さなスクリプトで右の欄へ移す
+home_m = re.search(r'<div class="home has-side" style="--side-span: (\d+)">', home_html)
 side_start = home_html.find('<div class="home-side">')
+side_end = min([p for p in (home_html.find('<section id="sale"'), home_html.find('<section id="released"')) if p >= 0] or [-1])
+side_html = home_html[side_start:side_end] if 0 <= side_start < side_end else ""
+check("トップは .home で包まれ、右の欄（.home-side）が TOP3 の後・セール/発売中の前にある", home_m is not None and side_html != "" and home_html.find('<section id="ranking"') < side_start, (home_m.group(0) if home_m else None, side_start, side_end))
 side_ids = [i for i in ("hot", "genres", "topics") if f'<section id="{i}"' in home_html]
-if home_m and home_m.group(1):
-    side_end = home_html.find('<section class="find"')
-    in_side = [i for i in side_ids if side_start < home_html.find(f'<section id="{i}"') < side_end]
-    check("右の欄（.home-side）に、ある欄（いま人気の女優・人気のジャンル・きょうの話題）がすべて入り、作品を探す・発売中より前にある", side_start >= 0 and in_side == side_ids and side_end < home_html.find('id="released"'), (side_ids, in_side))
-    main_ids = [home_html.find('<section id="ranking"') >= 0, True, home_html.find('<section id="sale"') >= 0, True, home_html.find('<section id="upcoming"') >= 0]
-    check(f"右の欄がまたぐ行の数（--side-span: {home_m.group(3)}）= 左の欄の欄の数（TOP3・作品を探す・セール・発売中・予約のうち、あるもの）", home_m.group(3) is not None and int(home_m.group(3)) == sum(main_ids), (home_m.group(3), main_ids))
-    if corner_at >= 0:
-        move = re.search(r"</div>\s*<script>(\(function\(\)\{var c=document\.getElementById\('pick-corner'\)[^<]*)</script>", home_html[corner_at:])
-        check("パソコンでは、おすすめのコーナーを右の欄（#side-corner）へ移す小さなスクリプトが、コーナーのすぐ後ろにある（幅が変われば戻す）",
-              '<div id="side-corner" class="side-corner"></div>' in home_html[side_start:home_html.find('<section class="find"')] and '<div id="corner-home" class="corner-home">' in home_html[:corner_at]
-              and move is not None and "min-width: 960px" in move.group(1) and "'side-corner'" in move.group(1) and "'corner-home'" in move.group(1) and "addEventListener('change'" in move.group(1))
+check("右の欄に、作品を探す（いちばん先）と、ある欄（いま人気の女優・人気のジャンル・きょうの話題）がすべて入っている",
+      side_html.find('<section class="find"') >= 0 and all(f'<section id="{i}"' in side_html for i in side_ids) and side_html.find('<section class="find"') < min([side_html.find(f'<section id="{i}"') for i in side_ids] or [len(side_html)]), side_ids)
+main_ids = [home_html.find('<section id="ranking"') >= 0, home_html.find('<section id="sale"') >= 0, True, home_html.find('<section id="upcoming"') >= 0]
+check(f"右の欄がまたぐ行の数（--side-span）= 左の欄の欄の数（TOP3・セール・発売中・予約のうち、あるもの）", home_m is not None and int(home_m.group(1)) == sum(main_ids), (home_m.group(1) if home_m else None, main_ids))
+find_html = re.search(r'<section class="find"[\s\S]*?</section>', side_html)
+side_month_counts = {}
+for x in curated.values():
+    side_month_counts[x["date"][:7]] = side_month_counts.get(x["date"][:7], 0) + 1
+side_months = sorted([ym for ym, n in side_month_counts.items() if n >= config_value("MONTH_MIN_ITEMS")], reverse=True)
+check("作品を探すの「月ごと」「週のまとめ」は、スマホだけ（only-narrow。パソコンは右の欄に専用の欄がある）",
+      bool(find_html) and all(re.search(r'<a class="chip-link only-narrow" href="' + h, find_html.group(0)) for h, want in (("/month/", bool(side_months)), ("/weekly/", bool(rounds))) if want)
+      and not re.search(r'<a class="chip-link" href="/(month|weekly)/', find_html.group(0)))
+if rounds:
+    newest_w = max(rounds)
+    wk = re.search(r'<section id="weekly" class="side-weekly side-only"[\s\S]*?</section>', side_html)
+    check("右の欄の週のまとめ: いちばん新しい週の概要（はじめの1文）と、記事・一覧へのリンク", bool(wk) and f'href="/weekly/{newest_w}/"' in wk.group(0) and 'href="/weekly/"' in wk.group(0)
+          and strip_tags(wk.group(0)).find(rounds[newest_w]["lead"].strip().split("。")[0][:20]) >= 0, wk.group(0)[:200] if wk else None)
 else:
-    check("右の欄に入れるものが無い日は、右の欄を作らない", side_start < 0 and not side_ids)
+    check("週のまとめが無いあいだは、右の欄に週のまとめの欄を出さない", 'id="weekly"' not in home_html)
+months_back = [ym for ym in side_months if ym <= JST_TODAY[:7]]
+mo = re.search(r'<section id="months" class="side-months side-only"[\s\S]*?</section>', side_html)
+if months_back:
+    got_m = re.findall(r'<a class="backnumber-link" href="/month/(\d{4}-\d{2})/">', mo.group(0)) if mo else []
+    check(f"右の欄のいちばん下の月のまとめ: きょうの月までの月のページが、新しい月から並ぶ（{len(months_back)}か月。12か月まで）", got_m == months_back[:12] and side_html.rfind("</section>") <= side_html.find('id="months"') + len(mo.group(0)) + 20 if mo else False, (got_m, months_back[:12]))
+else:
+    check("月のページが無いあいだは、月のまとめの欄を出さない", 'id="months"' not in home_html)
+if corner_at >= 0:
+    move = re.search(r"</div>\s*<script>(\(function\(\)\{var c=document\.getElementById\('pick-corner'\)[^<]*)</script>", home_html[corner_at:])
+    check("パソコンでは、おすすめのコーナーを右の欄（#side-corner）へ移す小さなスクリプトが、コーナーのすぐ後ろにある（幅が変われば戻す）",
+          '<div id="side-corner" class="side-corner"></div>' in side_html and '<div id="corner-home" class="corner-home">' in home_html[:corner_at]
+          and move is not None and "min-width: 960px" in move.group(1) and "'side-corner'" in move.group(1) and "'corner-home'" in move.group(1) and "addEventListener('change'" in move.group(1))
 
 # 運命の作品（スロットで3本。ひとことコメントのある・作品ページのある・発売済みの人気作。未成年を連想させるタイトルは入れない）
 gacha_m = re.search(r'<script type="application/json" id="gacha-data">(.*?)</script>', read_raw(index_path), re.S)
@@ -1363,14 +1395,6 @@ check("CSS: html.only-solo のとき、単体作品の印（data-solo）の無�
 
 # 作品ページ: ジャンルは、ジャンルのページ（/tag/…。ページがあるジャンル）か、そのジャンルで絞り込んだ検索へのリンク
 import urllib.parse as _up
-
-
-def config_value(name):
-    """site/src/config.js の export const NAME = … の値（数字・文字列のリスト）を読む"""
-    text_ = read(os.path.join(ROOT, "site", "src", "config.js"))
-    m_ = re.search(r"export const %s = (\[.*?\]|\d+);" % name, text_, re.S)
-    assert m_, name
-    return int(m_.group(1)) if m_.group(1).isdigit() else re.findall(r"'([^']+)'", m_.group(1))
 
 
 TAG_MIN = config_value("TAG_MIN_ITEMS")
