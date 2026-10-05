@@ -24,10 +24,10 @@
   },
   {
    "key": "life",
-   "ok": true,
-   "blocks": 10,
+   "ok": false,
+   "blocks": 0,
    "kept": 0,
-   "error": ""
+   "error": "PermissionError: robots.txt で止められている: https://life-promotion.com/blog/event/"
   }
  ],
  "entries": [
@@ -127,7 +127,7 @@
     ],
     "agency": "tpowers",
     "kind": "イベント",
-    "title": "【MARRION】（土曜日）斎木香住 大阪イベント開催決定！",
+    "title": "【MARRION】斎木香住 大阪イベント開催決定！",
     "place": "買取りまっくす なんば店・買取りまっくす 日本橋店",
     "url": "https://www.t-powers.co.jp/event/",
     "seen": "2026-10-05"
@@ -263,7 +263,7 @@
     ],
     "agency": "tpowers",
     "kind": "撮影会",
-    "title": "大槻ひびき STUDIO ONE１撮影会",
+    "title": "大槻ひびき STUDIO ONE1撮影会",
     "place": "STUDIO ONE１",
     "url": "https://www.t-powers.co.jp/event/",
     "seen": "2026-10-05"
@@ -299,7 +299,7 @@
     ],
     "agency": "tpowers",
     "kind": "イベント",
-    "title": "18(日) 宮島めい 写真展「Pleasant」",
+    "title": "宮島めい 写真展「Pleasant」",
     "place": "GALLERY FELES OMOTESANDO",
     "url": "https://www.t-powers.co.jp/event/",
     "seen": "2026-10-05"
@@ -353,7 +353,7 @@
     ],
     "agency": "tpowers",
     "kind": "イベント",
-    "title": "12時~＆17時～小野坂ゆいかイベントinソフネット 本店＆ ラムタラ秋葉原店",
+    "title": "小野坂ゆいかイベントinソフネット 本店＆ ラムタラ秋葉原店",
     "place": "ソフネット本店・ラムタラ 秋葉原店",
     "url": "https://www.t-powers.co.jp/event/",
     "seen": "2026-10-05"
@@ -376,7 +376,7 @@
     ],
     "agency": "tpowers",
     "kind": "撮影会",
-    "title": "【プレステージ】,18日（土,日） 専属 河合あすな 大阪-兵庫 撮影会イベント",
+    "title": "【プレステージ】専属 河合あすな 大阪-兵庫 撮影会イベント",
     "place": "買取りまっくす なんば店・買取りまっくす 西宮店",
     "url": "https://www.t-powers.co.jp/event/",
     "seen": "2026-10-05"
@@ -467,6 +467,7 @@
     "date": "2026-10-18",
     "time": "12:00",
     "names": [
+     "大槻ひびき",
      "波多野結衣"
     ],
     "agency": "tpowers",
@@ -494,7 +495,7 @@
     ],
     "agency": "tpowers",
     "kind": "イベント",
-    "title": "17時～野々浦暖『Non9 恋色バケーション』REbecca＠秋葉原",
+    "title": "野々浦暖『Non9 恋色バケーション』REbecca＠秋葉原",
     "place": "ラムタラMEDIA WORLD AKIBA",
     "url": "https://www.t-powers.co.jp/event/",
     "seen": "2026-10-05"
@@ -508,6 +509,7 @@
     "date": "2026-10-18",
     "time": "17:00",
     "names": [
+     "大槻ひびき",
      "波多野結衣"
     ],
     "agency": "tpowers",
@@ -614,7 +616,6 @@
    "result": "採用",
    "row": {
     "date": "2026-10-24",
-    "time": "00:00",
     "names": [
      "九野ひなの"
     ],
@@ -715,7 +716,7 @@
     ],
     "agency": "tpowers",
     "kind": "オフ会",
-    "title": "２０２６年 森沢かなオフ会開催決定！！",
+    "title": "森沢かなオフ会開催決定！！",
     "place": "池袋周辺の某撮影スタジオ",
     "url": "https://www.t-powers.co.jp/event/",
     "seen": "2026-10-05"
@@ -751,7 +752,7 @@
     ],
     "agency": "tpowers",
     "kind": "撮影会",
-    "title": "【プレステージ】,25（土,日） 専属 涼森れむ 岡山-兵庫 撮影会イベント！",
+    "title": "【プレステージ】専属 涼森れむ 岡山-兵庫 撮影会イベント！",
     "place": "買取りまっくす 岡山南店・買取りまっくす 姫路店",
     "url": "https://www.t-powers.co.jp/event/",
     "seen": "2026-10-05"
@@ -834,7 +835,6 @@
     "agency": "tpowers",
     "kind": "撮影会",
     "title": "森沢かな 撮影会",
-    "place": "東京都 千代田区外神田 3-8-15 佐藤ビルB1​階",
     "url": "https://www.t-powers.co.jp/event/",
     "seen": "2026-10-05"
    }
@@ -982,7 +982,7 @@
     ],
     "agency": "tpowers",
     "kind": "イベント",
-    "title": "＆【SODSTAR】MINAMO 引退ツアーイベント＠北海道",
+    "title": "【SODSTAR】MINAMO 引退ツアーイベント＠北海道",
     "place": "安市 太平店・札幌セルビデオ販売",
     "url": "https://www.t-powers.co.jp/event/",
     "seen": "2026-10-05"
@@ -1034,8 +1034,7 @@
     ],
     "agency": "capsule",
     "kind": "発売記念イベント",
-    "title": "リリースイベントinラム昭和",
-    "place": "アタッカーズ",
+    "title": "リリースイベントinラム昭和【アタッカーズ】",
     "url": "https://capsule.bz/20261014miosakura/",
     "seen": "2026-10-05"
    }
@@ -1077,7 +1076,7 @@
     ],
     "agency": "capsule",
     "kind": "イベント",
-    "title": "11時30分～『Sora 空色のファーストノート』REbecca＠秋葉原",
+    "title": "『Sora 空色のファーストノート』REbecca＠秋葉原",
     "url": "https://capsule.bz/20261107sorakomatsu/",
     "seen": "2026-10-05"
    }
@@ -1093,7 +1092,7 @@
      "小向美奈子"
     ],
     "agency": "capsule",
-    "kind": "イベント",
+    "kind": "配信",
     "url": "https://capsule.bz/20261010minakokomukai/",
     "seen": "2026-10-05"
    }
@@ -1124,7 +1123,7 @@
     ],
     "agency": "capsule",
     "kind": "イベント",
-    "title": "岡山・18日(日)神戸イベント",
+    "title": "岡山 神戸イベント",
     "url": "https://capsule.bz/20261017sorakomatsu/",
     "seen": "2026-10-05"
    }
@@ -1328,56 +1327,6 @@
     "url": "http://www.style-1.jp/2026/09/08/11-29%ef%bc%88%e6%97%a5%ef%bc%89dream-festival-in-okayama%e3%80%802%e6%97%a5%e7%9b%ae%e5%ba%97%e8%88%97%e3%82%a4%e3%83%99%e3%83%b3%e3%83%88/",
     "seen": "2026-10-05"
    }
-  },
-  {
-   "agency": "life",
-   "title": "9/20（日）二葉エマちゃんイベントin岡山",
-   "result": "期間の外"
-  },
-  {
-   "agency": "life",
-   "title": "9/13（日）花鳥斗架 座・宴会",
-   "result": "期間の外"
-  },
-  {
-   "agency": "life",
-   "title": "9/19（土）姫野、久遠、水原プラスキス撮影会！！",
-   "result": "期間の外"
-  },
-  {
-   "agency": "life",
-   "title": "8/29（土）久遠美緒ちゃんイベントin岡山",
-   "result": "期間の外"
-  },
-  {
-   "agency": "life",
-   "title": "8/22(土)恋渕ももな イベントin山形",
-   "result": "期間の外"
-  },
-  {
-   "agency": "life",
-   "title": "9/22(火祝) 二葉エマ with‘KANSAIPOOLFES”",
-   "result": "期間の外"
-  },
-  {
-   "agency": "life",
-   "title": "9/20（日）椿紗枝♡下着撮影会",
-   "result": "期間の外"
-  },
-  {
-   "agency": "life",
-   "title": "9/5（土）桜木えりか☆事務所イベント☆",
-   "result": "期間の外"
-  },
-  {
-   "agency": "life",
-   "title": "8/8（土）恋渕ももな撮影会in京都古民家",
-   "result": "期間の外"
-  },
-  {
-   "agency": "life",
-   "title": "8/1(土)恋渕ももな イベントin川崎",
-   "result": "期間の外"
   }
  ]
 }
