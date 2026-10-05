@@ -26,6 +26,7 @@ const trail = [
 ];
 // 作品が無い・コメントのある作品が1本も無いあいだは、検索エンジンに出さない
 const noindex = shownItems.length === 0 || !listIndexable(shownItems);
+import { assetUrl } from '../../lib/assets.js';
 ---
 
 <Base
@@ -98,5 +99,5 @@ const noindex = shownItems.length === 0 || !listIndexable(shownItems);
       : <p class="empty">いま、このサイトに載っている作品で、セール・キャンペーン中のものはありません。毎日、日付が変わったあとに更新します。</p>}
   </div>
 
-  {groups.length > 0 && <script is:inline src="/sale.js" defer></script>}
+  {groups.length > 0 && <script is:inline src={assetUrl('/sale.js')} defer></script>}
 </Base>

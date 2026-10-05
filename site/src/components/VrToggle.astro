@@ -2,7 +2,9 @@
 // 「VR作品を隠す」「単体作品のみ表示」スイッチ（2つ並べる）。押したときの動きは site/public/vr-filter.js（JavaScriptが使えないときは出さない）。
 // 状態は、この端末のブラウザの中（localStorage）にだけ保存して、サイト全体の一覧に効く（サーバーには送らない）。
 // 「単体作品のみ表示」は運営者の希望（2026-10-05）。単体作品＝FANZAのジャンル「単体作品」（items.js の isSoloWork）
-const { off = 'VR作品を隠す', on = 'VR作品を隠しています（解除する）', soloOff = '単体作品のみ表示', soloOn = '単体作品だけ表示しています（解除する）' } = Astro.props;
+// 文字は押しても変えない（「VR作品を隠しています（解除する）」のように長くなると、スマホで急に折り返して押しにくかった。2026-10-05）。
+// 押した状態は、チェックの印と色で見せる（aria-pressed）
+const { off = 'VR作品を隠す', on = off, soloOff = '単体作品のみ', soloOn = soloOff } = Astro.props;
 ---
 
 <button type="button" class="vr-toggle" hidden aria-pressed="false" data-vr-toggle data-off={off} data-on={on}>

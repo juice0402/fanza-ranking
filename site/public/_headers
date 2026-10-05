@@ -17,3 +17,8 @@
   Cache-Control: public, max-age=604800
 /apple-touch-icon.png
   Cache-Control: public, max-age=604800
+
+# public/ のスクリプト（/vr-filter.js など）。ページからは、中身から作った印つきの URL（/vr-filter.js?v=…。site/src/lib/assets.js）で読むので、
+# 中身が変わると URL も変わる。1年間ブラウザに置いてよい（毎回「新しくなっていないか」を確かめに行かない。運営者の「読み込みのストレスをフリーに」。2026-10-05）
+/*.js
+  Cache-Control: public, max-age=31536000, immutable

@@ -93,6 +93,7 @@ const hasCorner = gacha.length >= 3 || debuts.length > 0 || birthdays.length > 0
 const saleCamps = saleGroups(all, sale, today, 0, { genres: contentGenres });
 const saleTotal = saleCamps.reduce((n, g) => n + g.total, 0);
 const saleDay = sale.date ? dateParts(sale.date) : null;
+import { assetUrl } from '../lib/assets.js';
 ---
 
 <Base
@@ -214,6 +215,6 @@ const saleDay = sale.date ? dateParts(sale.date) : null;
       </section>
     )}
   </div>
-  {saleCamps.length > 0 && <script is:inline src="/sale.js" defer></script>}
-  {gacha.length >= 3 && releasedGroups.length > 0 && <script is:inline src="/gacha.js" defer></script>}
+  {saleCamps.length > 0 && <script is:inline src={assetUrl('/sale.js')} defer></script>}
+  {gacha.length >= 3 && releasedGroups.length > 0 && <script is:inline src={assetUrl('/gacha.js')} defer></script>}
 </Base>

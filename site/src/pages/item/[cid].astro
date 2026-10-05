@@ -59,6 +59,7 @@ const facts = itemFacts(item, factsContext, {
   actress: new Map([...actressByName].map(([name, g]) => [name, g.path])),
   vr: tagByName.get(VR_TAG_NAME)?.path ?? '',
 });
+import { assetUrl } from '../../lib/assets.js';
 ---
 
 <Base
@@ -243,8 +244,8 @@ const facts = itemFacts(item, factsContext, {
     )}
   </div>
 
-  {zoomable && <script is:inline src="/lightbox.js" defer></script>}
-  {hasMovie && <script is:inline src="/movie.js" defer></script>}
+  {zoomable && <script is:inline src={assetUrl('/lightbox.js')} defer></script>}
+  {hasMovie && <script is:inline src={assetUrl('/movie.js')} defer></script>}
 
   {item.url && (
     <div class="sticky-cta">

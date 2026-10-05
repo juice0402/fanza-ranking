@@ -76,11 +76,17 @@
 
   function windowWith(src) {
     var win = el('span', 'reel-window');
-    var img = el('img', 'item-img');
+    var img = el('img', 'item-img is-small');
     img.alt = '';
     img.decoding = 'async';
+    // 表紙だけの軽い画像（…ps.jpg）が読めなければ、パッケージ画像（…pl.jpg）に戻す。それも読めなければ隠す
     img.addEventListener('error', function () {
-      img.style.visibility = 'hidden';
+      if (/ps\.jpg$/.test(img.src)) {
+        img.src = img.src.replace(/ps\.jpg$/, 'pl.jpg');
+        img.classList.remove('is-small');
+      } else {
+        img.style.visibility = 'hidden';
+      }
     });
     img.src = src;
     win.appendChild(img);

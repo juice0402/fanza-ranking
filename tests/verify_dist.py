@@ -314,7 +314,7 @@ for cid, x in valid.items():
         shown += 1  # サンプル動画がある作品は、サンプル画像の下に、パッケージ写真の欄が別にある（拡大表示のリンクはその1つぶん増える）
     links = len(re.findall(r'class="sample-link"', html))
     has_dialog = 'id="lightbox"' in html
-    has_script = 'src="/lightbox.js"' in html
+    has_script = 'src="/lightbox.js?v=' in html
     if shown:
         if not (links == shown and has_dialog and has_script):
             bad_samples.append((cid, shown, links, has_dialog, has_script))
@@ -400,7 +400,7 @@ for cid, x in valid.items():
             problems_here.append("動画の枠(iframe)が1つで、動画のURLと同じではない")
         if frame.get("width") != "476" or frame.get("height") != "306":
             problems_here.append("枠のサイズが 476x306 ではない")
-        if 'src="/movie.js"' not in text:
+        if 'src="/movie.js?v=' not in text:
             problems_here.append("movie.js を読み込んでいない")
         if any(has_class(t, "detail-cover") for t in tags(text, "img")):
             problems_here.append("動画があるのに、表紙が上に出ている")
@@ -426,7 +426,7 @@ for cid, x in valid.items():
             problems_here.append("動画が無いのに、表紙が上に出ていない")
         if cover_links or "パッケージ写真" in text:
             problems_here.append("動画が無いのに、パッケージ写真の欄がある（表紙が上にあるので、欄は作らない）")
-        if 'src="/movie.js"' in text:
+        if 'src="/movie.js?v=' in text:
             problems_here.append("動画が無いのに movie.js を読み込んでいる")
         if problems_here:
             bad_movie.append((cid, problems_here))
@@ -639,7 +639,7 @@ if os.path.isfile(search_page):
     check("検索のスクリプト（actress-search.js）が公開されている", os.path.isfile(os.path.join(DIST, "actress-search.js")))
     if rows:
         section = [t for t in tags(stext, "section") if t.get("id") == "actress-search"]
-        check("検索の部品がある（最初は隠れていて、索引のURLを持つ）", bool(section) and "hidden" in section[0] and section[0].get("data-index") == "/data/actresses-index.json" and 'src="/actress-search.js"' in stext, section[:1])
+        check("検索の部品がある（最初は隠れていて、索引のURLを持つ）", bool(section) and "hidden" in section[0] and section[0].get("data-index") == "/data/actresses-index.json" and 'src="/actress-search.js?v=' in stext, section[:1])
         names = {t.get("name") for tag in ("input", "select") for t in tags(stext, tag)}
         need = {"q", "cup", "site", "face", "sort", "bust", "waist", "hip"} | {f"{k}_{e}" for k in ("age", "height") for e in ("min", "max")}
         check("検索の入力欄が揃っている（名前・年齢/身長の下限と上限・バスト/ウエスト/ヒップの幅・カップ・このサイトの作品・顔写真・並び順）", need <= names, sorted(need - names))
@@ -657,8 +657,8 @@ if os.path.isfile(search_page):
                 counts_.append(sum(1 for r in rows if isinstance(r, dict) and isinstance(r.get(idx_key), int) and (lo_ is None or r[idx_key] >= lo_) and (hi_ is None or r[idx_key] <= hi_)))
             common_ = size_buckets[key_][counts_.index(max(counts_))] if counts_ and max(counts_) > 0 else ""
             label_ = {"bust": "バスト", "waist": "ウエスト", "hip": "ヒップ"}[key_]
-            want_hint = f"いちばん多いのは{common_.replace('-', '〜')}cm" if common_ else ""
-            legend_ = re.search(r'<fieldset class="as-cups as-sizes">\s*<legend class="as-range-label">\s*%s（cm・いくつでも選べます）(.*?)</legend>' % label_, stext, re.S)
+            want_hint = f"多いのは{common_.replace('-', '〜')}cm" if common_ else ""
+            legend_ = re.search(r'<fieldset class="as-cups as-sizes">\s*<legend class="as-range-label">\s*%s（cm）(.*?)</legend>' % label_, stext, re.S)
             if not legend_ or strip_tags(legend_.group(1)).strip() != want_hint:
                 bad_size.append((key_, "目安", strip_tags(legend_.group(1)).strip() if legend_ else None, want_hint))
             if any(t.get("name") in (f"{key_}_min", f"{key_}_max") for t in tags(stext, "input")):
@@ -685,9 +685,9 @@ if os.path.isfile(search_page):
         ids = {t.get("id") for tag in ("ul", "p", "button", "section") for t in tags(stext, tag)}
         check("検索結果の表示先（#as-list・#as-count・#as-more・#as-note）がある", {"as-list", "as-count", "as-more", "as-note"} <= ids, sorted({"as-list", "as-count", "as-more", "as-note"} - ids))
     else:
-        check("索引が空のときは、検索の部品を出さない", 'id="actress-search"' not in stext and 'src="/actress-search.js"' not in stext)
+        check("索引が空のときは、検索の部品を出さない", 'id="actress-search"' not in stext and 'src="/actress-search.js?v=' not in stext)
     static_rows = len([t for t in tags(stext, "li") if has_class(t, "actress-row")])
-    index_limit = int(re.search(r"export const INDEX_LIST_LIMIT = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1))
+    index_limit = int(re.search(r"export const ACTRESS_FALLBACK_LIMIT = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1))
     check(f"JavaScriptが使えないとき用の一覧に、専用ページのある出演者がいる（{len(actress_pages)}人。多いときは作品数の多い順に{index_limit}人まで）", static_rows == min(len(actress_pages), index_limit) and any(t.get("id") == "actress-static" for t in tags(stext, "section")), (static_rows, len(actress_pages)))
     check("検索の注意書き（載っていない人は絞り込みで外れる・データのある人数・FANZA公式のデータ）が、ページにある", (not rows) or ("結果に出ません" in stext and "いま探せる" in stext and "FANZA公式" in stext))
 
@@ -788,7 +788,7 @@ check(f"きょうの話題（{len(topic_cells)}件。8件まで）: 種類ごと
 topic_text = " ".join(re.sub(r"<[^>]+>", "", re.sub(r'<span class="topic-title">.*?</span>', "", inner, flags=re.S) if k in ("sale", "salenew") else inner) for k, _, _, inner in topic_all)
 check("きょうの話題: 評価の言葉を書かない（データで決まった形の文だけ）", not re.search(r"おすすめ|話題作|必見|最高傑作|大人気|神作", topic_text))
 if any(k in ("sale", "salenew") for k, _, _ in topic_cells):
-    check("きょうの話題に、セール開始・もうすぐ終わるセールがあるときは、終わったら隠すスクリプト（sale.js）がある", 'src="/sale.js"' in home_html)
+    check("きょうの話題に、セール開始・もうすぐ終わるセールがあるときは、終わったら隠すスクリプト（sale.js）がある", 'src="/sale.js?v=' in home_html)
 warn("きょうの話題が、トップにある（データがそろっていれば出る）", bool(topic_cells) or not pop_new)
 
 # 女優の顔写真と誕生日の月日（site/src/lib/data.js の faceOfName・birthOfName と同じ決まり）: プロフィール（同じ名前で id が1つの人）を先に、
@@ -909,10 +909,10 @@ if gacha_m:
     gacha_sec = re.search(r'<section id="gacha".*?</section>', home_html, re.S)
     check("運命の作品: 見出し「運命の作品」・窓が3つ・「まわす」ボタン・最初は隠れている（JavaScript が出す）・スクリプト（gacha.js）がある",
           bool(gacha_sec) and 'id="gacha-title" class="corner-title">運命の作品</h3>' in gacha_sec.group(0) and gacha_sec.group(0).count('class="reel"') == 3 and ">まわす</button>" in gacha_sec.group(0)
-          and re.search(r'<section id="gacha"[^>]*\bhidden\b', home_html) is not None and 'src="/gacha.js"' in home_html and os.path.isfile(os.path.join(DIST, "gacha.js")) and corner_at < home_html.find('id="gacha"'))
+          and re.search(r'<section id="gacha"[^>]*\bhidden\b', home_html) is not None and 'src="/gacha.js?v=' in home_html and os.path.isfile(os.path.join(DIST, "gacha.js")) and corner_at < home_html.find('id="gacha"'))
     check("運命の作品: ページに入れたデータの中に、タグの始まり（<）が無い", "<" not in gacha_m.group(1))
 else:
-    check("運命の作品の候補が無いときは、欄もスクリプトも出さない", 'id="gacha"' not in home_html and 'src="/gacha.js"' not in home_html)
+    check("運命の作品の候補が無いときは、欄もスクリプトも出さない", 'id="gacha"' not in home_html and 'src="/gacha.js?v=' not in home_html)
 
 # 今週のデビュー作: きょうまでの7日間に発売された「デビュー作品」を、新着の人気順に6本（出すのは3本。残りは差し替え用）
 _wk_from = (datetime.date.fromisoformat(JST_TODAY) - datetime.timedelta(days=6)).isoformat()
@@ -974,7 +974,7 @@ all_pages = sorted(glob.glob(os.path.join(DIST, "**", "index.html"), recursive=T
 if os.path.isfile(os.path.join(DIST, "404.html")):
     all_pages.append(os.path.join(DIST, "404.html"))
 check("お気に入りのスクリプト（favorites.js）が公開されている", os.path.isfile(os.path.join(DIST, "favorites.js")))
-no_fav_parts = [os.path.relpath(p, DIST) for p in all_pages if 'src="/favorites.js"' not in read(p) or 'href="/favorites/"' not in read(p)]
+no_fav_parts = [os.path.relpath(p, DIST) for p in all_pages if 'src="/favorites.js?v=' not in read(p) or 'href="/favorites/"' not in read(p)]
 check(f"全ページに、お気に入りへのリンクとスクリプトがある（{len(all_pages)}ページ）", not no_fav_parts, no_fav_parts[:3])
 for label, path in (("お気に入り（/favorites/）", "/favorites/"), ("発売日カレンダーの説明（/calendar/）", "/calendar/")):
     f = page_file(path)
@@ -1155,9 +1155,9 @@ for p in pages:
     head_ = html_[: html_.find("</head>")]
     pre = [t for t in tags(head_, "link") if t.get("rel") == "preload" and t.get("as") == "style" and str(t.get("href", "")).startswith("https://fonts.googleapis.com/css2?")]
     ns = re.search(r'<noscript><link rel="stylesheet" href="https://fonts\.googleapis\.com/css2\?[^"]*"\s*/?></noscript>', head_)
-    if len(pre) != 1 or "this.rel='stylesheet'" not in pre[0].get("onload", "") or not ns or "wght@400;700" not in pre[0].get("href", ""):
+    if len(pre) != 1 or "this.rel='stylesheet'" not in pre[0].get("onload", "") or not ns or "family=Dela+Gothic+One" not in pre[0].get("href", "") or "Zen+Kaku" in pre[0].get("href", ""):
         bad_fonts.append(os.path.relpath(p, DIST))
-check("全ページの書体の読み込み: 表示を止めない形（preload → onload で stylesheet）＋ <noscript> の読み込み・太さは 400 と 700 だけ", not bad_fonts, bad_fonts[:3])
+check("全ページの書体の読み込み: 表示を止めない形（preload → onload で stylesheet）＋ <noscript> の読み込み・見出しの書体だけ（本文は端末の書体。軽くするため）", not bad_fonts, bad_fonts[:3])
 check(f"全ページが lang=ja", not bad_lang, bad_lang[:3])
 check(f"全ページの画像に alt がある", not bad_alt, bad_alt[:3])
 check("FANZA/DMM への外部リンク（サンプル画像を拡大するリンクを除く）は、すべて広告の属性（sponsored nofollow noopener noreferrer）つき", not bad_ext, bad_ext[:3])
@@ -1209,7 +1209,19 @@ check("CSS: ふだん（ぼかしが使えない古いブラウザ）と「透�
 hdr = os.path.join(DIST, "_headers")
 htext = read(hdr) if os.path.isfile(hdr) else ""
 check("応答ヘッダーの設定（_headers）がある: nosniff・フレームへの埋め込み禁止（frame-ancestors）", "X-Content-Type-Options: nosniff" in htext and "frame-ancestors 'self'" in htext and re.search(r"^/\*\s*$", htext, re.M) is not None)
-check("応答ヘッダー: 名前にハッシュが付くファイル（/_astro/*）は長くキャッシュ（immutable）。名前が変わらないスクリプト（/*.js）は、新しいページと食い違わないよう、長く置かない", re.search(r"^/_astro/\*\s*\n\s+Cache-Control: public, max-age=31536000, immutable", htext, re.M) is not None and not re.search(r"^/[^\n]*\.js\s*\n\s+Cache-Control", htext, re.M))
+check("応答ヘッダー: 名前にハッシュが付くファイル（/_astro/*）と、中身の印つきで読むスクリプト（/*.js）は、長くキャッシュ（immutable）",
+      re.search(r"^/_astro/\*\s*\n\s+Cache-Control: public, max-age=31536000, immutable", htext, re.M) is not None and re.search(r"^/\*\.js\s*\n\s+Cache-Control: public, max-age=31536000, immutable", htext, re.M) is not None)
+# スクリプトを長く置くので、ページからは必ず中身の印つき（?v=8けた）で読む（印が無いと、新しくしても古いものが使われ続ける）。印は今のファイルの中身と同じ
+_js_hash = {f: _hl.sha1(open(os.path.join(DIST, f), "rb").read()).hexdigest()[:8] for f in os.listdir(DIST) if f.endswith(".js")}
+bad_js_ref = []
+for p_ in pages:
+    for t_ in tags(read(p_), "script"):
+        src_ = t_.get("src", "")
+        if src_.startswith("/") and not src_.startswith("/_astro/"):
+            m_ = re.fullmatch(r"/([\w.-]+\.js)\?v=([0-9a-f]{8})", src_)
+            if not m_ or _js_hash.get(m_.group(1)) != m_.group(2):
+                bad_js_ref.append((rel(p_), src_))
+check("ページから読むスクリプト（/*.js）は、すべて今の中身の印つき（?v=…）", not bad_js_ref, bad_js_ref[:3])
 
 
 print("\n■ サムネの切り取り・作品検索・「VR作品を隠す」")
@@ -1271,7 +1283,7 @@ for p in pages:
     head_ = html_[: html_.find("</head>")] if "</head>" in html_ else ""
     if not re.search(r"localStorage\.getItem\('hide-vr'\)\s*===\s*'1'", head_) or "classList.add('hide-vr')" not in head_ or "classList.add('only-solo')" not in head_:
         no_head_vr.append(os.path.relpath(p, DIST))
-    if 'src="/vr-filter.js"' not in html_:
+    if 'src="/vr-filter.js?v=' not in html_:
         no_vr_js.append(os.path.relpath(p, DIST))
     nav_ = html_[html_.find('<nav class="site-nav"') : html_.find("</nav>", html_.find('<nav class="site-nav"'))] if '<nav class="site-nav"' in html_ else ""
     if 'href="/search/"' not in nav_:
@@ -1323,7 +1335,7 @@ bad_solo_toggle = []
 for tp in toggle_pages:
     if os.path.isfile(tp):
         btns = [t for t in tags(read(tp), "button") if "data-solo-toggle" in t]
-        if len(btns) != 1 or "hidden" not in btns[0] or btns[0].get("aria-pressed") != "false" or btns[0].get("data-off") != "単体作品のみ表示" or not btns[0].get("data-on"):
+        if len(btns) != 1 or "hidden" not in btns[0] or btns[0].get("aria-pressed") != "false" or btns[0].get("data-off") != "単体作品のみ" or not btns[0].get("data-on"):
             bad_solo_toggle.append((os.path.relpath(tp, DIST), btns[:1]))
 check("「単体作品のみ表示」スイッチが、「VR作品を隠す」の隣に1つずつある（最初は隠れている・押された状態ではない）", not bad_solo_toggle, bad_solo_toggle[:3])
 check("CSS: html.only-solo のとき、単体作品の印（data-solo）の無いマスを隠す", any(".only-solo .shelf-cell:not([data-solo])" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules))
@@ -1537,7 +1549,7 @@ if os.path.isfile(sale_page):
     heads = [t for _, t in head_ids]
     check(f"キャンペーンのまとまりの数（{len(heads)}）が、データ（今日より前に終わったものを除く・このサイトの作品があるもの）と同じ", len(heads) == len(want_camps), (len(heads), len(want_camps)))
     if heads:
-        check("セールのページに「○日の時点」「くわしくはFANZAで確かめて」の注意書き・終わりの時刻の印（data-sale-end）・sale.js がある", "時点" in sh and "FANZAの作品ページで確かめてください" in sh and "data-sale-end=" in sh and 'src="/sale.js"' in sh)
+        check("セールのページに「○日の時点」「くわしくはFANZAで確かめて」の注意書き・終わりの時刻の印（data-sale-end）・sale.js がある", "時点" in sh and "FANZAの作品ページで確かめてください" in sh and "data-sale-end=" in sh and 'src="/sale.js?v=' in sh)
         bad_badge = [b for b in re.findall(r'<span class="rank-badge">([^<]*)</span>', sh) if not re.fullmatch(r"\d{1,2}%OFF|セール", b)]
         check("セールの札は「○%OFF」か「セール」だけ", not bad_badge, bad_badge[:3])
         check("特集の見出しの id は、キャンペーンの番号（sale-番号。トップ・きょうの話題からのリンク先）・終わりが近い順",
@@ -1569,7 +1581,7 @@ camp_ul = re.search(r'<ul class="camps" data-sale-show="(\d+)">(.*?)</ul>', home
 home_sale = re.search(r'<section id="sale"[^>]*>(.*?)</section>', home_html, re.S)
 if want_camps:
     check("トップに「セール中の特集」があり、発売中の新作より前・作品の棚は無い（特集のカードだけ）・終わったら隠すスクリプト（sale.js）がある",
-          bool(home_sale) and "セール中の特集" in home_sale.group(1) and "shelf-cell" not in home_sale.group(1) and home_html.find('id="sale"') < home_html.find('id="released"') and 'src="/sale.js"' in home_html)
+          bool(home_sale) and "セール中の特集" in home_sale.group(1) and "shelf-cell" not in home_sale.group(1) and home_html.find('id="sale"') < home_html.find('id="released"') and 'src="/sale.js?v=' in home_html)
     cards = re.findall(r'<li class="camp( sale-more)?" data-sale-end="([^"]+)">(.*?)</li>', camp_ul.group(2), re.S) if camp_ul else []
     show_n = int(camp_ul.group(1)) if camp_ul else 0
     bad_card = []
@@ -1611,7 +1623,7 @@ if os.path.isfile(sp):
     stext_ = read(sp)
     check("検索ページは noindex で、sitemap に入っていない（条件ごとに内容が変わる画面のため）", 'name="robots" content="noindex' in stext_ and "/search/" not in sm_paths)
     section_ = next((t for t in tags(stext_, "section") if t.get("id") == "work-search"), None)
-    check("検索の部品（#work-search）: 最初は隠れている・索引は /data/items-index.json・search.js を読む", section_ is not None and "hidden" in section_ and section_.get("data-index") == "/data/items-index.json" and 'src="/search.js"' in stext_, section_)
+    check("検索の部品（#work-search）: 最初は隠れている・索引は /data/items-index.json・search.js を読む", section_ is not None and "hidden" in section_ and section_.get("data-index") == "/data/items-index.json" and 'src="/search.js?v=' in stext_, section_)
     names_ = {t.get("name") for tag in ("input", "select") for t in tags(stext_, tag)}
     ids_ = {t.get("id") for tag in ("ul", "p", "button", "section") for t in tags(stext_, tag)}
     check("検索のフォーム（q・status・sort）と、結果の表示先（#ws-tag-list・#ws-tag-more・#ws-count・#ws-list・#ws-more）がある", {"q", "status", "sort"} <= names_ and {"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} <= ids_, (sorted({"q", "status", "sort"} - names_), sorted({"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} - ids_)))
@@ -1633,7 +1645,7 @@ if os.path.isfile(ii):
     check("索引が正しいJSONで、generated・newDays・genres・items がある", bool(ok_shape), str(iidx)[:80])
     if ok_shape:
         irows, igenres = iidx["items"], iidx["genres"]
-        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v,o,r,n）だけで、データにある作品・長い文やURLは入っていない", all(isinstance(r, dict) and set(r) <= set("cptdamgivorn") and {"c", "t", "d", "a", "m", "g", "i"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("cptdamgivorn"))][:1])
+        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v,o,r,n）だけで、データにある作品・長い文やURLは入っていない（i は、決まった形の画像なら省く）", all(isinstance(r, dict) and set(r) <= set("cptdamgivorn") and {"c", "t", "d", "a", "m", "g"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("cptdamgivorn"))][:1])
         bad_rn = [r["c"] for r in irows if r.get("r") != all_rank_of(r["c"]) or r.get("n") != pop_new.get(r["c"])]
         check("索引の人気順（r: 全体・n: 新着）が、順位のファイルと同じ（分からない作品には無い）", not bad_rn, bad_rn[:3])
         bad_p = [(r["c"], r.get("p")) for r in irows if (r.get("p") or "") != product_code(r["c"])]
@@ -1648,8 +1660,19 @@ if os.path.isfile(ii):
         check("VRの印（v:1）が、データから判定したVR作品と一致する（VR作品にだけ付く）", all((r.get("v") == 1) == is_vr_raw(valid[r["c"]]) and r.get("v") in (None, 1) for r in irows), [r["c"] for r in irows if (r.get("v") == 1) != is_vr_raw(valid[r["c"]])][:3])
         warn("索引にVR作品が1本以上ある（VRの除外のテストが空振りしていない）", any(r.get("v") == 1 for r in irows))
         check("単体作品の印（o:1）が、データから判定した単体作品と一致する（ジャンル「単体作品」、ジャンルが無ければ出演者1人）", all((r.get("o") == 1) == is_solo_raw(valid[r["c"]]) and r.get("o") in (None, 1) for r in irows), [r["c"] for r in irows if (r.get("o") == 1) != is_solo_raw(valid[r["c"]])][:3])
-        bad_img = [r["c"] for r in irows if r["i"] and not fanza_https(r["i"] if r["i"].startswith("https://") else "https://pics.dmm.co.jp/" + r["i"], ["dmm.co.jp"])]
+        bad_img = [r["c"] for r in irows if r.get("i") and not fanza_https(r["i"] if r["i"].startswith("https://") else "https://pics.dmm.co.jp/" + r["i"], ["dmm.co.jp"])]
         check("索引の画像が、FANZA(DMM)の画像に戻せる形（先頭を省いた形）", not bad_img, bad_img[:3])
+
+        def index_image(r):
+            """ブラウザ（public/search.js の rowImage）と同じ戻し方: i が無ければ決まった形、空なら画像なし"""
+            if "i" not in r:
+                return f"https://pics.dmm.co.jp/digital/video/{r['c']}/{r['c']}pl.jpg"
+            return r["i"] if not r["i"] or r["i"].startswith("https://") else "https://pics.dmm.co.jp/" + r["i"]
+        bad_back = [r["c"] for r in irows if index_image(r) != (str(valid[r["c"]].get("image_url") or "") if fanza_https(valid[r["c"]].get("image_url"), DMM) else "")]
+        check("索引の画像（i。決まった形なら省いてある）を戻すと、作品データの画像と同じ", not bad_back, bad_back[:3])
+        check("索引の画像は、決まった形（digital/video/作品ID/作品IDpl.jpg）なら項目ごと省いてある（索引を軽くするため）", not [r["c"] for r in irows if r.get("i") == f"digital/video/{r['c']}/{r['c']}pl.jpg"])
+        sjs = read(os.path.join(DIST, "search.js"))
+        check("search.js が、省いた画像を決まった形に戻し（rowImage）、結果のサムネは小さな表紙（ps.jpg）にして、無ければ大きい表紙に戻す", "function rowImage" in sjs and "'digital/video/' + row.c + '/' + row.c + 'pl.jpg'" in sjs and "smallImageUrl(rowImage(row))" in sjs and "pl.jpg" in sjs)
         check("索引の大きさが 1.5MB 以内（検索ページを開くたびにダウンロードされるため）", os.path.getsize(ii) <= 1500 * 1024, os.path.getsize(ii))
 
 print("\n■ 日本語の文章の改行（文節の区切り）")

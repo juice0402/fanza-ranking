@@ -5,7 +5,7 @@
 import Face from './Face.astro';
 import { actressByName, faceOfName, paged } from '../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
-import { castLine, dateParts, filterAttrs } from '../lib/items.js';
+import { SMALL_IMG_ONERROR, castLine, dateParts, filterAttrs, smallImage } from '../lib/items.js';
 import { gachaJson } from '../lib/gacha.js';
 import { DEBUT_SHOWN } from '../lib/topics.js';
 import { SEARCH_PATH } from '../lib/search.js';
@@ -49,7 +49,7 @@ const whenText = (b) => (b.days === 0 ? 'きょうが誕生日' : b.days === 1 ?
           return (
             <li class={`debut-cell rank-cell${i >= DEBUT_SHOWN ? ' rank-off' : ''}`} data-rank={i + 1} {...filterAttrs(item)}>
               <a class="debut-card" href={link.href} {...(link.external ? OUTBOUND_ATTRS : {})}>
-                <span class="debut-cover">{item.image_url && <img class="item-img" src={item.image_url} alt="" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'" />}</span>
+                <span class="debut-cover">{item.image_url && <img class="item-img is-small" src={smallImage(item.image_url)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />}</span>
                 <span class="debut-name">{castLine(item.actress, 1, item.maker !== '不明' ? item.maker : '')}</span>
                 <span class="debut-date">{md.m}/{md.d}発売</span>
               </a>

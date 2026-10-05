@@ -12,6 +12,7 @@ const trail = [
 ];
 const hasWorks = all.some((i) => paged.has(i.cid));
 // 検索画面は、条件の組み合わせごとに内容が変わる（JavaScriptで作る）ので、検索エンジンには載せない（noindex）
+import { assetUrl } from '../../lib/assets.js';
 ---
 
 <Base
@@ -26,23 +27,25 @@ const hasWorks = all.some((i) => paged.has(i.cid));
 
     <section class="hero">
       <h1 class="hero-title">作品を探す</h1>
-      <p class="hero-lead">タイトル・出演者・メーカー・ジャンル（タグ）で、当サイトに載っている作品を絞り込めます。</p>
+      <p class="hero-lead">当サイトの作品を、キーワードやジャンルで絞り込めます。</p>
     </section>
 
     {hasWorks && (
-      <section id="work-search" class="work-search section" data-index={ITEMS_INDEX_PATH} aria-labelledby="ws-title" hidden>
-        <h2 id="ws-title" class="section-title">条件で探す</h2>
+      <section id="work-search" class="work-search section search-layout" data-index={ITEMS_INDEX_PATH} aria-labelledby="ws-title" hidden>
+        {/* スマホは「条件 → 結果」の1列、パソコン（960px〜）は「左に条件（画面に固定）｜右に結果」の2列（運営者の希望。2026-10-05） */}
+        <div class="search-side">
+        <h2 id="ws-title" class="visually-hidden">条件で探す</h2>
         <form class="as-form" role="search" autocomplete="off">
           <label class="as-field as-field-wide">
-            キーワード（タイトル・出演者・メーカー・品番・ジャンル）
-            <input type="search" name="q" placeholder="例: 人妻 / 出演者の名前" enterkeyhint="search" />
+            <span class="visually-hidden">キーワード（タイトル・出演者・メーカー・品番・ジャンル）</span>
+            <input type="search" name="q" placeholder="タイトル・出演者・品番など" enterkeyhint="search" />
           </label>
 
           {/* ジャンル・発売・並び順は、たたんでおける（スマホで、結果がすぐ見えるように。広い画面・条件付きで開いたときは、最初から開く） */}
           <details id="ws-filters" class="ws-filters">
-            <summary class="ws-filters-toggle">ジャンル・発売・並び順で絞り込む<span id="ws-filter-note" class="ws-filter-note"></span></summary>
+            <summary class="ws-filters-toggle">ジャンル・発売・並び順<span id="ws-filter-note" class="ws-filter-note"></span></summary>
           <fieldset class="ws-tags">
-            <legend class="ws-legend">ジャンル（タグ）｜選んだものを、すべて含む作品だけが出ます</legend>
+            <legend class="ws-legend">ジャンル（選んだものを、すべて含む作品）</legend>
             <ul id="ws-tag-list" class="ws-tag-list"></ul>
             <button id="ws-tag-more" type="button" class="btn btn-quiet more-btn" hidden>すべてのジャンルを見る</button>
           </fieldset>
@@ -70,15 +73,18 @@ const hasWorks = all.some((i) => paged.has(i.cid));
 
           <div class="as-actions">
             <VrToggle />
-            <button type="reset" class="btn btn-quiet">条件をクリア</button>
+            <button type="reset" class="clear-link">条件をクリア</button>
           </div>
         </form>
+        </div>
 
+        <div class="search-main">
         <h2 class="visually-hidden">検索結果</h2>
         <p id="ws-count" class="as-count" aria-live="polite"></p>
-        <ul id="ws-list" class="shelf ws-list"></ul>
+        <ul id="ws-list" class="ws-list"></ul>
         <p class="more"><button id="ws-more" type="button" class="btn btn-quiet more-btn" hidden>もっと見る</button></p>
-        <p class="as-coverage">ジャンルは、FANZAに載っている情報です。予約中の作品は、ジャンルがまだ載っていないことがあります（載ると、毎日の更新で自動で入ります）。</p>
+        <p class="as-coverage">ジャンルは、FANZAに載っている情報です。予約中の作品は、ジャンルがまだ載っていないことがあります。</p>
+        </div>
       </section>
     )}
 
@@ -93,5 +99,5 @@ const hasWorks = all.some((i) => paged.has(i.cid));
     </section>
   </div>
 
-  {hasWorks && <script is:inline src="/search.js" defer></script>}
+  {hasWorks && <script is:inline src={assetUrl('/search.js')} defer></script>}
 </Base>
