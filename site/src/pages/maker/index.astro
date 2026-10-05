@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
-import { makerGroups } from '../../lib/data.js';
+import { makerGroups, today } from '../../lib/data.js';
 import { MAKER_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
 import { INDEX_LIST_LIMIT } from '../../config.js';
 
@@ -9,6 +9,8 @@ import { INDEX_LIST_LIMIT } from '../../config.js';
 const shown = makerGroups.slice(0, INDEX_LIST_LIMIT);
 const more = makerGroups.length - shown.length;
 
+// タイトル: 「FANZAのメーカー一覧（○社）新作・予約作品【2026年10月】」（2026-10-06。メーカーのページと同じく、年月を入れる）
+const ym = `${+today.slice(0, 4)}年${+today.slice(5, 7)}月`;
 const trail = [
   { name: 'トップ', path: '/' },
   { name: 'メーカー一覧', path: MAKER_INDEX_PATH },
@@ -16,8 +18,8 @@ const trail = [
 ---
 
 <Base
-  title={`メーカー別の新作・作品一覧｜${SITE_NAME}`}
-  description="FANZAの新作・予約作品を、メーカーごとにまとめた一覧です。作品数の多い順に並べています。"
+  title={`FANZAのメーカー一覧（${makerGroups.length}社）新作・予約作品【${ym}】｜${SITE_NAME}`}
+  description={`FANZAの新作・予約作品を、メーカーごとにまとめた一覧です（${makerGroups.length}社・作品数の多い順）。メーカーのページでは、次の新作・セール中の作品・よく出ている女優も見られます。毎日更新。`}
   path={MAKER_INDEX_PATH}
   jsonLd={[breadcrumbLd(trail)]}
 >

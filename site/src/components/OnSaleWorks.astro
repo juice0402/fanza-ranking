@@ -1,0 +1,34 @@
+---
+// いまセール中の作品（人気の高い順に shown 本・価格といつまで）と、その作品が入っている特集（特集ごとのページへ）。
+// 出演者・メーカーのページで使う（運営者の希望「SEOを上位に」。2026-10-06）。終わりの時刻をすぎたら、ブラウザで隠す（/sale.js。ページの側で読み込む）
+import WorkRows from './WorkRows.astro';
+import { sale, saleCampaignBySlug } from '../lib/data.js';
+import { campaignSlug, endIso, endLabel, offPercent, saleBadge, saleCampaignsOf, saleHref, salePriceNote } from '../lib/sale.js';
+
+const { items, shown = 6, label = 'この作品が入っているセール' } = Astro.props;
+const maxOff = Math.max(0, ...items.map((i) => offPercent(i.sale.price, i.sale.listPrice) ?? 0)) || null;
+const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
+const note = (i) => [saleBadge(i.sale) === 'セール' ? 'セール中' : saleBadge(i.sale), salePriceNote(i.sale), `${endLabel(i.sale.end)}まで`].filter(Boolean).join('・');
+const camps = saleCampaignsOf(items);
+const hrefOf = (c) => saleCampaignBySlug.get(campaignSlug(c.title))?.path ?? saleHref(c.k);
+---
+
+{items.length > 0 && (
+  <section class="section" aria-labelledby="onsale-title" data-sale-group>
+    <div class="section-head">
+      <h2 id="onsale-title" class="section-title">セール中の作品</h2>
+      <p class="section-note">{items.length}本{maxOff && `・最大${maxOff}%OFF`}{items.length > shown && `（人気の高い${shown}本）`}{sale.date && `｜${md(sale.date)}時点`}</p>
+    </div>
+    <WorkRows items={items.slice(0, shown)} note={note} saleEnd={(i) => endIso(i.sale.end)} />
+    {camps.length > 0 && (
+      <div class="in-sales">
+        <p class="in-sales-label">{label}</p>
+        <nav class="sale-jump" aria-label={label}>
+          {camps.map((c) => (
+            <a class="chip-link" href={hrefOf(c)} data-sale-end={endIso(c.end)}>{c.title}<span class="chip-count">{c.count}本</span></a>
+          ))}
+        </nav>
+      </div>
+    )}
+  </section>
+)}

@@ -1,0 +1,31 @@
+---
+// セールの帯のグラフ（「FANZAのセールはいつ？」。運営者の希望「文字が多くて見づらい。見やすい工夫を」。2026-10-06）。
+// 1日を1マスにして、開いていた日を赤い帯（これからの日はしま模様）、きょうを黄色の線で見せる。位置は lib/sale.js の nowChart・monthChart が決める。
+// chart: { days（マスの数）, t（きょうのマス。窓の外なら範囲外の数）, ticks }
+// rows: [{ title, href, off（最大の割引。無ければ null）, parts（帯）, aria（帯を読み上げる文）, meta（帯の下の短い文）, saleEnd（終わったらブラウザで隠す印。無ければ空） }]
+const { chart, rows, label } = Astro.props;
+const hasToday = chart.t >= 0 && chart.t < chart.days;
+const barCls = (p) => ['bars-bar', p.future && 'is-future', (p.cutL || p.joinL) && 'flat-l', (p.cutR || p.joinR) && 'flat-r', p.joinR && 'join-r'].filter(Boolean).join(' ');
+---
+
+<div class:list={['bars', hasToday && 'has-today']} style={`--n:${chart.days};--t:${hasToday ? chart.t : 0}`}>
+  <div class="bars-axis" aria-hidden="true">
+    {chart.ticks.map((x) => (
+      <span class:list={['bars-tick', x.today && 'is-today', x.edge && `is-${x.edge}`]} style={`--i:${x.i}`}>{x.today ? `きょう ${x.label}` : x.label}</span>
+    ))}
+  </div>
+  <ul class="bars-rows" aria-label={label}>
+    {rows.map((r) => (
+      <li class="bars-row" {...(r.saleEnd ? { 'data-sale-end': r.saleEnd } : {})}>
+        <p class="bars-head">
+          {r.href ? <a class="bars-name" href={r.href}>{r.title}</a> : <span class="bars-name">{r.title}</span>}
+          {r.off && <span class="bars-off">{r.off}%OFF</span>}
+        </p>
+        <div class="bars-track" role="img" aria-label={r.aria}>
+          {r.parts.map((p) => <span class={barCls(p)} style={`--s:${p.s};--e:${p.e}`}></span>)}
+        </div>
+        {r.meta && <p class="bars-meta">{r.meta}</p>}
+      </li>
+    ))}
+  </ul>
+</div>

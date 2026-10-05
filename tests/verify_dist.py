@@ -1287,6 +1287,18 @@ check("全ページの最初に見える画面（ヘッダー）に、小さな�
 check("全ページのフッターに、広告のくわしい文がある", not bad_foot_ad, bad_foot_ad[:3])
 check(f"全ページの18歳確認: 最初は隠れている・ダイアログ・「はい」「いいえ」・JavaScriptが無効のときの注意書き", not bad_gate, bad_gate[:3])
 check(f"全ページの「Powered by FANZA Webサービス」が、規約の指す先へのリンクになっている", not bad_credit, bad_credit[:3])
+bad_about = []
+for p in pages:
+    foot_ = read(p)[read(p).find("<footer") :]
+    if not re.search(r'<p class="foot-about"><a class="foot-link foot-small" href="/about/">このサイトについて</a></p>', foot_) or foot_.find('class="foot-about"') < foot_.find('class="foot-credit"'):
+        bad_about.append(os.path.relpath(p, DIST))
+check("全ページのフッターのいちばん下に、小さな「このサイトについて」のリンクがある（運営者の希望。2026-10-06）", not bad_about, bad_about[:3])
+_about = page_file("/about/")
+_about_html = read(_about) if os.path.isfile(_about) else ""
+check("このサイトについて（/about/）: 情報の出どころ（FANZA公式のAPI・所属事務所の公式サイト）・更新のしかた・自動で作成の注記・広告・お気に入りの保存先・検索エンジンに出す・sitemap にある・AboutPage",
+      '<h1 class="hero-title">このサイトについて</h1>' in _about_html and "FANZA Webサービス" in _about_html and "所属事務所の公式サイト" in _about_html
+      and "自動で作成しており、内容の正確さは保証できません" in _about_html.split("<footer", 1)[0] and "アフィリエイト広告" in _about_html.split("<footer", 1)[0]
+      and "端末のブラウザの中にだけ保存" in _about_html and 'name="robots" content="noindex' not in read_raw(_about) and "/about/" in sm_paths and '"AboutPage"' in read_raw(_about))
 check(f"全ページの <head>: 画面幅・OGP・Twitterカード・アイコン（ico / svg / apple-touch）", not bad_head, bad_head[:3])
 # 書体（Google Fonts）: 表示を止めないよう preload して、読み込み終わったら stylesheet に切り替える。JavaScript が無いときのための <noscript> の読み込みもある
 bad_fonts = []
@@ -1845,10 +1857,20 @@ check("特集ごとのページ: 見出しは特集の名前・開催中はタ�
 hist_page = os.path.join(DIST, "sale", "history", "index.html")
 if _hist_ok:
     hh = read(hist_page) if os.path.isfile(hist_page) else ""
-    month_rows = sum(len(re.findall(r"<tr>", blk)) - 1 for blk in re.findall(r'<section class="section" aria-labelledby="ym-[\d-]+">(.*?)</section>', hh, re.S))
-    check(f"「FANZAのセールはいつ？」（/sale/history/）: 見出し・よくある質問・月ごとの履歴（{len(_hist_ok)}回）・記録の始まりの注記・検索エンジンに出す・sitemap にある",
-          '<h1 class="hero-title">FANZAのセールはいつ？</h1>' in hh and "よくある質問" in hh and "次のセールはいつ？" in hh and month_rows == len(_hist_ok)
-          and "記録は2026年10月5日から" in hh and 'name="robots" content="noindex' not in read_raw(hist_page) and "/sale/history/" in sm_paths, (month_rows, len(_hist_ok)))
+    # 帯のグラフ（運営者の希望「文字が多くて見づらい」。2026-10-06）: 月ごとの帯の、読み上げの文（aria-label）に、記録したすべての回の期間が入っている
+    def _run_range(r):
+        b_ = str(r.get("begin") or "")
+        return (f"{int(b_[5:7])}月{int(b_[8:10])}日" if len(b_) >= 10 else "") + "〜" + end_label(str(r["end"]))
+    _month_blocks = re.findall(r'<details class="month-fold"[^>]*>(.*?)</details>', hh, re.S)
+    _month_aria = " / ".join(htmllib.unescape(x) for blk in _month_blocks for x in re.findall(r'class="bars-track" role="img" aria-label="([^"]*)"', blk))
+    _missing_runs = [r["title"] for r in _hist_ok if _run_range(r) not in _month_aria]
+    _now_rows = re.findall(r'<li class="bars-row" data-sale-end="[^"]+">', hh)
+    check(f"「FANZAのセールはいつ？」（/sale/history/）: 見出し・よくある質問（答えの数字を先に）・月ごとの帯のグラフ（{len(_month_blocks)}か月・{len(_hist_ok)}回すべて）・いまの月だけ開く・記録の始まりの注記・検索エンジンに出す・sitemap にある",
+          '<h1 class="hero-title">FANZAのセールはいつ？</h1>' in hh and "よくある質問" in hh and "次のセールはいつ？" in hh and 'class="faq-key"' in hh and _month_blocks and not _missing_runs
+          and len(re.findall(r'<details class="month-fold" open', hh)) == 1 and hh.find('<details class="month-fold" open') == hh.find('<details class="month-fold"')
+          and "記録は2026年10月5日から" in hh and 'name="robots" content="noindex' not in read_raw(hist_page) and "/sale/history/" in sm_paths, (len(_month_blocks), _missing_runs[:3]))
+    check(f"「FANZAのセールはいつ？」のいま開催中の帯（{len(_now_rows)}件）: 開催中の特集の数と同じ・終わったら隠す印・帯の見かた・きょうの印・sale.js",
+          len(_now_rows) == len(_active_titles) and (not _active_titles or ('class="bars-legend"' in hh and "is-today" in hh and 'src="/sale.js?v=' in read_raw(hist_page))), (len(_now_rows), len(_active_titles)))
     check("「FANZAのセールはいつ？」に、予想の言葉を書かない（データから数えた事実だけ）", not re.search(r"予想|予測|はずです|でしょう|見込み", strip_tags(hh)))
 else:
     check("セールの履歴が無いあいだは、「FANZAのセールはいつ？」を検索エンジンに出さない", not os.path.isfile(hist_page) or 'name="robots" content="noindex' in read_raw(hist_page))
@@ -1893,6 +1915,59 @@ for pth in actress_pages:
         bad_act2.append((name_, here))
 check(f"出演者のページ（{len(actress_pages)}ページ）: タイトルに年月（予約があれば「予約」も）・次の新作・セール中の作品（あるときだけ）・更新日・ProfilePage の構造化データ",
       not bad_act2, bad_act2[:2])
+
+# メーカーのページ（女優のページと同じように強くする。運営者の希望「素晴らしいサイトを目指して完璧に」。2026-10-06）:
+# タイトルに年月・次の新作・セール中の作品と入っているセール・よく出ている女優（顔の丸）・多いジャンル・更新日・CollectionPage
+_maker_works = {}
+for c_, x_ in everything.items():
+    m_ = str(x_.get("maker") or "")
+    if m_ and m_ != "不明":
+        _maker_works.setdefault(m_, []).append(c_)
+maker_pages = glob.glob(os.path.join(DIST, "maker", "*", "index.html"))
+bad_mk = []
+for pth in maker_pages:
+    html_ = read(pth)
+    raw_ = read_raw(pth)
+    m_ = re.search(r'<h1 class="hero-title">(.*?)</h1>', html_, re.S)
+    h1_ = htmllib.unescape(re.sub(r"<[^>]+>", "", m_.group(1))).strip() if m_ else ""
+    name_ = h1_[: -len("の新作・作品一覧")] if h1_.endswith("の新作・作品一覧") else ""
+    cids_ = _maker_works.get(name_, [])
+    works_ = [everything[c] for c in cids_]
+    up_ = any(str(x.get("date", ""))[:10] > JST_TODAY for x in works_)
+    sale_ = any(c in _on_sale and str(everything[c].get("date", ""))[:10] <= JST_TODAY for c in cids_)
+    cast_ = _top_counts([a for x in works_ if len(_cast(x)) <= 4 for a in dict.fromkeys(_cast(x))], limit=6, minimum=2)
+    genres_ = _top_counts([g for x in works_ for g in set(x.get("genres") or []) if g in _content_genres], limit=8)
+    t_ = re.search(r"<title>(.*?)</title>", raw_, re.S)
+    t_ = htmllib.unescape(t_.group(1)) if t_ else ""
+    here = []
+    if not name_ or not t_.startswith(f"{name_}の新作") or _ym not in t_ or (("・予約・" in t_) != up_) or f"（{len(works_)}本）" not in t_:
+        here.append(("タイトル", t_))
+    if ('id="next-title"' in raw_) != up_:
+        here.append("次の新作")
+    if ('id="onsale-title"' in raw_) != sale_:
+        here.append("セール中の作品")
+    if sale_ and ('class="in-sales"' not in raw_ or 'src="/sale.js?v=' not in raw_):
+        here.append("入っているセール")
+    faces_ = re.findall(r'<li class="hot-cell">.*?<span class="hot-name">(?:<span class="visually-hidden">[^<]*</span>)?(.*?)</span>\s*<span class="cast-count">(\d+)本</span>', html_, re.S)
+    got_cast = [(htmllib.unescape(strip_tags(n)).strip(), int(c)) for n, c in faces_]
+    if got_cast != cast_:
+        here.append(("よく出ている女優", got_cast[:3], cast_[:3]))
+    chips_ = re.findall(r'class="chip-link[^"]*"[^>]*>([^<]*)<span class="chip-count">(\d+)本</span>', html_.split('id="genre-title"', 1)[1].split("</section>", 1)[0]) if 'id="genre-title"' in html_ else []
+    if [(htmllib.unescape(n).strip(), int(c)) for n, c in chips_] != genres_:
+        here.append(("多いジャンル", chips_[:3], genres_[:3]))
+    if not re.search(r'"@type":\s*"CollectionPage"', raw_) or '"Organization"' not in raw_:
+        here.append("CollectionPage")
+    if 'class="page-updated"' not in raw_:
+        here.append("更新日")
+    if here:
+        bad_mk.append((name_, here))
+check(f"メーカーのページ（{len(maker_pages)}ページ）: タイトルに年月・予約・本数・次の新作・セール中の作品と入っているセール（あるときだけ）・よく出ている女優（出演者4人までの作品で2本以上・6人まで）・多いジャンル・更新日・CollectionPage",
+      not bad_mk, bad_mk[:2])
+_mi = page_file("/maker/")
+if os.path.isfile(_mi):
+    _mt = re.search(r"<title>(.*?)</title>", read_raw(_mi), re.S)
+    _mt = htmllib.unescape(_mt.group(1)) if _mt else ""
+    check("メーカー一覧のタイトルに「FANZAのメーカー一覧」・社数・年月", _mt.startswith("FANZAのメーカー一覧（") and "社）" in _mt and _ym in _mt, _mt)
 
 # 検索ページ
 sp = os.path.join(DIST, "search", "index.html")
