@@ -24,10 +24,10 @@
   },
   {
    "key": "life",
-   "ok": false,
-   "blocks": 0,
+   "ok": true,
+   "blocks": 10,
    "kept": 0,
-   "error": "PermissionError: robots.txt で止められている: https://life-promotion.com/blog/event/"
+   "error": ""
   }
  ],
  "entries": [
@@ -430,7 +430,6 @@
     ],
     "agency": "tpowers",
     "kind": "イベント",
-    "title": "虹村ゆみと呑みたい！夜のオカズになる話",
     "place": "新宿レフカダ",
     "url": "https://www.t-powers.co.jp/event/",
     "seen": "2026-10-05"
@@ -467,8 +466,8 @@
     "date": "2026-10-18",
     "time": "12:00",
     "names": [
-     "大槻ひびき",
-     "波多野結衣"
+     "波多野結衣",
+     "大槻ひびき"
     ],
     "agency": "tpowers",
     "kind": "イベント",
@@ -509,8 +508,8 @@
     "date": "2026-10-18",
     "time": "17:00",
     "names": [
-     "大槻ひびき",
-     "波多野結衣"
+     "波多野結衣",
+     "大槻ひびき"
     ],
     "agency": "tpowers",
     "kind": "イベント",
@@ -1327,6 +1326,56 @@
     "url": "http://www.style-1.jp/2026/09/08/11-29%ef%bc%88%e6%97%a5%ef%bc%89dream-festival-in-okayama%e3%80%802%e6%97%a5%e7%9b%ae%e5%ba%97%e8%88%97%e3%82%a4%e3%83%99%e3%83%b3%e3%83%88/",
     "seen": "2026-10-05"
    }
+  },
+  {
+   "agency": "life",
+   "title": "9/20（日）二葉エマちゃんイベントin岡山",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "9/13（日）花鳥斗架 座・宴会",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "9/19（土）姫野、久遠、水原プラスキス撮影会！！",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "8/29（土）久遠美緒ちゃんイベントin岡山",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "8/22(土)恋渕ももな イベントin山形",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "9/22(火祝) 二葉エマ with‘KANSAIPOOLFES”",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "9/20（日）椿紗枝♡下着撮影会",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "9/5（土）桜木えりか☆事務所イベント☆",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "8/8（土）恋渕ももな撮影会in京都古民家",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "8/1(土)恋渕ももな イベントin川崎",
+   "result": "期間の外"
   }
  ]
 }
