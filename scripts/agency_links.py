@@ -26,16 +26,18 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
 import urllib.robotparser
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 
 USER_AGENT = "Mozilla/5.0 (compatible; fanza-ranking-bot/1.0; +https://fanza-ranking.pages.dev/)"
-INTERVAL_SEC = float(os.environ.get("AGENCY_INTERVAL_SEC", "2"))
+INTERVAL_SEC = float(os.environ.get("AGENCY_INTERVAL_SEC", "2"))  # 同じサイトへ続けて読みに行くときの間（サイトごと。事務所どうしは同時に読む）
 MAX_PROFILES = 500  # 1つの事務所で読むプロフィールの上限
 REFRESH_DAYS = 7  # 前に集めてから、この日数がたったら集め直す
 KEEP_DAYS = 30  # 事務所のサイトが読めないあいだ、前の情報を残す日数（見かけた日から）
@@ -87,7 +89,8 @@ IG_RESERVED = {"p", "reel", "reels", "explore", "accounts", "stories", "tv", "ab
 CJK = re.compile(r"[぀-ヿ㐀-鿿]")
 
 _robots = {}
-_last = [0.0]
+_last = {}  # サイト（ホスト）ごとの、最後に読みに行った時刻
+_lock = threading.Lock()
 
 
 def jst_today():
@@ -124,16 +127,21 @@ def allowed(url):
 def fetch_raw(url, check_robots=True):
     if check_robots and not allowed(url):
         raise PermissionError(f"robots.txt で止められている: {url}")
-    wait = INTERVAL_SEC - (time.time() - _last[0])
-    if wait > 0:
-        time.sleep(wait)
+    host = urllib.parse.urlsplit(url).netloc
+    with _lock:  # 同じサイトへは INTERVAL_SEC 秒ずつ間をあける（順番を先に決めてから待つ）
+        now = time.time()
+        start = max(now, _last.get(host, 0.0) + INTERVAL_SEC)
+        _last[host] = start
+    if start > now:
+        time.sleep(start - now)
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept-Language": "ja"})
     try:
         with urllib.request.urlopen(req, timeout=30) as res:
             raw = res.read(3_000_000)
             charset = res.headers.get_content_charset() or ""
     finally:
-        _last[0] = time.time()
+        with _lock:
+            _last[host] = max(_last.get(host, 0.0), time.time())
     if not charset:
         m = re.search(rb'charset=["\']?([A-Za-z0-9_-]+)', raw[:4000])
         charset = m.group(1).decode() if m else "utf-8"
@@ -337,7 +345,7 @@ def collect_site(site, table):
         try:
             page = fetch_raw(roster)
             report["roster_ok"] = True
-        except (urllib.error.URLError, OSError, ValueError, PermissionError) as e:
+        except Exception as e:  # noqa: BLE001 相手のサイトの不具合（途中で切れた・文字化けなど）では止まらない
             report["errors"].append(f"一覧: {type(e).__name__}: {e}"[:200])
             continue
         for url, label in links(page, roster):
@@ -352,14 +360,14 @@ def collect_site(site, table):
                 url = url.split("#")[0]
                 if pattern.match(url) and url not in [f[0] for f in found]:
                     found.append((url, label))
-        except (urllib.error.URLError, OSError, ValueError, PermissionError) as e:
+        except Exception as e:  # noqa: BLE001
             report["errors"].append(f"一覧（プロフィールの横）: {type(e).__name__}: {e}"[:200])
     report["found"] = len(found)
     pages = []
     for url, label in found[:MAX_PROFILES]:
         try:
             page = fetch_raw(url)
-        except (urllib.error.URLError, OSError, ValueError, PermissionError) as e:
+        except Exception as e:  # noqa: BLE001
             report["errors"].append(f"{url}: {type(e).__name__}: {e}"[:200])
             continue
         report["read"] += 1
@@ -486,9 +494,16 @@ def main(argv):
         print(f"所属事務所: 前に集めてから {age} 日なので、まだ集め直しません（{REFRESH_DAYS} 日ごと）")
         return 0
     table = fanza_names()
+    # 事務所ごとに同時に読む（それぞれのサイトへは2秒ずつ間をあける。全部を順番に読むと40分ほどかかったため）
+    with ThreadPoolExecutor(max_workers=len(SITES)) as pool:
+        futures = {site["key"]: pool.submit(collect_site, site, table) for site in SITES}
     results = {}
+    for key, f in futures.items():
+        try:
+            results[key] = f.result()
+        except Exception as e:  # noqa: BLE001 1つの事務所の思わぬ失敗で、ほかの事務所の結果を捨てない（その事務所は前の情報を残す）
+            results[key] = ({"roster_ok": False, "read": 0, "found": 0, "errors": [f"{type(e).__name__}: {e}"[:200]]}, [])
     for site in SITES:
-        results[site["key"]] = collect_site(site, table)
         report, rows = results[site["key"]]
         print(f"{site['name']}: 一覧{'○' if report['roster_ok'] else '×'} プロフィール{report['read']}/{report['found']} 結びついた人{sum(1 for r in rows if r['fanza_name'])}")
     data = build_dataset(results, previous, today)
