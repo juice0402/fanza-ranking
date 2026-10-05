@@ -1,0 +1,955 @@
+{
+ "s1": {
+  "base": "https://s1s1s1.com/",
+  "robots_status": 200,
+  "robots": "User-agent: *\nDisallow:\n",
+  "robots_top_allowed": true,
+  "top": {
+   "status": 200,
+   "url": "https://s1s1s1.com/",
+   "error": "",
+   "length": 10143,
+   "title": "年齢チェック | S級女優限定のAVメーカー【S1 NO.1 STYLE (エスワン ナンバーワンスタイル)】公式サイト",
+   "gate_words": [
+    "18歳",
+    "年齢",
+    "age",
+    "はい",
+    "いいえ"
+   ],
+   "set_cookie": [
+    "_session=eyJpdiI6IjUvNDBJQjdEdzNTWUNBUTkrUHk3Z1E9PSIsInZhbHVlIjoiZ2plWjlIR1k5OUF"
+   ],
+   "forms": [],
+   "gate_bits": [
+    "ageCheck"
+   ]
+  },
+  "gate_links": [
+   [
+    "https://s1s1s1.com/top",
+    "はい （入室する）"
+   ]
+  ],
+  "event_links": [],
+  "terms_links": [],
+  "cookies_after_top": [
+   "_session"
+  ],
+  "gate_try": [
+   {
+    "url": "https://s1s1s1.com/top",
+    "label": "はい （入室する）",
+    "status": 200,
+    "error": "",
+    "length": 138976,
+    "title": "トップ | S級女優限定のAVメーカー【S1 NO.1 STYLE (エスワン ナンバーワンスタイル)】公式サイト",
+    "gate_words": [
+     "18歳",
+     "age"
+    ],
+    "set_cookie": [
+     "_session=eyJpdiI6InlEd1RiZDgyNG90OGY1RU9QY1phWFE9PSIsInZhbHVlIjoiM1ZNWElOVXQ2Vnd"
+    ],
+    "forms": [
+     "",
+     ""
+    ],
+    "gate_bits": [],
+    "cookies": [
+     "_session"
+    ],
+    "top_again": {
+     "status": 200,
+     "url": "https://s1s1s1.com/",
+     "error": "",
+     "length": 10143,
+     "title": "年齢チェック | S級女優限定のAVメーカー【S1 NO.1 STYLE (エスワン ナンバーワンスタイル)】公式サイト",
+     "gate_words": [
+      "18歳",
+      "年齢",
+      "age",
+      "はい",
+      "いいえ"
+     ],
+     "set_cookie": [
+      "_session=eyJpdiI6InlScmVKM1Bnd2NZQ3JTaElMbGtCdXc9PSIsInZhbHVlIjoieFl3cVJPamhWRHR"
+     ],
+     "forms": [],
+     "gate_bits": [
+      "ageCheck"
+     ]
+    }
+   }
+  ]
+ },
+ "moodyz": {
+  "base": "https://moodyz.com/",
+  "robots_status": 200,
+  "robots": "User-agent: *\nDisallow:\n",
+  "robots_top_allowed": true,
+  "top": {
+   "status": 200,
+   "url": "https://moodyz.com/",
+   "error": "",
+   "length": 10118,
+   "title": "年齢チェック | 人気知名度NO.1！アダルトビデオ最強のAVメーカー【MOODYZ(ムーディーズ)】公式サイト",
+   "gate_words": [
+    "18歳",
+    "年齢",
+    "age",
+    "はい",
+    "いいえ"
+   ],
+   "set_cookie": [
+    "_session=eyJpdiI6IlhTaEJNWGtJYkZFZS9MVTJ4NTBkVWc9PSIsInZhbHVlIjoicnc4TkxUSytlMzN"
+   ],
+   "forms": [],
+   "gate_bits": [
+    "ageCheck"
+   ]
+  },
+  "gate_links": [
+   [
+    "https://moodyz.com/top",
+    "はい （入室する）"
+   ]
+  ],
+  "event_links": [],
+  "terms_links": [],
+  "cookies_after_top": [
+   "_session"
+  ],
+  "gate_try": [
+   {
+    "url": "https://moodyz.com/top",
+    "label": "はい （入室する）",
+    "status": 200,
+    "error": "",
+    "length": 154289,
+    "title": "トップ | 人気知名度NO.1！アダルトビデオ最強のAVメーカー【MOODYZ(ムーディーズ)】公式サイト",
+    "gate_words": [
+     "18歳",
+     "age"
+    ],
+    "set_cookie": [
+     "_session=eyJpdiI6IlNzb3dyVXJvQVRjMmVLVXNUaEFQVmc9PSIsInZhbHVlIjoiZlRkZWpZZkpsdWZ"
+    ],
+    "forms": [
+     "",
+     ""
+    ],
+    "gate_bits": [],
+    "cookies": [
+     "_session"
+    ],
+    "top_again": {
+     "status": 200,
+     "url": "https://moodyz.com/",
+     "error": "",
+     "length": 10118,
+     "title": "年齢チェック | 人気知名度NO.1！アダルトビデオ最強のAVメーカー【MOODYZ(ムーディーズ)】公式サイト",
+     "gate_words": [
+      "18歳",
+      "年齢",
+      "age",
+      "はい",
+      "いいえ"
+     ],
+     "set_cookie": [
+      "_session=eyJpdiI6InN2bDFtczRURERxdVVpYUJRaGoxdVE9PSIsInZhbHVlIjoiblhFdW10am9Xd1J"
+     ],
+     "forms": [],
+     "gate_bits": [
+      "ageCheck"
+     ]
+    }
+   }
+  ]
+ },
+ "ideapocket": {
+  "base": "https://ideapocket.com/",
+  "robots_status": 200,
+  "robots": "User-agent: *\nDisallow:\n",
+  "robots_top_allowed": true,
+  "top": {
+   "status": 200,
+   "url": "https://ideapocket.com/",
+   "error": "",
+   "length": 10144,
+   "title": "年齢チェック | ハイクオリティ・ゴージャス・エロティックのAVメーカー【IDEAPOCKET (アイデアポケット）】公式サイト",
+   "gate_words": [
+    "18歳",
+    "年齢",
+    "age",
+    "はい",
+    "いいえ"
+   ],
+   "set_cookie": [
+    "_session=eyJpdiI6IkJWZFJjTnN5eCtHQzVWeFNDZ2UxRlE9PSIsInZhbHVlIjoiM001ZnpNUE1PSk1"
+   ],
+   "forms": [],
+   "gate_bits": [
+    "ageCheck"
+   ]
+  },
+  "gate_links": [
+   [
+    "https://ideapocket.com/top",
+    "はい （入室する）"
+   ]
+  ],
+  "event_links": [],
+  "terms_links": [],
+  "cookies_after_top": [
+   "_session"
+  ],
+  "gate_try": [
+   {
+    "url": "https://ideapocket.com/top",
+    "label": "はい （入室する）",
+    "status": 200,
+    "error": "",
+    "length": 104024,
+    "title": "トップ | ハイクオリティ・ゴージャス・エロティックのAVメーカー【IDEAPOCKET (アイデアポケット）】公式サイト",
+    "gate_words": [
+     "18歳",
+     "age"
+    ],
+    "set_cookie": [
+     "_session=eyJpdiI6IkFaWmluLzVqZ01PcHRwUlBWdko5cUE9PSIsInZhbHVlIjoiSlRwemFLZHltVEh"
+    ],
+    "forms": [
+     "",
+     ""
+    ],
+    "gate_bits": [],
+    "cookies": [
+     "_session"
+    ],
+    "top_again": {
+     "status": 200,
+     "url": "https://ideapocket.com/",
+     "error": "",
+     "length": 10144,
+     "title": "年齢チェック | ハイクオリティ・ゴージャス・エロティックのAVメーカー【IDEAPOCKET (アイデアポケット）】公式サイト",
+     "gate_words": [
+      "18歳",
+      "年齢",
+      "age",
+      "はい",
+      "いいえ"
+     ],
+     "set_cookie": [
+      "_session=eyJpdiI6Im82cFlCK0RIM09OYWgwOFZrV3pmNFE9PSIsInZhbHVlIjoiRlMvZ0IvcGZKS21"
+     ],
+     "forms": [],
+     "gate_bits": [
+      "ageCheck"
+     ]
+    }
+   }
+  ]
+ },
+ "premium": {
+  "base": "https://premium-beauty.com/",
+  "robots_status": 200,
+  "robots": "User-agent: *\nDisallow:\n",
+  "robots_top_allowed": true,
+  "top": {
+   "status": 200,
+   "url": "https://premium-beauty.com/",
+   "error": "",
+   "length": 10124,
+   "title": "年齢チェック | 綺麗だけどエロい、綺麗だけどカワイイのAVメーカー【PREMIUM（プレミアム）】公式サイト",
+   "gate_words": [
+    "18歳",
+    "年齢",
+    "age",
+    "はい",
+    "いいえ"
+   ],
+   "set_cookie": [
+    "_session=eyJpdiI6InN6NWpHMElyNVhlMG5IY1NZNnMydkE9PSIsInZhbHVlIjoidWJidThsN29UZlJ"
+   ],
+   "forms": [],
+   "gate_bits": [
+    "ageCheck"
+   ]
+  },
+  "gate_links": [
+   [
+    "https://premium-beauty.com/top",
+    "はい （入室する）"
+   ]
+  ],
+  "event_links": [],
+  "terms_links": [],
+  "cookies_after_top": [
+   "_session"
+  ],
+  "gate_try": [
+   {
+    "url": "https://premium-beauty.com/top",
+    "label": "はい （入室する）",
+    "status": 200,
+    "error": "",
+    "length": 61472,
+    "title": "トップ | 綺麗だけどエロい、綺麗だけどカワイイのAVメーカー【PREMIUM（プレミアム）】公式サイト",
+    "gate_words": [
+     "18歳",
+     "age"
+    ],
+    "set_cookie": [
+     "_session=eyJpdiI6ImZSTUtLcG83RG1ZSEQ5bkY0YzM3VkE9PSIsInZhbHVlIjoiNjdVQmt0ZjZuUmR"
+    ],
+    "forms": [
+     "",
+     ""
+    ],
+    "gate_bits": [],
+    "cookies": [
+     "_session"
+    ],
+    "top_again": {
+     "status": 200,
+     "url": "https://premium-beauty.com/",
+     "error": "",
+     "length": 10124,
+     "title": "年齢チェック | 綺麗だけどエロい、綺麗だけどカワイイのAVメーカー【PREMIUM（プレミアム）】公式サイト",
+     "gate_words": [
+      "18歳",
+      "年齢",
+      "age",
+      "はい",
+      "いいえ"
+     ],
+     "set_cookie": [
+      "_session=eyJpdiI6IlJCd2pJYm1PYm9XRGcwcUR2dTZ0MlE9PSIsInZhbHVlIjoiZDlocFNvT3pwM05"
+     ],
+     "forms": [],
+     "gate_bits": [
+      "ageCheck"
+     ]
+    }
+   }
+  ]
+ },
+ "attackers": {
+  "base": "https://attackers.net/",
+  "robots_status": 200,
+  "robots": "User-agent: *\nDisallow:\n",
+  "robots_top_allowed": true,
+  "top": {
+   "status": 200,
+   "url": "https://attackers.net/",
+   "error": "",
+   "length": 10119,
+   "title": "年齢チェック | 凌辱、背徳のAVメーカー【ATTACKERS（アタッカーズ）】公式サイト",
+   "gate_words": [
+    "18歳",
+    "年齢",
+    "age",
+    "はい",
+    "いいえ"
+   ],
+   "set_cookie": [
+    "_session=eyJpdiI6IjNFSyswSTBrOFRsMm5lNVJJVjNzZVE9PSIsInZhbHVlIjoiTFJkcTY4ZXQ3Yjd"
+   ],
+   "forms": [],
+   "gate_bits": [
+    "ageCheck"
+   ]
+  },
+  "gate_links": [
+   [
+    "https://attackers.net/top",
+    "はい （入室する）"
+   ]
+  ],
+  "event_links": [],
+  "terms_links": [],
+  "cookies_after_top": [
+   "_session"
+  ],
+  "gate_try": [
+   {
+    "url": "https://attackers.net/top",
+    "label": "はい （入室する）",
+    "status": 200,
+    "error": "",
+    "length": 92589,
+    "title": "トップ | 凌辱、背徳のAVメーカー【ATTACKERS（アタッカーズ）】公式サイト",
+    "gate_words": [
+     "18歳",
+     "age",
+     "はい"
+    ],
+    "set_cookie": [
+     "_session=eyJpdiI6IjlXWnp2cktPZkdIdXl2ZTRieXU0d0E9PSIsInZhbHVlIjoiQkRzRHc4dUc0NkJ"
+    ],
+    "forms": [
+     "",
+     ""
+    ],
+    "gate_bits": [],
+    "cookies": [
+     "_session"
+    ],
+    "top_again": {
+     "status": 200,
+     "url": "https://attackers.net/",
+     "error": "",
+     "length": 10119,
+     "title": "年齢チェック | 凌辱、背徳のAVメーカー【ATTACKERS（アタッカーズ）】公式サイト",
+     "gate_words": [
+      "18歳",
+      "年齢",
+      "age",
+      "はい",
+      "いいえ"
+     ],
+     "set_cookie": [
+      "_session=eyJpdiI6IkplN1djVXFWTzNRK2JUb014WG50c2c9PSIsInZhbHVlIjoiU0lBZk9yZGp6V09"
+     ],
+     "forms": [],
+     "gate_bits": [
+      "ageCheck"
+     ]
+    }
+   }
+  ]
+ },
+ "madonna": {
+  "base": "https://madonna-av.com/",
+  "robots_status": 200,
+  "robots": "User-agent: *\nDisallow:\n",
+  "robots_top_allowed": true,
+  "top": {
+   "status": 200,
+   "url": "https://madonna-av.com/",
+   "error": "",
+   "length": 10029,
+   "title": "年齢チェック | 人妻・熟女No.1のAVメーカー【マドンナ】公式サイト",
+   "gate_words": [
+    "18歳",
+    "年齢",
+    "age",
+    "はい",
+    "いいえ"
+   ],
+   "set_cookie": [
+    "_session=eyJpdiI6IlhDQUNjTzVYWHJVcEprL1RqSk1DWVE9PSIsInZhbHVlIjoiNEVJd0NEdHhUcm5"
+   ],
+   "forms": [],
+   "gate_bits": [
+    "ageCheck"
+   ]
+  },
+  "gate_links": [
+   [
+    "https://madonna-av.com/top",
+    "はい （入室する）"
+   ]
+  ],
+  "event_links": [],
+  "terms_links": [],
+  "cookies_after_top": [
+   "_session"
+  ],
+  "gate_try": [
+   {
+    "url": "https://madonna-av.com/top",
+    "label": "はい （入室する）",
+    "status": 200,
+    "error": "",
+    "length": 168230,
+    "title": "トップ | 人妻・熟女No.1のAVメーカー【マドンナ】公式サイト",
+    "gate_words": [
+     "18歳",
+     "age",
+     "はい"
+    ],
+    "set_cookie": [
+     "_session=eyJpdiI6ImI4c1FiNFY4SXNTM1pNUnRUd1J2U2c9PSIsInZhbHVlIjoiTDBhQlQ4dzZacUg"
+    ],
+    "forms": [
+     "",
+     ""
+    ],
+    "gate_bits": [],
+    "cookies": [
+     "_session"
+    ],
+    "top_again": {
+     "status": 200,
+     "url": "https://madonna-av.com/",
+     "error": "",
+     "length": 10029,
+     "title": "年齢チェック | 人妻・熟女No.1のAVメーカー【マドンナ】公式サイト",
+     "gate_words": [
+      "18歳",
+      "年齢",
+      "age",
+      "はい",
+      "いいえ"
+     ],
+     "set_cookie": [
+      "_session=eyJpdiI6IlhuUjVOeThNbTlNQlYxQ1R2TytCSEE9PSIsInZhbHVlIjoiakRFK25KQWllTHZ"
+     ],
+     "forms": [],
+     "gate_bits": [
+      "ageCheck"
+     ]
+    }
+   }
+  ]
+ },
+ "kawaii": {
+  "base": "https://kawaiikawaii.jp/",
+  "robots_status": 200,
+  "robots": "User-agent: *\nDisallow:\n",
+  "robots_top_allowed": true,
+  "top": {
+   "status": 200,
+   "url": "https://kawaiikawaii.jp/",
+   "error": "",
+   "length": 10085,
+   "title": "年齢チェック | 美少女だけのAVメーカー【kawaii*】公式サイト",
+   "gate_words": [
+    "18歳",
+    "年齢",
+    "age",
+    "はい",
+    "いいえ"
+   ],
+   "set_cookie": [
+    "_session=eyJpdiI6Im56azEyK0htdGdlQTVMdERYQTVHdFE9PSIsInZhbHVlIjoiQXNSaHNYeWlIRmR"
+   ],
+   "forms": [],
+   "gate_bits": [
+    "ageCheck"
+   ]
+  },
+  "gate_links": [
+   [
+    "https://kawaiikawaii.jp/top",
+    "はい （入室する）"
+   ]
+  ],
+  "event_links": [],
+  "terms_links": [],
+  "cookies_after_top": [
+   "_session"
+  ],
+  "gate_try": [
+   {
+    "url": "https://kawaiikawaii.jp/top",
+    "label": "はい （入室する）",
+    "status": 200,
+    "error": "",
+    "length": 73785,
+    "title": "トップ | 美少女だけのAVメーカー【kawaii*】公式サイト",
+    "gate_words": [
+     "18歳",
+     "age",
+     "はい"
+    ],
+    "set_cookie": [
+     "_session=eyJpdiI6Im1PbWdnTllNNEtPN2t4M3FOODZXWGc9PSIsInZhbHVlIjoiSmV4V2xKcERSK05"
+    ],
+    "forms": [
+     "",
+     ""
+    ],
+    "gate_bits": [],
+    "cookies": [
+     "_session"
+    ],
+    "top_again": {
+     "status": 200,
+     "url": "https://kawaiikawaii.jp/",
+     "error": "",
+     "length": 10085,
+     "title": "年齢チェック | 美少女だけのAVメーカー【kawaii*】公式サイト",
+     "gate_words": [
+      "18歳",
+      "年齢",
+      "age",
+      "はい",
+      "いいえ"
+     ],
+     "set_cookie": [
+      "_session=eyJpdiI6IjE3cDl3M05DY2hUdXlFLzFGWVpPRFE9PSIsInZhbHVlIjoibnJQVUVlV2djVWR"
+     ],
+     "forms": [],
+     "gate_bits": [
+      "ageCheck"
+     ]
+    }
+   }
+  ]
+ },
+ "ebody": {
+  "base": "https://av-e-body.com/",
+  "robots_status": 200,
+  "robots": "User-agent: *\nDisallow:\n",
+  "robots_top_allowed": true,
+  "top": {
+   "status": 200,
+   "url": "https://av-e-body.com/",
+   "error": "",
+   "length": 10111,
+   "title": "年齢チェック | すべてのボディが史上最強のAVメーカー【E-BODY（イーボディ）】公式サイト",
+   "gate_words": [
+    "18歳",
+    "年齢",
+    "age",
+    "はい",
+    "いいえ"
+   ],
+   "set_cookie": [
+    "_session=eyJpdiI6IjhtVmI0NlF6bXJPWm5NeFp4RVR2Q3c9PSIsInZhbHVlIjoia0pmdWhPMmJudUI"
+   ],
+   "forms": [],
+   "gate_bits": [
+    "ageCheck"
+   ]
+  },
+  "gate_links": [
+   [
+    "https://av-e-body.com/top",
+    "はい （入室する）"
+   ]
+  ],
+  "event_links": [],
+  "terms_links": [],
+  "cookies_after_top": [
+   "_session"
+  ],
+  "gate_try": [
+   {
+    "url": "https://av-e-body.com/top",
+    "label": "はい （入室する）",
+    "status": 200,
+    "error": "",
+    "length": 71378,
+    "title": "トップ | すべてのボディが史上最強のAVメーカー【E-BODY（イーボディ）】公式サイト",
+    "gate_words": [
+     "18歳",
+     "年齢",
+     "age"
+    ],
+    "set_cookie": [
+     "_session=eyJpdiI6IitZbzNZV3NMbXJ2dktDdWVkaUYycEE9PSIsInZhbHVlIjoiR3VIY3ZPM3NUOUV"
+    ],
+    "forms": [
+     "",
+     ""
+    ],
+    "gate_bits": [],
+    "cookies": [
+     "_session"
+    ],
+    "top_again": {
+     "status": 200,
+     "url": "https://av-e-body.com/",
+     "error": "",
+     "length": 10111,
+     "title": "年齢チェック | すべてのボディが史上最強のAVメーカー【E-BODY（イーボディ）】公式サイト",
+     "gate_words": [
+      "18歳",
+      "年齢",
+      "age",
+      "はい",
+      "いいえ"
+     ],
+     "set_cookie": [
+      "_session=eyJpdiI6ImhGT1FpSm1STWZsQU1lTU1JUmtwRGc9PSIsInZhbHVlIjoiSGdUU2syWEY0REM"
+     ],
+     "forms": [],
+     "gate_bits": [
+      "ageCheck"
+     ]
+    }
+   }
+  ]
+ },
+ "fitch": {
+  "base": "https://fitch-av.com/",
+  "robots_status": 200,
+  "robots": "User-agent: *\nDisallow:\n",
+  "robots_top_allowed": true,
+  "top": {
+   "status": 200,
+   "url": "https://fitch-av.com/",
+   "error": "",
+   "length": 10096,
+   "title": "年齢チェック | スケベな女の卑猥な体のAVメーカー【Fitch(フィッチ)】公式サイト",
+   "gate_words": [
+    "18歳",
+    "年齢",
+    "age",
+    "はい",
+    "いいえ"
+   ],
+   "set_cookie": [
+    "_session=eyJpdiI6IkVoOGxBQXNIR3JLbjl6dGVWTEQ5bkE9PSIsInZhbHVlIjoiQ0NFdmo3cDJpeGp"
+   ],
+   "forms": [],
+   "gate_bits": [
+    "ageCheck"
+   ]
+  },
+  "gate_links": [
+   [
+    "https://fitch-av.com/top",
+    "はい （入室する）"
+   ]
+  ],
+  "event_links": [],
+  "terms_links": [],
+  "cookies_after_top": [
+   "_session"
+  ],
+  "gate_try": [
+   {
+    "url": "https://fitch-av.com/top",
+    "label": "はい （入室する）",
+    "status": 200,
+    "error": "",
+    "length": 62297,
+    "title": "トップ | スケベな女の卑猥な体のAVメーカー【Fitch(フィッチ)】公式サイト",
+    "gate_words": [
+     "18歳",
+     "age"
+    ],
+    "set_cookie": [
+     "_session=eyJpdiI6Imc0UEtzTVlpUmFwYVE2K2Y4dFV4dXc9PSIsInZhbHVlIjoiT1RWT0xzMW5lSGJ"
+    ],
+    "forms": [
+     "",
+     ""
+    ],
+    "gate_bits": [],
+    "cookies": [
+     "_session"
+    ],
+    "top_again": {
+     "status": 200,
+     "url": "https://fitch-av.com/",
+     "error": "",
+     "length": 10096,
+     "title": "年齢チェック | スケベな女の卑猥な体のAVメーカー【Fitch(フィッチ)】公式サイト",
+     "gate_words": [
+      "18歳",
+      "年齢",
+      "age",
+      "はい",
+      "いいえ"
+     ],
+     "set_cookie": [
+      "_session=eyJpdiI6Ik5yaFNya1ozSkdFcTNRQkkzSGcrb2c9PSIsInZhbHVlIjoia2UxTXR2YjJpTkp"
+     ],
+     "forms": [],
+     "gate_bits": [
+      "ageCheck"
+     ]
+    }
+   }
+  ]
+ },
+ "sod": {
+  "base": "https://www.sod.co.jp/",
+  "robots_status": 200,
+  "robots": "User-agent: *\nDisallow: /django-media/\n\nSitemap: https://www.sod.co.jp/sitemap.xml\nSitemap: https://www.sod.co.jp/magic-mirror-go/sitemap.xml\n",
+  "robots_top_allowed": true,
+  "top": {
+   "status": 200,
+   "url": "https://www.sod.co.jp/agecheck/?next=/",
+   "error": "",
+   "length": 4275,
+   "title": "SOFT ON DEMAND（ソフト・オン・デマンド）",
+   "gate_words": [
+    "18歳",
+    "age"
+   ],
+   "set_cookie": [],
+   "forms": [],
+   "gate_bits": [
+    "agecheck.css",
+    "AgeCheckModal",
+    "AgeCheckModalTopArea",
+    "AgeCheckModalTopArea__logo",
+    "agecheck/logo0901.png",
+    "AgeCheckModalTopArea__text-area",
+    "AgeCheckModalBodyArea",
+    "AgeCheckModalBodyArea__image"
+   ]
+  },
+  "gate_links": [],
+  "event_links": [],
+  "terms_links": [],
+  "cookies_after_top": [],
+  "gate_try": []
+ },
+ "avevent": {
+  "base": "https://www.av-event.jp/",
+  "robots_status": 200,
+  "robots": "User-Agent:*\n\n# Sitemap files\nSitemap: https://www.av-event.jp/sitemap.xml\n",
+  "robots_top_allowed": true,
+  "top": {
+   "status": 200,
+   "url": "https://www.av-event.jp/",
+   "error": "",
+   "length": 3466,
+   "title": "年齢認証ページ - セクシーアイドル/AV女優のイベント情報サイト【イベルト】",
+   "gate_words": [
+    "18歳",
+    "年齢",
+    "age",
+    "はい",
+    "いいえ"
+   ],
+   "set_cookie": [],
+   "forms": [],
+   "gate_bits": [
+    "age_check.min.css",
+    "age_check.min.js",
+    "age-check",
+    "age-check_inner",
+    "age-check_title-content",
+    "age-check_title-main-logo",
+    "age_check/title_logo.jpg",
+    "age-check_title-icon"
+   ]
+  },
+  "gate_links": [
+   [
+    "https://www.av-event.jp/top",
+    "はい"
+   ]
+  ],
+  "event_links": [
+   [
+    "https://www.av-event.jp/terms/",
+    "利用規約"
+   ],
+   [
+    "https://www.av-event.jp/top",
+    "はい"
+   ]
+  ],
+  "terms_links": [
+   [
+    "https://www.av-event.jp/terms/",
+    "利用規約"
+   ]
+  ],
+  "cookies_after_top": [],
+  "gate_try": [
+   {
+    "url": "https://www.av-event.jp/top/",
+    "label": "はい",
+    "status": 200,
+    "error": "",
+    "length": 74557,
+    "title": "トップ - セクシーアイドル/AV女優のイベント情報サイト【イベルト】",
+    "gate_words": [
+     "age"
+    ],
+    "set_cookie": [],
+    "forms": [
+     ""
+    ],
+    "gate_bits": [],
+    "cookies": [],
+    "top_again": {
+     "status": 200,
+     "url": "https://www.av-event.jp/",
+     "error": "",
+     "length": 3466,
+     "title": "年齢認証ページ - セクシーアイドル/AV女優のイベント情報サイト【イベルト】",
+     "gate_words": [
+      "18歳",
+      "年齢",
+      "age",
+      "はい",
+      "いいえ"
+     ],
+     "set_cookie": [],
+     "forms": [],
+     "gate_bits": [
+      "age_check.min.css",
+      "age_check.min.js",
+      "age-check",
+      "age-check_inner",
+      "age-check_title-content",
+      "age-check_title-main-logo",
+      "age_check/title_logo.jpg",
+      "age-check_title-icon"
+     ]
+    }
+   }
+  ],
+  "event_page": [
+   {
+    "url": "https://www.av-event.jp/terms/",
+    "status": 200,
+    "error": "",
+    "length": 12350,
+    "title": "利用規約 - セクシーアイドル/AV女優のイベント情報サイト【イベルト】",
+    "gate_words": [
+     "18歳",
+     "age"
+    ],
+    "set_cookie": [],
+    "forms": [
+     ""
+    ],
+    "gate_bits": [],
+    "dated_samples": [
+     "2019年8月30日 制定"
+    ],
+    "dated_count": 1
+   },
+   {
+    "url": "https://www.av-event.jp/top/",
+    "status": 200,
+    "error": "",
+    "length": 74557,
+    "title": "トップ - セクシーアイドル/AV女優のイベント情報サイト【イベルト】",
+    "gate_words": [
+     "age"
+    ],
+    "set_cookie": [],
+    "forms": [
+     ""
+    ],
+    "gate_bits": [],
+    "dated_samples": [
+     "【プラネットプラス】 11/7(土) 月野江すい ＠名古屋市DVDリリースイベント開催決定★☆",
+     "11月5日（木）南日菜乃ちゃん✦DVDイベント！@STUDIOLIBERTY",
+     "11月4日（水）村上悠華ちゃん✦DVDイベント！@STUDIOLIBERTY",
+     "11/1（日）17:00～ ひなの花音ちゃんアイポケリリースイベント！",
+     "11月3日（火）弥生みづき✦DVDイベント！@STUDIOLIBERTY",
+     "10/5(月)八森わか菜ちゃんイベント！",
+     "10/5(月) 有栖舞衣さん＆新田好実さん Wキャストイベント開催！【ラムタラエピカリアキバ店】",
+     "10/5(月)松本いちかちゃん即売会！"
+    ],
+    "dated_count": 33
+   }
+  ],
+  "terms": [
+   {
+    "url": "https://www.av-event.jp/terms/",
+    "label": "利用規約",
+    "status": 200,
+    "sentences": [
+     "法律によって明示的に認められる範囲を超えてこれらの情報を使用（複製、改変、頒布等を含みますが、この限りでないものとします",
+     "運営者は、本サイトにおける掲載情報（リンクによって得られる情報も含みますが、この限りではないものとします"
+    ]
+   }
+  ]
+ }
+}
