@@ -1,0 +1,88 @@
+---
+// このサイトについて（/about/。運営者の希望「SEOの対策として。フッターのいちばん下に小さくリンク」。2026-10-06）。
+// 検索の上位のサイトは「どこの情報で・どうやって作っているか」を書いていた（2026-10-06 の下調べ）。このサイトの作り方を、事実だけで短く書く。
+// 「AI」という言葉は使わない（コメントは「自動で作成」と書く）。人が書いたと受け取れる言い方・名前・肩書きは付けない
+import Base from '../layouts/Base.astro';
+import Breadcrumb from '../components/Breadcrumb.astro';
+import { ABOUT_PATH, ACTRESS_INDEX_PATH, MAKER_INDEX_PATH, SITE_NAME, SITE_URL, breadcrumbLd } from '../lib/items.js';
+import { RANKING_PATH } from '../lib/popularity.js';
+import { SALE_HISTORY_PATH, SALE_PATH } from '../lib/sale.js';
+import { SEARCH_PATH } from '../lib/search.js';
+import { FAVORITES_PATH } from '../lib/favorites.js';
+import { CALENDAR_PATH } from '../lib/calendar.js';
+
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: 'このサイトについて', path: ABOUT_PATH },
+];
+const pageLd = {
+  '@context': 'https://schema.org',
+  '@type': 'AboutPage',
+  name: 'このサイトについて',
+  url: SITE_URL + ABOUT_PATH,
+  about: { '@type': 'WebSite', name: SITE_NAME, url: `${SITE_URL}/` },
+};
+---
+
+<Base
+  title={`このサイトについて｜${SITE_NAME}`}
+  description={`${SITE_NAME}について。掲載している情報の出どころ（FANZA公式のAPI・所属事務所の公式サイト）、毎日の更新のしかた、ひとことコメント、広告、お気に入りの保存先をまとめています。`}
+  path={ABOUT_PATH}
+  jsonLd={[breadcrumbLd(trail), pageLd]}
+>
+  <div class="wrap about">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">このサイトについて</h1>
+      <p class="hero-lead">{SITE_NAME}は、FANZA動画の新作・予約作品を毎日自動で集めて、発売日ごとに紹介しているサイトです。</p>
+    </section>
+
+    <section class="section about-block" aria-labelledby="about-what">
+      <h2 id="about-what" class="section-title">できること</h2>
+      <ul class="about-list">
+        <li>発売中・予約受付中の新作を、発売日ごとに見る</li>
+        <li><a class="spec-link" href={RANKING_PATH}>新着の人気ランキング</a>と<a class="spec-link" href={SALE_PATH}>開催中のセール</a>（<a class="spec-link" href={SALE_HISTORY_PATH}>これまでのセールの履歴</a>）を見る</li>
+        <li><a class="spec-link" href={SEARCH_PATH}>作品</a>・<a class="spec-link" href={ACTRESS_INDEX_PATH}>女優</a>・<a class="spec-link" href={MAKER_INDEX_PATH}>メーカー</a>・ジャンルから探す</li>
+        <li><a class="spec-link" href={FAVORITES_PATH}>お気に入り</a>に入れた女優・メーカーの新作をまとめて見る・<a class="spec-link" href={CALENDAR_PATH}>発売日をカレンダーで受け取る</a></li>
+      </ul>
+    </section>
+
+    <section class="section about-block" aria-labelledby="about-source">
+      <h2 id="about-source" class="section-title">情報の出どころ</h2>
+      <dl class="spec about-spec">
+        <dt class="spec-term">作品・価格・セール・人気順</dt>
+        <dd class="spec-desc">FANZA Webサービス（FANZA公式のAPI）</dd>
+        <dt class="spec-term">女優のプロフィール</dt>
+        <dd class="spec-desc">FANZA Webサービス（顔写真・年齢・身長・サイズ）</dd>
+        <dt class="spec-term">所属事務所・公式SNS・イベント</dt>
+        <dd class="spec-desc">各所属事務所の公式サイトに公開されている情報</dd>
+      </dl>
+      <p class="about-note">女優の名前は、FANZAに載っている名前と完全に同じ1人のときだけ結びつけています。ほかのサイトの情報や推測で補うことはしていません。年齢は生年月日から毎日計算していて、生まれた年は載せていません。</p>
+    </section>
+
+    <section class="section about-block" aria-labelledby="about-update">
+      <h2 id="about-update" class="section-title">更新のしかた</h2>
+      <ul class="about-list">
+        <li>毎日、日付が変わったあとに自動で更新しています（混み具合で遅れることがあります）。</li>
+        <li>価格・セールの期間は、その日の更新の時点の情報です。変わることがあるので、くわしくはFANZAの作品ページで確かめてください。</li>
+        <li>ひとことコメントと週のまとめ記事は、出演者・メーカー・発売日などの作品の情報をもとに自動で作成しており、内容の正確さは保証できません。</li>
+      </ul>
+    </section>
+
+    <section class="section about-block" aria-labelledby="about-policy">
+      <h2 id="about-policy" class="section-title">掲載の方針</h2>
+      <ul class="about-list">
+        <li>このサイトは18歳以上の方を対象としています。</li>
+        <li>FANZAのアフィリエイト広告を利用しています。作品のリンクからFANZAで購入されると、このサイトに紹介料が入ります（購入する方の支払う金額は変わりません）。</li>
+        <li>こちらからおすすめする欄には、未成年を連想させるタイトルの作品を出していません。</li>
+        <li>情報に違いがあるときは、FANZAの公式ページの情報が正しい情報です。</li>
+      </ul>
+    </section>
+
+    <section class="section about-block" aria-labelledby="about-privacy">
+      <h2 id="about-privacy" class="section-title">お気に入り・表示の設定</h2>
+      <p class="about-note">お気に入り（☆）と、「VR作品を隠す」「単体作品のみ」の設定は、お使いの端末のブラウザの中にだけ保存しています。このサイトのサーバーには送られません（ブラウザのデータを消すと、消えます）。</p>
+    </section>
+  </div>
+</Base>

@@ -118,5 +118,53 @@ console.log('\n■ 出演者のページの「セール中の作品」（onSaleI
 const os = S.onSaleItems([...items, it('f', '2026-12-01', 1)], sale, '2026-10-05');
 check('いまセール中の発売済みの作品だけ・人気の高い順・キャンペーンの終わりと名前つき', os.map((i) => i.cid).join() === 'c,b,a' && os[2].sale.price === 1884 && os[2].sale.end === '2026-10-06 09:59' && os[2].sale.title === 'メーカーA30％OFF', os.map((i) => i.cid).join());
 check('終わったキャンペーンの作品は入れない', S.onSaleItems(items, sale, '2026-10-07').length === 0);
+
+console.log('\n■ 出演者・メーカーのページの「入っているセール」（saleCampaignsOf）');
+const sc = S.saleCampaignsOf([
+  { sale: { title: 'B', k: 1, end: '2026-10-09 23:59' } }, { sale: { title: 'A', k: 0, end: '2026-10-07 23:59' } },
+  { sale: { title: 'B', k: 1, end: '2026-10-09 23:59' } }, { sale: { title: 'C', k: 2, end: '2026-10-06 23:59' } }, {},
+]);
+check('本数の多い順・同じなら早く終わる順・名前ごとに1つ', sc.map((c) => `${c.title}${c.count}`).join() === 'B2,C1,A1' && sc[0].k === 1, sc.map((c) => `${c.title}${c.count}`).join());
+
+console.log('\n■ セールの帯のグラフ（「FANZAのセールはいつ？」）');
+check('帯のマス: 窓の中の位置・窓の前/後ろへ続く印・重ならなければ null',
+  JSON.stringify(S.barSpan('2026-10-03', '2026-10-05', '2026-10-01', '2026-10-31')) === '{"s":2,"e":5,"cutL":false,"cutR":false}'
+  && JSON.stringify(S.barSpan('2026-09-30', '2026-11-02', '2026-10-01', '2026-10-31')) === '{"s":0,"e":31,"cutL":true,"cutR":true}'
+  && S.barSpan('2026-09-01', '2026-09-30', '2026-10-01', '2026-10-31') === null && S.barSpan('2026-10-05', '2026-10-04', '2026-10-01', '2026-10-31') === null
+  && S.barSpan('x', '2026-10-04', '2026-10-01', '2026-10-31') === null);
+const sp = { s: 2, e: 8, cutL: true, cutR: false };
+const parts = S.splitAtToday(sp, 4);
+check('きょうで分ける: きょうまで（開いていた日）とあしたから（これから）。前後へ続く印は、はしの帯にだけ',
+  parts.length === 2 && parts[0].s === 2 && parts[0].e === 5 && !parts[0].future && parts[0].cutL && parts[0].joinR && parts[1].s === 5 && parts[1].e === 8 && parts[1].future && !parts[1].cutL && parts[1].joinL
+  && S.splitAtToday(sp, 1)[0].future === true && S.splitAtToday(sp, 7)[0].future === false && S.splitAtToday(sp, 9).length === 1 && S.splitAtToday(null, 3).length === 0);
+const tk = (a) => a.map((x) => `${x.i}:${x.label}${x.today ? '*' : ''}${x.edge}`).join(' ');
+check('月の目もり: 1・5・10…とはじめのマス・きょう（きょうのすぐ近くの数字は外す）・はしの印',
+  tk(S.dayTicks('2026-10-01', 31, '2026-10-06', { fixed: [1, 5, 10, 15, 20, 25, 30] })) === '0:1l 5:6* 9:10 14:15 19:20 24:25 29:30'
+  && tk(S.dayTicks('2026-10-01', 31, '2026-10-02', { fixed: [1, 5, 10, 15, 20, 25, 30] })) === '1:2* 4:5 9:10 14:15 19:20 24:25 29:30', tk(S.dayTicks('2026-10-01', 31, '2026-10-06', { fixed: [1, 5, 10, 15, 20, 25, 30] })));
+check('いま開催中の目もり: きょうから2日ごと・月が変わる日は「10/1」・重なる数字は外す',
+  tk(S.dayTicks('2026-09-30', 21, '2026-10-06', { step: 2, anchor: '2026-10-06' })) === '1:10/1 4:4 6:6* 8:8 10:10 12:12 14:14 16:16 18:18 20:20r', tk(S.dayTicks('2026-09-30', 21, '2026-10-06', { step: 2, anchor: '2026-10-06' })));
+const pg = (title, begin, end) => ({ title, path: `/sale/${title}/`, active: { title, begin, end, maxOff: 30 } });
+const nc = S.nowChart([pg('A', '2026-10-05 10:00', '2026-10-07 23:59'), pg('B', '2026-09-20 00:00', '2026-10-31 23:59'), { title: 'C', active: null }], '2026-10-06');
+check('いま開催中の帯: 6日前〜（長くても）20日後・きょうのマス・あと何日・開催していない特集は入れない',
+  nc.from === '2026-09-30' && nc.to === '2026-10-26' && nc.days === 27 && nc.t === 6 && nc.rows.length === 2 && nc.rows[0].left === 1 && nc.rows[1].left === 25
+  && nc.rows[1].parts[0].cutL && nc.rows[1].parts.at(-1).cutR && nc.rows[0].parts.map((p) => `${p.s}-${p.e}${p.future ? 'f' : ''}`).join() === '5-7,7-8f', JSON.stringify([nc.from, nc.to, nc.rows[0].parts]));
+const nc2 = S.nowChart([pg('A', '2026-10-06 00:00', '2026-10-06 23:59')], '2026-10-06');
+check('いま開催中の帯: 始まりが新しければ、そこから・終わりが近くても6日後まで見せる・開催中が無ければ null',
+  nc2.from === '2026-10-06' && nc2.to === '2026-10-12' && nc2.t === 0 && nc2.rows[0].left === 0 && S.nowChart([], '2026-10-06') === null);
+const runs = [
+  { title: '日替わり', begin: '2026-10-06 00:00', end: '2026-10-06 23:59', first: '2026-10-06', last: '2026-10-06', maxOff: 70 },
+  { title: '日替わり', begin: '2026-10-05 00:00', end: '2026-10-05 23:59', first: '2026-10-05', last: '2026-10-05', maxOff: 50 },
+  { title: 'メーカーA', begin: '2026-09-30 10:00', end: '2026-10-08 09:59', first: '2026-10-05', last: '2026-10-06', maxOff: null },
+  { title: 'メーカーB', begin: '2026-11-01 00:00', end: '2026-11-03 23:59', first: '2026-11-01', last: '2026-11-01', maxOff: null },
+];
+check('帯を作る月: 記録を始めた月から、きょうの月まで・開催のあった月だけ・新しい月から',
+  S.historyMonths(runs, '2026-11-02').join() === '2026-11,2026-10' && S.historyMonths(runs, '2026-10-06').join() === '2026-10' && S.historyMonths([], '2026-10-06').length === 0);
+const mc = S.monthChart(runs, '2026-10', '2026-10-06', new Map([[S.campaignSlug('日替わり'), { path: '/sale/x/' }]]));
+check('月ごとの帯: 同じ名前は1行（回ごとに帯）・その月に早く始まった順・月の前から続く帯・いちばん大きい割引・日数・特集のページ',
+  mc.days === 31 && mc.t === 5 && mc.rows.map((r) => r.title).join() === 'メーカーA,日替わり' && mc.rows[1].runs.length === 2 && mc.rows[1].path === '/sale/x/' && mc.rows[1].maxOff === 70
+  && mc.rows[1].minDays === 1 && mc.rows[1].maxDays === 1 && mc.rows[0].parts[0].cutL && mc.rows[0].parts.map((p) => `${p.s}-${p.e}${p.future ? 'f' : ''}`).join() === '0-6,6-8f'
+  && mc.rows[1].runs[0].begin.startsWith('2026-10-05'), JSON.stringify(mc.rows.map((r) => r.parts)));
+check('前の月の帯: きょうは窓の後ろ（全部、開いていた日）', S.monthChart(runs, '2026-10', '2026-11-02').t === 31 && S.monthChart(runs, '2026-10', '2026-11-02').rows.every((r) => r.parts.every((p) => !p.future)));
+check('短い期間の文字', S.shortRange(runs[2]) === '9/30〜10/8' && S.shortRange(runs[0]) === '10/6' && S.shortRange({ begin: '', first: '2026-10-05', end: '2026-10-07 10:00' }) === '10/5〜10/7');
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

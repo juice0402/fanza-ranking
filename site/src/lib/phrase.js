@@ -93,17 +93,27 @@ export const MAX_PHRASE = 8;
 // 文字の種類（ひらがな・カタカナ・漢字・それ以外）。種類が変わる所は、語の切れ目になりやすい
 const kindOf = (ch) => (/[\u3040-\u309f]/.test(ch) ? 'hira' : /[\u30a0-\u30ff]/.test(ch) ? 'kata' : /[\u3400-\u4dbf\u4e00-\u9fff]/.test(ch) ? 'kanji' : 'other');
 
-/** text の [start, end) の文節が長ければ、禁則を守りながら、真ん中あたりで分ける（MAX_PHRASE 以下になるまで）。
- * 文字の種類が変わる所を、先に選ぶ（「ご利用／いただけません」）。分ける位置（text の中の番号）を cuts に足す */
+// 文節の長さを数えるときに、うしろの句読点・閉じかっこは数えない（「ことがあります）。」を長いとみなして「ことがあ／ります」と切らないように。2026-10-06）
+const TAIL_MARKS = /[\s、。，．,.）)」』】〕〉》］｝!?！？…‥]+$/u;
+// ひらがなが続く所で分けるときは、助詞のすぐあとを先に選ぶ（「ことが／あります」。真ん中で「ことがあ／ります」と切らないように）。
+// 「と」「や」は語の中にも多い（「こと」「おもちゃ」）ので、少しだけ
+const PARTICLE_END = /[がをにはでへも]/;
+const PARTICLE_WEAK = /[とや]/;
+
+/** text の [start, end) の文節が長ければ、禁則を守りながら、真ん中あたりで分ける（MAX_PHRASE 以下になるまで。うしろの句読点・閉じかっこは数えない）。
+ * 文字の種類が変わる所・助詞のすぐあとを、先に選ぶ（「ご利用／いただけません」「ことが／あります」）。分ける位置（text の中の番号）を cuts に足す */
 function splitLong(text, start, end, keep, cuts) {
   const piece = text.slice(start, end);
-  if (piece.trimEnd().length <= MAX_PHRASE) return;
+  if (piece.replace(TAIL_MARKS, '').length <= MAX_PHRASE) return;
   const mid = start + piece.length / 2;
   let best = -1;
   let bestScore = Infinity;
   for (let i = start + 2; i <= end - 2; i++) {
     if (!canBreakAt(text, i, keep)) continue;
-    const score = Math.abs(i - mid) + (kindOf(text[i - 1]) !== kindOf(text[i]) ? 0 : 3);
+    const kindChange = kindOf(text[i - 1]) !== kindOf(text[i]);
+    const hiraRun = !kindChange && kindOf(text[i]) === 'hira';
+    const particle = hiraRun && PARTICLE_END.test(text[i - 1]) ? 2 : hiraRun && PARTICLE_WEAK.test(text[i - 1]) ? 1 : 0;
+    const score = Math.abs(i - mid) + (kindChange ? 0 : 3) - particle;
     if (score < bestScore) {
       best = i;
       bestScore = score;

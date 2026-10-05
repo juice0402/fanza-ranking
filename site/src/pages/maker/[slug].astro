@@ -4,16 +4,23 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import VrToggle from '../../components/VrToggle.astro';
 import DaySection from '../../components/DaySection.astro';
 import FavButton from '../../components/FavButton.astro';
-import { makerGroups, actressByName } from '../../lib/data.js';
+import NextWorks from '../../components/NextWorks.astro';
+import OnSaleWorks from '../../components/OnSaleWorks.astro';
+import CastFaces from '../../components/CastFaces.astro';
+import { assetUrl } from '../../lib/assets.js';
+import { makerGroups, actressByName, contentGenres, sale, tagByName, today } from '../../lib/data.js';
+import { campaignSummary, offPercent, onSaleItems } from '../../lib/sale.js';
 import {
   MAKER_INDEX_PATH,
+  SITE_URL,
   breadcrumbLd,
+  entityDescription,
   formatsOf,
   groupByDate,
+  listLastmod,
   makerPageTitle,
   makerSummary,
   rankedNames,
-  summaryDescription,
 } from '../../lib/items.js';
 import { ENTITY_LIST_LIMIT } from '../../config.js';
 import { entityListing, hasCalendar, listIndexable } from '../../lib/plan.js';
@@ -34,11 +41,36 @@ const calendar = hasCalendar(group);
 // コメントのある作品が1本も無いページ（過去作品だけ）は、検索エンジンには出さない
 const noindex = !listIndexable(group.items);
 // 出演者は、出演の多い順に CAST_LIMIT 人まで（過去作品の多いメーカーで、名前だけで画面が埋まらないように）
-const CAST_LIMIT = 40;
+const CAST_LIMIT = 15;
 const castRanked = rankedNames(group.items.flatMap((i) => i.actress), CAST_LIMIT);
 const cast = castRanked.names;
 const castTotal = new Set(group.items.flatMap((i) => i.actress)).size;
 const formats = formatsOf(group.items);
+// 女優のページと同じように強くする（運営者の希望「SEOを上位に」→「メーカーのページも。素晴らしいサイトを目指して完璧に」。2026-10-06）:
+// 次の新作（予約受付中を近い順に）・セール中の作品と入っているセール・よく出ている女優（顔の丸）・多いジャンル・更新日・構造化データ
+const NEXT_SHOWN = 6;
+const SALE_SHOWN = 6;
+const CAST_FACES = 6;
+const GENRE_CHIPS = 8;
+const upcomingWorks = group.items.filter((i) => i.dateKey > today).sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.cid.localeCompare(b.cid));
+const saleWorks = onSaleItems(group.items, sale, today);
+const saleMaxOff = Math.max(0, ...saleWorks.map((i) => offPercent(i.sale.price, i.sale.listPrice) ?? 0)) || null;
+// よく出ている女優（出演者4人までの作品で2本以上の人）と多いジャンル（ページを作るジャンルだけ。ベスト・総集編を除く）。このサイトに載っている作品から数える
+const counted = campaignSummary(group.items, { genres: contentGenres, limit: Math.max(CAST_FACES, GENRE_CHIPS) });
+const castFaces = counted.actresses.slice(0, CAST_FACES);
+const genreChips = counted.genres.slice(0, GENRE_CHIPS);
+const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
+// 最後に変わった日（sitemap の lastmod と同じ）。画面の「○月○日更新」と、構造化データの dateModified に使う
+const modified = listLastmod(group.items, today);
+const description = entityDescription(summary, { next: upcomingWorks[0] ?? null, saleCount: saleWorks.length, maxOff: saleMaxOff });
+const pageLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: `${group.name}の新作・作品一覧`,
+  url: SITE_URL + group.path,
+  ...(modified ? { dateModified: modified } : {}),
+  about: { '@type': 'Organization', name: group.name },
+};
 const trail = [
   { name: 'トップ', path: '/' },
   { name: 'メーカー一覧', path: MAKER_INDEX_PATH },
@@ -47,11 +79,11 @@ const trail = [
 ---
 
 <Base
-  title={makerPageTitle(group)}
-  description={summaryDescription(summary)}
+  title={makerPageTitle(group, today)}
+  description={description}
   path={group.path}
   noindex={noindex}
-  jsonLd={[breadcrumbLd(trail)]}
+  jsonLd={[breadcrumbLd(trail), pageLd]}
 >
   <div class="wrap">
     <Breadcrumb trail={trail} />
@@ -59,6 +91,7 @@ const trail = [
     <section class="hero">
       <h1 class="hero-title">{group.name}の新作・作品一覧</h1>
       <p class="summary">{summary}</p>
+      {modified && <p class="page-updated">{md(modified)}更新</p>}
       <div class="hero-actions">
         <FavButton type="maker" favKey={group.name} slug={group.slug} off="このメーカーをお気に入りに追加" on="お気に入り済み（新作が「お気に入り」に出ます）" />
         {calendar && (
@@ -95,6 +128,34 @@ const trail = [
       )}
     </dl>
 
+    <NextWorks items={upcomingWorks} shown={NEXT_SHOWN} />
+    <OnSaleWorks items={saleWorks} shown={SALE_SHOWN} label="このメーカーの作品が入っているセール" />
+
+    {castFaces.length > 0 && (
+      <section class="section" aria-labelledby="cast-title">
+        <div class="section-head">
+          <h2 id="cast-title" class="section-title">よく出ている女優</h2>
+          <p class="section-note">このサイトに載っている作品の本数</p>
+        </div>
+        <CastFaces rows={castFaces} />
+      </section>
+    )}
+
+    {genreChips.length > 0 && (
+      <section class="section" aria-labelledby="genre-title">
+        <div class="section-head">
+          <h2 id="genre-title" class="section-title">多いジャンル</h2>
+        </div>
+        <nav class="sale-jump genre-chips" aria-label={`${group.name}の多いジャンル`}>
+          {genreChips.map((g) => (
+            tagByName.get(g.name)
+              ? <a class="chip-link" href={tagByName.get(g.name).path}>{g.name}<span class="chip-count">{g.count}本</span></a>
+              : <span class="chip-link chip-static">{g.name}<span class="chip-count">{g.count}本</span></span>
+          ))}
+        </nav>
+      </section>
+    )}
+
     <section class="section" aria-labelledby="works-title">
       <div class="section-head">
         <h2 id="works-title" class="section-title">作品（{group.items.length}本）</h2>
@@ -106,4 +167,5 @@ const trail = [
       <DaySection groups={groups} />
     </section>
   </div>
+  {saleWorks.length > 0 && <script is:inline src={assetUrl('/sale.js')} defer></script>}
 </Base>

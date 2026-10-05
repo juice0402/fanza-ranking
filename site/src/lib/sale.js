@@ -254,3 +254,168 @@ export function onSaleItems(items, sale, today) {
   }
   return out.sort(byPopular);
 }
+
+// ---------- 「セールはいつ？」の帯のグラフ（運営者の希望「文字が多くて見づらい。見やすい工夫を」。2026-10-06） ----------
+// 1日を1マスにした横の帯で、いつ開いていたか・いつまでかを見せる（文字を読まなくても分かるように）。
+// 位置はマスの番号（0から）だけを返し、画面（components/SaleBars.astro）が幅の割合にする。
+
+const dayOf = (dt) => String(dt ?? '').slice(0, 10);
+/** 1回の開催の始まりの日（始まりが分からなければ、最初に見かけた日） */
+export const runStartDay = (run) => dayOf(run.begin || run.first);
+
+export const NOW_BEFORE = 6; // 「いま開催中」の帯は、きょうの6日前から
+export const NOW_AFTER_MIN = 6; // きょうの6日後まで（終わりが近くても、先が少し見えるように）
+export const NOW_AFTER_MAX = 20; // 長くても20日後まで（スマホで1マスが細くなりすぎないように）
+
+/**
+ * 窓 [from, to]（両方の日を含む）の中で、開催の日がどのマスか: { s（はじめのマス）, e（終わりのマスの次）, cutL（窓の前から続く）, cutR（窓の後へ続く） }。
+ * 窓と重ならなければ null
+ */
+export function barSpan(beginDay, endDay, from, to) {
+  if (![beginDay, endDay, from, to].every(isDay) || endDay < beginDay || endDay < from || beginDay > to) return null;
+  return {
+    s: Math.max(0, daysBetween(beginDay, from)),
+    e: Math.min(daysBetween(to, from), daysBetween(endDay, from)) + 1,
+    cutL: beginDay < from,
+    cutR: endDay > to,
+  };
+}
+
+/**
+ * 帯を、きょうまで（開いていた日）と、あしたから（これからの日。画面ではしま模様）に分ける。t はきょうのマス（窓の外なら、前は -1・後ろは窓の長さ以上）。
+ * [{ s, e, future, cutL, cutR }]（つながった帯は、ふちの丸みを分けた所で切る）
+ */
+export function splitAtToday(span, t) {
+  if (!span) return [];
+  if (t < span.s) return [{ ...span, future: true }];
+  if (t >= span.e - 1) return [{ ...span, future: false }];
+  return [
+    { s: span.s, e: t + 1, future: false, cutL: span.cutL, cutR: false, joinR: true },
+    { s: t + 1, e: span.e, future: true, cutL: false, cutR: span.cutR, joinL: true },
+  ];
+}
+
+/**
+ * 目もり: [{ i（マス）, label（日の数字。月が変わる日は「11/1」）, today, edge（'l' はじめのマス・'r' 終わりのマス。文字を帯の外へはみ出させない） }]。
+ * step 日ごと（anchor の日から数える）か、fixed の日（[1, 5, 10, …]）。きょう・はじめのマス・月のはじめは必ず入れ、きょうのすぐ隣は数字が重なるので外す
+ */
+export function dayTicks(from, days, today, { step = 1, anchor = from, fixed = null } = {}) {
+  const out = [];
+  for (let i = 0; i < days; i++) {
+    const day = addDays(from, i);
+    const d = +day.slice(8, 10);
+    const keep = day === today || i === 0 || d === 1 || (fixed ? fixed.includes(d) : daysBetween(day, anchor) % step === 0);
+    if (!keep) continue;
+    out.push({ i, label: d === 1 && i > 0 ? `${+day.slice(5, 7)}/1` : String(d), today: day === today, edge: i === 0 ? 'l' : i === days - 1 ? 'r' : '' });
+  }
+  // 近すぎる目もりは、大事なほう（きょう → 月のはじめ → はじめのマス → ほか）を残して外す（数字が重ならないように）
+  const minGap = fixed ? 2 : Math.max(1, step);
+  const todayGap = fixed ? 3 : 2; // きょうの目もりは「きょう 6」と長いので、少し広くあける
+  const rank = (x) => (x.today ? 0 : x.label.includes('/') ? 1 : x.i === 0 ? 2 : 3);
+  const kept = [];
+  for (const x of [...out].sort((a, b) => rank(a) - rank(b) || a.i - b.i)) {
+    if (kept.every((y) => Math.abs(x.i - y.i) >= (x.today || y.today ? todayGap : minGap))) kept.push(x);
+  }
+  return kept.sort((a, b) => a.i - b.i);
+}
+
+/**
+ * 「いま開催中」の帯のグラフ: { from, to, days, t（きょうのマス）, ticks, rows: [{ page, parts, left（あと何日。きょうまでなら0） }] }。開催中が無ければ null。
+ * pages: campaignPages の結果（開催中の並び＝終わりが近い順のまま）
+ */
+export function nowChart(pages, today) {
+  const active = pages.filter((p) => p.active && dayOf(p.active.end) >= today);
+  if (!active.length || !isDay(today)) return null;
+  const starts = active.map((p) => (isDay(dayOf(p.active.begin)) ? dayOf(p.active.begin) : today)).sort();
+  const ends = active.map((p) => dayOf(p.active.end)).sort();
+  const from = [addDays(today, -NOW_BEFORE), starts[0]].sort().at(-1); // 6日前か、いちばん早い始まりの遅いほう
+  const to = [[ends.at(-1), addDays(today, NOW_AFTER_MIN)].sort().at(-1), addDays(today, NOW_AFTER_MAX)].sort()[0];
+  const days = daysBetween(to, from) + 1;
+  const t = daysBetween(today, from);
+  return {
+    from, to, days, t,
+    ticks: dayTicks(from, days, today, { step: days > 14 ? 2 : 1, anchor: today }),
+    rows: active.map((p) => {
+      const begin = isDay(dayOf(p.active.begin)) ? dayOf(p.active.begin) : today;
+      return { page: p, parts: splitAtToday(barSpan(begin, dayOf(p.active.end), from, to), t), left: daysBetween(dayOf(p.active.end), today) };
+    }),
+  };
+}
+
+const lastDayOf = (ym) => new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7), 0)).toISOString().slice(0, 10);
+
+/** 帯のグラフを作る月（記録を始めた月から、きょうの月まで。開催のあった月だけ。新しい月から） */
+export function historyMonths(runs, today, since = SALE_HISTORY_START) {
+  if (!isDay(today)) return [];
+  const months = [];
+  for (let ym = today.slice(0, 7); ym >= since.slice(0, 7); ym = addDays(`${ym}-01`, -1).slice(0, 7)) {
+    const from = `${ym}-01`;
+    const to = lastDayOf(ym);
+    if (runs.some((r) => barSpan(runStartDay(r), dayOf(r.end), from, to))) months.push(ym);
+  }
+  return months;
+}
+
+/**
+ * 月ごとの帯のグラフ: { ym, from, days, t, ticks, rows: [{ title, path, parts, runs（その月に重なる開催。古い順）, maxOff, minDays, maxDays }] }。
+ * 同じ名前の特集は1行にまとめ、開いていた回ごとに帯を並べる（何度も開かれる特集が、ひと目で分かるように）。行は、その月に早く始まった順
+ */
+export function monthChart(runs, ym, today, pagesBySlug = new Map()) {
+  const from = `${ym}-01`;
+  const to = lastDayOf(ym);
+  const days = daysBetween(to, from) + 1;
+  const t = today < from ? -1 : today > to ? days : daysBetween(today, from);
+  const rows = new Map();
+  for (const r of runs) {
+    const span = barSpan(runStartDay(r), dayOf(r.end), from, to);
+    if (!span) continue;
+    const key = campaignSlug(r.title);
+    if (!rows.has(key)) rows.set(key, { title: r.title, path: pagesBySlug.get(key)?.path ?? '', spans: [], runs: [] });
+    rows.get(key).spans.push(span);
+    rows.get(key).runs.push(r);
+  }
+  return {
+    ym, from, days, t,
+    ticks: dayTicks(from, days, today, { fixed: [1, 5, 10, 15, 20, 25, 30] }),
+    rows: [...rows.values()]
+      .map((row) => {
+        const runsAsc = [...row.runs].sort((a, b) => runStartDay(a).localeCompare(runStartDay(b)) || a.end.localeCompare(b.end));
+        const spans = [...row.spans].sort((a, b) => a.s - b.s);
+        const lens = runsAsc.map(runDays).filter((n) => Number.isFinite(n) && n > 0);
+        const offs = runsAsc.map((r) => r.maxOff).filter(Boolean);
+        return {
+          title: row.title, path: row.path, runs: runsAsc,
+          parts: spans.flatMap((sp) => splitAtToday(sp, t)),
+          first: spans[0].s,
+          maxOff: offs.length ? Math.max(...offs) : null,
+          minDays: lens.length ? Math.min(...lens) : null,
+          maxDays: lens.length ? Math.max(...lens) : null,
+        };
+      })
+      .sort((a, b) => a.first - b.first || (a.title < b.title ? -1 : 1)),
+  };
+}
+
+/** 短い期間の文字（帯のグラフの下に出す）: 「10/2〜10/5」（同じ日なら「10/6」） */
+export function shortRange(run) {
+  const md = (day) => `${+day.slice(5, 7)}/${+day.slice(8, 10)}`;
+  const a = runStartDay(run);
+  const b = dayOf(run.end);
+  return a === b ? md(a) : `${md(a)}〜${md(b)}`;
+}
+
+/**
+ * セール中の作品（onSaleItems の結果）が入っている特集: [{ title, k, end, count }]（本数の多い順・同じなら早く終わる順）。
+ * 出演者・メーカーのページの「入っているセール」（特集ごとのページへのリンク。2026-10-06）
+ */
+export function saleCampaignsOf(works) {
+  const byTitle = new Map();
+  for (const w of works) {
+    if (!w.sale?.title) continue;
+    const c = byTitle.get(w.sale.title) ?? { title: w.sale.title, k: w.sale.k, end: w.sale.end, count: 0 };
+    c.count += 1;
+    if (w.sale.end < c.end) Object.assign(c, { k: w.sale.k, end: w.sale.end });
+    byTitle.set(w.sale.title, c);
+  }
+  return [...byTitle.values()].sort((a, b) => b.count - a.count || a.end.localeCompare(b.end) || (a.title < b.title ? -1 : 1));
+}

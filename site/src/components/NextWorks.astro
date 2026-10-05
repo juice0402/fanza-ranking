@@ -1,0 +1,17 @@
+---
+// 次の新作（予約受付中。発売日が近い順に shown 本）。出演者・メーカーのページで使う（運営者の希望「SEOを上位に」。2026-10-06）
+import WorkRows from './WorkRows.astro';
+
+const { items, shown = 3 } = Astro.props;
+const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
+---
+
+{items.length > 0 && (
+  <section class="section" aria-labelledby="next-title">
+    <div class="section-head">
+      <h2 id="next-title" class="section-title">次の新作</h2>
+      <p class="section-note">予約受付中・{items.length}本{items.length > shown && `（発売日が近い${shown}本）`}</p>
+    </div>
+    <WorkRows items={items.slice(0, shown)} note={(i) => `${md(i.dateKey)}発売（予約受付中）`} />
+  </section>
+)}

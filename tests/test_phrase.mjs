@@ -29,6 +29,10 @@ check('行のはじめに、「、」「。」「」」「！」「ー」「っ�
 check('開きかっこ（「）のすぐあとでは区切らない', kin.every((p) => !p.endsWith('「')), JSON.stringify(kin));
 const long = splitPhrases('これは区切りの無いとても長いひとつながりのひらがなです');
 check(`長いひとかたまり（${MAX_PHRASE}文字より長い）は、途中にも改行できる所を足す`, long.length >= 2 && long.every((p) => p.length <= MAX_PHRASE + 2), JSON.stringify(long));
+const aru = splitPhrases('毎日、日付が変わったあとに自動で更新しています（混み具合で遅れることがあります）。');
+check('うしろの句読点・閉じかっこは長さに数えない・ひらがなの続きは助詞のあとで分ける（「ことがあ／ります」と切らない。2026-10-06）',
+  !aru.some((p) => p.endsWith('ことがあ') || p.startsWith('ります')) && splitPhrases('更新することがあります。').join('|') === '更新する|ことがあります。'
+  && splitPhrases('発売日がかわることがあります。').every((p) => !p.endsWith('ことがあ') && !p.endsWith('こと')), JSON.stringify([aru, splitPhrases('更新することがあります。')]));
 check('空の文字列は空の配列', splitPhrases('').length === 0);
 
 console.log('\n■ 実際のデータ（作品のコメント・題名）で壊れない');

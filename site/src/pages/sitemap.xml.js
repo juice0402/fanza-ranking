@@ -9,6 +9,8 @@ import { SALE_HISTORY_PATH, SALE_PATH, saleGroups } from '../lib/sale.js';
 import { isMinorTitle } from '../lib/gacha.js';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import {
+  ABOUT_PATH,
+  ABOUT_UPDATED,
   ACTRESS_INDEX_PATH,
   ARCHIVE_PAGE_SIZE,
   HOME_RELEASED_LIMIT,
@@ -54,6 +56,8 @@ export function GET() {
     ...(monthGroups.length > 0 ? [{ path: MONTH_INDEX_PATH, lastmod: listLastmod(monthGroups.flatMap((g) => g.items), today) }, ...groupPages(monthGroups)] : []),
     ...(tagGroups.length > 0 ? [{ path: TAG_INDEX_PATH, lastmod: listLastmod(tagGroups.flatMap((g) => g.items), today) }, ...groupPages(tagGroups)] : []),
     ...all.filter((item) => itemIndexable(item, paged)).map((item) => ({ path: itemPath(item.cid), lastmod: item.updated })),
+    // このサイトについて（lastmod は、中身を最後に変えた日）
+    { path: ABOUT_PATH, lastmod: ABOUT_UPDATED },
     // 週のまとめ記事（1本も無いあいだは、一覧ページも地図に入れない）
     ...(roundups.length > 0
       ? [
