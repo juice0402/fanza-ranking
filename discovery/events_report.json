@@ -1,0 +1,1383 @@
+{
+ "today": "2026-10-05",
+ "sites": [
+  {
+   "key": "tpowers",
+   "ok": true,
+   "blocks": 64,
+   "kept": 49,
+   "error": ""
+  },
+  {
+   "key": "capsule",
+   "ok": true,
+   "blocks": 36,
+   "kept": 7,
+   "error": ""
+  },
+  {
+   "key": "esflat",
+   "ok": true,
+   "blocks": 10,
+   "kept": 2,
+   "error": ""
+  },
+  {
+   "key": "life",
+   "ok": true,
+   "blocks": 10,
+   "kept": 0,
+   "error": ""
+  }
+ ],
+ "entries": [
+  {
+   "agency": "tpowers",
+   "title": "【延期イベント振替日】10/1（木）18:00～S1小日向みゆうちゃんS1リリースイベント！",
+   "result": "期間の外"
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/3(土) 大槻ひびき ウエスタン浦安やなぎ通り店来店",
+   "result": "期間の外"
+  },
+  {
+   "agency": "tpowers",
+   "title": "【マーレーインターナショナル】波多野結衣 サイン・撮影会＠ラムタラMEDIA WORLD AKIBA",
+   "result": "期間の外"
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/3(土) めぐりさん イベント開催！【ラムタラ秋葉原店】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/4(日) 波多野結衣 Nikko1300戸畑店来店",
+   "result": "期間の外"
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/6(火)市川まさみちゃんイベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-06",
+    "time": "18:00",
+    "names": [
+     "市川まさみ"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "市川まさみちゃんイベント！",
+    "place": "studio knot",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "赤面女子 イベント@秋葉原 依本しおり",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-06",
+    "time": "18:00",
+    "names": [
+     "依本しおり"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "赤面女子 イベント@秋葉原 依本しおり",
+    "place": "ソフネット本店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/7(水)斉藤帆夏ちゃんイベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-07",
+    "time": "17:30",
+    "names": [
+     "斉藤帆夏"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "斉藤帆夏ちゃんイベント！",
+    "place": "studio knot",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "【ナチュラルハイ】過激OK娘イベント！！ 羽月乃蒼 in 横浜",
+   "result": "見出しに未成年を連想させる言葉"
+  },
+  {
+   "agency": "tpowers",
+   "title": "【MARRION】10月10日（土曜日）斎木香住 大阪イベント開催決定！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-10",
+    "time": "12:00",
+    "names": [
+     "斎木香住"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "【MARRION】（土曜日）斎木香住 大阪イベント開催決定！",
+    "place": "買取りまっくす なんば店・買取りまっくす 日本橋店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/10(土)杜乃いつはちゃんイベント！",
+   "result": "FANZAの名前と結びつく人がいない"
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/10(土) 大槻ひびき キクヤ穂積店/キクヤ島店来店",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-10",
+    "time": "13:15",
+    "names": [
+     "大槻ひびき"
+    ],
+    "agency": "tpowers",
+    "kind": "来店イベント",
+    "title": "大槻ひびき キクヤ穂積店/キクヤ島店来店",
+    "place": "キクヤ穂積店/キクヤ島店",
+    "url": "https://www.t-powers.co.jp/event/34461/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "【PRESTIGE APPAREL】10月10日（土） 瀧本雫葉 原宿 STORE来店イベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-10",
+    "time": "14:00",
+    "names": [
+     "瀧本雫葉"
+    ],
+    "agency": "tpowers",
+    "kind": "来店イベント",
+    "title": "【PRESTIGE APPAREL】瀧本雫葉 原宿 STORE来店イベント！",
+    "place": "PRESTIGE APPAREL STORE",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/10 AIKA 札幌ニコーリフレ ゲストイベント",
+   "result": "FANZAの名前と結びつく人がいない"
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/10(土)谷あづさちゃんイベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-10",
+    "time": "17:30",
+    "names": [
+     "谷あづさ"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "谷あづさちゃんイベント！",
+    "place": "studio knot",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "明日葉みつは 3周年記念BBQオフ会",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-11",
+    "time": "16:00",
+    "names": [
+     "明日葉みつは"
+    ],
+    "agency": "tpowers",
+    "kind": "オフ会",
+    "title": "明日葉みつは 3周年記念BBQオフ会",
+    "place": "都内某所（参加者にのみお知らせします）",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/12(月祝) 波多野結衣 Nikko1500広島店/Nikko1300福山店来店",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-12",
+    "time": "11:00",
+    "names": [
+     "波多野結衣"
+    ],
+    "agency": "tpowers",
+    "kind": "来店イベント",
+    "title": "波多野結衣 Nikko1500広島店/Nikko1300福山店来店",
+    "place": "Nikko1500広島店/Nikko1300福山店",
+    "url": "https://www.t-powers.co.jp/event/34597/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/12(月祝)【SODSTAR】小笠原菜乃 イベント＠秋葉原",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-12",
+    "time": "12:00",
+    "names": [
+     "小笠原菜乃"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "【SODSTAR】小笠原菜乃 イベント＠秋葉原",
+    "place": "ラムタラMEDIA WORLD AKIBA",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/12(月) 大槻ひびき STUDIO ONE１撮影会",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-12",
+    "time": "12:00",
+    "names": [
+     "大槻ひびき"
+    ],
+    "agency": "tpowers",
+    "kind": "撮影会",
+    "title": "大槻ひびき STUDIO ONE１撮影会",
+    "place": "STUDIO ONE１",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/13(火)【SODSTAR】MINAMO 小説「母の泥舟」出版記念サイン会",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-13",
+    "time": "17:00",
+    "names": [
+     "MINAMO"
+    ],
+    "agency": "tpowers",
+    "kind": "サイン会",
+    "title": "【SODSTAR】MINAMO 小説「母の泥舟」出版記念サイン会",
+    "place": "当選者にのみお伝えいたします",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/16(金)～18(日) 宮島めい 写真展「Pleasant」",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-16",
+    "time": "16:00",
+    "names": [
+     "宮島めい"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "18(日) 宮島めい 写真展「Pleasant」",
+    "place": "GALLERY FELES OMOTESANDO",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/17(土) 波多野結衣 ウエスタン浦安やなぎ通り店来店",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-17",
+    "time": "10:00",
+    "names": [
+     "波多野結衣"
+    ],
+    "agency": "tpowers",
+    "kind": "来店イベント",
+    "title": "波多野結衣 ウエスタン浦安やなぎ通り店来店",
+    "place": "ウエスタン浦安やなぎ通り店",
+    "url": "https://www.t-powers.co.jp/event/34598/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "【プレステージ】 10月17日（土） 専属 七嶋舞 横浜 サイン会イベント",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-17",
+    "time": "12:00",
+    "names": [
+     "七嶋舞"
+    ],
+    "agency": "tpowers",
+    "kind": "サイン会",
+    "title": "【プレステージ】専属 七嶋舞 横浜 サイン会イベント",
+    "place": "買取販売市場ムーラン横浜西口店・ラムタラ 横浜駅前店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/17(土)12時~＆17時～小野坂ゆいかイベントinソフネット 本店＆ ラムタラ秋葉原店",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-17",
+    "time": "12:00",
+    "names": [
+     "小野坂ゆいか"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "12時~＆17時～小野坂ゆいかイベントinソフネット 本店＆ ラムタラ秋葉原店",
+    "place": "ソフネット本店・ラムタラ 秋葉原店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "【マザー】 10月17日(土) AIKA 兵庫イベント 開催決定！",
+   "result": "FANZAの名前と結びつく人がいない"
+  },
+  {
+   "agency": "tpowers",
+   "title": "【プレステージ】 10月17,18日（土,日） 専属 河合あすな 大阪-兵庫 撮影会イベント",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-17",
+    "time": "13:00",
+    "names": [
+     "河合あすな"
+    ],
+    "agency": "tpowers",
+    "kind": "撮影会",
+    "title": "【プレステージ】,18日（土,日） 専属 河合あすな 大阪-兵庫 撮影会イベント",
+    "place": "買取りまっくす なんば店・買取りまっくす 西宮店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/17(土)【SODSTAR】MINAMO 引退ツアーイベント＠名古屋",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-17",
+    "time": "13:00",
+    "names": [
+     "MINAMO"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "【SODSTAR】MINAMO 引退ツアーイベント＠名古屋",
+    "place": "MAX書店 名駅店（DVDマックスグループ）",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/17(土)五条恋ちゃんイベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-17",
+    "time": "17:00",
+    "names": [
+     "五条恋"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "五条恋ちゃんイベント！",
+    "place": "studio knot",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/17(土) 虹村ゆみと呑みたい！夜のオカズになる話",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-17",
+    "time": "18:00",
+    "names": [
+     "虹村ゆみ"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "虹村ゆみと呑みたい！夜のオカズになる話",
+    "place": "新宿レフカダ",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/17(土) 宮島めい バースデーオフ会",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-17",
+    "time": "19:30",
+    "names": [
+     "宮島めい"
+    ],
+    "agency": "tpowers",
+    "kind": "オフ会",
+    "title": "宮島めい バースデーオフ会",
+    "place": "東京都内",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/18(日) 今井栞奈 Flower撮影会",
+   "result": "FANZAの名前と結びつく人がいない"
+  },
+  {
+   "agency": "tpowers",
+   "title": "波多野結衣さん大槻ひびきさん共演イベント！撮影を楽しみたい人、大集合～！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-18",
+    "time": "12:00",
+    "names": [
+     "波多野結衣"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "波多野結衣さん大槻ひびきさん共演イベント！撮影を楽しみたい人、大集合～！",
+    "place": "買取販売市場ムーランアキバ",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/18(日) SOD LAND スペシャルキャスト ティーパワーズLAND開催！",
+   "result": "FANZAの名前と結びつく人がいない"
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/18(日)17時～野々浦暖『Non9 恋色バケーション』REbecca＠秋葉原",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-18",
+    "time": "17:00",
+    "names": [
+     "野々浦暖"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "17時～野々浦暖『Non9 恋色バケーション』REbecca＠秋葉原",
+    "place": "ラムタラMEDIA WORLD AKIBA",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "波多野結衣さん大槻ひびきさん共演イベント！女優さんが自撮りしてくれちゃうよ！大集合～！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-18",
+    "time": "17:00",
+    "names": [
+     "波多野結衣"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "波多野結衣さん大槻ひびきさん共演イベント！女優さんが自撮りしてくれちゃうよ！大…",
+    "place": "買取販売市場ムーランアキバ",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/21(水)依本しおりちゃんイベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-21",
+    "time": "17:30",
+    "names": [
+     "依本しおり"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "依本しおりちゃんイベント！",
+    "place": "studio knot",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "【プレステージ】 10月21日（水） 専属 瀧本雫葉 秋葉原 サイン会イベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-21",
+    "time": "18:00",
+    "names": [
+     "瀧本雫葉"
+    ],
+    "agency": "tpowers",
+    "kind": "サイン会",
+    "title": "【プレステージ】専属 瀧本雫葉 秋葉原 サイン会イベント！",
+    "place": "ラムタラ 秋葉原店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "【月野江すい】イベント 10/22（木） 【ラムタラ秋葉原】 【グローリークエスト】",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-22",
+    "time": "17:30",
+    "names": [
+     "月野江すい"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "イベント【ラムタラ秋葉原】【グローリークエスト】",
+    "place": "ラムタラ 秋葉原店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "限定50名！大人気女優黒咲華さんイベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-22",
+    "time": "17:30",
+    "names": [
+     "黒咲華"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "限定50名！大人気女優黒咲華さんイベント！",
+    "place": "芳賀書店６Fイベント会場",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/22(木) 限定50名！黒咲華さんイベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-22",
+    "time": "17:30",
+    "names": [
+     "黒咲華"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "限定50名！黒咲華さんイベント！",
+    "place": "芳賀書店６Fイベント会場",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/24(土) 九野ひなの 見面會",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-24",
+    "time": "00:00",
+    "names": [
+     "九野ひなの"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "九野ひなの 見面會",
+    "place": "香港",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "【チキチキカマー】10月24日(土)羽月乃蒼リリースイベント〜BAR1日店長イベント開催決定!!",
+   "result": "FANZAの名前と結びつく人がいない"
+  },
+  {
+   "agency": "tpowers",
+   "title": "今井栞菜 個人撮影会(名古屋)",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-24",
+    "time": "10:30",
+    "names": [
+     "今井栞菜"
+    ],
+    "agency": "tpowers",
+    "kind": "撮影会",
+    "title": "今井栞菜 個人撮影会(名古屋)",
+    "place": "アミューズスタジオ",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/24(土) 波多野結衣 Nikko大分中央店来店",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-24",
+    "time": "11:00",
+    "names": [
+     "波多野結衣"
+    ],
+    "agency": "tpowers",
+    "kind": "来店イベント",
+    "title": "波多野結衣 Nikko大分中央店来店",
+    "place": "Nikko大分中央店",
+    "url": "https://www.t-powers.co.jp/event/34599/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/24(土) 大槻ひびき Nikko1300戸畑店来店",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-24",
+    "time": "11:00",
+    "names": [
+     "大槻ひびき"
+    ],
+    "agency": "tpowers",
+    "kind": "来店イベント",
+    "title": "大槻ひびき Nikko1300戸畑店来店",
+    "place": "Nikko1300戸畑店",
+    "url": "https://www.t-powers.co.jp/event/34594/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "【プレステージ】 10月24日（土） 専属 八掛うみ 熊本 撮影会イベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-24",
+    "time": "12:00",
+    "names": [
+     "八掛うみ"
+    ],
+    "agency": "tpowers",
+    "kind": "撮影会",
+    "title": "【プレステージ】専属 八掛うみ 熊本 撮影会イベント！",
+    "place": "未知書房 菊陽バイパス店・未知書房 浜線店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "２０２６年１０月２４日（土）森沢かなオフ会開催決定！！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-24",
+    "time": "12:00",
+    "names": [
+     "森沢かな（飯岡かなこ）"
+    ],
+    "agency": "tpowers",
+    "kind": "オフ会",
+    "title": "２０２６年 森沢かなオフ会開催決定！！",
+    "place": "池袋周辺の某撮影スタジオ",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/24(土)【SODSTAR】宮島めい イベント＠兵庫",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-24",
+    "time": "12:00",
+    "names": [
+     "宮島めい"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "【SODSTAR】宮島めい イベント＠兵庫",
+    "place": "買取りまっくす 西宮店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "【プレステージ】 10月24,25（土,日） 専属 涼森れむ 岡山-兵庫 撮影会イベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-24",
+    "time": "13:00",
+    "names": [
+     "涼森れむ"
+    ],
+    "agency": "tpowers",
+    "kind": "撮影会",
+    "title": "【プレステージ】,25（土,日） 専属 涼森れむ 岡山-兵庫 撮影会イベント！",
+    "place": "買取りまっくす 岡山南店・買取りまっくす 姫路店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10月 24日（土）AIKA パチンコ来店",
+   "result": "FANZAの名前と結びつく人がいない"
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/24（土）17:00～ 希月あまねちゃんアイデアポケットデビューイベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-24",
+    "time": "17:00",
+    "names": [
+     "希月あまね"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "希月あまねちゃんアイデアポケットデビューイベント！",
+    "place": "ラムタラMEDIA WORLD AKIBA",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/24(土)鹿野あもちゃんイベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-24",
+    "time": "17:30",
+    "names": [
+     "鹿野あも"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "鹿野あもちゃんイベント！",
+    "place": "studio knot",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10月 24日（土）AIKA チェキ撮影会",
+   "result": "FANZAの名前と結びつく人がいない"
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/25(日) 小湊よつ葉 『ホンジツ島のマジックアワー 明日への手紙』南伊豆公演出演",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-25",
+    "time": "11:00",
+    "names": [
+     "小湊よつ葉"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "小湊よつ葉 『ホンジツ島のマジックアワー 明日への手紙』南伊豆公演出演",
+    "place": "南伊豆・海辺のログハウス",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/25(土) 森沢かな 撮影会",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-25",
+    "time": "11:00",
+    "names": [
+     "森沢かな（飯岡かなこ）"
+    ],
+    "agency": "tpowers",
+    "kind": "撮影会",
+    "title": "森沢かな 撮影会",
+    "place": "東京都 千代田区外神田 3-8-15 佐藤ビルB1​階",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/25(日) 波多野結衣 ＠名古屋DVDリリースイベント開催決定★☆",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-25",
+    "time": "13:00",
+    "names": [
+     "波多野結衣"
+    ],
+    "agency": "tpowers",
+    "kind": "発売記念イベント",
+    "title": "波多野結衣 ＠名古屋DVDリリースイベント開催決定★☆",
+    "place": "MAX書店 名駅店（DVDマックスグループ）",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "【プレステージ】 10月25日（日） 専属 野々浦暖 秋葉原 サイン会イベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-25",
+    "time": "13:00",
+    "names": [
+     "野々浦暖"
+    ],
+    "agency": "tpowers",
+    "kind": "サイン会",
+    "title": "【プレステージ】専属 野々浦暖 秋葉原 サイン会イベント！",
+    "place": "ラムタラ昭和通り口店・ソフネット本店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/26(月)17時30分～(19時30分新規受付終了) AIKA『Aika4』＠秋葉原",
+   "result": "FANZAの名前と結びつく人がいない"
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/28(水)黒咲華ちゃんイベント！",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-28",
+    "time": "17:30",
+    "names": [
+     "黒咲華"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "黒咲華ちゃんイベント！",
+    "place": "studio knot",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/29(木) 明日葉みつはさん イベント開催！【ラムタラエピカリアキバ店】",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-29",
+    "time": "17:00",
+    "names": [
+     "明日葉みつは"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "明日葉みつはさん イベント開催！",
+    "place": "ラムタラエピカリアキバ店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "AVS Collector’s 【辻井ほのか】 DVD発売記念イベント",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-29",
+    "time": "17:30",
+    "names": [
+     "辻井ほのか"
+    ],
+    "agency": "tpowers",
+    "kind": "発売記念イベント",
+    "title": "AVS Collector’s DVD発売記念イベント",
+    "place": "ラムタラMEDIA WORLD AKIBA",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "【小野坂ゆいか】イベント 10/30（金） 【ラムタラ秋葉原】 【グローリークエスト】",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-30",
+    "time": "17:30",
+    "names": [
+     "小野坂ゆいか"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "イベント【ラムタラ秋葉原】【グローリークエスト】",
+    "place": "ラムタラ 秋葉原店",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/31(土) 大槻ひびき YUMEYA浜松大柳店来店",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-31",
+    "time": "09:00",
+    "names": [
+     "大槻ひびき"
+    ],
+    "agency": "tpowers",
+    "kind": "来店イベント",
+    "title": "大槻ひびき YUMEYA浜松大柳店来店",
+    "place": "YUMEYA浜松大柳店",
+    "url": "https://www.t-powers.co.jp/event/34347/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "tpowers",
+   "title": "10/31(土)＆11/1(日)【SODSTAR】MINAMO 引退ツアーイベント＠北海道",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-31",
+    "time": "13:30",
+    "names": [
+     "MINAMO"
+    ],
+    "agency": "tpowers",
+    "kind": "イベント",
+    "title": "＆【SODSTAR】MINAMO 引退ツアーイベント＠北海道",
+    "place": "安市 太平店・札幌セルビデオ販売",
+    "url": "https://www.t-powers.co.jp/event/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "capsule",
+   "title": "【七沢みあ】2026年10月31日（土）12:00〜仙台イベント【パラダイスBOX仙台店】",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-31",
+    "time": "12:00",
+    "names": [
+     "七沢みあ"
+    ],
+    "agency": "capsule",
+    "kind": "イベント",
+    "title": "仙台イベント",
+    "place": "パラダイスBOX仙台店",
+    "url": "https://capsule.bz/20261031miananasawa/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "capsule",
+   "title": "【月島さくら】2026年11月28日(土)ボウリング&タコパ6周年記念オフ会",
+   "result": "採用",
+   "row": {
+    "date": "2026-11-28",
+    "names": [
+     "月島さくら"
+    ],
+    "agency": "capsule",
+    "kind": "オフ会",
+    "title": "ボウリング&タコパ6周年記念オフ会",
+    "url": "https://capsule.bz/20261128sakuratsukishima/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "capsule",
+   "title": "【桜みお】2026年10月14日(水)17:30～リリースイベントinラム昭和【アタッカーズ】",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-14",
+    "time": "17:30",
+    "names": [
+     "桜みお"
+    ],
+    "agency": "capsule",
+    "kind": "発売記念イベント",
+    "title": "リリースイベントinラム昭和",
+    "place": "アタッカーズ",
+    "url": "https://capsule.bz/20261014miosakura/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "capsule",
+   "title": "【桜みお】2026年9月26日(土)16:00～リリースイベントinラム昭和【アタッカーズ】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【大島優香】2026年11月29日(日)バースデーオフ会",
+   "result": "採用",
+   "row": {
+    "date": "2026-11-29",
+    "names": [
+     "大島優香"
+    ],
+    "agency": "capsule",
+    "kind": "オフ会",
+    "title": "バースデーオフ会",
+    "url": "https://capsule.bz/20261129yukaoshima/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "capsule",
+   "title": "【小松空】2026年9月19日(土)イベント開催！【ラムタラ秋葉原店】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【小松空】2026年11月7日(土)11時30分～『Sora 空色のファーストノート』REbecca＠秋葉原",
+   "result": "採用",
+   "row": {
+    "date": "2026-11-07",
+    "names": [
+     "小松空"
+    ],
+    "agency": "capsule",
+    "kind": "イベント",
+    "title": "11時30分～『Sora 空色のファーストノート』REbecca＠秋葉原",
+    "url": "https://capsule.bz/20261107sorakomatsu/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "capsule",
+   "title": "【小向美奈子】2026年10月10日(土)21：00～SEXY☆STARS出演決定！！（ライブチャット）",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-10",
+    "time": "21:00",
+    "names": [
+     "小向美奈子"
+    ],
+    "agency": "capsule",
+    "kind": "イベント",
+    "url": "https://capsule.bz/20261010minakokomukai/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "capsule",
+   "title": "【大島優香】2026年9月26日(土)12:00〜14:30イベントinラムタラ秋葉原",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【大島優香】2026年9月3日(木)17:30〜リリースイベントinラムタラ昭和通り【マドンナ専属】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【月島さくら】2026年10月3日(土)団体撮影会・オフ会【秋葉原Pigooスタジオ】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【小松空】2026年10月17日(土)岡山・18日(日)神戸イベント",
+   "result": "採用",
+   "row": {
+    "date": "2026-10-17",
+    "names": [
+     "小松空"
+    ],
+    "agency": "capsule",
+    "kind": "イベント",
+    "title": "岡山・18日(日)神戸イベント",
+    "url": "https://capsule.bz/20261017sorakomatsu/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "capsule",
+   "title": "【園田すい】2026年9月26日(土)撮影会【Studio apps】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【小早川怜子】2026年9月27日(日)撮影会【PLUS ONE】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【小早川怜子】2026年8月30日(日)撮影会【AMIGO】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【稲森美優】2026年9月19日(土)ワンマンライブ「美優のアイドル宣言！」開催！",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【大島優香】2026年9月19日(土)愛弓りょう×大島優香 スペシャルファンミーティング",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【恋月のあ】2026年8月21日(金)17:00〜TAMEIKE専属恋月のあ イベント！@ラムタラ秋葉原店",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【小早川怜子】2026年8月28日(金)21:00～SEXY☆STARS出演決定！！（ライブチャット）",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【春谷美雨】2026年8月15日(土)撮影会＜初登場＞【Studio apps】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【桜みお】2026年8月24日(月)18:00〜アタッカーズリリースイベント！",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【小松空】2026年8月24日(月)17:00〜イベント開催！！【買取販売市場ムーランAKIBA】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【神ユキ】2026年8月7日(金)21:00～SEXY☆STARS出演決定！！（ライブチャット）",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【大島優香】2026年8月1日(土)11:00〜神戸イベント（買取りまっくす三宮店）",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【桜みお】2026年7月29日(水)イベント開催！【ラムタラエピカリアキバ店】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【小向美奈子】2026年9月19日(土)撮影会 開催決定！",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【小早川怜子】2026年7月26日(日)撮影会【PLUS ONE】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【岡江凛】2026年8月15日(土)撮影会【Studio apps】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【加山なつこ】2026年7月25日(土)18:00〜トークイベント「加山なつこ艶夜会」開催！",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【小向美奈子】2026年8月7日(金)・8日(土)「小向美奈子と夏祭り」【肝(フォアグラ)劇場】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【大島優香】2026年7月19日(日)17:00〜Madonna水着お披露目！リリースイベント！",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【大島優香】2026年7月11日(土)12日(日)福岡イベント",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【小谷舞花】2026年8月1日(土)個人撮影会【Gスタ】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【小松空】2026年7月23日(木)イベント開催！【ラムタラエピカリアキバ店】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【野々花さわ】2026年7月25日(土)トップレス撮影会＜初登場＞【Studio apps】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "capsule",
+   "title": "【月島さくら】2026年7月4日(土)団体撮影会・オフ会【秋葉原Pigooスタジオ】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "esflat",
+   "title": "花衣つばき個人撮影会(名古屋)",
+   "result": "期間の外"
+  },
+  {
+   "agency": "esflat",
+   "title": "9/12(土) 本間あさ美さん イベント開催！【ラムタラ秋葉原店】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "esflat",
+   "title": "9/3(木) 花咲澪さん イベント開催！【ラムタラエピカリアキバ店】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "esflat",
+   "title": "9月 20日（日）花咲澪 パチンコ実践来店",
+   "result": "期間の外"
+  },
+  {
+   "agency": "esflat",
+   "title": "9/10(木) 川口桜さん 周年記念イベント開催！【ラムタラエピカリアキバ店】",
+   "result": "期間の外"
+  },
+  {
+   "agency": "esflat",
+   "title": "9月 22日（火・祝）新木希空 パチンコ来店",
+   "result": "期間の外"
+  },
+  {
+   "agency": "esflat",
+   "title": "9月 22日（火・祝）新木希空 水着チェキ撮影会",
+   "result": "期間の外"
+  },
+  {
+   "agency": "esflat",
+   "title": "9/26（土）27（日）新木希空ちゃん北海道初イベント♥",
+   "result": "期間の外"
+  },
+  {
+   "agency": "esflat",
+   "title": "11/28（土）Dream Festival in Okayama 1日目オフ会",
+   "result": "採用",
+   "row": {
+    "date": "2026-11-28",
+    "time": "16:00",
+    "names": [
+     "三好佑香",
+     "川口桜",
+     "新木希空"
+    ],
+    "agency": "esflat",
+    "kind": "オフ会",
+    "title": "Dream Festival in Okayama 1日目オフ会",
+    "place": "岡山市内某所",
+    "url": "http://www.style-1.jp/2026/09/08/11-28%ef%bc%88%e5%9c%9f%ef%bc%89dream-festival-in-okayama%e3%80%801%e6%97%a5%e7%9b%ae%e3%82%aa%e3%83%95%e4%bc%9a/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "esflat",
+   "title": "11/29（日）Dream Festival in Okayama 2日目店舗イベント",
+   "result": "採用",
+   "row": {
+    "date": "2026-11-29",
+    "time": "11:30",
+    "names": [
+     "三好佑香",
+     "川口桜",
+     "新木希空"
+    ],
+    "agency": "esflat",
+    "kind": "イベント",
+    "title": "Dream Festival in Okayama 2日目店舗イベント",
+    "place": "買取りまっくす 岡山南店",
+    "url": "http://www.style-1.jp/2026/09/08/11-29%ef%bc%88%e6%97%a5%ef%bc%89dream-festival-in-okayama%e3%80%802%e6%97%a5%e7%9b%ae%e5%ba%97%e8%88%97%e3%82%a4%e3%83%99%e3%83%b3%e3%83%88/",
+    "seen": "2026-10-05"
+   }
+  },
+  {
+   "agency": "life",
+   "title": "9/20（日）二葉エマちゃんイベントin岡山",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "9/13（日）花鳥斗架 座・宴会",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "9/19（土）姫野、久遠、水原プラスキス撮影会！！",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "8/29（土）久遠美緒ちゃんイベントin岡山",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "8/22(土)恋渕ももな イベントin山形",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "9/22(火祝) 二葉エマ with‘KANSAIPOOLFES”",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "9/20（日）椿紗枝♡下着撮影会",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "9/5（土）桜木えりか☆事務所イベント☆",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "8/8（土）恋渕ももな撮影会in京都古民家",
+   "result": "期間の外"
+  },
+  {
+   "agency": "life",
+   "title": "8/1(土)恋渕ももな イベントin川崎",
+   "result": "期間の外"
+  }
+ ]
+}
