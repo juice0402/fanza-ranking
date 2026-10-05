@@ -13,6 +13,7 @@ import http.cookiejar
 import json
 import re
 import sys
+import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -94,7 +95,22 @@ def robots(base):
 def main(argv):
     out_path = argv[1] if len(argv) > 1 else "discovery/maker_probe.json"
     res = {}
+
+    def save():
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(res, f, ensure_ascii=False, indent=1)
+
     for key, base in SITES:
+        try:
+            res[key] = probe_site(base)
+        except Exception:  # noqa: BLE001 1つのサイトの思わぬ失敗で、ほかを止めない
+            res[key] = {"base": base, "crash": traceback.format_exc()[-1500:]}
+        print(key, json.dumps({k: res[key].get(k) for k in ("robots_status", "crash")}, ensure_ascii=False)[:300])
+        save()
+
+
+def probe_site(base):
+    if True:
         entry = {"base": base}
         status, robots_text, rp = robots(base)
         entry["robots_status"] = status
@@ -145,10 +161,7 @@ def main(argv):
             r = get(op, url)
             sentences = [s.strip() for s in re.split(r"[。\n]", text_of(r.get("text", ""))) if TERM_WORDS.search(s) and 6 < len(s.strip()) < 220]
             entry.setdefault("terms", []).append({"url": url, "label": label, "status": r.get("status"), "sentences": sentences[:12]})
-        res[key] = entry
-        print(key, entry["robots_status"], entry["top"]["status"], entry["top"]["title"][:40], len(entry["event_links"]))
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(res, f, ensure_ascii=False, indent=1)
+        return entry
 
 
 if __name__ == "__main__":

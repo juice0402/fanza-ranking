@@ -19,12 +19,15 @@ jobs:
         with:
           python-version: '3.12'
       - name: Probe maker sites
-        run: python scripts/maker_probe.py discovery/maker_probe.json
+        run: |
+          mkdir -p discovery
+          python scripts/maker_probe.py discovery/maker_probe.json
       - name: Save to this branch
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p discovery && touch discovery/.keep
           git add discovery/
           git commit -m "メーカーの公式サイトの下調べ（結果）" || exit 0
           git push origin HEAD:claude/maker-probe
