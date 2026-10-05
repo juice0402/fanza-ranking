@@ -893,9 +893,30 @@ else:
 # 発売中の新作の、きょうの日付のすぐ下のコーナー（運命の作品・今週のデビュー作・誕生日の近い女優。運営者の希望。2026-10-05）
 rel_start = home_html.find('id="released"')
 days_in_rel = [m.start() for m in re.finditer(r'<section class="day"', home_html) if m.start() > rel_start and (home_html.find('id="upcoming"') < 0 or m.start() < home_html.find('id="upcoming"'))]
-corner_at = home_html.find('<div class="corner"')
+corner_at = home_html.find('<div id="pick-corner" class="corner"')
+check("おすすめのコーナーの目印（id=\"pick-corner\"）が、コーナーがあるときだけある", (corner_at >= 0) == ('class="corner"' in home_html))
 if corner_at >= 0:
     check("おすすめのコーナーは、発売中の新作の、いちばん新しい日付のすぐ下（次の日付の上）", len(days_in_rel) >= 1 and days_in_rel[0] < corner_at and (len(days_in_rel) < 2 or corner_at < days_in_rel[1]), (days_in_rel[:2], corner_at))
+
+# パソコンの右の欄（運営者の希望「右のカラム（きょうの話題）の下に全て並べる」。2026-10-05）:
+# きょうの話題・いま人気の女優・人気のジャンルは .home-side の中。おすすめのコーナーは、HTMLではスマホの場所（発売中の中）にあり、パソコンのときだけ小さなスクリプトで右の欄へ移す
+home_m = re.search(r'<div class="home( has-side)?"( style="--side-span: (\d+)")?>', home_html)
+check("トップは .home で包まれている（パソコンの2列の土台）", home_m is not None, home_m.group(0) if home_m else None)
+side_start = home_html.find('<div class="home-side">')
+side_ids = [i for i in ("hot", "genres", "topics") if f'<section id="{i}"' in home_html]
+if home_m and home_m.group(1):
+    side_end = home_html.find('<section class="find"')
+    in_side = [i for i in side_ids if side_start < home_html.find(f'<section id="{i}"') < side_end]
+    check("右の欄（.home-side）に、ある欄（いま人気の女優・人気のジャンル・きょうの話題）がすべて入り、作品を探す・発売中より前にある", side_start >= 0 and in_side == side_ids and side_end < home_html.find('id="released"'), (side_ids, in_side))
+    main_ids = [home_html.find('<section id="ranking"') >= 0, True, home_html.find('<section id="sale"') >= 0, True, home_html.find('<section id="upcoming"') >= 0]
+    check(f"右の欄がまたぐ行の数（--side-span: {home_m.group(3)}）= 左の欄の欄の数（TOP3・作品を探す・セール・発売中・予約のうち、あるもの）", home_m.group(3) is not None and int(home_m.group(3)) == sum(main_ids), (home_m.group(3), main_ids))
+    if corner_at >= 0:
+        move = re.search(r"</div>\s*<script>(\(function\(\)\{var c=document\.getElementById\('pick-corner'\)[^<]*)</script>", home_html[corner_at:])
+        check("パソコンでは、おすすめのコーナーを右の欄（#side-corner）へ移す小さなスクリプトが、コーナーのすぐ後ろにある（幅が変われば戻す）",
+              '<div id="side-corner" class="side-corner"></div>' in home_html[side_start:home_html.find('<section class="find"')] and '<div id="corner-home" class="corner-home">' in home_html[:corner_at]
+              and move is not None and "min-width: 960px" in move.group(1) and "'side-corner'" in move.group(1) and "'corner-home'" in move.group(1) and "addEventListener('change'" in move.group(1))
+else:
+    check("右の欄に入れるものが無い日は、右の欄を作らない", side_start < 0 and not side_ids)
 
 # 運命の作品（スロットで3本。ひとことコメントのある・作品ページのある・発売済みの人気作。未成年を連想させるタイトルは入れない）
 gacha_m = re.search(r'<script type="application/json" id="gacha-data">(.*?)</script>', read_raw(index_path), re.S)

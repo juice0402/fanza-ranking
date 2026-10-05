@@ -17,7 +17,7 @@ const mdText = (md) => `${+md.slice(0, 2)}月${+md.slice(3, 5)}日`;
 const whenText = (b) => (b.days === 0 ? 'きょうが誕生日' : b.days === 1 ? `あす${mdText(b.md)}が誕生日` : `${mdText(b.md)}が誕生日（あと${b.days}日）`);
 ---
 
-<div class="corner" aria-label="おすすめ">
+<div id="pick-corner" class="corner" aria-label="おすすめ">
   {gacha.length >= 3 && (
     <section id="gacha" class="corner-block gacha" aria-labelledby="gacha-title" hidden>
       <div class="corner-head">

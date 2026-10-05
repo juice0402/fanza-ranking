@@ -94,6 +94,12 @@ const saleCamps = saleGroups(all, sale, today, 0, { genres: contentGenres });
 const saleTotal = saleCamps.reduce((n, g) => n + g.total, 0);
 const saleDay = sale.date ? dateParts(sale.date) : null;
 import { assetUrl } from '../lib/assets.js';
+// パソコン（960px〜）の右の欄（きょうの話題 → いま人気の女優 → 人気のジャンル → おすすめのコーナー）。運営者の希望「右のカラム（きょうの話題）の下に全て並べる」。2026-10-05。
+// 右の欄は、左の欄（TOP3・作品を探す・セール・発売中・予約）の行をまたいで縦に伸ばす。またぐ行の数 = 左の欄の欄の数（site.css の .home.has-side）
+const hasSide = hot.length > 0 || genres.length > 0 || topics.length > 0 || hasCorner;
+const mainCount = [top.length > 0, true, saleCamps.length > 0, true, upcomingGroups.length > 0].filter(Boolean).length;
+// おすすめのコーナーを、パソコンでは右の欄へ移す小さなスクリプト（コーナーのすぐ後ろで動くので、表示がずれない。幅が変われば戻す）
+const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner'),s=document.getElementById('side-corner'),h=document.getElementById('corner-home');if(!c||!s||!h||!window.matchMedia)return;var m=window.matchMedia('(min-width: 960px)');function place(){var t=m.matches?s:h;if(c.parentNode!==t)t.appendChild(c);}place();if(m.addEventListener)m.addEventListener('change',place);else if(m.addListener)m.addListener(place);})();";
 ---
 
 <Base
@@ -105,7 +111,9 @@ import { assetUrl } from '../lib/assets.js';
   <div class="wrap">
     <a id="fav-banner" class="fav-banner" href="/favorites/" hidden></a>
 
-    <div class={topics.length > 0 ? 'today has-topics' : 'today'}>
+    {/* スマホ: 見出し → TOP3 → いま人気の女優 → 人気のジャンル → きょうの話題 → 作品を探す → セール → 発売中（いちばん新しい日付の下におすすめのコーナー）→ 予約 の1列。
+        パソコン: 見出しを横いっぱいに、左に TOP3 → 作品を探す → セール → 発売中 → 予約、右の欄（.home-side）に きょうの話題 → いま人気の女優 → 人気のジャンル → おすすめのコーナー */}
+    <div class={hasSide ? 'home has-side' : 'home'} style={hasSide ? `--side-span: ${mainCount}` : undefined}>
       <header class="today-head">
         <p class="today-date"><time datetime={today}>{day.m}月{day.d}日（{day.wd}）</time>の更新</p>
         <h1 class="today-title">きょうのFANZA新作</h1>
@@ -131,6 +139,8 @@ import { assetUrl } from '../lib/assets.js';
         </section>
       )}
 
+      {hasSide && (
+      <div class="home-side">
       {hot.length > 0 && (
         <section id="hot" class="today-hot" aria-labelledby="hot-title">
           <div class="today-sec-head">
@@ -158,6 +168,10 @@ import { assetUrl } from '../lib/assets.js';
           <TopicList topics={topics} />
         </section>
       )}
+      {/* おすすめのコーナーは、パソコンのときだけ、ここへ移す（下の小さなスクリプト。スマホでは、発売中のいちばん新しい日付のすぐ下のまま） */}
+      {hasCorner && <div id="side-corner" class="side-corner"></div>}
+      </div>
+      )}
 
       <section class="find" aria-labelledby="find-title">
         <h2 id="find-title" class="find-title">作品を探す</h2>
@@ -175,7 +189,6 @@ import { assetUrl } from '../lib/assets.js';
           {latestRoundup && <a class="chip-link" href={weeklyPath(latestRoundup.week_start)}>週のまとめ</a>}
         </nav>
       </section>
-    </div>
 
     {saleCamps.length > 0 && (
       <section id="sale" class="section" aria-labelledby="sale-title" data-sale-group>
@@ -196,7 +209,13 @@ import { assetUrl } from '../lib/assets.js';
       {releasedGroups.length > 0
         ? <>
             <DaySection groups={releasedGroups.slice(0, 1)} />
-            {hasCorner && <PickCorner gacha={gacha} debuts={debuts} birthdays={birthdays} />}
+            {hasCorner && (
+              <div id="corner-home" class="corner-home">
+                <PickCorner gacha={gacha} debuts={debuts} birthdays={birthdays} />
+              </div>
+            )}
+            {/* パソコン（960px〜）では、おすすめのコーナーを右の欄（#side-corner）へ移す。ページを読みながらすぐ動かすので、表示がずれない。画面の幅が変わったら（iPadの縦横など）戻す */}
+            {hasCorner && hasSide && <script is:inline set:html={CORNER_MOVE_JS} />}
             <DaySection groups={releasedGroups.slice(1)} />
           </>
         : <p class="empty">発売中の作品を準備しています。毎日の更新をお待ちください。</p>}
@@ -214,6 +233,7 @@ import { assetUrl } from '../lib/assets.js';
         <DaySection groups={upcomingGroups} />
       </section>
     )}
+    </div>
   </div>
   {saleCamps.length > 0 && <script is:inline src={assetUrl('/sale.js')} defer></script>}
   {gacha.length >= 3 && releasedGroups.length > 0 && <script is:inline src={assetUrl('/gacha.js')} defer></script>}
