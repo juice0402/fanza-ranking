@@ -18,8 +18,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Survey news and event pages
-        run: python scripts/news_discover.py discovery/news.json | tee discovery/news.txt
+      - name: Probe event pages
+        run: python scripts/events_probe.py discovery/events_probe.json
       - name: Save to this branch
         if: always()
         run: |
