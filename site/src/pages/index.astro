@@ -34,6 +34,7 @@ import { SALE_PATH, saleGroups } from '../lib/sale.js';
 import { TOP_SHOWN, birthdaySoon, buildTopics, hotActresses, hotGenres, topEntries, weekDebuts } from '../lib/topics.js';
 import { gachaPool } from '../lib/gacha.js';
 import PickCorner from '../components/PickCorner.astro';
+import GachaCorner from '../components/GachaCorner.astro';
 import SideWeekly from '../components/SideWeekly.astro';
 import SideMonths from '../components/SideMonths.astro';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
@@ -91,11 +92,13 @@ const hotNoVr = hotActresses(all, today, { excludeVr: true, hasFace });
 // 人気のジャンル（いま人気の女優の真下。ジャンルのページの一覧から、同じ数え方で3つ）
 const genres = hotGenres(all, today, { allowed: contentGenres });
 
-// 発売中の新作の、きょうの日付のすぐ下のコーナー（運営者の希望。2026-10-05）: 運命の作品（スロットで3本。public/gacha.js）・今週のデビュー作・誕生日の近い女優
+// 発売中の新作の、きょうの日付のすぐ下のコーナー（運営者の希望。2026-10-05）: 今週のデビュー作・誕生日の近い女優
+// 運命の作品（スロットで3本。public/gacha.js）は、スマホでは発売中の新作のいちばん下（予約受付中の真上。運営者の希望。2026-10-05 夜）
 const gacha = gachaPool(all, paged, today);
 const debuts = weekDebuts(all, today);
 const birthdays = birthdaySoon(all, today, { birthOf: birthOfName, hasFace });
-const hasCorner = gacha.length >= 3 || debuts.length > 0 || birthdays.length > 0;
+const hasCorner = debuts.length > 0 || birthdays.length > 0;
+const hasGacha = gacha.length >= 3 && released.length > 0;
 
 // セール中の特集（FANZAのキャンペーンごとのカード。終わりが近い順。終わった時刻をすぎたものは、ブラウザで隠して次を繰り上げる /sale.js）
 const saleCamps = saleGroups(all, sale, today, 0, { genres: contentGenres });
@@ -106,8 +109,12 @@ import { assetUrl } from '../lib/assets.js';
 // 運営者の希望「右のカラム（きょうの話題）の下に全て並べる」「作品を探すも右のカラムの上に」。2026-10-05。作品を探すがいつもあるので、右の欄はいつもある。
 // 右の欄は、左の欄（TOP3・セール・発売中・予約）の行をまたいで縦に伸ばす。またぐ行の数 = 左の欄の欄の数（site.css の .home.has-side）
 const mainCount = [top.length > 0, saleCamps.length > 0, true, upcomingGroups.length > 0].filter(Boolean).length;
-// おすすめのコーナーを、パソコンでは右の欄へ移す小さなスクリプト（コーナーのすぐ後ろで動くので、表示がずれない。幅が変われば戻す）
-const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner'),s=document.getElementById('side-corner'),h=document.getElementById('corner-home');if(!c||!s||!h||!window.matchMedia)return;var m=window.matchMedia('(min-width: 960px)');function place(){var t=m.matches?s:h;if(c.parentNode!==t)t.appendChild(c);}place();if(m.addEventListener)m.addEventListener('change',place);else if(m.addListener)m.addListener(place);})();";
+// おすすめのコーナー・運命の作品を、パソコンでは右の欄（#side-corner）へ移す小さなスクリプト（それぞれのすぐ後ろで動くので、表示がずれない。幅が変われば戻す）。
+// 運命の作品は、HTMLではコーナーより後ろにあるが、右の欄ではいちばん上（first: 先頭に入れる）
+const moveJs = (id, home, first = false) =>
+  `(function(){var c=document.getElementById('${id}'),s=document.getElementById('side-corner'),h=document.getElementById('${home}');if(!c||!s||!h||!window.matchMedia)return;var m=window.matchMedia('(min-width: 960px)');function place(){var t=m.matches?s:h;if(c.parentNode===t)return;if(t===s&&${first ? 'true' : 'false'})t.insertBefore(c,t.firstChild);else t.appendChild(c);}place();if(m.addEventListener)m.addEventListener('change',place);else if(m.addListener)m.addListener(place);})();`;
+const CORNER_MOVE_JS = moveJs('pick-corner', 'corner-home');
+const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
 ---
 
 <Base
@@ -196,9 +203,9 @@ const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner')
           )}
         </section>
       )}
-      {/* おすすめのコーナーは、パソコンのときだけ、ここへ移す（下の小さなスクリプト。スマホでは、発売中のいちばん新しい日付のすぐ下のまま） */}
+      {/* 運命の作品・おすすめのコーナーは、パソコンのときだけ、ここへ移す（下の小さなスクリプト。スマホでは、発売中の新作の中のまま） */}
       <SideWeekly />
-      {hasCorner && <div id="side-corner" class="side-corner"></div>}
+      {(hasCorner || hasGacha) && <div id="side-corner" class="side-corner"></div>}
       <SideMonths />
       </div>
 
@@ -224,7 +231,7 @@ const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner')
             <DaySection groups={releasedGroups.slice(0, 1)} />
             {hasCorner && (
               <div id="corner-home" class="corner-home">
-                <PickCorner gacha={gacha} debuts={debuts} birthdays={birthdays} />
+                <PickCorner debuts={debuts} birthdays={birthdays} />
               </div>
             )}
             {/* パソコン（960px〜）では、おすすめのコーナーを右の欄（#side-corner）へ移す。ページを読みながらすぐ動かすので、表示がずれない。画面の幅が変わったら（iPadの縦横など）戻す */}
@@ -235,6 +242,13 @@ const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner')
       {hasMore && (
         <p class="more"><a class="btn btn-quiet" href={archivePath(1)}>過去の作品をすべて見る</a></p>
       )}
+      {/* 運命の作品: スマホでは、発売中の新作を見終わったところ（予約受付中の真上）。パソコンでは右の欄のいちばん上へ移す */}
+      {hasGacha && (
+        <div id="gacha-home" class="gacha-home">
+          <GachaCorner gacha={gacha} />
+        </div>
+      )}
+      {hasGacha && <script is:inline set:html={GACHA_MOVE_JS} />}
     </section>
 
     {upcomingGroups.length > 0 && (
@@ -249,5 +263,5 @@ const CORNER_MOVE_JS = "(function(){var c=document.getElementById('pick-corner')
     </div>
   </div>
   {saleCamps.length > 0 && <script is:inline src={assetUrl('/sale.js')} defer></script>}
-  {gacha.length >= 3 && releasedGroups.length > 0 && <script is:inline src={assetUrl('/gacha.js')} defer></script>}
+  {hasGacha && <script is:inline src={assetUrl('/gacha.js')} defer></script>}
 </Base>

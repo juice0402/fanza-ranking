@@ -2951,16 +2951,17 @@ html.lightbox-open {
   }
 }
 
-/* ---------- おすすめのコーナー（発売中の新作の、きょうの日付のすぐ下）: 運命の作品・今週のデビュー作・誕生日の近い女優 ----------
-   日付ごとの棚とは別のものだと分かるよう、黄色い点線で囲んだ「棚のPOPコーナー」にする */
+/* ---------- おすすめのコーナー（発売中の新作の、きょうの日付のすぐ下）: 今週のデビュー作・誕生日の近い女優 ----------
+   囲みの枠は付けない（運営者の希望「黄色の点線で囲む必要はない」。2026-10-05 夜）。日付ごとの棚とは、黄色い見出しで分ける。
+   運命の作品（.gacha-solo）は、スマホでは発売中の新作のいちばん下（予約受付中の真上）に別に置く */
 .corner {
   display: grid;
-  gap: 30px;
-  margin: 30px 0 4px;
-  padding: 20px 16px 24px;
-  border: 2px dashed rgba(255, 210, 63, 0.55);
-  border-radius: var(--r-panel);
-  background: var(--ink-deep);
+  gap: 36px;
+  margin: 36px 0 4px;
+}
+
+.gacha-solo {
+  margin-top: 40px;
 }
 
 .corner-head {
@@ -3150,10 +3151,6 @@ a.reel-card:hover .reel-title {
 }
 
 @media (min-width: 640px) {
-  .corner {
-    padding: 24px 24px 28px;
-  }
-
   .corner-title {
     font-size: 21px;
   }
@@ -3177,14 +3174,13 @@ a.reel-card:hover .reel-title {
   }
 }
 
-/* パソコン（960px〜）: 運命の作品｜今週のデビュー作｜誕生日の近い女優 を横に並べる（縦に積むと、右半分がスカスカだった。運営者の希望。2026-10-05）。
-   運命の作品はボタンもあるので少し広く。上の基本の形（display: grid）より後ろに書くこと */
+/* パソコン（960px〜）で、右の欄へ移らなかったとき（JavaScript が使えないなど）: 今週のデビュー作｜誕生日の近い女優 を横に並べる。
+   上の基本の形（display: grid）より後ろに書くこと */
 @media (min-width: 960px) {
   .corner {
     display: flex;
     align-items: stretch;
     gap: 28px;
-    padding: 22px 24px 26px;
   }
 
   .corner-block {
@@ -3192,14 +3188,9 @@ a.reel-card:hover .reel-title {
     min-width: 0;
   }
 
-  .corner .gacha {
-    flex-grow: 1.35;
-  }
-
-  /* 区切りの線は、前に見えている欄があるときだけ（運命の作品は JavaScript が出すまで隠れている） */
   .corner .corner-block:not([hidden]) ~ .corner-block {
     padding-left: 28px;
-    border-left: 1px dashed rgba(255, 210, 63, 0.3);
+    border-left: 1px solid var(--line);
   }
 
   .corner .slot-reels,
@@ -3273,13 +3264,10 @@ a.reel-card:hover .reel-title {
     align-items: flex-start;
   }
 
-  /* おすすめのコーナー: 右の欄では、点線の囲みをやめて、ほかの欄と同じ形に */
+  /* おすすめのコーナー: 右の欄では、ほかの欄と同じ形に */
   .home-side .corner {
     display: block;
     margin: 0;
-    padding: 0;
-    border: 0;
-    background: none;
   }
 
   .home-side .corner .corner-block,

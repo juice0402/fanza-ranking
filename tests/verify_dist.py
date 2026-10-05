@@ -974,13 +974,22 @@ if want_genres:
 else:
     check("人気のジャンルが無いときは、欄を出さない", 'id="genres"' not in home_html)
 
-# 発売中の新作の、きょうの日付のすぐ下のコーナー（運命の作品・今週のデビュー作・誕生日の近い女優。運営者の希望。2026-10-05）
+# 発売中の新作の、きょうの日付のすぐ下のコーナー（今週のデビュー作・誕生日の近い女優。運営者の希望。2026-10-05）。
+# 運命の作品は、発売中の新作のいちばん下（予約受付中の真上。2026-10-05 夜）
 rel_start = home_html.find('id="released"')
 days_in_rel = [m.start() for m in re.finditer(r'<section class="day"', home_html) if m.start() > rel_start and (home_html.find('id="upcoming"') < 0 or m.start() < home_html.find('id="upcoming"'))]
 corner_at = home_html.find('<div id="pick-corner" class="corner"')
 check("おすすめのコーナーの目印（id=\"pick-corner\"）が、コーナーがあるときだけある", (corner_at >= 0) == ('class="corner"' in home_html))
 if corner_at >= 0:
     check("おすすめのコーナーは、発売中の新作の、いちばん新しい日付のすぐ下（次の日付の上）", len(days_in_rel) >= 1 and days_in_rel[0] < corner_at and (len(days_in_rel) < 2 or corner_at < days_in_rel[1]), (days_in_rel[:2], corner_at))
+gacha_home_at = home_html.find('<div id="gacha-home" class="gacha-home">')
+if gacha_home_at >= 0:
+    up_at = home_html.find('<section id="upcoming"')
+    more_at = home_html.find('過去の作品をすべて見る', rel_start)
+    check("運命の作品は、発売中の新作のいちばん下（日付の棚と「過去の作品をすべて見る」の後ろ・予約受付中の前）にあり、おすすめのコーナーの中には無い",
+          bool(days_in_rel) and days_in_rel[-1] < gacha_home_at and (more_at < 0 or more_at < gacha_home_at) and (up_at < 0 or gacha_home_at < up_at)
+          and home_html.find('<section id="gacha"') > gacha_home_at and (corner_at < 0 or home_html.find('<section id="gacha"') > home_html.find('</div>', corner_at)),
+          (days_in_rel[-1:] , gacha_home_at, up_at))
 
 # パソコンの右の欄（運営者の希望「右のカラム（きょうの話題）の下に全て並べる」「作品を探すも右のカラムの上に」「週のまとめは概要だけ」「月のまとめはバックナンバー」。2026-10-05）:
 # 作品を探す・いま人気の女優・人気のジャンル・きょうの話題・週のまとめ・月のまとめは .home-side の中。おすすめのコーナーは、HTMLではスマホの場所（発売中の中）にあり、パソコンのときだけ小さなスクリプトで右の欄へ移す
@@ -1022,6 +1031,12 @@ if corner_at >= 0:
           '<div id="side-corner" class="side-corner"></div>' in side_html and '<div id="corner-home" class="corner-home">' in home_html[:corner_at]
           and move is not None and "min-width: 960px" in move.group(1) and "'side-corner'" in move.group(1) and "'corner-home'" in move.group(1) and "addEventListener('change'" in move.group(1))
 
+if gacha_home_at >= 0:
+    gmove = re.search(r"</div>\s*<script>(\(function\(\)\{var c=document\.getElementById\('gacha'\)[^<]*)</script>", home_html[gacha_home_at:])
+    check("パソコンでは、運命の作品も右の欄の先頭（今週のデビュー作の上）へ移す小さなスクリプトが、すぐ後ろにある（幅が変われば戻す）",
+          '<div id="side-corner" class="side-corner"></div>' in side_html and gmove is not None and "'gacha-home'" in gmove.group(1)
+          and "insertBefore(c,t.firstChild)" in gmove.group(1) and "t===s&&true" in gmove.group(1) and "addEventListener('change'" in gmove.group(1))
+
 # 運命の作品（スロットで3本。ひとことコメントのある・作品ページのある・発売済みの人気作。未成年を連想させるタイトルは入れない）
 gacha_m = re.search(r'<script type="application/json" id="gacha-data">(.*?)</script>', read_raw(index_path), re.S)
 if gacha_m:
@@ -1034,7 +1049,7 @@ if gacha_m:
     gacha_sec = re.search(r'<section id="gacha".*?</section>', home_html, re.S)
     check("運命の作品: 見出し「運命の作品」・窓が3つ・「まわす」ボタン・最初は隠れている（JavaScript が出す）・スクリプト（gacha.js）がある",
           bool(gacha_sec) and 'id="gacha-title" class="corner-title">運命の作品</h3>' in gacha_sec.group(0) and gacha_sec.group(0).count('class="reel"') == 3 and ">まわす</button>" in gacha_sec.group(0)
-          and re.search(r'<section id="gacha"[^>]*\bhidden\b', home_html) is not None and 'src="/gacha.js?v=' in home_html and os.path.isfile(os.path.join(DIST, "gacha.js")) and corner_at < home_html.find('id="gacha"'))
+          and re.search(r'<section id="gacha"[^>]*\bhidden\b', home_html) is not None and 'src="/gacha.js?v=' in home_html and os.path.isfile(os.path.join(DIST, "gacha.js")) and gacha_home_at >= 0)
     check("運命の作品: ページに入れたデータの中に、タグの始まり（<）が無い", "<" not in gacha_m.group(1))
 else:
     check("運命の作品の候補が無いときは、欄もスクリプトも出さない", 'id="gacha"' not in home_html and 'src="/gacha.js?v=' not in home_html)
@@ -1296,6 +1311,8 @@ for css_path in glob.glob(os.path.join(DIST, "**", "*.css"), recursive=True):
 root_clip = any("html" in sels and re.search(r"overflow-x\s*:\s*(hidden|clip)", body) for sels, body in css_rules)
 movie_clip = any(".movie-box" in sels and re.search(r"contain\s*:\s*paint", body) and re.search(r"isolation\s*:\s*isolate", body) for sels, body in css_rules)
 check("CSS: html に overflow-x（hidden か clip）がある（スマホで横に動かせない）", root_clip)
+corner_frames = [body for sels, body in css_rules if (".corner" in sels or ".gacha-solo" in sels) and re.search(r"border(?:-[a-z]+)?\s*:[^;]*dashed", body)]
+check("CSS: おすすめのコーナー・運命の作品に、点線の囲みが無い（運営者の希望「囲む必要はない」。2026-10-05 夜）", not corner_frames, corner_frames[:1])
 chip_rules = [body for sels, body in css_rules if ".pr-chip" in sels]
 chip_hidden = [b for b in chip_rules if re.search(r"display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0(?![.\d])|clip\s*:|height\s*:\s*0", b)]
 chip_small = [b for b in chip_rules for m in [re.search(r"font-size\s*:\s*(\d+(?:\.\d+)?)px", b)] if m and float(m.group(1)) < 11]
