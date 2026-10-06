@@ -3,6 +3,7 @@
 // 隠す動き自体は CSS（html.hide-vr [data-vr]・html.only-solo の data-solo の無いマス を display: none）。ページを開いた瞬間にチラつかないよう、
 // html に印を付ける処理は、<head> の中の小さなスクリプト（site/src/layouts/Base.astro）が先にやる。
 // ここでは、スイッチの表示と、日付ごとのまとまり（.day）の本数・空の日付の隠し方、TOP3など（.rank-podium）の差し替え（隠れない先頭の3本・メダルの色と順位の数字）をやる。
+// 「もっと見る」でたたむ一覧（[data-fold]。トップの予約受付中）も、絞り込みで隠れないマスを先頭から数えて、たたむ所を付け直す（運営者の「下のほうが重い」。2026-10-07）。
 // JavaScript や localStorage が使えないときは、スイッチを出さない（作品はそのまま出る）。
 (function () {
   var KEY = 'hide-vr';
@@ -46,8 +47,32 @@
     return { shown: shown, visible: shown.length };
   }
 
+  // 「もっと見る」でたたむ一覧: 絞り込みで隠れないマスを先頭から数えて、n 本より後ろをたたむ（開いていれば、たたまない）。
+  // hidden[i]: i番目のマスが絞り込みで隠れるか。off[i]: i番目をたたむか / rest: たたんだ本数（「あと○本」）
+  function foldLayout(hidden, n, open) {
+    var off = [];
+    var seen = 0;
+    var rest = 0;
+    for (var i = 0; i < hidden.length; i++) {
+      if (hidden[i]) {
+        off.push(false);
+        continue;
+      }
+      seen += 1;
+      var fold = !open && n > 0 && seen > n;
+      off.push(fold);
+      if (fold) rest += 1;
+    }
+    return { off: off, rest: rest };
+  }
+
+  // 一部がたたまれている日付の本数の文字（「3本（全8本）」）。visible: 絞り込みで隠れない本数 / folded: そのうちたたんだ本数 / note: filterNote の注記
+  function foldCountText(visible, folded, note) {
+    return visible - folded + '本（全' + visible + '本）' + (note || '');
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { KEY: KEY, CLASS: CLASS, SOLO_KEY: SOLO_KEY, SOLO_CLASS: SOLO_CLASS, filterNote: filterNote, cellHidden: cellHidden, dayCountText: dayCountText, dayIsEmpty: dayIsEmpty, rankLayout: rankLayout }; // tests/test_search.mjs 用
+    module.exports = { KEY: KEY, CLASS: CLASS, SOLO_KEY: SOLO_KEY, SOLO_CLASS: SOLO_CLASS, filterNote: filterNote, cellHidden: cellHidden, dayCountText: dayCountText, dayIsEmpty: dayIsEmpty, rankLayout: rankLayout, foldLayout: foldLayout, foldCountText: foldCountText }; // tests/test_search.mjs 用
     return;
   }
   if (typeof document === 'undefined') return;
@@ -98,6 +123,42 @@
     }
   }
 
+  // 「もっと見る」でたたむ一覧（[data-fold]）: たたむマスに fold-off、全部がたたまれた日付に fold-empty。ボタンの「あと○本」も付け直す
+  function updateFolds(s) {
+    var boxes = document.querySelectorAll('[data-fold]');
+    for (var i = 0; i < boxes.length; i++) {
+      var box = boxes[i];
+      var cells = box.querySelectorAll('.shelf-cell');
+      var flags = [];
+      for (var j = 0; j < cells.length; j++) flags.push(isHiddenCell(cells[j], s));
+      var layout = foldLayout(flags, parseInt(box.getAttribute('data-fold'), 10) || 0, box.classList.contains('is-open'));
+      for (var k = 0; k < cells.length; k++) cells[k].classList.toggle('fold-off', layout.off[k]);
+      var days = box.querySelectorAll('.day');
+      for (var d = 0; d < days.length; d++) {
+        var dayCells = days[d].querySelectorAll('.shelf-cell');
+        var anyFolded = false;
+        var anyShown = false;
+        for (var c = 0; c < dayCells.length; c++) {
+          if (dayCells[c].classList.contains('fold-off')) anyFolded = true;
+          else if (!isHiddenCell(dayCells[c], s)) anyShown = true;
+        }
+        days[d].classList.toggle('fold-empty', anyFolded && !anyShown);
+      }
+      var more = box.querySelector('[data-fold-more]');
+      if (more) {
+        more.hidden = layout.rest === 0;
+        var rest = more.querySelector('[data-fold-rest]');
+        if (rest) rest.textContent = String(layout.rest);
+      }
+    }
+  }
+
+  function countFolded(cells) {
+    var n = 0;
+    for (var i = 0; i < cells.length; i++) if (cells[i].classList.contains('fold-off')) n++;
+    return n;
+  }
+
   function updateDays(s) {
     var note = filterNote(s.hideVr, s.onlySolo);
     var days = document.querySelectorAll('.day');
@@ -105,10 +166,11 @@
       var day = days[i];
       var cells = day.querySelectorAll('.shelf-cell');
       var hidden = note ? countHidden(cells, s) : 0;
+      var folded = countFolded(cells);
       var counter = day.querySelector('.divider-count');
       if (counter) {
         if (!counter.hasAttribute('data-orig')) counter.setAttribute('data-orig', counter.textContent);
-        counter.textContent = dayCountText(counter.getAttribute('data-orig'), cells.length, hidden, note);
+        counter.textContent = folded > 0 && !day.classList.contains('fold-empty') ? foldCountText(cells.length - hidden, folded, note) : dayCountText(counter.getAttribute('data-orig'), cells.length, hidden, note);
       }
       day.classList.toggle('vr-empty', Boolean(note) && dayIsEmpty(cells.length, hidden));
     }
@@ -164,6 +226,7 @@
     root.classList.toggle(CLASS, s.hideVr);
     root.classList.toggle(SOLO_CLASS, s.onlySolo);
     updateButtons(s);
+    updateFolds(s);
     updateDays(s);
     updateGroups(s);
     updateRanking(s);
@@ -184,5 +247,17 @@
     var s = state();
     if (target.closest('[data-vr-toggle]')) set({ hideVr: !s.hideVr, onlySolo: s.onlySolo });
     else if (target.closest('[data-solo-toggle]')) set({ hideVr: s.hideVr, onlySolo: !s.onlySolo });
+    else if (target.closest('[data-fold-more]')) {
+      // 「もっと見る」: たたんだ残りを出し、増えた分の先頭の作品へフォーカスを移す（ボタンが消えても、フォーカスがページの先頭に飛ばないように）
+      var box = target.closest('[data-fold]');
+      if (!box) return;
+      var first = null;
+      var cells = box.querySelectorAll('.shelf-cell.fold-off');
+      for (var i = 0; i < cells.length && !first; i++) if (!isHiddenCell(cells[i], s)) first = cells[i];
+      box.classList.add('is-open');
+      apply(s);
+      var link = first && first.querySelector('a');
+      if (link) link.focus();
+    }
   });
 })();

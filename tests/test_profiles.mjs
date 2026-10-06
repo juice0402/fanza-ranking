@@ -157,6 +157,7 @@ check('古いランキング: 7日前までは出し、8日前からは出さな
 check('無い・壊れている・日付が変・使える行が0本のときは null', [null, undefined, {}, [], 'x', { date: '2026-10-03' }, { date: '昨日', items: [] }, { date: '2026-10-03', items: [] }, { date: '2026-10-03', items: [{ cid: 'x', title: 't', url: 'https://evil.example/' }] }].every((v) => P.rankingForDisplay(v, today) === null));
 
 console.log('\n■ 女優検索の絞り込み（ブラウザ側）');
+check('名前の照らし合わせ: ひらがなだけの文字は、そのまま（そろえても同じ）', ['さくらゆの', 'あいだー', ''].every((t) => S.normalizeText(t) === t) && S.normalizeText('さくら ゆの') === 'さくらゆの' && S.normalizeText('サクラ') === 'さくら');
 check('名前の照らし合わせ: カタカナ/ひらがな・全角/半角・空白や中点を区別しない', S.normalizeText('テスト はなこ') === S.normalizeText('てすと・ハナコ') && S.normalizeText('テスト はなこ') === 'てすとはなこ' && S.normalizeText('ＡＢＣ') === 'abc' && S.normalizeText(null) === '');
 check('範囲の読み取り（下限〜上限・どちらかだけ・逆なら入れ替え）', JSON.stringify(plain(S.parseRange('20-24'))) === JSON.stringify({ min: 20, max: 24 }) && JSON.stringify(plain(S.parseRange('-19'))) === JSON.stringify({ min: null, max: 19 }) && JSON.stringify(plain(S.parseRange('40-'))) === JSON.stringify({ min: 40, max: null }) && JSON.stringify(plain(S.parseRange('90-80'))) === JSON.stringify({ min: 80, max: 90 }));
 check('範囲: 空・形が違う・範囲外の値は絞り込まない（null）', ['', '-', '20', 'abc', '20-24-30', null, undefined].every((v) => S.parseRange(v) === null) && S.parseRange('5-9', 18, 80) === null);
@@ -189,6 +190,15 @@ check('並び順: バストの大きい順（載っていない人は後ろ）',
 check('並び順: カップ・若い順・身長・ウエストの細い順・新しく登録された順', names({ sort: 'cup' }).startsWith('名簿だけの人,あいう,大人の人') && names({ sort: 'young' }).startsWith('桜ゆの,名簿だけの人,テスト花子') && names({ sort: 'tall' }).startsWith('あいう,大人の人,名簿だけの人') && names({ sort: 'waist' }).startsWith('桜ゆの,テスト花子') && names({ sort: 'newest' }).startsWith('名簿だけの人,あいう'), [names({ sort: 'cup' }), names({ sort: 'young' })].join(' / '));
 check('並び順: 名前順は「読み」の順（読みが無い人は名前で）・知らない並び順は作品の多い順', names({ sort: 'name' }).startsWith('あいう,大人の人,桜ゆの') && names({ sort: 'xxx' }) === names({}), names({ sort: 'name' }));
 check('元の配列は並べ替えない・条件が無い値（undefined）でも落ちない', rows[0].n === 'テスト花子' && S.filterRows(rows, undefined).length === 6 && S.filterRows([], {}).length === 0);
+// 速さのための覚えておく仕組み（2026-10-07）: 照らし合わせ用の文字は1人1回だけ作る・並べ替えた一覧は並び順ごとに1回だけ作る。結果は前と同じであること
+const big = Array.from({ length: 400 }, (_, i) => ({ n: `${['テスト', 'さくら', '桜', 'あい'][i % 4]}${i}`, r: i % 3 ? `${['てすと', 'さくら', 'さくら', 'あい'][i % 4]}${i}` : undefined, id: String(5000 + ((i * 37) % 400)), k: i % 7, a: 18 + (i % 30), b: 75 + (i % 30), c: 'ABCDEFGHIJKLM'[i % 13], h: 145 + (i % 30) }));
+const naive = (q) => { const text = S.normalizeText(q.q); return big.filter((r) => !text || S.normalizeText(r.n).includes(text) || S.normalizeText(r.r).includes(text)).filter((r) => S.filterRows([r], { ...q, q: '' }).length === 1); };
+const sameOrder = (q) => { const got = S.filterRows(big, q).map((r) => r.n); const want = S.filterRows(naive(q), q).map((r) => r.n); return got.join() === want.join() && got.length === naive(q).length; };
+check('覚えておく仕組みがあっても、結果は毎回同じ（名前・数字・並び順をいろいろ変えて、続けて呼んでも）', ['works', 'name', 'bust', 'young', 'newest', 'works'].every((sort) => ['', 'さくら', 'テスト1', 'あ'].every((q) => sameOrder({ q, sort }) && sameOrder({ q, sort, age: '20-30' }))));
+const before = S.filterRows(big, { sort: 'bust' }).map((r) => r.n).join();
+big.push({ n: 'あとから', r: 'あとから', id: '9999', k: 99, b: 200 });
+check('一覧が変わったら（人が増えたら）、並べ替えを作り直す', S.filterRows(big, { sort: 'works' })[0].n === 'あとから' && S.filterRows(big, { sort: 'bust' }).map((r) => r.n).join() !== before);
+check('照らし合わせ用の文字は、行の見える項目に足さない（JSON や画面に出ない）', JSON.stringify(big[0]).indexOf('$keys') < 0 && Object.keys(big[0]).indexOf('$keys') < 0);
 check('数字・カップの条件を指定しているかの判定', S.hasNumericFilter({ age: '20-24' }) && S.hasNumericFilter({ cup: 'D' }) && !S.hasNumericFilter({ q: 'x', sort: 'name' }) && !S.hasNumericFilter({ age: '' }) && !S.hasNumericFilter(undefined));
 const pq = plain(S.parseQuery('?q=%E3%81%95%E3%81%8F%E3%82%89&age=20-25&bust=100-,90-94,77-88&waist=-55&cup=E,F,Z&site=1&sort=bust&evil=1'));
 check('URL の読み取り: 知らない項目・知らないカップ・決まっていないスリーサイズの幅は捨てる（幅は決まった順に）', pq.q === 'さくら' && pq.age === '20-25' && pq.bust === '90-94,100-' && pq.waist === '-55' && pq.hip === '' && pq.cup === 'E,F' && pq.site === '1' && pq.face === '' && pq.sort === 'bust' && !('evil' in pq), JSON.stringify(pq));
