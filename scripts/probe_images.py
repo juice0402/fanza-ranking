@@ -32,14 +32,14 @@ pick = {i["cid"]: i for i in curated}
 ranked = [i for i in catalog if i["cid"] in newrank]
 for i in ranked:
     pick.setdefault(i["cid"], i)
-for i in random.sample(catalog, min(700, len(catalog))):
+for i in random.sample(catalog, min(250, len(catalog))):
     pick.setdefault(i["cid"], i)
 
 
 def dims(url):
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Range": "bytes=0-65535"})
-    with urllib.request.urlopen(req, timeout=20) as res:
-        b = res.read()
+    with urllib.request.urlopen(req, timeout=15) as res:
+        b = res.read(65536)
     i = 2
     while i < len(b) - 9:
         if b[i] != 0xFF:
@@ -59,19 +59,31 @@ def dims(url):
 
 rows = []
 fails = 0
-for cid, it in pick.items():
-    url = it.get("image_url") or ""
-    if not url.startswith("https://pics.dmm.co.jp/"):
-        continue
+from concurrent.futures import ThreadPoolExecutor
+
+todo = [(cid, it) for cid, it in pick.items() if (it.get("image_url") or "").startswith("https://pics.dmm.co.jp/")]
+print("todo", len(todo), flush=True)
+t0 = time.time()
+
+
+def one(pair):
+    cid, it = pair
     try:
-        d = dims(url)
+        return cid, it, dims(it["image_url"])
     except Exception as e:  # noqa: BLE001
-        fails += 1
-        d = None
-    time.sleep(0.12)
-    if not d:
-        continue
-    rows.append({"cid": cid, "w": d[0], "h": d[1], "maker": it.get("maker", ""), "vr": "VR" in (it.get("tags") or []) or "【VR】" in it.get("title", ""), "rank": newrank.get(cid), "url": url})
+        return cid, it, repr(e)[:80]
+
+
+with ThreadPoolExecutor(6) as ex:
+    for n, (cid, it, d) in enumerate(ex.map(one, todo), 1):
+        if not isinstance(d, tuple):
+            fails += 1
+            if fails <= 5:
+                print("fail", cid, d, flush=True)
+            continue
+        rows.append({"cid": cid, "w": d[0], "h": d[1], "maker": it.get("maker", ""), "vr": "VR" in (it.get("tags") or []) or "【VR】" in it.get("title", ""), "rank": newrank.get(cid), "url": it["image_url"]})
+        if n % 100 == 0:
+            print(n, round(time.time() - t0), "s", flush=True)
 
 print(f"measured {len(rows)} fails {fails}")
 c = Counter((r["w"], r["h"]) for r in rows)
@@ -97,12 +109,14 @@ for r in rows:
     groups[(r["w"], r["h"])].append(r["cid"])
 for k, cids in groups.items():
     save.update(cids[:8])
-for r in rows:
-    if r["cid"] in save:
-        try:
-            with urllib.request.urlopen(urllib.request.Request(r["url"], headers={"User-Agent": "Mozilla/5.0"}), timeout=20) as res:
-                open(os.path.join(OUT, r["cid"] + ".jpg"), "wb").write(res.read())
-        except Exception:  # noqa: BLE001
-            pass
-        time.sleep(0.12)
+def grab(r):
+    try:
+        with urllib.request.urlopen(urllib.request.Request(r["url"], headers={"User-Agent": "Mozilla/5.0"}), timeout=20) as res:
+            open(os.path.join(OUT, r["cid"] + ".jpg"), "wb").write(res.read())
+    except Exception:  # noqa: BLE001
+        pass
+
+
+with ThreadPoolExecutor(6) as ex:
+    list(ex.map(grab, [r for r in rows if r["cid"] in save]))
 print("saved", len(save))
