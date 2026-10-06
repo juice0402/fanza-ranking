@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""作業用: FANZAのパッケージ画像（pl.jpg）の縦横の大きさを調べる（読むだけ。保存しない。標準ライブラリだけ）。
-人気のジャンルの四角い表紙の切り出しを、見開きのパッケージと1枚絵で分けるための下調べ。main には入れない。"""
+"""作業用: FANZAのパッケージ画像（pl.jpg）の縦横の大きさと、顔の位置を調べる（読むだけ。画像は保存しない）。
+人気のジャンルの四角い表紙の切り出しを、見開きのパッケージと1枚絵で分けるための下調べ。main には入れない。
+結果は、ログが読めない環境でも読めるよう、注釈（notice）で出す。"""
 import glob
 import json
 import os
 import random
-import struct
 import time
 import urllib.request
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
+
+import cv2
+import numpy as np
 
 D = os.path.join("site", "src", "data")
-OUT = "probe-out"
-os.makedirs(OUT, exist_ok=True)
 
 
 def load(path):
@@ -24,99 +26,131 @@ curated = load(os.path.join(D, "new_releases.json"))
 catalog = []
 for p in sorted(glob.glob(os.path.join(D, "catalog", "*.json"))):
     catalog += load(p)
-pop = load(os.path.join(D, "popularity.json"))
-newrank = pop.get("new", {})
-
+newrank = load(os.path.join(D, "popularity.json")).get("new", {})
 random.seed(7)
 pick = {i["cid"]: i for i in curated}
-ranked = [i for i in catalog if i["cid"] in newrank]
-for i in ranked:
+for i in catalog:
+    if i["cid"] in newrank:
+        pick.setdefault(i["cid"], i)
+for i in random.sample(catalog, min(350, len(catalog))):
     pick.setdefault(i["cid"], i)
-for i in random.sample(catalog, min(250, len(catalog))):
-    pick.setdefault(i["cid"], i)
+todo = [(cid, it) for cid, it in pick.items() if (it.get("image_url") or "").startswith("https://pics.dmm.co.jp/")]
+print("todo", len(todo), flush=True)
+
+CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
 
-def dims(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Range": "bytes=0-65535"})
-    with urllib.request.urlopen(req, timeout=15) as res:
-        b = res.read(65536)
-    i = 2
-    while i < len(b) - 9:
-        if b[i] != 0xFF:
-            i += 1
-            continue
-        m = b[i + 1]
-        if m in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
-            h, w = struct.unpack(">HH", b[i + 5:i + 9])
-            return w, h
-        if m in (0xD8, 0x01) or 0xD0 <= m <= 0xD7:
-            i += 2
-            continue
-        ln = struct.unpack(">H", b[i + 2:i + 4])[0]
-        i += 2 + ln
-    return None
+def fetch(pair):
+    cid, it = pair
+    try:
+        with urllib.request.urlopen(urllib.request.Request(it["image_url"], headers={"User-Agent": "Mozilla/5.0"}), timeout=20) as res:
+            buf = res.read()
+        img = cv2.imdecode(np.frombuffer(buf, np.uint8), cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            return cid, it, None, None
+        h, w = img.shape
+        faces = CASCADE.detectMultiScale(img, scaleFactor=1.1, minNeighbors=6, minSize=(max(24, h // 12), max(24, h // 12)))
+        faces = sorted([tuple(int(v) for v in f) for f in faces], key=lambda f: -f[2] * f[3])
+        return cid, it, (w, h), faces
+    except Exception as e:  # noqa: BLE001
+        return cid, it, repr(e)[:60], None
 
 
 rows = []
 fails = 0
-from concurrent.futures import ThreadPoolExecutor
-
-todo = [(cid, it) for cid, it in pick.items() if (it.get("image_url") or "").startswith("https://pics.dmm.co.jp/")]
-print("todo", len(todo), flush=True)
 t0 = time.time()
-
-
-def one(pair):
-    cid, it = pair
-    try:
-        return cid, it, dims(it["image_url"])
-    except Exception as e:  # noqa: BLE001
-        return cid, it, repr(e)[:80]
-
-
-with ThreadPoolExecutor(6) as ex:
-    for n, (cid, it, d) in enumerate(ex.map(one, todo), 1):
+with ThreadPoolExecutor(8) as ex:
+    for cid, it, d, faces in ex.map(fetch, todo):
         if not isinstance(d, tuple):
             fails += 1
-            if fails <= 5:
-                print("fail", cid, d, flush=True)
             continue
-        rows.append({"cid": cid, "w": d[0], "h": d[1], "maker": it.get("maker", ""), "vr": "VR" in (it.get("tags") or []) or "【VR】" in it.get("title", ""), "rank": newrank.get(cid), "url": it["image_url"]})
-        if n % 100 == 0:
-            print(n, round(time.time() - t0), "s", flush=True)
+        rows.append({"cid": cid, "w": d[0], "h": d[1], "maker": it.get("maker", ""), "rank": newrank.get(cid), "faces": faces or []})
+print("measured", len(rows), "fails", fails, round(time.time() - t0), "s", flush=True)
 
-print(f"measured {len(rows)} fails {fails}")
+notes = []
+
+
+def kind(r):
+    q = r["w"] / r["h"]
+    if abs(q - 800 / 538) < 0.03:
+        return "std"
+    if q > 1.6:
+        return "wide"
+    if q > 1.2:
+        return "mid"
+    if q > 0.85:
+        return "square"
+    return "tall"
+
+
 c = Counter((r["w"], r["h"]) for r in rows)
-print("== sizes (w x h: count, ratio)")
-for (w, h), n in c.most_common(40):
-    print(f"{w}x{h}: {n}  r={w / h:.3f}")
+notes.append(("sizes", f"measured {len(rows)} fails {fails} | " + " / ".join(f"{w}x{h}:{n}(r{w / h:.3f})" for (w, h), n in c.most_common(25))))
+kc = Counter(kind(r) for r in rows)
+notes.append(("kinds", " / ".join(f"{k}:{n}" for k, n in kc.most_common())))
 by = defaultdict(Counter)
 for r in rows:
-    std = abs(r["w"] / r["h"] - 800 / 538) < 0.03
-    by[r["maker"]]["std" if std else f"{r['w']}x{r['h']}"] += 1
-print("== makers with non-standard")
-for m, cc in sorted(by.items(), key=lambda kv: -sum(v for k, v in kv[1].items() if k != "std")):
-    ns = {k: v for k, v in cc.items() if k != "std"}
-    if ns:
-        print(m, dict(cc))
-with open(os.path.join(OUT, "dims.json"), "w", encoding="utf-8") as f:
-    json.dump(rows, f, ensure_ascii=False)
+    by[r["maker"]][kind(r)] += 1
+ns = sorted(((m, cc) for m, cc in by.items() if sum(v for k, v in cc.items() if k != "std")), key=lambda kv: -sum(v for k, v in kv[1].items() if k != "std"))
+notes.append(("makers-nonstd", " / ".join(f"{m}:{dict(cc)}" for m, cc in ns[:40])))
+# 人気の上位（新着の人気順100位まで）の中の、見開きでない作品
+hot_ns = sorted([r for r in rows if r["rank"] and r["rank"] <= 100 and kind(r) != "std"], key=lambda r: r["rank"])
+notes.append(("hot-nonstd", f"{len(hot_ns)} of {sum(1 for r in rows if r['rank'] and r['rank'] <= 100)} | " + " / ".join(f"#{r['rank']} {r['cid']} {r['w']}x{r['h']} {r['maker']}" for r in hot_ns[:30])))
+t = next((r for r in rows if r["cid"] == "1hnamh00028"), None)
+notes.append(("1hnamh00028", json.dumps(t, ensure_ascii=False)))
 
-# 見本の画像（切り出しの見た目の確認用。アーティファクトは1日で消える）: 人気の上位40本と、大きさの組ごとに8本ずつ
-save = set(r["cid"] for r in sorted([r for r in rows if r["rank"]], key=lambda r: r["rank"])[:40])
-groups = defaultdict(list)
-for r in rows:
-    groups[(r["w"], r["h"])].append(r["cid"])
-for k, cids in groups.items():
-    save.update(cids[:8])
-def grab(r):
-    try:
-        with urllib.request.urlopen(urllib.request.Request(r["url"], headers={"User-Agent": "Mozilla/5.0"}), timeout=20) as res:
-            open(os.path.join(OUT, r["cid"] + ".jpg"), "wb").write(res.read())
-    except Exception:  # noqa: BLE001
-        pass
+# 顔の位置: 見開き（std）は、表紙（右端の 379/800）の中での位置。ほかは画像全体の中での位置
+def face_in(r):
+    w, h = r["w"], r["h"]
+    if kind(r) == "std":
+        x0 = w * 421 / 800
+        fs = [f for f in r["faces"] if f[0] >= x0 - 4]
+        if not fs:
+            return None
+        x, y, fw, fh = fs[0]
+        cw = w - x0
+        return ((x - x0) / cw, y / h, (x - x0 + fw) / cw, (y + fh) / h, cw / h)
+    if not r["faces"]:
+        return None
+    x, y, fw, fh = r["faces"][0]
+    return (x / w, y / h, (x + fw) / w, (y + fh) / h, w / h)
 
 
-with ThreadPoolExecutor(6) as ex:
-    list(ex.map(grab, [r for r in rows if r["cid"] in save]))
-print("saved", len(save))
+for k in ("std", "wide", "mid", "square", "tall"):
+    fr = [(r, face_in(r)) for r in rows if kind(r) == k]
+    got = [(r, f) for r, f in fr if f]
+    if not fr:
+        continue
+    line = f"{k}: images {len(fr)} with face {len(got)}"
+    if got:
+        cy = sorted((f[1] + f[3]) / 2 for _, f in got)
+        cx = sorted((f[0] + f[2]) / 2 for _, f in got)
+        pct = lambda a, p: round(a[min(len(a) - 1, int(p * len(a)))], 3)
+        line += f" | face center x p10/50/90 {pct(cx, .1)}/{pct(cx, .5)}/{pct(cx, .9)} y p10/50/90 {pct(cy, .1)}/{pct(cy, .5)}/{pct(cy, .9)}"
+        # 四角の切り出し: 枠の幅 = 対象の幅（std は表紙・横長は高さ）。縦横の位置 pos（0=上/左, 1=下/右）ごとに、顔がまるごと入る割合
+        res = []
+        if k == "std" or k in ("square", "tall"):
+            for pos in (0, 0.1, 0.2, 0.3, 0.4, 0.5):
+                ok = 0
+                for r, f in got:
+                    ar = f[4]  # 幅/高さ（std は表紙の）
+                    side = ar  # 高さを1としたときの四角の一辺
+                    if side >= 1:
+                        ok += 1
+                        continue
+                    top = pos * (1 - side)
+                    ok += f[1] >= top - 0.005 and f[3] <= top + side + 0.005
+                res.append(f"v{pos}:{ok * 100 // len(got)}%")
+        else:
+            for pos in (0.3, 0.4, 0.5, 0.6, 1.0):
+                ok = 0
+                for r, f in got:
+                    side = 1 / f[4]  # 幅を1としたときの四角の一辺
+                    left = pos * (1 - side)
+                    ok += f[0] >= left - 0.005 and f[2] <= left + side + 0.005
+                res.append(f"h{pos}:{ok * 100 // len(got)}%")
+        line += " | inside " + " ".join(res)
+    notes.append((f"face-{k}", line))
+
+for title, body in notes:
+    print(title, body, flush=True)
+    print(f"::notice title={title}::{body[:3900]}")
