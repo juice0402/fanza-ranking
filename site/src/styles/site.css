@@ -2964,6 +2964,14 @@ html.lightbox-open {
   margin-top: 40px;
 }
 
+/* スマホ・タブレット（〜959px）は、誕生日の近い女優 → 今週のデビュー作 の順（運営者の希望「逆がいい」。2026-10-06）。
+   パソコンの右の欄（.home-side。スクリプトで移る）は、今週のデビュー作 → 誕生日の近い女優 のまま */
+@media (max-width: 959px) {
+  .corner > #birthdays {
+    order: -1;
+  }
+}
+
 .corner-head {
   display: flex;
   flex-wrap: wrap;
