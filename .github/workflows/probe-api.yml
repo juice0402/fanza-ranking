@@ -18,5 +18,5 @@ jobs:
           python-version: '3.12'
       - name: Probe
         run: |
-          pip install -q opencv-python-headless numpy > pip.txt 2>&1 || echo "::notice title=pip::$(tail -c 1500 pip.txt | tr '\n' ' ')"
+          pip install -q "opencv-python-headless==4.10.0.84" "numpy<2.3" > pip.txt 2>&1 || echo "::notice title=pip::$(tail -c 1500 pip.txt | tr '\n' ' ')"
           python scripts/probe_images.py 2> err.txt || { echo "::notice title=err::$(tail -c 2500 err.txt | tr '\n' ' ')"; exit 1; }
