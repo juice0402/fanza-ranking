@@ -182,6 +182,10 @@ check('出演者・メーカーのページの説明文: 次の新作の発売�
   && L.entityDescription('紹介文です。') === '紹介文です。' && L.entityDescription('あ'.repeat(300), { saleCount: 1 }).length <= 120
   && !L.entityDescription('紹介文', { next: { dateKey: '2026-10-17', title: '作品のタイトル' } }).includes('作品のタイトル'));
 
+check('発売日の幅の短い形: 同じ年は月日・同じ日は1日・年をまたぐと年月（日付の無い作品は数えない）',
+  L.shortSpan([{ dateKey: '2026-10-20' }, { dateKey: '2026-10-03' }]) === '10月3日〜10月20日' && L.shortSpan([{ dateKey: '2026-10-03' }]) === '10月3日'
+  && L.shortSpan([{ dateKey: '2025-05-09' }, { dateKey: '2026-10-17' }, { dateKey: '' }]) === '2025年5月〜2026年10月' && L.shortSpan([]) === '');
+
 console.log('\n■ 構造化データ（JSON-LD）');
 const bc = L.breadcrumbLd([{ name: 'トップ', path: '/' }, { name: 'メーカー一覧', path: '/maker/' }, { name: 'A', path: '/maker/abc/' }]);
 check('パンくず: 種類と順番（1から）', bc['@type'] === 'BreadcrumbList' && bc['@context'] === 'https://schema.org' && bc.itemListElement.map((e) => e.position).join() === '1,2,3');

@@ -386,7 +386,9 @@
       return b.parentNode.hidden;
     }).length;
     tagMore.hidden = !expanded && hiddenCount === 0;
-    tagMore.textContent = expanded ? 'ジャンルを少なく表示' : 'すべてのジャンルを見る';
+    tagMore.textContent = expanded ? 'ジャンルをたたむ' : 'すべてのジャンル';
+    tagMore.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    tagList.classList.toggle('is-open', expanded); // スマホ: たたんでいるあいだは横に流れる1行、「すべてのジャンル」で折り返して全部
   }
 
   function render() {
@@ -402,7 +404,14 @@
     });
     var vrNote = o.hideVr && o.onlySolo ? '（単体作品・VR作品を除く）' : o.onlySolo ? '（単体作品のみ）' : o.hideVr ? '（VR作品を除く）' : '';
     var offNote = (o.onlySolo ? '単体作品だけ表示しています。' : '') + (o.hideVr ? 'VR作品は隠しています。' : '');
-    count.textContent = found.length ? found.length + '本が見つかりました' + vrNote : '条件に合う作品がありません。条件をゆるめてみてね。' + offNote;
+    // 見つかった本数は、大きな数字で（「3,000本」。2026-10-06）
+    count.textContent = '';
+    if (found.length) {
+      count.appendChild(el('strong', 'ws-num', found.length.toLocaleString('ja-JP')));
+      count.appendChild(document.createTextNode('本' + vrNote));
+    } else {
+      count.textContent = '条件に合う作品がありません。条件をゆるめてみてね。' + offNote;
+    }
     more.hidden = found.length <= visible.length;
     if (filterNote) {
       var active = selected.length + (state.status ? 1 : 0) + (state.sort !== 'new' ? 1 : 0);

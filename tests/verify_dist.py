@@ -39,6 +39,19 @@ problems = []
 LD_BLOCK = re.compile(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', re.S)  # 構造化データ（JSON-LD）
 
 
+_cc_mod = None
+
+
+def is_minor_title(title):
+    """未成年を連想させるタイトルか（scripts/claude_comments.py の title_block_reason と同じ。site/src/lib/gacha.js の isMinorTitle とテストで突き合わせ済み）"""
+    global _cc_mod
+    if _cc_mod is None:
+        spec_ = importlib.util.spec_from_file_location("claude_comments_minor", os.path.join(ROOT, "scripts", "claude_comments.py"))
+        _cc_mod = importlib.util.module_from_spec(spec_)
+        spec_.loader.exec_module(_cc_mod)
+    return _cc_mod.title_block_reason({"title": str(title or "")}) == "minor"
+
+
 def check(name, cond, detail=""):
     print(("  ✅ " if cond else "  ❌ ") + name + (f"  → {detail}" if (detail and not cond) else ""))
     if not cond:
@@ -82,6 +95,7 @@ def tags(text, name):
 
 
 strip_tags = lambda h: htmllib.unescape(re.sub(r"<[^>]+>", "", h))  # タグを外した文字だけ
+strip_tags_keep_p = lambda h: re.sub(r"</?(?:span|wbr)[^>]*>", "", h)  # 文節の区切りの <span>・<wbr> だけを外す
 
 
 def config_value(name):
@@ -710,7 +724,7 @@ if os.path.isfile(search_page):
     static_rows = len([t for t in tags(stext, "li") if has_class(t, "actress-row")])
     index_limit = int(re.search(r"export const ACTRESS_FALLBACK_LIMIT = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1))
     check(f"JavaScriptが使えないとき用の一覧に、専用ページのある出演者がいる（{len(actress_pages)}人。多いときは作品数の多い順に{index_limit}人まで）", static_rows == min(len(actress_pages), index_limit) and any(t.get("id") == "actress-static" for t in tags(stext, "section")), (static_rows, len(actress_pages)))
-    check("検索の注意書き（載っていない人は絞り込みで外れる・データのある人数・FANZA公式のデータ）が、ページにある", (not rows) or ("結果に出ません" in stext and "いま探せる" in stext and "FANZA公式" in stext))
+    check("検索の注意書き（載っていない人は絞り込みで外れる・FANZA公式のデータ。短い1文。2026-10-06）が、ページにある", (not rows) or ("結果に出ません" in stext and "FANZA公式の情報" in stext))
 
 print("\n■ トップ: きょうの新着人気TOP3・きょうの話題")
 rk_raw = load_json(RANKING) if os.path.isfile(RANKING) else None
@@ -790,6 +804,10 @@ topic_all = [(m.group(1), bool(m.group(2)), m.group(3), m.group(4)) for m in re.
 topic_cells = [(k, a, inner) for k, alt, a, inner in topic_all if not alt]
 bad_alt = [k for n, (k, alt, a, _) in enumerate(topic_all) if alt and ('data-vr="true"' in a or n == 0 or topic_all[n - 1][0] != k or topic_all[n - 1][1] or 'data-vr="true"' not in topic_all[n - 1][2])]
 check(f"きょうの話題: VR作品の話題の繰り上げ（{sum(1 for x in topic_all if x[1])}件）は、VR作品の話題のすぐ後ろで同じ種類・VRの印なし", not bad_alt, bad_alt[:3])
+# こちらから案内する欄なので、作品の話題に、未成年を連想させるタイトルの作品は出さない（運命の作品と同じ。2026-10-06）
+_minor_topics = [htmllib.unescape(strip_tags(t)) for k, _, _, inner in topic_all if k in ("rise", "today", "upcoming", "entry", "salehot")
+                 for t in re.findall(r'<span class="topic-title">(.*?)</span>', inner, re.S) if is_minor_title(htmllib.unescape(strip_tags(t)))]
+check("きょうの話題の作品に、未成年を連想させるタイトルの作品が無い", not _minor_topics, _minor_topics[:2])
 bad_topic = []
 for kind, attrs, inner in [(k, a, inner) for k, _, a, inner in topic_all]:
     a_ = next((t for t in tags(inner, "a") if has_class(t, "topic-link")), {})
@@ -962,9 +980,10 @@ for c in sorted((c for c in everything if c in pop_new and pop_new[c] <= 100 and
                 key=lambda c: (pop_new[c], -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:100]:
     for g in dict.fromkeys(everything[c].get("genres") or []):
         if g in _tag_genres and g != "ベスト・総集編":
-            sc, n = _gboard.get(g, (0, 0))
-            _gboard[g] = (sc + 101 - pop_new[c], n + 1)
-want_genres = [g for g, _ in sorted(_gboard.items(), key=lambda kv: (-kv[1][0], -kv[1][1], kv[0]))[:3]]
+            sc, n, ok_ = _gboard.get(g, (0, 0, False))
+            _gboard[g] = (sc + 101 - pop_new[c], n + 1, ok_ or not is_minor_title(everything[c].get("title")))
+# 上から3つのうち、札の表紙に使える作品（未成年を連想させるタイトルでない作品）が無いジャンルは出さない（site/src/lib/topics.js の hotGenres と同じ）
+want_genres = [g for g, v in sorted(_gboard.items(), key=lambda kv: (-kv[1][0], -kv[1][1], kv[0]))[:3] if v[2]]
 genre_m = re.search(r'<ol class="hot-genres">(.*?)</ol>', home_html, re.S)
 got_genres = [htmllib.unescape(re.sub(r"<[^>]+>", "", n)) for n in re.findall(r'<span class="genre-name"><span class="visually-hidden">[^<]*</span>(.*?)</span>', genre_m.group(1), re.S)] if genre_m else []
 if want_genres:
@@ -1056,7 +1075,7 @@ else:
 
 # 今週のデビュー作: きょうまでの7日間に発売された「デビュー作品」を、新着の人気順に6本（出すのは3本。残りは差し替え用）
 _wk_from = (datetime.date.fromisoformat(JST_TODAY) - datetime.timedelta(days=6)).isoformat()
-want_debut = sorted((c for c in everything if "デビュー作品" in (everything[c].get("genres") or []) and _wk_from <= str(everything[c]["date"])[:10] <= JST_TODAY),
+want_debut = sorted((c for c in everything if "デビュー作品" in (everything[c].get("genres") or []) and _wk_from <= str(everything[c]["date"])[:10] <= JST_TODAY and not is_minor_title(everything[c].get("title"))),
                     key=lambda c: (pop_new.get(c, float("inf")), -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:6]
 debut_cells = [(m.group(1), m.group(2), m.group(3)) for m in re.finditer(r'<li class="debut-cell([^"]*)"([^>]*)>(.*?)</li>', home_html, re.S)]
 if want_debut:
@@ -1290,9 +1309,34 @@ check(f"全ページの「Powered by FANZA Webサービス」が、規約の指�
 bad_about = []
 for p in pages:
     foot_ = read(p)[read(p).find("<footer") :]
-    if not re.search(r'<p class="foot-about"><a class="foot-link foot-small" href="/about/">このサイトについて</a></p>', foot_) or foot_.find('class="foot-about"') < foot_.find('class="foot-credit"'):
+    fa_ = re.search(r'<p class="foot-about">(.*?)</p>', foot_, re.S)
+    if (not fa_ or '<a class="foot-link foot-small" href="/about/">このサイトについて</a>' not in fa_.group(1) or 'href="/feed.xml">RSS</a>' not in fa_.group(1)
+            or not re.search(r'<button type="button" id="install-btn"[^>]*hidden>ホーム画面に追加</button>', fa_.group(1)) or foot_.find('class="foot-about"') < foot_.find('class="foot-credit"')):
         bad_about.append(os.path.relpath(p, DIST))
-check("全ページのフッターのいちばん下に、小さな「このサイトについて」のリンクがある（運営者の希望。2026-10-06）", not bad_about, bad_about[:3])
+    head_ = read_raw(p).split("</head>", 1)[0]
+    if '<link rel="manifest" href="/site.webmanifest"' not in head_ or 'type="application/rss+xml"' not in head_ or 'src="/install.js?v=' not in read_raw(p):
+        bad_about.append(("head", os.path.relpath(p, DIST)))
+check("全ページのフッターのいちばん下に、小さな「このサイトについて」「RSS」「ホーム画面に追加」（最初は隠れている）があり、<head> にホーム画面に追加の設定と RSS の案内がある（運営者の希望。2026-10-06）", not bad_about, bad_about[:3])
+# ホーム画面に追加の設定（/site.webmanifest）とアイコン、RSS（/feed.xml・/weekly/feed.xml）
+try:
+    _mf = json.load(open(os.path.join(DIST, "site.webmanifest"), encoding="utf-8"))
+except (OSError, ValueError):
+    _mf = {}
+check("ホーム画面に追加の設定（/site.webmanifest）: 名前・開くページ・表示のしかた（iPhone で戻るボタンが使える minimal-ui）・アイコン（192・512・maskable）がある",
+      _mf.get("name") and _mf.get("start_url") == "/" and _mf.get("display") == "minimal-ui" and {i.get("sizes") for i in _mf.get("icons", [])} >= {"192x192", "512x512"}
+      and any(i.get("purpose") == "maskable" for i in _mf.get("icons", [])) and all(os.path.isfile(os.path.join(DIST, str(i.get("src", "")).lstrip("/"))) for i in _mf.get("icons", [])))
+import xml.etree.ElementTree as _ET
+SITE_URL_V = re.search(r"export const SITE_URL = '([^']+)'", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1)
+for _fp in ("feed.xml", os.path.join("weekly", "feed.xml")):
+    try:
+        _feed = _ET.parse(os.path.join(DIST, _fp)).getroot()
+    except (OSError, _ET.ParseError) as e_:
+        _feed = None
+    _links = [x.findtext("link") for x in (_feed.iter("item") if _feed is not None else [])]
+    _titles = [x.findtext("title") for x in (_feed.iter("item") if _feed is not None else [])]
+    check(f"RSS（/{_fp}）: 読める XML・RSS 2.0・リンク先はサイトにあるページ・未成年を連想させるタイトルは無い（{len(_links)}件）",
+          _feed is not None and _feed.tag == "rss" and _feed.get("version") == "2.0" and all(l and l.startswith(SITE_URL_V) and os.path.isfile(page_file(l[len(SITE_URL_V):])) for l in _links)
+          and not any(is_minor_title(t) for t in _titles), _links[:2])
 _about = page_file("/about/")
 _about_html = read(_about) if os.path.isfile(_about) else ""
 check("このサイトについて（/about/）: 情報の出どころ（FANZA公式のAPI・所属事務所の公式サイト）・更新のしかた・自動で作成の注記・広告・お気に入りの保存先・検索エンジンに出す・sitemap にある・AboutPage",
@@ -1569,8 +1613,9 @@ for cid, x in valid.items():
     facts_ = re.search(r'<h2 id="facts-title"[^>]*>この作品のデータ</h2>\s*<ul class="facts">(.*?)</ul>', html_, re.S)
     rows_ = re.findall(r'<li class="facts-row">\s*<span class="facts-label">(.*?)</span>\s*<span class="facts-text">(.*?)</span>\s*</li>', facts_.group(1), re.S) if facts_ else []
     n_same = by_date_count[x["date"][:10]]
-    want_day = f"{ymd_jp(x['date'][:10])}発売の作品は、" + ("この1本だけです。" if n_same == 1 else f"掲載中で{n_same}本あります。")
-    if not rows_ or rows_[0][0] != "同じ発売日" or want_day not in htmllib.unescape(re.sub(r"<[^>]+>", "", rows_[0][1])):
+    want_day = "この1本だけ" if n_same == 1 else f"{n_same}本"  # 短い形（「6本（うちムーディーズ 6本）」。2026-10-06）
+    got_day = htmllib.unescape(re.sub(r"<[^>]+>", "", rows_[0][1])).strip() if rows_ else ""
+    if not rows_ or rows_[0][0] != "同じ発売日" or not (got_day == want_day or got_day.startswith(want_day + "（") or got_day.startswith(want_day + " ")):
         bad_facts.append((cid, want_day, (rows_[0] if rows_ else None)))
     if any(label == "収録時間" for label, _ in rows_):  # 収録時間の長さくらべは出さない（運営者の判断。2026-10-05）
         bad_facts.append((cid, "収録時間の長さくらべの行が出ている"))
@@ -1897,13 +1942,15 @@ for pth in actress_pages:
     name_ = h1_[: -len("の新作・出演作品")] if h1_.endswith("の新作・出演作品") else ""
     cids_ = _works_of.get(name_, [])
     up_ = any(str(everything[c].get("date", ""))[:10] > JST_TODAY for c in cids_)
-    sale_ = any(c in _on_sale and str(everything[c].get("date", ""))[:10] <= JST_TODAY for c in cids_)
+    # 次の新作・セール中の作品の欄は、未成年を連想させるタイトルの作品を入れない（タイトルの「予約」は、全部の作品で決める）
+    up_next_ = any(str(everything[c].get("date", ""))[:10] > JST_TODAY and not is_minor_title(everything[c].get("title")) for c in cids_)
+    sale_ = any(c in _on_sale and str(everything[c].get("date", ""))[:10] <= JST_TODAY and not is_minor_title(everything[c].get("title")) for c in cids_)
     t_ = re.search(r"<title>(.*?)</title>", raw_, re.S)
     t_ = htmllib.unescape(t_.group(1)) if t_ else ""
     here = []
     if _ym not in t_ or (("・予約・" in t_) != up_):
         here.append(("タイトル", t_))
-    if ('id="next-title"' in raw_) != up_:
+    if ('id="next-title"' in raw_) != up_next_:
         here.append("次の新作")
     if ('id="onsale-title"' in raw_) != sale_:
         here.append("セール中の作品")
@@ -1934,7 +1981,8 @@ for pth in maker_pages:
     cids_ = _maker_works.get(name_, [])
     works_ = [everything[c] for c in cids_]
     up_ = any(str(x.get("date", ""))[:10] > JST_TODAY for x in works_)
-    sale_ = any(c in _on_sale and str(everything[c].get("date", ""))[:10] <= JST_TODAY for c in cids_)
+    up_next_ = any(str(x.get("date", ""))[:10] > JST_TODAY and not is_minor_title(x.get("title")) for x in works_)
+    sale_ = any(c in _on_sale and str(everything[c].get("date", ""))[:10] <= JST_TODAY and not is_minor_title(everything[c].get("title")) for c in cids_)
     cast_ = _top_counts([a for x in works_ if len(_cast(x)) <= 4 for a in dict.fromkeys(_cast(x))], limit=6, minimum=2)
     genres_ = _top_counts([g for x in works_ for g in set(x.get("genres") or []) if g in _content_genres], limit=8)
     t_ = re.search(r"<title>(.*?)</title>", raw_, re.S)
@@ -1942,7 +1990,7 @@ for pth in maker_pages:
     here = []
     if not name_ or not t_.startswith(f"{name_}の新作") or _ym not in t_ or (("・予約・" in t_) != up_) or f"（{len(works_)}本）" not in t_:
         here.append(("タイトル", t_))
-    if ('id="next-title"' in raw_) != up_:
+    if ('id="next-title"' in raw_) != up_next_:
         here.append("次の新作")
     if ('id="onsale-title"' in raw_) != sale_:
         here.append("セール中の作品")
@@ -1963,6 +2011,47 @@ for pth in maker_pages:
         bad_mk.append((name_, here))
 check(f"メーカーのページ（{len(maker_pages)}ページ）: タイトルに年月・予約・本数・次の新作・セール中の作品と入っているセール（あるときだけ）・よく出ている女優（出演者4人までの作品で2本以上・6人まで）・多いジャンル・更新日・CollectionPage",
       not bad_mk, bad_mk[:2])
+# 作品ページの「次に見るもの」（運営者の希望「サイト滞在時間を伸ばしたい」。2026-10-06）: セール中の札・次の新作・小さな表紙の棚・運命の作品
+_item_pages = sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))
+bad_stay = []
+for pth in _item_pages:
+    cid_ = os.path.basename(os.path.dirname(pth))
+    raw_ = read_raw(pth)
+    x_ = everything.get(cid_, {})
+    on_ = cid_ in _on_sale and str(x_.get("date", ""))[:10] <= JST_TODAY
+    here = []
+    if ('class="sale-strip"' in raw_) != on_ or (on_ and 'src="/sale.js?v=' not in raw_):
+        here.append("セールの札")
+    if not re.search(r'<section id="gacha"[^>]*data-src="/data/gacha.json"[^>]*data-exclude="' + re.escape(cid_) + '"', raw_) or 'src="/gacha.js?v=' not in raw_:
+        here.append("運命の作品")
+    shown_titles = [htmllib.unescape(strip_tags(t)) for t in re.findall(r'class="mini-title">(.*?)</h3>', raw_, re.S)]
+    nx = re.search(r'<section class="subsection" aria-labelledby="next-title">(.*?)</section>', raw_, re.S)
+    if nx:
+        shown_titles += [htmllib.unescape(strip_tags(t)) for t in re.findall(r'class="item-title-link"[^>]*>(.*?)</a>', nx.group(1), re.S)]
+    if any(is_minor_title(t) for t in shown_titles):
+        here.append("未成年を連想させるタイトル")
+    if len(re.findall(r'class="shelf-cell mini-cell"', raw_)) > 6:
+        here.append("同じ出演者・メーカーの作品の本数")
+    if here:
+        bad_stay.append((cid_, here))
+check(f"作品ページ（{len(_item_pages)}ページ）の次に見るもの: セール中の作品だけに札（と sale.js）・運命の作品（/data/gacha.json・その作品を除く）・小さな表紙の棚は6本まで・未成年を連想させるタイトルを出さない",
+      not bad_stay, bad_stay[:2])
+_gj = os.path.join(DIST, "data", "gacha.json")
+try:
+    _gacha_rows = json.load(open(_gj, encoding="utf-8"))
+except (OSError, ValueError):
+    _gacha_rows = None
+check("運命の作品の候補のファイル（/data/gacha.json）: 3〜80本・作品ページのある発売済みの作品・未成年を連想させるタイトルは無い",
+      isinstance(_gacha_rows, list) and 3 <= len(_gacha_rows) <= 80 and all(r.get("c") in everything and str(everything[r["c"]].get("date", ""))[:10] <= JST_TODAY
+                                                                         and os.path.isfile(os.path.join(DIST, "item", r["c"], "index.html")) and not is_minor_title(everything[r["c"]].get("title")) for r in _gacha_rows),
+      (len(_gacha_rows) if isinstance(_gacha_rows, list) else _gacha_rows))
+# お気に入りを目立たせる（運営者の希望「リピーターをつけたい」。2026-10-06）: 出演者・メーカーのページの見出しの下に、黄色のお気に入りのボタン
+_lead_missing = [os.path.relpath(p_, DIST) for p_ in (actress_pages + maker_pages) if not re.search(r'<button[^>]*class="fav-btn fav-btn-lead"[^>]*data-off="お気に入り（新作をお知らせ）"', read_raw(p_))]
+check("出演者・メーカーのページに、目立つお気に入りのボタン（新作をお知らせ）がある", not _lead_missing, _lead_missing[:3])
+check("トップの検索欄は、紙の色の検索バー（虫めがね・赤い「探す」）", re.search(r'<form class="hero-search search-bar"', home_html) is not None and 'class="search-bar-btn"' in home_html)
+_pf_missing = [os.path.relpath(p_, DIST) for p_ in glob.glob(os.path.join(DIST, "month", "*", "index.html")) + glob.glob(os.path.join(DIST, "tag", "*", "index.html"))
+               if os.path.basename(os.path.dirname(p_)) not in ("month", "tag") and not re.search(r'<p class="page-facts">\d+本・.+発売</p>', strip_tags_keep_p(read(p_)))]
+check("月・ジャンルのページの見出しの下は、長い紹介文ではなく「○本・○月○日〜○月○日発売」の1行", not _pf_missing, _pf_missing[:3])
 _mi = page_file("/maker/")
 if os.path.isfile(_mi):
     _mt = re.search(r"<title>(.*?)</title>", read_raw(_mi), re.S)
@@ -1980,8 +2069,13 @@ if os.path.isfile(sp):
     names_ = {t.get("name") for tag in ("input", "select") for t in tags(stext_, tag)}
     ids_ = {t.get("id") for tag in ("ul", "p", "button", "section") for t in tags(stext_, tag)}
     check("検索のフォーム（q・status・sort）と、結果の表示先（#ws-tag-list・#ws-tag-more・#ws-count・#ws-list・#ws-more）がある", {"q", "status", "sort"} <= names_ and {"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} <= ids_, (sorted({"q", "status", "sort"} - names_), sorted({"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} - ids_)))
-    sel_values = [re.findall(r'<option value="([^"]*)"', blk) for blk in re.findall(r'<select name="(?:status|sort)".*?</select>', stext_, re.S)]
-    check("選択肢の値が、スクリプトの読める形（''・released・upcoming / new・old・popnew・pop）だけ", sel_values == [["", "released", "upcoming"], ["new", "old", "popnew", "pop"]], sel_values)
+    # 発売・並び順は、押して選ぶ丸いボタン（ラジオボタン。2026-10-06）
+    radios_ = [t for t in tags(stext_, "input") if t.get("type") == "radio"]
+    sel_values = [[t.get("value") for t in radios_ if t.get("name") == n] for n in ("status", "sort")]
+    checked_ = [(t.get("name"), t.get("value")) for t in radios_ if "checked" in t]
+    check("選択肢の値が、スクリプトの読める形（''・released・upcoming / new・popnew・pop・old）だけ・はじめは「すべて」「新しい順」",
+          sel_values == [["", "released", "upcoming"], ["new", "popnew", "pop", "old"]] and sorted(checked_) == [("sort", "new"), ("status", "")], (sel_values, checked_))
+    check("作品検索の検索バー（紙の色のバー・探すボタン）がある", 'class="search-bar"' in stext_ and 'class="search-bar-btn"' in stext_)
     fb = next((t for t in tags(stext_, "section") if t.get("id") == "ws-fallback"), None)
     check("JavaScriptが使えないとき用の案内（#ws-fallback）に、過去の作品・出演者・メーカーへのリンクがある", fb is not None and all(f'href="{h}"' in stext_ for h in ("/archive/1/", "/actress/", "/maker/")))
     check("ジャンルが載っていない予約作品がある旨の注意書きが、検索ページにある", "予約中の作品は、ジャンルがまだ載っていないことがあります" in stext_)

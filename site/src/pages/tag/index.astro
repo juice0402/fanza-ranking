@@ -3,7 +3,6 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import { tagGroups } from '../../lib/data.js';
 import { TAG_INDEX_PATH } from '../../lib/collections.js';
-import { TAG_MIN_ITEMS } from '../../config.js';
 import { breadcrumbLd, SITE_NAME } from '../../lib/items.js';
 
 const trail = [
@@ -23,7 +22,7 @@ const trail = [
 
     <section class="hero">
       <h1 class="hero-title">ジャンルから探す</h1>
-      <p class="hero-lead">掲載している作品が{TAG_MIN_ITEMS}本以上あるジャンルの一覧です。作品数の多い順に並べています。ほかの言葉で探すときは、<a class="spec-link" href="/search/">作品検索</a>をお使いください。</p>
+      <p class="hero-lead">作品数の多い順です。ほかの言葉では<a class="spec-link" href="/search/">作品検索</a>で探せます。</p>
     </section>
 
     <section class="section" aria-labelledby="tag-list-title">

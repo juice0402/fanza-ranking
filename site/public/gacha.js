@@ -45,16 +45,28 @@
   if (typeof document === 'undefined') return;
 
   var section = document.getElementById('gacha');
+  if (!section) return;
+  // 候補: トップはページの中の小さなデータ（#gacha-data）、作品ページは1つのファイル（data-src="/data/gacha.json"）を読む
   var data = document.getElementById('gacha-data');
-  if (!section || !data) return;
-  var pool = [];
-  try {
-    pool = JSON.parse(data.textContent || '[]');
-  } catch (e) {
-    return;
+  var src = section.getAttribute('data-src');
+  var exclude = section.getAttribute('data-exclude') || '';
+  if (data) {
+    try {
+      start(JSON.parse(data.textContent || '[]'));
+    } catch (e) {}
+  } else if (src && typeof fetch === 'function') {
+    fetch(src, { credentials: 'same-origin' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('status ' + res.status);
+        return res.json();
+      })
+      .then(start)
+      .catch(function () {});
   }
-  pool = pool.filter(function (row) {
-    return row && typeof row.c === 'string' && /^[A-Za-z0-9_-]+$/.test(row.c) && typeof row.t === 'string' && typeof row.i === 'string' && /^https:\/\/[^/]*dmm\.co\.jp\//.test(row.i);
+
+  function start(raw) {
+  var pool = (Array.isArray(raw) ? raw : []).filter(function (row) {
+    return row && typeof row.c === 'string' && /^[A-Za-z0-9_-]+$/.test(row.c) && row.c !== exclude && typeof row.t === 'string' && typeof row.i === 'string' && /^https:\/\/[^/]*dmm\.co\.jp\//.test(row.i);
   });
   if (pool.length < REELS) return;
   var reels = section.querySelectorAll('.reel');
@@ -149,4 +161,5 @@
       })(k);
     }
   });
+  }
 })();

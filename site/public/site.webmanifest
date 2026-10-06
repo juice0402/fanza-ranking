@@ -1,0 +1,16 @@
+{
+  "name": "FANZA新作情報",
+  "short_name": "FANZA新作",
+  "description": "FANZAの新作・予約作品を、発売日ごとに毎日紹介しています。",
+  "lang": "ja",
+  "start_url": "/",
+  "scope": "/",
+  "display": "minimal-ui",
+  "background_color": "#17121f",
+  "theme_color": "#17121f",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

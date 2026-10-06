@@ -64,7 +64,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
         : <p class="camp-status">いまは開催していません{lastRun && `（前回: ${runRange(lastRun)}）`}</p>}
       {g && <p class="camp-status sale-over" data-sale-over={endIso(g.end)} hidden>この特集は終わりました（{endLabel(g.end)}まで）。</p>}
       <p class="hero-lead">
-        {sale.date && `${formatDateJp(sale.date)}の時点の、FANZA公式の情報です。`}価格や期間は変わることがあるので、くわしくはFANZAの作品ページで確かめてください。
+        {sale.date && `${formatDateJp(sale.date)}の時点の情報です。`}くわしくはFANZAの作品ページで確かめてください。
       </p>
     </section>
 

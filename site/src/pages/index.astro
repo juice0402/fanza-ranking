@@ -135,7 +135,6 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
       <header class="today-head">
         <p class="today-date"><time datetime={today}>{day.m}月{day.d}日（{day.wd}）</time>の更新</p>
         <h1 class="today-title">きょうのFANZA新作</h1>
-        <p class="today-lead">新作・予約を発売日ごとにまとめて、人気の順位と話題を毎日入れかえています。</p>
         <div class="list-tools today-tools">
           <VrToggle />
         </div>
@@ -157,10 +156,11 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
       {/* 「月ごと」「週のまとめ」のリンク（only-narrow）は、スマホだけ。パソコンは、右の欄に専用の欄がある */}
       <section class="find" aria-labelledby="find-title">
         <h2 id="find-title" class="find-title">作品を探す</h2>
-        <form class="hero-search" action={SEARCH_PATH} method="get" role="search">
+        <form class="hero-search search-bar" action={SEARCH_PATH} method="get" role="search">
+          <svg class="search-bar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5 20 20" /></svg>
           <label class="visually-hidden" for="hero-q">作品を探す（タイトル・出演者・メーカー・品番）</label>
-          <input id="hero-q" class="hero-search-input" type="search" name="q" placeholder="タイトル・出演者・品番" enterkeyhint="search" autocomplete="off" />
-          <button class="hero-search-btn" type="submit">探す</button>
+          <input id="hero-q" class="search-bar-input" type="search" name="q" placeholder="タイトル・出演者・品番" enterkeyhint="search" autocomplete="off" />
+          <button class="search-bar-btn" type="submit">探す</button>
         </form>
         <nav class="hero-jump" aria-label="探し方">
           {/* 新着の人気ランキングは、横いっぱいの1つ目（運営者の希望。前は「予約○本」があった所。2026-10-05） */}
@@ -195,7 +195,7 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
         <section id="topics" class="today-topics" aria-labelledby="topics-title">
           <div class="today-sec-head">
             <h2 id="topics-title" class="today-sec-title">きょうの話題</h2>
-            <p class="section-note">人気順・予約・セール・イベント情報から｜毎日入れかわります</p>
+            <p class="section-note">毎日入れかわります</p>
           </div>
           <TopicList topics={topics} />
           {upcomingEventList.length > 0 && (

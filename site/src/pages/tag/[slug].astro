@@ -6,7 +6,7 @@ import DaySection from '../../components/DaySection.astro';
 import { tagGroups } from '../../lib/data.js';
 import { TAG_INDEX_PATH, VR_TAG_NAME, tagPageTitle, tagSummary } from '../../lib/collections.js';
 import { TAG_PAGE_LIMIT } from '../../config.js';
-import { breadcrumbLd, countByDate, groupByDate, summaryDescription } from '../../lib/items.js';
+import { breadcrumbLd, countByDate, groupByDate, shortSpan, summaryDescription } from '../../lib/items.js';
 import { searchPath } from '../../lib/search.js';
 
 // 作品が TAG_MIN_ITEMS 本以上ある、ジャンルごとに1ページ作る（作るジャンルは config.js の TAG_PAGE_GENRES と、VR作品）
@@ -37,7 +37,7 @@ const trail = [
 
     <section class="hero">
       <h1 class="hero-title">{isVr ? 'VR作品' : group.name}の新作・予約作品</h1>
-      <p class="summary">{summary}</p>
+      <p class="page-facts">{group.items.length}本・{shortSpan(group.items)}発売</p>
     </section>
 
     <section class="section" aria-labelledby="works-title">
