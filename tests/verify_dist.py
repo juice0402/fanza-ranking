@@ -1017,6 +1017,27 @@ if gacha_home_at >= 0:
           and home_html.find('<section id="gacha"') > gacha_home_at and (corner_at < 0 or home_html.find('<section id="gacha"') > home_html.find('</div>', corner_at)),
           (days_in_rel[-1:] , gacha_home_at, up_at))
 
+# 予約受付中: 発売日が近い12本だけを先に見せ、残りは「もっと見る」（運営者の「下のほうが重い」。2026-10-07）。残りもHTMLには入れる（予約の一覧ページは無いため）
+_shown_m = re.search(r"export const HOME_UPCOMING_SHOWN = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js")))
+_up_m = re.search(r'<section id="upcoming"[^>]*>(.*?)</section>\s*(?=</div>)', home_html, re.S)
+if _shown_m and _up_m:
+    _fold_n = int(_shown_m.group(1))
+    _up_open = re.search(r'<section id="upcoming"[^>]*>', home_html).group(0)
+    _up_cells = re.findall(r'<li class="shelf-cell([^"]*)"[^>]*>(.*?)</li>', _up_m.group(1), re.S)
+    _note_n = re.search(r'発売日が近い順・(\d+)本', _up_m.group(1))
+    check("予約受付中: 「○本」と同じ数の作品が、HTMLにすべて入っている（予約の一覧ページは無いため）", bool(_note_n) and int(_note_n.group(1)) == len(_up_cells), (_note_n.group(1) if _note_n else None, len(_up_cells)))
+    if len(_up_cells) > _fold_n:
+        _offs = ["fold-off" in c for c, _ in _up_cells]
+        _btn = re.search(r'<button type="button" class="btn btn-quiet more-btn" data-fold-more hidden>もっと見る（あと<span data-fold-rest>(\d+)</span>本）</button>', _up_m.group(1))
+        check(f"予約受付中: 発売日が近い{_fold_n}本だけを先に見せ、残りはたたむ（data-fold・fold-off）。「もっと見る（あと○本）」のボタンは、スクリプトが出す（はじめは hidden）",
+              f'data-fold="{_fold_n}"' in _up_open and _offs == [i >= _fold_n for i in range(len(_offs))] and bool(_btn) and int(_btn.group(1)) == len(_up_cells) - _fold_n, (_up_open, sum(_offs), _btn.group(0) if _btn else None))
+        check("予約受付中: たたんだ作品の画像は、すぐには読まない（loading=\"lazy\"）", all('loading="lazy"' in inner and 'loading="eager"' not in inner for c, inner in _up_cells if "fold-off" in c))
+        _days = re.findall(r'<section class="day([^"]*)"[^>]*>(.*?)</section>', _up_m.group(1), re.S)
+        check("予約受付中: 全部がたたまれた日付は、見出しごとたたむ（fold-empty）・一部だけの日付は、たたまない",
+              all(("fold-empty" in dc) == all("fold-off" in c for c in re.findall(r'<li class="shelf-cell([^"]*)"', inner)) for dc, inner in _days), [dc for dc, _ in _days])
+    else:
+        check("予約受付中: 先に見せる本数以下のときは、たたまない（ボタンも無い）", 'data-fold' not in _up_m.group(0) and "fold-off" not in _up_m.group(1) and "data-fold-more" not in _up_m.group(1))
+
 # パソコンの右の欄（運営者の希望「右のカラム（きょうの話題）の下に全て並べる」「作品を探すも右のカラムの上に」「週のまとめは概要だけ」「月のまとめはバックナンバー」。2026-10-05）:
 # 作品を探す・いま人気の女優・人気のジャンル・きょうの話題・週のまとめ・月のまとめは .home-side の中。おすすめのコーナーは、HTMLではスマホの場所（発売中の中）にあり、パソコンのときだけ小さなスクリプトで右の欄へ移す
 home_m = re.search(r'<div class="home has-side" style="--side-span: (\d+)">', home_html)
@@ -1498,6 +1519,9 @@ check("CSS: きょうの話題の繰り上げ（.topic-alt）は、ふだんは�
 check("CSS: 1行の出演者の行（.item-cast・.medal-cast）では、文節の区切り（<wbr>）を消して、2行にしない（Chromium は nowrap でも <wbr> で改行する）", all(any(f"{c} wbr" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules) for c in (".item-cast", ".medal-cast")))
 check("CSS: 全部がVRのまとまり（[data-vr-group].vr-empty）を隠す", any("[data-vr-group].vr-empty" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules))
 check("CSS: html.hide-vr のとき、VR作品の目印（data-vr）のマスと、全部がVRの日付（.day.vr-empty）を隠す", bool(hide_rule) and all(re.search(r"display\s*:\s*none", b) for b in hide_rule) and any(".day.vr-empty" in sels for sels, b in css_rules if ".hide-vr [data-vr]" in sels), hide_rule[:1])
+fold_rule = [b for sels, b in css_rules if any(re.sub(r"\s+", " ", s_) == ".js [data-fold]:not(.is-open) .fold-off" for s_ in sels)]
+check("CSS: 「もっと見る」でたたんだ作品は、JavaScript が使えるとき（html.js）だけ、開くまで隠す（使えないときは全部見える）",
+      bool(fold_rule) and all(re.search(r"display\s*:\s*none", b) for b in fold_rule) and not any(".fold-off" in s_ and ".js" not in s_ for sels, b in css_rules for s_ in sels), fold_rule[:1])
 hidden_ok = [sels for sels, b in css_rules if ".vr-toggle[hidden]" in sels and re.search(r"display\s*:\s*none", b)]
 check("CSS: 隠れているスイッチ・検索（hidden）が、display の指定に負けずに隠れる", bool(hidden_ok) and any(".work-search[hidden]" in sels for sels in hidden_ok), hidden_ok[:1])
 
@@ -1506,7 +1530,7 @@ no_head_vr, no_vr_js, no_nav_search, no_foot_search = [], [], [], []
 for p in pages:
     html_ = read(p)
     head_ = html_[: html_.find("</head>")] if "</head>" in html_ else ""
-    if not re.search(r"localStorage\.getItem\('hide-vr'\)\s*===\s*'1'", head_) or "classList.add('hide-vr')" not in head_ or "classList.add('only-solo')" not in head_:
+    if not re.search(r"localStorage\.getItem\('hide-vr'\)\s*===\s*'1'", head_) or "classList.add('hide-vr')" not in head_ or "classList.add('only-solo')" not in head_ or "classList.add('js')" not in head_:
         no_head_vr.append(os.path.relpath(p, DIST))
     if 'src="/vr-filter.js?v=' not in html_:
         no_vr_js.append(os.path.relpath(p, DIST))

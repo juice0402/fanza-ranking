@@ -8,6 +8,7 @@ export const SITE_URL = 'https://fanza-ranking.pages.dev'; // 末尾にスラッ
 export const GOOGLE_SITE_VERIFICATION = 'Sr-kZdXB7gQmvK32Zc6vaSY6Gqdn0m_BI2pCHN3RMPk';
 
 export const HOME_RELEASED_LIMIT = 36; // トップに並べる「発売中」の最大数
+export const HOME_UPCOMING_SHOWN = 12; // トップの「予約受付中」で、はじめに見せる本数（発売日が近い順。残りは「もっと見る」で出す。押すまで残りの画像は読まない。運営者の「下のほうが重い」。2026-10-07）
 export const HOME_UPCOMING_LIMIT = 60; // トップに並べる「予約」の最大数（予約は毎回4本まで・14日先までなので、最大でも56本ほど。全部が載る数にしてある。予約の一覧ページは無いため、これを減らすと、載らない作品が出る）
 export const ARCHIVE_PAGE_SIZE = 30;   // 過去の作品の1ページあたりの件数
 export const CAST_LIMIT = 3;           // 一覧のカードに出す出演者の人数（オムニバスなど出演者が多い作品は「ほか○名」。運営者の希望。2026-10-05）

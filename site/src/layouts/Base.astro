@@ -57,7 +57,7 @@ import { assetUrl } from '../lib/assets.js';
 
     {/* 「VR作品を隠す」「単体作品のみ表示」を選んでいる端末では、ページを開いた瞬間から隠す（チラつかないよう、ここで先に印を付ける）。スイッチの動きは /vr-filter.js。
          ページごとに送られる小さなスクリプトなので、説明はここ（Astro のコメント。出力されない）に書く */}
-    <script is:inline>try{if(localStorage.getItem('hide-vr')==='1')document.documentElement.classList.add('hide-vr');if(localStorage.getItem('only-solo')==='1')document.documentElement.classList.add('only-solo')}catch(e){}</script>
+    <script is:inline>document.documentElement.classList.add('js');try{if(localStorage.getItem('hide-vr')==='1')document.documentElement.classList.add('hide-vr');if(localStorage.getItem('only-solo')==='1')document.documentElement.classList.add('only-solo')}catch(e){}</script>
 
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />

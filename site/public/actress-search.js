@@ -39,6 +39,7 @@
   // 名前の照らし合わせ用に、全角/半角・大文字小文字・カタカナ/ひらがな・空白や中点の違いをそろえる
   function normalizeText(text) {
     var s = String(text == null ? '' : text);
+    if (/^[ぁ-ゖー]*$/.test(s)) return s; // ひらがなだけ（読みのほとんど）は、そろえる必要が無い（速くするため）
     if (s.normalize) s = s.normalize('NFKC');
     s = s.toLowerCase().replace(/[ァ-ヶ]/g, function (c) {
       return String.fromCharCode(c.charCodeAt(0) - 0x60);
@@ -116,39 +117,84 @@
     return cups.indexOf(cup) >= 0 || (cups.indexOf('L+') >= 0 && cup >= 'L');
   }
 
-  function nameKey(row) {
-    return normalizeText(row.r || row.n);
+  // 照らし合わせ・並べ替え用の文字は、1人につき1回だけ作って、その人の行にしまっておく（約1万人を、文字を入れるたび・並べ替えるたびに
+  // 作り直していて、スマホで1回0.1〜0.25秒かかっていたため。運営者の「女優検索が少し重い」。2026-10-07）
+  // （名前の照らし合わせ用 n・r と、並べ替え用 sort は、使うときに別々に作る。はじめの一覧は並べ替え用だけで済む）
+  function keysOf(row) {
+    var k = row.$keys;
+    if (!k) {
+      k = {};
+      try {
+        Object.defineProperty(row, '$keys', { value: k, enumerable: false, configurable: true });
+      } catch (e) {}
+    }
+    return k;
   }
 
+  function matchKeys(row) {
+    var k = keysOf(row);
+    if (k.n === undefined) {
+      k.n = normalizeText(row.n);
+      k.r = normalizeText(row.r);
+    }
+    return k;
+  }
+
+  function nameKey(row) {
+    var k = keysOf(row);
+    if (k.sort === undefined) k.sort = normalizeText(row.r || row.n);
+    return k.sort;
+  }
+
+  // 並べ替えの値を、1人ずつ先に取り出しておく（比べるたびに取り出さない）。i は元の順（同じ順位なら元の順のまま）
+  function sortEntry(row, i, rule) {
+    var v = rule ? (rule.key === 'id' ? Number(row.id || 0) : row[rule.key]) : null;
+    return { row: row, i: i, v: v, has: Boolean(rule) && v !== undefined && v !== null && v !== '' && v !== 0, k: row.k || 0, name: nameKey(row) };
+  }
+
+  // 並べ方（sortEntry どうしを比べる）。値が無い人は後ろ・同じなら作品の多い順・読みの順・元の順
   function compareBy(sort) {
     var rule = Object.prototype.hasOwnProperty.call(SORTS, sort) ? SORTS[sort] : SORTS.works;
     if (sort === 'name') {
       return function (a, b) {
-        var x = nameKey(a);
-        var y = nameKey(b);
-        return x < y ? -1 : x > y ? 1 : (b.k || 0) - (a.k || 0);
+        return a.name < b.name ? -1 : a.name > b.name ? 1 : b.k - a.k || a.i - b.i;
       };
     }
     return function (a, b) {
       if (rule) {
-        var x = rule.key === 'id' ? Number(a.id || 0) : a[rule.key];
-        var y = rule.key === 'id' ? Number(b.id || 0) : b[rule.key];
-        var hx = x !== undefined && x !== null && x !== '' && x !== 0;
-        var hy = y !== undefined && y !== null && y !== '' && y !== 0;
-        if (hx !== hy) return hx ? -1 : 1; // 値が無い人は後ろ
-        if (hx && x !== y) return (x < y ? -1 : 1) * rule.dir;
+        if (a.has !== b.has) return a.has ? -1 : 1; // 値が無い人は後ろ
+        if (a.has && a.v !== b.v) return (a.v < b.v ? -1 : 1) * rule.dir;
       }
-      var kx = a.k || 0;
-      var ky = b.k || 0;
-      if (kx !== ky) return ky - kx;
-      var nx = nameKey(a);
-      var ny = nameKey(b);
-      return nx < ny ? -1 : nx > ny ? 1 : 0;
+      if (a.k !== b.k) return b.k - a.k;
+      return a.name < b.name ? -1 : a.name > b.name ? 1 : a.i - b.i;
     };
   }
 
   // 所属事務所のキー（索引の g。site/src/lib/agencies.js の AGENCIES のキー）の形
   var AGENCY_KEY = /^[a-z]{2,12}$/;
+
+  // 並べ替えた一覧は、並び順ごとに1回だけ作って覚えておく（条件を変えるたびに約1万人を並べ替えない）。
+  // 並べ替えは安定（同じ順位なら元の順）なので、「並べ替えてから絞り込む」と「絞り込んでから並べ替える」は同じ結果になる
+  var sortCache = { rows: null, len: -1, sort: '', list: null };
+  function sortedRows(rows, sort) {
+    var key = Object.prototype.hasOwnProperty.call(SORTS, sort) ? sort : 'works';
+    if (sortCache.rows !== rows || sortCache.len !== rows.length || sortCache.sort !== key) {
+      var rule = key === 'name' ? null : SORTS[key];
+      var entries = rows.map(function (row, i) {
+        return sortEntry(row, i, rule);
+      });
+      entries.sort(compareBy(key));
+      sortCache = {
+        rows: rows,
+        len: rows.length,
+        sort: key,
+        list: entries.map(function (e) {
+          return e.row;
+        }),
+      };
+    }
+    return sortCache.list;
+  }
 
   // 条件: { q 名前, age/height "下限-上限", bust/waist/hip "幅,幅"（どれかに入る人。"80-84,90-"）, cup "E,F,L+", ag 所属事務所のキー, sort, site "1"（このサイトに作品がある人だけ）, face "1"（顔写真がある人だけ） }
   function filterRows(rows, query) {
@@ -161,15 +207,17 @@
     var onlySite = q.site === '1';
     var onlyFace = q.face === '1';
     var agency = AGENCY_KEY.test(String(q.ag || '')) ? q.ag : '';
-    var out = rows.filter(function (row) {
+    return sortedRows(rows, q.sort).filter(function (row) {
       if (agency && row.g !== agency) return false;
-      if (text && normalizeText(row.n).indexOf(text) < 0 && normalizeText(row.r).indexOf(text) < 0) return false;
+      if (text) {
+        var keys = matchKeys(row);
+        if (keys.n.indexOf(text) < 0 && keys.r.indexOf(text) < 0) return false;
+      }
       if (onlySite && !(row.k > 0)) return false;
       if (onlyFace && !row.i) return false;
       for (var i = 0; i < ranges.length; i++) if (!inRanges(row[ranges[i].key], ranges[i].ranges)) return false;
       return cupMatches(row.c, cups);
     });
-    return out.sort(compareBy(q.sort));
   }
 
   // 数字・カップの条件を1つでも指定しているか（載っていない人は外れる、という注意書きを出すため）
@@ -439,8 +487,13 @@
     } catch (e) {}
   }
 
+  var lastKey = '';
   function render() {
     var q = readQuery();
+    // 同じ条件・同じ人数なら、作り直さない（チェックボックスなどは「input」と「change」の両方が来て、同じ一覧を2回作っていたため）
+    var key = buildQuery(q) + '|' + shown;
+    if (key === lastKey) return;
+    lastKey = key;
     var found = filterRows(rows, q).filter(function (row) {
       return pagePath(row.s) || listUrl(row, template);
     });

@@ -6,14 +6,20 @@ import { dateParts, filterAttrs } from '../lib/items.js';
 // headingLevel: 日付タブの見出し階層。カードの見出しは、その1つ下になる
 // keepVr: 「VR作品を隠す」を選んでいても隠さない（VR作品のページ。そこで全部が消えて空になるのを防ぐ）
 // eagerFirst: 先頭の日付の、先頭から何本の画像を、すぐ読むか（ページのはじめに一覧があるページで、最初の画面の表示を速くする）
-const { groups, headingLevel = 'h3', cardLevel = 'h4', keepVr = false, eagerFirst = 0 } = Astro.props;
+// fold: 全体の先頭から、この本数より後ろのマスに印 fold-off（全部が fold-off の日付には fold-empty）を付ける。0 なら付けない。
+//   囲む [data-fold] が開くまで、CSS が隠す（JavaScript が使えるときだけ。トップの予約受付中。運営者の「下のほうが重い」。2026-10-07）。
+//   隠れているあいだは画像を読まない（loading="lazy" の画像は、表示されていないと読まれない）。印は vr-filter.js が、絞り込みに合わせて付け直す
+const { groups, headingLevel = 'h3', cardLevel = 'h4', keepVr = false, eagerFirst = 0, fold = 0 } = Astro.props;
 const DayHeading = headingLevel;
+// 日付ごとの、全体の中での先頭の番号
+const starts = groups.reduce((acc, g, i) => [...acc, i === 0 ? 0 : acc[i - 1] + groups[i - 1].items.length], []);
+const folded = (gi, ii) => fold > 0 && starts[gi] + ii >= fold;
 ---
 
 {groups.map((g, gi) => {
   const p = dateParts(g.dateKey);
   return (
-    <section class="day" aria-labelledby={`day-${g.dateKey}`}>
+    <section class:list={['day', { 'fold-empty': folded(gi, 0) }]} aria-labelledby={`day-${g.dateKey}`}>
       <header class="divider">
         <DayHeading class="divider-tab" id={`day-${g.dateKey}`}>
           <span class="divider-year">{p.y}年</span>
@@ -24,7 +30,7 @@ const DayHeading = headingLevel;
       </header>
       <ul class="shelf">
         {g.items.map((item, ii) => (
-          <li class="shelf-cell" {...filterAttrs(item, { vr: !keepVr })}><ItemCard item={item} level={cardLevel} eager={gi === 0 && ii < eagerFirst} /></li>
+          <li class:list={['shelf-cell', { 'fold-off': folded(gi, ii) }]} {...filterAttrs(item, { vr: !keepVr })}><ItemCard item={item} level={cardLevel} eager={gi === 0 && ii < eagerFirst && !folded(gi, ii)} /></li>
         ))}
       </ul>
     </section>

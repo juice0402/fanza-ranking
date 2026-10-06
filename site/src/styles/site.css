@@ -3710,6 +3710,13 @@ a.reel-card:hover .reel-title {
   transform: rotate(45deg);
 }
 
+/* 「もっと見る」でたたんだ残り（トップの予約受付中。DaySection の fold・vr-filter.js）。JavaScript が使えるとき（html.js。Base.astro の <head> が付ける）だけ隠す。
+   隠れているあいだは、中の画像を読まない（運営者の「下のほうが重い」。2026-10-07） */
+.js [data-fold]:not(.is-open) .fold-off,
+.js [data-fold]:not(.is-open) .day.fold-empty {
+  display: none;
+}
+
 /* 「VR作品を隠す」: VR作品の目印（data-vr）が付いたマスを隠す。全部がVRの日付は、見出しごと隠す（vr-filter.js が印を付ける） */
 .hide-vr [data-vr],
 .only-solo .shelf-cell:not([data-solo]),

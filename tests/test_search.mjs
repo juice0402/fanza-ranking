@@ -138,6 +138,13 @@ check('日付ごとの本数の文字: 絞り込まないとき・隠れる作�
 check('日付ごとの本数の文字: 絞り込むときは、隠れない本数と注記（「全◯本」は分からないので出さない）', V.dayCountText('5本', 5, 2, '（VRを除く）') === '3本（VRを除く）' && V.dayCountText('3本（全5本）', 3, 1, '（単体作品のみ）') === '2本（単体作品のみ）');
 check('全部が隠れる日付だけ、空になる', V.dayIsEmpty(2, 2) && !V.dayIsEmpty(2, 1) && !V.dayIsEmpty(0, 0));
 
+console.log('\n■ 「もっと見る」でたたむ一覧（トップの予約受付中。vr-filter.js の foldLayout。2026-10-07）');
+const FL = (hidden, n, open) => JSON.stringify(plain(V.foldLayout(hidden, n, open)));
+check('先頭から n 本を見せ、残りをたたむ（あと○本）', FL([0, 0, 0, 0, 0], 3, false) === '{"off":[false,false,false,true,true],"rest":2}');
+check('絞り込みで隠れるマスは数えない（隠れない先頭の n 本を見せる）', FL([1, 0, 1, 0, 0, 0], 2, false) === '{"off":[false,false,false,false,true,true],"rest":2}' && FL([1, 1, 1], 2, false) === '{"off":[false,false,false],"rest":0}');
+check('開いたら、たたまない・n 本以下なら、たたまない・n が 0 なら、たたまない', FL([0, 0, 0, 0], 2, true) === '{"off":[false,false,false,false],"rest":0}' && FL([0, 0], 2, false) === '{"off":[false,false],"rest":0}' && FL([0, 0, 0], 0, false) === '{"off":[false,false,false],"rest":0}' && FL([], 3, false) === '{"off":[],"rest":0}');
+check('一部がたたまれた日付の本数: 「3本（全8本）」・絞り込みの注記も付ける', V.foldCountText(8, 5, '') === '3本（全8本）' && V.foldCountText(6, 2, '（VRを除く）') === '4本（全6本）（VRを除く）');
+
 console.log('\n■ トップの新着人気TOP3の出し方（VR作品を隠すときは、VRを除いて次の順位から差し替え）');
 const RL = (flags, hide, show = 3) => plain(V.rankLayout(flags, hide, show));
 const RLs = (flags, hide, show = 3) => JSON.stringify(RL(flags, hide, show));

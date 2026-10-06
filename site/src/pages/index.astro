@@ -50,6 +50,7 @@ import {
   SITE_NAME,
   HOME_RELEASED_LIMIT,
   HOME_UPCOMING_LIMIT,
+  HOME_UPCOMING_SHOWN,
   ACTRESS_INDEX_PATH,
   MAKER_INDEX_PATH,
 } from '../lib/items.js';
@@ -57,6 +58,9 @@ import {
 const releasedGroups = groupByDate(released.slice(0, HOME_RELEASED_LIMIT), countByDate(released));
 const upcomingGroups = groupByDate(upcoming.slice(0, HOME_UPCOMING_LIMIT), countByDate(upcoming));
 const upcomingShown = Math.min(upcoming.length, HOME_UPCOMING_LIMIT); // 「予約受付中 N本」は、下に並ぶ数と同じにする
+// 予約受付中は、発売日が近い HOME_UPCOMING_SHOWN 本だけを先に見せ、残りは「もっと見る」で出す（運営者の「下のほうが重い」。2026-10-07）。
+// 残りもHTMLには入れておく（予約の一覧ページは無いため。検索エンジンと、JavaScript が使えない人には全部見える）
+const upcomingFold = upcomingShown > HOME_UPCOMING_SHOWN ? HOME_UPCOMING_SHOWN : 0;
 const hasMore = released.length > HOME_RELEASED_LIMIT;
 const latestRoundup = roundups[0]; // いちばん新しい週のまとめ（無ければ undefined）
 const day = dateParts(today);
@@ -254,12 +258,15 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
     </section>
 
     {upcomingGroups.length > 0 && (
-      <section id="upcoming" class="section" aria-labelledby="upcoming-title">
+      <section id="upcoming" class="section" aria-labelledby="upcoming-title" data-fold={upcomingFold || undefined}>
         <div class="section-head">
           <h2 id="upcoming-title" class="section-title">予約受付中</h2>
           <p class="section-note">発売日が近い順・{upcomingShown}本</p>
         </div>
-        <DaySection groups={upcomingGroups} />
+        <DaySection groups={upcomingGroups} fold={upcomingFold} />
+        {upcomingFold > 0 && (
+          <p class="more"><button type="button" class="btn btn-quiet more-btn" data-fold-more hidden>もっと見る（あと<span data-fold-rest>{upcomingShown - upcomingFold}</span>本）</button></p>
+        )}
       </section>
     )}
     </div>
