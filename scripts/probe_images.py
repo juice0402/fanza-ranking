@@ -37,7 +37,18 @@ for i in random.sample(catalog, min(350, len(catalog))):
 todo = [(cid, it) for cid, it in pick.items() if (it.get("image_url") or "").startswith("https://pics.dmm.co.jp/")]
 print("todo", len(todo), flush=True)
 
-CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+CASCADE = cv2.CascadeClassifier(os.path.join(getattr(getattr(cv2, "data", None), "haarcascades", ""), "haarcascade_frontalface_default.xml"))
+if CASCADE.empty():  # OpenCV 5 には入っていない。OpenCV の公式リポジトリから取る
+    try:
+        xml = "/tmp/haarcascade_frontalface_default.xml"
+        with urllib.request.urlopen("https://raw.githubusercontent.com/opencv/opencv/4.x/data/haarcascades/haarcascade_frontalface_default.xml", timeout=30) as res:
+            open(xml, "wb").write(res.read())
+        CASCADE = cv2.CascadeClassifier(xml)
+    except Exception as e:  # noqa: BLE001
+        print("::notice title=cascade::" + repr(e)[:200])
+CASCADE_OK = not CASCADE.empty()
+FAKE = os.environ.get("PROBE_FAKE_FACES") == "1"
+print("cascade ok", CASCADE_OK, flush=True)
 
 
 def fetch(pair):
@@ -49,7 +60,12 @@ def fetch(pair):
         if img is None:
             return cid, it, None, None
         h, w = img.shape
-        faces = CASCADE.detectMultiScale(img, scaleFactor=1.1, minNeighbors=6, minSize=(max(24, h // 12), max(24, h // 12)))
+        if FAKE:
+            faces = [(random.randint(0, w - 80), random.randint(0, h - 80), 70, 70)]
+        elif CASCADE_OK:
+            faces = CASCADE.detectMultiScale(img, scaleFactor=1.1, minNeighbors=6, minSize=(max(24, h // 12), max(24, h // 12)))
+        else:
+            faces = []
         faces = sorted([tuple(int(v) for v in f) for f in faces], key=lambda f: -f[2] * f[3])
         return cid, it, (w, h), faces
     except Exception as e:  # noqa: BLE001
@@ -150,6 +166,19 @@ for k in ("std", "wide", "mid", "square", "tall"):
                 res.append(f"h{pos}:{ok * 100 // len(got)}%")
         line += " | inside " + " ".join(res)
     notes.append((f"face-{k}", line))
+
+# 人気の上位30本: 大きさと、いちばん大きい顔の位置（画像全体の中で、x0-x1,y0-y1 の割合）
+def fbox(r):
+    if not r["faces"]:
+        return "-"
+    x, y, fw, fh = r["faces"][0]
+    return f"{x / r['w']:.2f}-{(x + fw) / r['w']:.2f},{y / r['h']:.2f}-{(y + fh) / r['h']:.2f}"
+
+
+top30 = sorted([r for r in rows if r["rank"]], key=lambda r: r["rank"])[:30]
+notes.append(("top30", " / ".join(f"#{r['rank']} {r['cid']} {r['w']}x{r['h']} {fbox(r)}" for r in top30)))
+std_left = [r for r in rows if kind(r) == "std" and r["faces"] and (r["faces"][0][0] + r["faces"][0][2] / 2) / r["w"] < 0.47]
+notes.append(("std-left-face", f"{len(std_left)} of {sum(1 for r in rows if kind(r) == 'std' and r['faces'])} | " + " / ".join(f"{r['cid']} {r['maker']} {fbox(r)}" for r in std_left[:25])))
 
 for title, body in notes:
     print(title, body, flush=True)
