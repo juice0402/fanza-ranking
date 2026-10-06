@@ -74,10 +74,13 @@ import { assetUrl } from '../../lib/assets.js';
         <div class="search-side">
         <h2 id="as-title" class="visually-hidden">条件で探す</h2>
         <form class="as-form" role="search" autocomplete="off">
-          <label class="as-field as-field-wide">
-            <span class="visually-hidden">名前（ひらがな・カタカナでもOK）</span>
-            <input type="search" name="q" placeholder="名前（ひらがなでもOK）" enterkeyhint="search" />
-          </label>
+          {/* 作品検索と同じ、紙の色の検索バー（2026-10-06） */}
+          <div class="search-bar">
+            <svg class="search-bar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5 20 20" /></svg>
+            <label class="visually-hidden" for="as-q">名前（ひらがな・カタカナでもOK）</label>
+            <input id="as-q" class="search-bar-input" type="search" name="q" placeholder="名前（ひらがなでもOK）" enterkeyhint="search" />
+            <button type="submit" class="search-bar-btn">探す</button>
+          </div>
           {/* 年齢・身長・スリーサイズ・カップ・並び順は、たためる（スマホで、結果がすぐ見えるように。広い画面・条件つきで開いたときは開く。actress-search.js） */}
           <details id="as-filters" class="ws-filters">
             <summary class="ws-filters-toggle">{agencyOptions.length > 0 ? '年齢・サイズ・カップ・所属' : '年齢・サイズ・カップ'}<span id="as-filter-note" class="ws-filter-note"></span></summary>
@@ -146,8 +149,7 @@ import { assetUrl } from '../../lib/assets.js';
         <ul id="as-list" class="actress-list"></ul>
         <p class="more"><button id="as-more" type="button" class="btn btn-quiet more-btn" hidden>もっと見る</button></p>
         <p class="as-coverage">
-          年齢・身長・スリーサイズ・カップは、FANZA公式の出演者データです（ほかのサイトの情報や推測は使っていません）。いま探せる{fmt(cov.total)}人のうち、年齢が分かるのは{fmt(cov.withAge)}人、身長は{fmt(cov.withHeight)}人、スリーサイズは{fmt(cov.withSize)}人、カップは{fmt(cov.withCup)}人です。年齢は、FANZAに載っている生年月日から毎日計算しています。データは毎日、少しずつ新しくなります。
-          {agencyTotal > 0 && `所属事務所は、${agencyOptions.length}つの事務所の公式サイトの所属女優のページに載っている${fmt(agencyTotal)}人に付けています（名前がFANZAとぴったり同じ人だけ。週に1回、新しくなります）。`}
+          年齢・サイズはFANZA公式の情報（{fmt(cov.total)}人）{agencyTotal > 0 && `、所属は${agencyOptions.length}つの事務所の公式サイトの情報（${fmt(agencyTotal)}人）`}です。
         </p>
         </div>
       </section>

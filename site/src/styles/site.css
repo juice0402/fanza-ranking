@@ -16,6 +16,10 @@
   --pop: #ffd23f;        /* POPの黄色（新作シール・フォーカス） */
   --hot: #d9123f;        /* 赤札（行動ボタン） */
   --hot-hover: #f0224f;
+  /* 押せるもの（ボタン・チップ・切り替え・入力欄）の枠と地。暗い背景に溶けこまないよう、枠は背景との明るさの差（コントラスト）を3:1以上に、
+     地もほんの少し明るくする（運営者の指摘「黒いボタン系が、背景と同化しすぎて見づらい」。2026-10-06）。パネル・表の罫線は --line のまま */
+  --edge: rgba(244, 235, 221, 0.42);
+  --fill: rgba(244, 235, 221, 0.07);
 
   --font-display: 'Dela Gothic One', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
   /* 本文は、端末に入っている日本語の書体（読み込みを軽くするため。2026-10-05）。見出しの Dela Gothic One だけ読み込む */
@@ -271,46 +275,78 @@ summary:focus-visible {
   }
 }
 
-/* トップの検索欄（作品検索のページへ、キーワードを送る。ふつうのフォームなので JavaScript が無くても動く） */
-.hero-search {
+/* 検索バー（トップの「作品を探す」・作品検索・女優検索で同じ形。運営者の希望「作品検索がスタイリッシュじゃない。ほかの雰囲気と合わせて刷新」。2026-10-06）:
+   夜の棚に貼った紙の札のような、紙の色の丸いバー。左に虫めがね、右に赤札の色の「探す」。押せる場所がひと目で分かるように、ページでいちばん明るい部品にする */
+.search-bar {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   max-width: var(--trio-max); /* TOP3 と同じ幅まで（タブレットで、TOP3 とそろう） */
-  margin-top: 18px;
-}
-
-.hero-search-input {
-  flex: 1;
-  min-width: 0;
-  min-height: 48px;
-  padding: 0 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-panel);
-  background: var(--board);
-  color: var(--paper);
-  font: 400 16px/1.3 var(--font-body); /* 16px 未満だと、iPhone で入力欄に触れたとき画面が拡大されてしまう */
-}
-
-.hero-search-input::placeholder {
-  color: var(--paper-dim);
-  opacity: 1;
-}
-
-.hero-search-input:focus-visible {
-  outline: 3px solid var(--pop);
-  outline-offset: 1px;
-}
-
-.hero-search-btn {
-  flex: none;
-  min-height: 48px;
-  padding: 0 22px;
-  border: 0;
+  padding: 4px 4px 4px 14px;
   border-radius: var(--r-pill);
   background: var(--paper);
   color: var(--ink);
-  font: 700 15px/1 var(--font-body);
+}
+
+.search-bar:focus-within {
+  outline: 3px solid var(--pop);
+  outline-offset: 2px;
+}
+
+.search-bar-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+.search-bar-input {
+  flex: 1;
+  width: 0; /* 入力欄そのものの幅（文字20字ぶん）で、バーが欄からはみ出さないように。残りの幅いっぱいに広がる */
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 400 16px/1.3 var(--font-body); /* 16px 未満だと、iPhone で入力欄に触れたとき画面が拡大されてしまう */
+  outline: none;
+}
+
+.search-bar-input::placeholder {
+  color: rgba(23, 18, 31, 0.5);
+  opacity: 1;
+}
+
+/* 入力欄の右の「×」（ブラウザの消すボタン）は、紙の色の上でも見えるように */
+.search-bar-input::-webkit-search-cancel-button {
+  filter: invert(0.2);
+}
+
+.search-bar-btn {
+  flex: none;
+  margin-left: 4px; /* 入力欄と、すこし離す */
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--hot);
+  color: #fff;
+  font: 400 15px/1 var(--font-display);
+  letter-spacing: 0.04em;
   cursor: pointer;
+}
+
+.search-bar-btn:hover {
+  background: var(--hot-hover);
+}
+
+.hero-search {
+  margin-top: 18px;
 }
 
 /* 探し方のリンク（新着の人気ランキング・ジャンル・出演者・メーカー…）。
@@ -344,11 +380,12 @@ summary:focus-visible {
   align-items: center;
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: var(--r-pill);
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
+  background: var(--fill);
 }
 
 .chip-link:hover {
@@ -546,10 +583,10 @@ summary:focus-visible {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.55;
-  min-height: 4.65em; /* 3行ぶん（line-height 1.55 × 3）。タイトルが2行でも3行でも、下の出演者・コメントの位置を横並びのカードでそろえる */
+  min-height: 3.1em; /* 2行ぶん（line-height 1.55 × 2）。タイトルが1行でも2行でも、下の出演者・コメントの位置を横並びのカードでそろえる */
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 2; /* カードを低くして、すっきり見せる（運営者の希望「スッキリした見た目に」。2026-10-06。続きは作品ページで） */
+  line-clamp: 2;
 }
 
 .item-title-link {
@@ -573,13 +610,14 @@ summary:focus-visible {
 .item-comment {
   display: -webkit-box;
   flex: 1;
-  margin: 8px 0 12px;
+  margin: 6px 0 10px;
   overflow: hidden;
+  color: var(--paper-dim);
   font-size: 12px;
   line-height: 1.7;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
+  -webkit-line-clamp: 2; /* 一覧では2行だけ（長い文は読まれにくく、カードが縦に伸びるため。全文は作品ページに） */
+  line-clamp: 2;
 }
 
 /* ---------- ボタン ---------- */
@@ -612,8 +650,8 @@ summary:focus-visible {
 }
 
 .btn-quiet {
-  border-color: var(--line);
-  background: transparent;
+  border-color: var(--edge);
+  background: var(--fill);
   color: var(--paper);
 }
 
@@ -624,10 +662,20 @@ summary:focus-visible {
 /* 一覧のカードの「FANZAで見る」。赤い大きなボタンは、ページごとの一番の行き先（作品ページの「FANZAで詳細を見る」など）だけにして、
    カードのほうは控えめな枠のボタンにする（たくさん並ぶので、赤が続いて見づらくならないように）。外のサイトへ行く印（↗）を添える */
 .btn-card {
-  border-color: var(--line);
-  background: transparent;
+  margin-top: auto; /* ひとことが無いカードでも、ボタンをカードのいちばん下にそろえる */
+  border-color: var(--edge);
+  background: var(--fill);
   color: var(--paper);
   font-size: 13px;
+}
+
+/* ボタンのすぐ上の行（ひとこと・価格・出演者）とのすき間 */
+.item > .btn-card:last-child {
+  margin-top: auto;
+}
+
+.item > :nth-last-child(2):not(.item-cover) {
+  margin-bottom: 10px;
 }
 
 .btn-card::after {
@@ -672,10 +720,11 @@ summary:focus-visible {
   min-width: 44px;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: var(--r-pill);
   font-weight: 700;
   text-decoration: none;
+  background: var(--fill);
 }
 
 .pager-link:hover {
@@ -779,6 +828,11 @@ summary:focus-visible {
   font-size: 14px;
 }
 
+/* 作品ページの基本情報: 名前の横の小さな☆（押せる場所が行より少し大きい）と、次の行の名前がくっつかないように */
+.detail-body .spec {
+  row-gap: 16px;
+}
+
 /* 出演者・メーカーのページの、ボタンの並びのすぐ下の情報欄（.section の余白が .spec の margin で消えて、ボタンにくっついていた） */
 .spec.section {
   margin-top: 28px;
@@ -804,9 +858,10 @@ summary:focus-visible {
 
 .chip {
   padding: 1px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: var(--r-pill);
   font-size: 12px;
+  background: var(--fill);
 }
 
 /* 作品ページのジャンル（タグ）。押すと、そのジャンルで絞り込んだ検索に飛ぶ。指で押しやすい高さにする */
@@ -907,6 +962,138 @@ summary:focus-visible {
   font: 400 20px/1.3 var(--font-display);
 }
 
+/* 見出しの横にボタン（作品ページの「○○の次の新作」＋お気に入り）。せまい画面では、ボタンが見出しの下に回る */
+.subsection-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 0 14px;
+}
+
+.subsection-head .subsection-title {
+  margin: 0;
+}
+
+/* 作品ページのセールの札（セール中のときだけ。2026-10-06）: 赤札の色の帯に、割引・価格・いつまで・特集の名前 */
+.sale-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 18px 0 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(217, 18, 63, 0.55);
+  border-radius: var(--r-panel);
+  background: rgba(217, 18, 63, 0.12);
+  font-variant-numeric: tabular-nums;
+}
+
+.sale-strip-off {
+  align-self: center;
+  padding: 3px 9px 2px;
+  border-radius: var(--r-media);
+  background: var(--hot);
+  color: #fff;
+  font: 400 14px/1.3 var(--font-display);
+}
+
+.sale-strip-price strong {
+  font-size: 17px;
+}
+
+.sale-strip-price s {
+  margin-left: 6px;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.sale-strip-end {
+  color: var(--pop);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sale-strip-link {
+  flex-basis: 100%;
+  color: var(--paper-dim);
+  font-size: 12px;
+  text-underline-offset: 3px;
+}
+
+/* 小さな表紙の棚（作品ページの「同じ出演者・メーカーの作品」。components/MiniShelf.astro）: スマホ3列・広い画面6列 */
+.mini-shelf {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mini-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.mini-cover {
+  position: relative;
+  display: block;
+  aspect-ratio: var(--cover-ratio);
+  overflow: hidden;
+  border-radius: var(--r-media);
+  background: var(--board);
+}
+
+.mini-title {
+  display: -webkit-box;
+  margin: 6px 0 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.mini-cast {
+  display: block;
+  overflow: hidden;
+  color: var(--paper-dim);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-card:hover .mini-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (min-width: 640px) {
+  .mini-shelf {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    max-width: 980px;
+    gap: 18px 14px;
+  }
+}
+
+/* 作品ページの下の運命の作品（トップと同じ部品。/data/gacha.json を読む） */
+.subsection + .gacha,
+.wrap > .gacha {
+  margin-top: 44px;
+}
+
+.wrap > .gacha .slot-reels {
+  max-width: var(--trio-max);
+}
+
 /* 作品ページの「この作品のデータ」欄（保存データから数えた事実の文）。1つの枠の中に、罫線で区切った行を並べる（表のように読める） */
 .facts {
   max-width: 760px;
@@ -923,7 +1110,7 @@ summary:focus-visible {
   display: grid;
   grid-template-columns: 6.5em 1fr;
   gap: 2px 12px;
-  padding: 11px 14px;
+  padding: 9px 14px;
   font-size: 14px;
   line-height: 1.7;
 }
@@ -942,10 +1129,24 @@ summary:focus-visible {
   min-width: 0;
 }
 
+.facts-link {
+  margin-left: 8px;
+  color: var(--paper-dim);
+  font-size: 12px;
+  white-space: nowrap;
+  text-underline-offset: 3px;
+}
+
+.facts-link:hover {
+  color: var(--paper);
+}
+
+/* 文が短くなったので、スマホでも「見出し｜中身」の2列のまま（2026-10-06） */
 @media (max-width: 479px) {
   .facts-row {
-    grid-template-columns: 1fr;
-    gap: 0;
+    grid-template-columns: 5.2em 1fr;
+    gap: 0 10px;
+    padding: 9px 12px;
   }
 }
 
@@ -1243,7 +1444,7 @@ summary:focus-visible {
   gap: 3px;
   height: 76px;
   padding: 0 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   background: var(--board);
   text-decoration: none;
   border-radius: var(--r-panel);
@@ -1460,7 +1661,7 @@ summary:focus-visible {
 /* ---------- パッケージ写真（動画がある作品の、サンプル画像の下） ---------- */
 
 .package .sample-link {
-  max-width: 800px;
+  max-width: 640px; /* パソコンで大きくなりすぎないように（押すと拡大表示） */
 }
 
 .package-img {
@@ -1547,7 +1748,7 @@ html.lightbox-open {
   width: 56px;
   height: 56px;
   padding: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 50%;
   background: rgba(36, 27, 48, 0.85);
   color: var(--paper);
@@ -1597,9 +1798,9 @@ html.lightbox-open {
   gap: 8px;
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: var(--r-pill);
-  background: transparent;
+  background: var(--fill);
   color: var(--paper);
   font: 700 14px/1.2 var(--font-body);
   cursor: pointer;
@@ -1626,13 +1827,32 @@ html.lightbox-open {
   line-height: 1;
 }
 
+/* 出演者・メーカーのページの見出しの下のお気に入り（黄色で目立たせる。押すと、新作がトップと「お気に入り」に出る。運営者の希望「リピーターをつけたい」。2026-10-06）。
+   押したあとは、ふつうの枠に黄色い☆ */
+.fav-btn-lead {
+  border-color: var(--pop);
+  background: var(--pop);
+  color: var(--ink);
+}
+
+.fav-btn-lead:hover {
+  border-color: var(--pop);
+  background: #ffe07a;
+}
+
+.fav-btn-lead[aria-pressed='true'] {
+  background: var(--fill);
+  color: var(--paper);
+}
+
 /* 名前の横の小さな☆（押しやすいよう、見た目より広くタップできる） */
 .fav-btn-mini {
   min-width: 44px;
-  min-height: 44px;
-  margin: -10px 0 -10px 8px;
+  min-height: 36px;
+  margin: -6px 0 -6px 8px;
   padding: 0 8px;
   border-color: transparent;
+  background: transparent; /* 名前の横の小さな☆は、地を付けない（押せる場所は広いまま） */
   vertical-align: middle;
 }
 
@@ -1763,9 +1983,9 @@ html.lightbox-open {
   flex: none;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: var(--r-pill);
-  background: transparent;
+  background: var(--fill);
   color: var(--paper-dim);
   font: 700 12px/1 var(--font-body);
   cursor: pointer;
@@ -1992,14 +2212,12 @@ html.lightbox-open {
   display: none;
 }
 
+/* 女優検索の条件の欄: 作品検索と同じく、囲みの箱は付けない（2026-10-06） */
 .as-form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   margin: 18px 0 0;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-panel);
-  background: var(--board);
 }
 
 .as-grid {
@@ -2058,7 +2276,7 @@ html.lightbox-open {
   min-width: 0;
   min-height: 44px;
   padding: 8px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: var(--r-panel);
   background: var(--ink);
   color: var(--paper);
@@ -2108,7 +2326,7 @@ html.lightbox-open {
   min-width: 44px;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: var(--r-pill);
   color: var(--paper);
   font: 700 14px/1 var(--font-body);
@@ -2168,7 +2386,7 @@ html.lightbox-open {
   width: 100%;
   min-height: 44px;
   padding: 8px 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: var(--r-panel);
   background: var(--ink);
   color: var(--paper);
@@ -2200,7 +2418,7 @@ html.lightbox-open {
 .actress-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 10px;
+  column-gap: 24px;
   margin: 12px 0 0;
   padding: 0;
   list-style: none;
@@ -2211,20 +2429,20 @@ html.lightbox-open {
   display: grid;
 }
 
+/* 作品検索の結果と同じく、箱で囲まず、細い罫線で区切った行（2026-10-06） */
 .actress-row-link {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 72px;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  background: var(--board);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
   text-decoration: none;
-  border-radius: var(--r-panel);
 }
 
-.actress-row-link:hover {
-  border-color: var(--paper);
+.actress-row-link:hover .actress-row-name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .actress-row-text {
@@ -2856,6 +3074,11 @@ html.lightbox-open {
   margin-top: 12px;
 }
 
+/* 検索の欄の中で、ほかの欄（女優検索の条件の箱）の上に置くとき */
+.as-form .search-bar {
+  max-width: none;
+}
+
 @media (min-width: 640px) {
   :root {
     --trio-gap: 18px;
@@ -3433,9 +3656,9 @@ a.reel-card:hover .reel-title {
   white-space: nowrap; /* スイッチの中では折り返さない（スイッチどうしは、入らなければ次の行へ） */
   min-height: 44px;
   padding: 0 16px 0 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: var(--r-pill);
-  background: transparent;
+  background: var(--fill);
   color: var(--paper);
   font: 700 13px/1.2 var(--font-body);
   cursor: pointer;
@@ -3521,7 +3744,7 @@ a.reel-card:hover .reel-title {
 
 @media (min-width: 960px) {
   .search-layout {
-    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-columns: 320px minmax(0, 1fr);
     align-items: start;
     gap: 28px;
   }
@@ -3555,25 +3778,28 @@ a.reel-card:hover .reel-title {
 }
 
 /* 作品検索の結果: 小さな表紙（表紙だけの軽い画像）＋タイトル・出演者・発売日の行。スマホは1列、広い画面は2列（パソコンは右の欄に2〜3列） */
+/* 作品の行（作品検索の結果・週のまとめの全作品・出演者/メーカーの次の新作・セール中の作品）: 箱で囲まず、細い罫線で区切った行にする
+   （箱が縦に並ぶと、枠線ばかりが目立って重く見えたため。運営者の希望「スッキリした見た目に」。2026-10-06） */
 .ws-list {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  column-gap: 24px;
   margin: 12px 0 0;
   padding: 0;
   list-style: none;
 }
 
+.ws-row {
+  border-bottom: 1px solid var(--line);
+}
+
 .ws-row .item {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
   grid-template-rows: auto auto 1fr;
   column-gap: 12px;
   height: 100%;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-panel);
-  background: var(--board);
+  padding: 10px 0;
 }
 
 .ws-row .item-cover {
@@ -3588,6 +3814,10 @@ a.reel-card:hover .reel-title {
   line-height: 1.5;
 }
 
+.ws-row .item-meta {
+  margin-bottom: 0;
+}
+
 .ws-row .item-cast,
 .ws-row .item-meta {
   margin: 2px 0 0;
@@ -3600,11 +3830,6 @@ a.reel-card:hover .reel-title {
   font-size: 10px;
 }
 
-@media (min-width: 640px) {
-  .ws-list {
-    gap: 10px;
-  }
-}
 
 @supports not ((container-type: inline-size) and selector(:has(*))) {
   @media (min-width: 640px) {
@@ -3616,14 +3841,164 @@ a.reel-card:hover .reel-title {
 
 @media (min-width: 1200px) {
   .ws-row .item {
-    grid-template-columns: 84px minmax(0, 1fr);
+    grid-template-columns: 72px minmax(0, 1fr);
   }
 }
 
 /* ---------- 作品検索（/search/） ---------- */
 
-/* ジャンル・発売・並び順の、たためる欄 */
-/* details に display: grid を付けると、古いSafariで開閉が効かないことがあるので、すき間は子の margin で作る */
+/* 条件の欄（作品検索）: 囲みの箱は付けず、検索バー → 発売 → 並び順 → ジャンル → スイッチ の順に、すき間をあけて並べる */
+.ws-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin: 6px 0 0;
+}
+
+/* 見出しのすぐ下に検索バー（見出しと検索のあいだを空けすぎない） */
+.search-hero + .search-layout {
+  margin-top: 6px;
+}
+
+.ws-form .search-bar {
+  max-width: none;
+}
+
+/* 発売・並び順: 押して選ぶ丸いボタン（中身はラジオボタン。キーボード・読み上げでは、ふつうの選択として使える）。選んだものは黄色 */
+.seg {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.seg-label {
+  margin: 0 0 6px;
+  padding: 0;
+  color: var(--paper-dim);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.seg-sub {
+  margin-left: 4px;
+  font-weight: 400;
+}
+
+.seg-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.seg-opt {
+  position: relative;
+  flex: none;
+}
+
+.seg-opt input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.seg-opt > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-pill);
+  background: var(--fill);
+  color: var(--paper);
+  font: 700 13px/1 var(--font-body);
+  white-space: nowrap;
+}
+
+.seg-opt input:checked + span {
+  border-color: var(--pop);
+  background: var(--pop);
+  color: var(--ink);
+}
+
+.seg-opt input:focus-visible + span {
+  outline: 3px solid var(--pop);
+  outline-offset: 2px;
+}
+
+.seg-opt:hover input:not(:checked) + span {
+  border-color: var(--paper);
+}
+
+/* 並び順は、せまい画面でも1行（入りきらなければ、指で横にずらす） */
+@media (max-width: 959px) {
+  .seg-scroll {
+    flex-wrap: nowrap;
+    margin: 0 calc(var(--gutter) * -1);
+    padding: 0 var(--gutter) 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .seg-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ジャンル: スマホでは横に流れる1行（指でずらして選ぶ）。「すべてのジャンル」で折り返して全部 */
+.ws-tags {
+  min-width: 0;
+}
+
+.ws-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 959px) {
+  .ws-tag-list:not(.is-open) {
+    flex-wrap: nowrap;
+    margin: 0 calc(var(--gutter) * -1);
+    padding: 0 var(--gutter) 4px;
+    overflow-x: auto;
+    scroll-padding: 0 var(--gutter);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ws-tag-list:not(.is-open)::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ws-tag-list:not(.is-open) li {
+    flex: none;
+  }
+}
+
+.tag-more {
+  min-height: 40px;
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pop);
+  font: 700 13px/1.2 var(--font-body);
+  cursor: pointer;
+}
+
+.tag-more[hidden] {
+  display: none;
+}
+
+/* 女優検索の、たためる欄（年齢・サイズ・カップ・所属）。details に display: grid を付けると、古いSafariで開閉が効かないことがあるので、すき間は子の margin で作る */
 .ws-filters > * + * {
   margin-top: 12px;
 }
@@ -3649,38 +4024,29 @@ a.reel-card:hover .reel-title {
   margin-bottom: 4px;
 }
 
-.ws-tags {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.ws-legend {
-  margin-bottom: 8px;
-  padding: 0;
+/* 見つかった本数（「3,000本」の数字を大きく） */
+.ws-count {
+  margin: 18px 0 0;
   color: var(--paper-dim);
-  font-size: 12px;
+  font-size: 13px;
 }
 
-.ws-tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.ws-num {
+  margin-right: 2px;
+  color: var(--pop);
+  font: 400 26px/1.1 var(--font-display);
+  font-variant-numeric: tabular-nums;
 }
 
 .tag-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 44px;
+  min-height: 40px;
   padding: 0 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: var(--r-pill);
-  background: transparent;
+  background: var(--fill);
   color: var(--paper);
   font: 700 13px/1.2 var(--font-body);
   cursor: pointer;
@@ -3711,12 +4077,8 @@ a.reel-card:hover .reel-title {
   color: var(--ink);
 }
 
-.ws-tags .more-btn {
-  margin-top: 10px;
-}
-
 .ws-list {
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 .item-meta {
@@ -4780,10 +5142,32 @@ a.reel-card:hover .reel-title {
 
 /* フッターのいちばん下の「このサイトについて」（小さく。運営者の希望。2026-10-06） */
 .foot-about {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 18px;
   margin: 0;
 }
 
 .foot-small {
+  font-size: 11px;
+}
+
+/* 「ホーム画面に追加」（ボタンだけど、ほかのリンクと同じ見た目の小さな文字。public/install.js） */
+.install-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.install-btn[hidden] {
+  display: none;
+}
+
+.foot-hint {
+  margin: 0 0 8px;
   font-size: 11px;
 }
 
@@ -4792,6 +5176,14 @@ a.reel-card:hover .reel-title {
   margin: 8px 0 0;
   color: var(--paper-dim);
   font-size: 12px;
+}
+
+/* 月・ジャンルのページの見出しの下の「116本・10月3日〜10月20日発売」（長い紹介文の代わり。2026-10-06） */
+.page-facts {
+  margin: 10px 0 0;
+  color: var(--paper-dim);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .work-note {

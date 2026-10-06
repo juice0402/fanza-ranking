@@ -32,8 +32,7 @@ const trail = [
     <section class="hero">
       <h1 class="hero-title">女優のイベント情報</h1>
       <p class="hero-lead">
-        所属事務所の公式サイトに載っている、これから{EVENT_DAYS}日のうちのイベントの予定です{events.updated && `（${formatDateJp(events.updated)}の時点）`}。
-        参加のしかたや最新の情報は、各事務所の公式サイトで確かめてください。
+        これから{EVENT_DAYS}日のイベントの予定です{events.updated && `（${formatDateJp(events.updated)}の時点）`}。参加のしかたや最新の情報は、各事務所の公式サイトで確かめてください。
       </p>
     </section>
 
@@ -53,8 +52,7 @@ const trail = [
             </section>
           ))}
           <p class="section-note event-note">
-            出どころは、{sources.join('・')}の公式サイトのイベントの一覧です。所属の女優の名前が、FANZAに載っている名前とそのまま同じイベントだけを載せています。
-            中止・変更になることがあります。
+            出どころは、{sources.join('・')}の公式サイトです。中止・変更になることがあります。
           </p>
         </>
       )

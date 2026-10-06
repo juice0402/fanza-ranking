@@ -1,20 +1,22 @@
 ---
 import Base from '../../layouts/Base.astro';
-import ItemCard from '../../components/ItemCard.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FavButton from '../../components/FavButton.astro';
 import Face from '../../components/Face.astro';
 import SampleMovie from '../../components/SampleMovie.astro';
-import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName } from '../../lib/data.js';
+import MiniShelf from '../../components/MiniShelf.astro';
+import WorkRows from '../../components/WorkRows.astro';
+import GachaCorner from '../../components/GachaCorner.astro';
+import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, saleCampaignBySlug, today } from '../../lib/data.js';
+import { campaignSlug, endIso, endLabel, offPercent, onSaleItems, saleHref } from '../../lib/sale.js';
+import { nextWorksOf, relatedForPage } from '../../lib/stay.js';
 import {
   breadcrumbLd,
   formatDateJp,
   itemPath,
   itemPageDescription,
   itemPageTitle,
-  relatedItems,
   truncate,
-  filterAttrs,
 } from '../../lib/items.js';
 import { searchPath } from '../../lib/search.js';
 import { productCode, itemFacts } from '../../lib/facts.js';
@@ -32,7 +34,15 @@ const { item } = Astro.props;
 // コメントがまだ無い作品（過去作品）は、FANZAの情報を並べただけのページなので、検索エンジンには出さない（noindex。sitemap にも入れない）。
 // Claude がコメントを書くと、次のビルドから出す
 const noindex = !item.comment.trim();
-const related = relatedItems(item, all, 8);
+// 次に見るもの（運営者の希望「サイト滞在時間を伸ばしたい」。2026-10-06。lib/stay.js）:
+// セール中なら札と価格（特集のページへ）・出演者の次の新作（お気に入りのボタンつき）・同じ出演者/メーカーの作品（小さな表紙の棚）・運命の作品
+const related = relatedForPage(item, all);
+const next = nextWorksOf(item, actressByName, today);
+const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
+const saleNow = onSaleItems([item], sale, today)[0]?.sale ?? null;
+const saleOff = saleNow ? offPercent(saleNow.price, saleNow.listPrice) : null;
+const yen = (n) => n.toLocaleString('ja-JP');
+const saleCampHref = saleNow ? saleCampaignBySlug.get(campaignSlug(saleNow.title))?.path ?? saleHref(saleNow.k) : '';
 const samples = item.sample_images.slice(0, 8);
 // サンプル動画がある作品は、動画を表紙の場所に出し、パッケージ写真は、サンプル画像の下に別の欄で大きく出す
 // （サンプル画像の並びに混ぜると、枚数が増えて並びが崩れやすいため）。
@@ -165,6 +175,16 @@ import { assetUrl } from '../../lib/assets.js';
           )}
         </dl>
 
+        {/* セール中なら、札と価格といつまで（終わりの時刻をすぎたら、ブラウザで隠す。/sale.js）。特集のページへ */}
+        {saleNow && (
+          <p class="sale-strip" data-sale-end={endIso(saleNow.end)}>
+            <span class="sale-strip-off">{saleOff ? `${saleOff}%OFF` : 'セール中'}</span>
+            {saleNow.price && <span class="sale-strip-price"><strong>{yen(saleNow.price)}円〜</strong><s>{yen(saleNow.listPrice)}円〜</s></span>}
+            <span class="sale-strip-end">{endLabel(saleNow.end)}まで</span>
+            <a class="sale-strip-link" href={saleCampHref}>{saleNow.title}</a>
+          </p>
+        )}
+
         {/* FANZAへのボタンと、お気に入りのボタン（すき間をあけて並べる。せまい画面でFANZAへのボタンは、画面の下に固定のものを使う） */}
         <div class="detail-actions">
           {item.url && (
@@ -213,7 +233,7 @@ import { assetUrl } from '../../lib/assets.js';
         {facts.map((row) => (
           <li class="facts-row">
             <span class="facts-label">{row.label}</span>
-            <span class="facts-text">{row.text}{row.href && <> <a class="spec-link" href={row.href}>{row.linkLabel}</a></>}</span>
+            <span class="facts-text">{row.text}{row.href && <> <a class="facts-link" href={row.href}>{row.linkLabel}</a></>}</span>
           </li>
         ))}
       </ul>
@@ -234,19 +254,31 @@ import { assetUrl } from '../../lib/assets.js';
       </dialog>
     )}
 
+    {next.items.length > 0 && (
+      <section class="subsection" aria-labelledby="next-title">
+        <div class="subsection-head">
+          <h2 id="next-title" class="subsection-title">{next.names.length === 1 ? `${next.names[0]}の次の新作` : '出演者の次の新作'}</h2>
+          {next.names.length === 1 && (
+            <FavButton type="actress" favKey={next.names[0]} slug={actressByName.get(next.names[0])?.slug ?? ''} off="お気に入りに追加" on="お気に入り済み" />
+          )}
+        </div>
+        <WorkRows items={next.items} note={(i) => `${md(i.dateKey)}発売（予約受付中）`} />
+      </section>
+    )}
+
     {related.length > 0 && (
       <section class="subsection" aria-labelledby="related-title" data-vr-group>
         <h2 id="related-title" class="subsection-title">同じ出演者・メーカーの作品</h2>
-        <ul class="shelf">
-          {related.map((r) => (
-            <li class="shelf-cell" {...filterAttrs(r)}><ItemCard item={r} level="h3" /></li>
-          ))}
-        </ul>
+        <MiniShelf items={related} />
       </section>
     )}
+
+    <GachaCorner src="/data/gacha.json" exclude={item.cid} />
   </div>
 
   {zoomable && <script is:inline src={assetUrl('/lightbox.js')} defer></script>}
+  {saleNow && <script is:inline src={assetUrl('/sale.js')} defer></script>}
+  <script is:inline src={assetUrl('/gacha.js')} defer></script>
   {hasMovie && <script is:inline src={assetUrl('/movie.js')} defer></script>}
 
   {item.url && (

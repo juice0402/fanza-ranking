@@ -47,8 +47,7 @@ import { assetUrl } from '../../lib/assets.js';
     <section class="hero">
       <h1 class="hero-title">開催中のFANZAセール</h1>
       <p class="hero-lead">
-        FANZA動画で、いまセール・キャンペーン中の作品を、終わりが近い順にまとめています（このサイトに載っている人気作品だけ）。
-        {sale.date && `${formatDateJp(sale.date)}の時点の、FANZA公式の情報です。価格や期間は変わることがあるので、くわしくはFANZAの作品ページで確かめてください。`}
+        いまセール中の作品を、終わりが近い順に。{sale.date && `${formatDateJp(sale.date)}の時点の情報です（くわしくはFANZAの作品ページで確かめてください）。`}
       </p>
       <p class="hero-links"><a class="spec-link" href={SALE_HISTORY_PATH}>FANZAのセールはいつ？これまでのセールの履歴</a></p>
     </section>
@@ -86,7 +85,7 @@ import { assetUrl } from '../../lib/assets.js';
               )}
             </section>
           ))}
-          <p class="section-note">セール中の作品は、ぜんぶで{total}本です（FANZAのキャンペーンのうち、このサイトに載っている作品だけ。メーカー・女優・ジャンルの本数も、このサイトの作品から数えています）。</p>
+          <p class="section-note">本数は、このサイトに載っている作品（ぜんぶで{total}本）から数えています。</p>
         </>
       )
       : <p class="empty">いま、このサイトに載っている作品で、セール・キャンペーン中のものはありません。毎日、日付が変わったあとに更新します。</p>}

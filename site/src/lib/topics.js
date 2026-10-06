@@ -128,7 +128,12 @@ export function hotGenres(items, today, { allowed, limit = HOT_GENRE_LIMIT }) {
   return [...board.values()]
     .sort((a, b) => b.score - a.score || b.count - a.count || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
     .slice(0, limit)
-    .map(({ works, ...r }) => ({ ...r, top: works.find((w) => !w.vr) ?? works[0] }));
+    .map(({ works, ...r }) => {
+      // 札の表紙は、未成年を連想させるタイトルの作品を使わない（こちらから案内する欄のため。2026-10-06）
+      const ok = works.filter((w) => !isMinorTitle(w.title));
+      return { ...r, top: ok.find((w) => !w.vr) ?? ok[0] ?? null };
+    })
+    .filter((r) => r.top);
 }
 
 export const DEBUT_SHOWN = 3; // 「今週のデビュー作」に出す本数（データは、VR作品を隠す・単体作品のみのときの差し替え用に DEBUT_DATA 本）
@@ -140,7 +145,7 @@ export const BIRTHDAY_LIMIT = 3;
 export function weekDebuts(items, today, limit = DEBUT_DATA) {
   const from = addDays(today, -6);
   return items
-    .filter((i) => i.dateKey >= from && i.dateKey <= today && i.genres?.includes('デビュー作品'))
+    .filter((i) => i.dateKey >= from && i.dateKey <= today && i.genres?.includes('デビュー作品') && !isMinorTitle(i.title)) // こちらから案内する欄なので、未成年を連想させるタイトルは入れない
     .sort((a, b) => (a.popNew ?? Infinity) - (b.popNew ?? Infinity) || b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid))
     .slice(0, limit);
 }
@@ -196,9 +201,10 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
   const workTopic = (item, kind, label, title, text) => ({ kind, label, title, text, image: item.image_url, face: '', vr: Boolean(item.vr), ...linkOf(item) });
   // 作品の話題を1つ足す。candidates は大事な順の候補。まだ出していない先頭の作品を出し、それがVR作品なら、
   // VRでない次の候補を alt に付ける（「VR作品を隠す」を選んだ人には、こちらが出る）。どちらの作品も、ほかの話題には使わない
-  // primaryOk: 話題そのもの（ふだん出す作品）に使える候補の条件（繰り上げの作品は、条件の外の候補からも探す）
+  // primaryOk: 話題そのもの（ふだん出す作品）に使える候補の条件（繰り上げの作品は、条件の外の候補からも探す）。
+  // きょうの話題は、こちらから案内する欄なので、未成年を連想させるタイトルの作品は、どの話題にも入れない（運命の作品と同じ。2026-10-06）
   const pick = (candidates, make, primaryOk = () => true) => {
-    const free = candidates.filter((i) => !used.has(i.cid));
+    const free = candidates.filter((i) => !used.has(i.cid) && !isMinorTitle(i.title));
     const at = free.findIndex(primaryOk);
     if (at < 0) return;
     const topic = make(free[at]);
@@ -274,7 +280,7 @@ export function buildTopics(ctx, limit = TOPICS_LIMIT) {
 
   // 週のまとめ: 月曜に出た、前の週の新作のまとめ記事（出てから2日のあいだ）
   if (roundup && roundup.written <= today && daysBetween(today, roundup.written) <= 2) {
-    const first = nonVrFirst(roundup.picks.map((p) => items.find((i) => i.cid === p.cid)).filter(Boolean));
+    const first = nonVrFirst(roundup.picks.map((p) => items.find((i) => i.cid === p.cid)).filter((i) => i && !isMinorTitle(i.title)));
     topics.push({
       kind: 'weekly', label: '週のまとめ', title: `${mdLabel(roundup.week_start)}〜${mdLabel(roundup.week_end)}の新作まとめ`, text: truncate(roundup.lead, 46),
       image: first ? first.image_url : '', face: '', vr: false, href: weeklyPath(roundup.week_start), external: false,

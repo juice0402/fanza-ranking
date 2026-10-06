@@ -25,51 +25,49 @@ import { assetUrl } from '../../lib/assets.js';
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
-    <section class="hero">
+    <section class="hero search-hero">
       <h1 class="hero-title">作品を探す</h1>
-      <p class="hero-lead">当サイトの作品を、キーワードやジャンルで絞り込めます。</p>
     </section>
 
     {hasWorks && (
       <section id="work-search" class="work-search section search-layout" data-index={ITEMS_INDEX_PATH} aria-labelledby="ws-title" hidden>
-        {/* スマホは「条件 → 結果」の1列、パソコン（960px〜）は「左に条件（画面に固定）｜右に結果」の2列（運営者の希望。2026-10-05） */}
+        {/* 作品検索（運営者の希望「スタイリッシュじゃない。ほかの雰囲気と合わせて刷新」。2026-10-06）:
+            紙の色の検索バー（赤い「探す」）→ 発売・並び順は押して選ぶ丸いボタン（選んだものは黄色）→ ジャンル（スマホは横に流れる1行。「すべて」で全部）→ 結果。
+            スマホは「条件 → 結果」の1列、パソコン（960px〜）は「左に条件（画面に固定）｜右に結果」の2列 */}
         <div class="search-side">
         <h2 id="ws-title" class="visually-hidden">条件で探す</h2>
-        <form class="as-form" role="search" autocomplete="off">
-          <label class="as-field as-field-wide">
-            <span class="visually-hidden">キーワード（タイトル・出演者・メーカー・品番・ジャンル）</span>
-            <input type="search" name="q" placeholder="タイトル・出演者・品番など" enterkeyhint="search" />
-          </label>
+        <form class="ws-form" role="search" autocomplete="off">
+          <div class="search-bar">
+            <svg class="search-bar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5 20 20" /></svg>
+            <label class="visually-hidden" for="ws-q">キーワード（タイトル・出演者・メーカー・品番・ジャンル）</label>
+            <input id="ws-q" class="search-bar-input" type="search" name="q" placeholder="タイトル・出演者・品番" enterkeyhint="search" />
+            <button type="submit" class="search-bar-btn">探す</button>
+          </div>
 
-          {/* ジャンル・発売・並び順は、たたんでおける（スマホで、結果がすぐ見えるように。広い画面・条件付きで開いたときは、最初から開く） */}
-          <details id="ws-filters" class="ws-filters">
-            <summary class="ws-filters-toggle">ジャンル・発売・並び順<span id="ws-filter-note" class="ws-filter-note"></span></summary>
-          <fieldset class="ws-tags">
-            <legend class="ws-legend">ジャンル（選んだものを、すべて含む作品）</legend>
-            <ul id="ws-tag-list" class="ws-tag-list"></ul>
-            <button id="ws-tag-more" type="button" class="btn btn-quiet more-btn" hidden>すべてのジャンルを見る</button>
+          <fieldset class="seg">
+            <legend class="seg-label">発売</legend>
+            <div class="seg-row">
+              <label class="seg-opt"><input type="radio" name="status" value="" checked /><span>すべて</span></label>
+              <label class="seg-opt"><input type="radio" name="status" value="released" /><span>発売中</span></label>
+              <label class="seg-opt"><input type="radio" name="status" value="upcoming" /><span>予約</span></label>
+            </div>
           </fieldset>
 
-          <div class="as-grid">
-            <label class="as-field">
-              発売
-              <select name="status">
-                <option value="">すべて</option>
-                <option value="released">発売済み</option>
-                <option value="upcoming">予約受付中</option>
-              </select>
-            </label>
-            <label class="as-field">
-              並び順
-              <select name="sort">
-                <option value="new">新しい順</option>
-                <option value="old">古い順</option>
-                <option value="popnew">人気順（新着）</option>
-                <option value="pop">人気順（全体）</option>
-              </select>
-            </label>
-          </div>
-          </details>
+          <fieldset class="seg">
+            <legend class="seg-label">並び順</legend>
+            <div class="seg-row seg-scroll">
+              <label class="seg-opt"><input type="radio" name="sort" value="new" checked /><span>新しい順</span></label>
+              <label class="seg-opt"><input type="radio" name="sort" value="popnew" /><span>新着の人気順</span></label>
+              <label class="seg-opt"><input type="radio" name="sort" value="pop" /><span>全体の人気順</span></label>
+              <label class="seg-opt"><input type="radio" name="sort" value="old" /><span>古い順</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="seg ws-tags">
+            <legend class="seg-label">ジャンル<span class="seg-sub">（選んだものを全部含む作品）</span></legend>
+            <ul id="ws-tag-list" class="ws-tag-list"></ul>
+            <button id="ws-tag-more" type="button" class="tag-more" hidden>すべてのジャンル</button>
+          </fieldset>
 
           <div class="as-actions">
             <VrToggle />
@@ -80,10 +78,10 @@ import { assetUrl } from '../../lib/assets.js';
 
         <div class="search-main">
         <h2 class="visually-hidden">検索結果</h2>
-        <p id="ws-count" class="as-count" aria-live="polite"></p>
+        <p id="ws-count" class="as-count ws-count" aria-live="polite"></p>
         <ul id="ws-list" class="ws-list"></ul>
         <p class="more"><button id="ws-more" type="button" class="btn btn-quiet more-btn" hidden>もっと見る</button></p>
-        <p class="as-coverage">ジャンルは、FANZAに載っている情報です。予約中の作品は、ジャンルがまだ載っていないことがあります。</p>
+        <p class="as-coverage">予約中の作品は、ジャンルがまだ載っていないことがあります。</p>
         </div>
       </section>
     )}

@@ -11,6 +11,7 @@ import { SEARCH_PATH } from '../lib/search.js';
 import { RANKING_PATH } from '../lib/popularity.js';
 import { SALE_PATH } from '../lib/sale.js';
 import { EVENT_PATH } from '../lib/events.js';
+import { FEED_PATH, FEED_TITLE, WEEKLY_FEED_PATH, WEEKLY_FEED_TITLE } from '../lib/feed.js';
 
 const {
   title = SITE_NAME,
@@ -61,6 +62,13 @@ import { assetUrl } from '../lib/assets.js';
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    {/* ホーム画面に追加（運営者の希望「リピーターをつけたい」。2026-10-06）。iPhone では Safari のまま開く（戻るボタンが使えるように。minimal-ui） */}
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#17121f" />
+    <meta name="apple-mobile-web-app-title" content="FANZA新作" />
+    {/* 新着のお知らせ（RSS） */}
+    <link rel="alternate" type="application/rss+xml" title={FEED_TITLE} href={FEED_PATH} />
+    {roundups.length > 0 && <link rel="alternate" type="application/rss+xml" title={WEEKLY_FEED_TITLE} href={WEEKLY_FEED_PATH} />}
     <link rel="sitemap" href="/sitemap.xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -187,10 +195,16 @@ import { assetUrl } from '../lib/assets.js';
         <p class="foot-credit">
           <a class="foot-link" href="https://affiliate.dmm.com/api/" target="_blank" rel="noopener noreferrer">Powered by FANZA Webサービス</a>
         </p>
-        <p class="foot-about"><a class="foot-link foot-small" href={ABOUT_PATH}>このサイトについて</a></p>
+        <p class="foot-about">
+          <a class="foot-link foot-small" href={ABOUT_PATH}>このサイトについて</a>
+          <a class="foot-link foot-small" href={FEED_PATH}>RSS</a>
+          <button type="button" id="install-btn" class="foot-link foot-small install-btn" aria-controls="install-hint" aria-expanded="false" hidden>ホーム画面に追加</button>
+        </p>
+        <p id="install-hint" class="foot-hint" hidden>Safari の共有ボタン（四角から上向きの矢印）から「ホーム画面に追加」を選ぶと、アプリのように開けます。</p>
       </div>
     </footer>
     <script is:inline src={assetUrl('/favorites.js')} defer></script>
     <script is:inline src={assetUrl('/vr-filter.js')} defer></script>
+    <script is:inline src={assetUrl('/install.js')} defer></script>
   </body>
 </html>

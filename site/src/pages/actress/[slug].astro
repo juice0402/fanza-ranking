@@ -9,6 +9,7 @@ import EventList from '../../components/EventList.astro';
 import NextWorks from '../../components/NextWorks.astro';
 import OnSaleWorks from '../../components/OnSaleWorks.astro';
 import { assetUrl } from '../../lib/assets.js';
+import { isMinorTitle } from '../../lib/gacha.js';
 import { actressByName, actressGroups, agencyOfName, events, eventsOfName, makerByName, profilesByName, sale, today } from '../../lib/data.js';
 import { offPercent, onSaleItems } from '../../lib/sale.js';
 import { EVENT_ACTRESS_LIMIT, EVENT_PATH } from '../../lib/events.js';
@@ -22,7 +23,8 @@ import {
   breadcrumbLd,
   formatsOf,
   groupByDate,
-  summaryDescription,
+  rankedNames,
+  shortSpan,
 } from '../../lib/items.js';
 import { ENTITY_LIST_LIMIT } from '../../config.js';
 import { entityListing, hasCalendar, listIndexable } from '../../lib/plan.js';
@@ -44,7 +46,10 @@ const groups = groupByDate(listing.shown);
 const calendar = hasCalendar(group);
 // コメントのある作品が1本も無いページ（過去作品だけ）は、検索エンジンには出さない
 const noindex = !listIndexable(group.items);
-const makers = [...new Set(group.items.map((i) => i.maker).filter((m) => m !== '不明'))];
+// メーカーは、作品の多い順に8社まで（ほかは「ほか○社」。名前だけで画面が埋まらないように。2026-10-06）
+const MAKERS_SHOWN = 8;
+const makersAll = rankedNames(group.items.map((i) => i.maker).filter((m) => m !== '不明'), Infinity).names;
+const makers = makersAll.slice(0, MAKERS_SHOWN);
 const formats = formatsOf(group.items);
 const profile = profilesByName.get(group.name); // FANZA公式の出演者データ（無い人もいる）
 const facts = profileFacts(profile);
@@ -57,8 +62,9 @@ const eventsDay = events.updated ? `${Number(events.updated.slice(5, 7))}月${Nu
 // 次の新作（予約受付中。発売日が近い順に3本）と、いまセール中の作品（人気の高い順に6本）（運営者の希望「SEOを上位に」→ ②女優のページを強く。2026-10-06）
 const NEXT_SHOWN = 3;
 const SALE_SHOWN = 6;
-const upcomingWorks = group.items.filter((i) => i.dateKey > today).sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.cid.localeCompare(b.cid));
-const saleWorks = onSaleItems(group.items, sale, today);
+// 次の新作・セール中の作品は、こちらから案内する欄なので、未成年を連想させるタイトルの作品は入れない（下の「作品」の一覧には出る。2026-10-06）
+const upcomingWorks = group.items.filter((i) => i.dateKey > today && !isMinorTitle(i.title)).sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.cid.localeCompare(b.cid));
+const saleWorks = onSaleItems(group.items, sale, today).filter((i) => !isMinorTitle(i.title));
 const saleMaxOff = Math.max(0, ...saleWorks.map((i) => offPercent(i.sale.price, i.sale.listPrice) ?? 0)) || null;
 const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 // 最後に変わった日（sitemap の lastmod と同じ）。画面の「○月○日更新」と、構造化データの dateModified に使う
@@ -101,13 +107,12 @@ const trail = [
           <h1 class="hero-title"><span class="phrase">{group.name}の</span><span class="phrase">新作・出演作品</span></h1>
         </div>
       </div>
-      <p class="summary">{summary}</p>
       {modified && <p class="page-updated">{md(modified)}更新</p>}
       <div class="hero-actions">
         {profile?.listUrl && (
           <a class="btn btn-hot" href={profile.listUrl} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで{group.name}の全作品を見る</a>
         )}
-        <FavButton type="actress" favKey={group.name} slug={group.slug} off="この出演者をお気に入りに追加" on="お気に入り済み（新作が「お気に入り」に出ます）" />
+        <FavButton type="actress" favKey={group.name} slug={group.slug} size="lead" off="お気に入り（新作をお知らせ）" on="お気に入り済み（新作をお知らせ）" />
         {calendar && (
           <span class="cal-set">
             <a class="cal-link" href={webcalUrl(actressIcsPath(group.slug))}>発売日をカレンダーで受け取る</a>
@@ -119,7 +124,7 @@ const trail = [
 
     <dl class="spec section">
       <dt class="spec-term">掲載作品</dt>
-      <dd class="spec-desc">{group.items.length}本</dd>
+      <dd class="spec-desc">{group.items.length}本（{shortSpan(group.items)}発売）</dd>
       {agency && (
         <>
           <dt class="spec-term">所属</dt>
@@ -151,6 +156,7 @@ const trail = [
                 {makerByName.get(m) ? <a class="spec-link" href={makerByName.get(m).path}>{m}</a> : m}
               </>
             ))}
+            {makersAll.length > makers.length && `ほか${makersAll.length - makers.length}社`}
           </dd>
         </>
       )}
@@ -162,8 +168,8 @@ const trail = [
       )}
     </dl>
 
-    {agency && <p class="profile-source">所属とSNSは、所属事務所（{agency.agency}）の公式サイトに載っている情報です（{seenDay}時点）。移籍などで変わることがあります。</p>}
-    {facts.length > 0 && <p class="profile-source">年齢・身長・サイズは、FANZAに載っている情報にもとづきます（載っていない項目は表示していません）。年齢は、FANZAに載っている生年月日から毎日計算しています。</p>}
+    {agency && <p class="profile-source">所属とSNSは、所属事務所（{agency.agency}）の公式サイトに載っている情報です（{seenDay}時点）。</p>}
+    {facts.length > 0 && <p class="profile-source">年齢・身長・サイズは、FANZAの情報です。</p>}
 
     <NextWorks items={upcomingWorks} shown={NEXT_SHOWN} />
     <OnSaleWorks items={saleWorks} shown={SALE_SHOWN} label="出演作品が入っているセール" />

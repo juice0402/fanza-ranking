@@ -363,6 +363,20 @@ export function formatsOf(items) {
   return [...new Set(items.flatMap((i) => i.formats))];
 }
 
+/**
+ * 発売日の幅の短い形（一覧のページの見出しの下・出演者/メーカーの「掲載作品」に使う。長い紹介文の代わり。2026-10-06）:
+ * 同じ年なら「10月3日〜10月20日」（同じ日なら「10月3日」）、年をまたぐなら「2025年5月〜2026年10月」
+ */
+export function shortSpan(items) {
+  const days = items.map((i) => i.dateKey).filter(isDay).sort();
+  if (!days.length) return '';
+  const [a, b] = [days[0], days[days.length - 1]];
+  const md = (d) => `${+d.slice(5, 7)}月${+d.slice(8, 10)}日`;
+  if (a === b) return md(a);
+  if (a.slice(0, 4) === b.slice(0, 4)) return `${md(a)}〜${md(b)}`;
+  return `${+a.slice(0, 4)}年${+a.slice(5, 7)}月〜${+b.slice(0, 4)}年${+b.slice(5, 7)}月`;
+}
+
 export function dateRangeJp(items) {
   const days = items.map((i) => i.dateKey).sort();
   const [first, last] = [days[0], days[days.length - 1]];

@@ -5,11 +5,11 @@
 // JavaScript が使えないときは出さない（hidden。gacha.js が出す）
 import { gachaJson } from '../lib/gacha.js';
 
-// gacha: 運命の作品の候補（gachaPool）
-const { gacha } = Astro.props;
+// gacha: 運命の作品の候補（gachaPool。トップはページの中に入れる）／ src: 候補を読むファイル（作品ページ。/data/gacha.json）／ exclude: 候補から外す作品（作品ページの、その作品）
+const { gacha = null, src = '', exclude = '' } = Astro.props;
 ---
 
-<section id="gacha" class="corner-block gacha gacha-solo" aria-labelledby="gacha-title" hidden>
+<section id="gacha" class="corner-block gacha gacha-solo" aria-labelledby="gacha-title" hidden {...(src ? { 'data-src': src } : {})} {...(exclude ? { 'data-exclude': exclude } : {})}>
   <div class="corner-head">
     <h3 id="gacha-title" class="corner-title">運命の作品</h3>
     <p class="section-note">まだ決まらない人へ。人気の作品から3本えらびます</p>
@@ -22,5 +22,5 @@ const { gacha } = Astro.props;
     </ol>
     <button type="button" class="btn btn-hot gacha-btn" data-gacha-draw>まわす</button>
   </div>
-  <script is:inline type="application/json" id="gacha-data" set:html={gachaJson(gacha)} />
+  {gacha && <script is:inline type="application/json" id="gacha-data" set:html={gachaJson(gacha)} />}
 </section>

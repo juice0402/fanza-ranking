@@ -5,7 +5,7 @@ import VrToggle from '../../components/VrToggle.astro';
 import DaySection from '../../components/DaySection.astro';
 import { monthGroups } from '../../lib/data.js';
 import { MONTH_INDEX_PATH, monthPageTitle, monthSummary, neighborMonths } from '../../lib/collections.js';
-import { breadcrumbLd, groupByDate, summaryDescription } from '../../lib/items.js';
+import { breadcrumbLd, groupByDate, shortSpan, summaryDescription } from '../../lib/items.js';
 
 // 作品が MONTH_MIN_ITEMS 本以上ある月ごとに1ページ作る
 export function getStaticPaths() {
@@ -34,7 +34,7 @@ const trail = [
 
     <section class="hero">
       <h1 class="hero-title">{group.name}発売のFANZA新作・予約作品</h1>
-      <p class="summary">{summary}</p>
+      <p class="page-facts">{group.items.length}本・{shortSpan(group.items)}発売</p>
     </section>
 
     <nav class="month-nav" aria-label="ほかの月">

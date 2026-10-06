@@ -1,0 +1,27 @@
+---
+// 小さな表紙の棚（作品ページの「同じ出演者・メーカーの作品」。2026-10-06）。
+// 表紙・タイトル（2行）・出演者（1行）だけの小さなカードを、置かれた場所の幅に合わせて3〜6列に並べる（FANZAへのボタンは付けない。押すと作品ページへ。
+// 作品ページが無い作品はFANZAへ）。大きなカードを8枚並べていたときより、すっきり見えて、次の作品を選びやすい（運営者の希望「スッキリした見た目に」）
+import { paged } from '../lib/data.js';
+import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
+import { SMALL_IMG_ONERROR, castLine, filterAttrs, smallImage } from '../lib/items.js';
+
+const { items, level = 'h3' } = Astro.props;
+const Heading = level;
+---
+
+<ul class="mini-shelf">
+  {items.map((i) => {
+    const link = itemHref(i, paged);
+    const outbound = link.external ? OUTBOUND_ATTRS : {};
+    return (
+      <li class="shelf-cell mini-cell" {...filterAttrs(i)}>
+        <a class="mini-card" href={link.href} {...outbound}>
+          <span class="mini-cover">{i.image_url && <img class="item-img is-small" src={smallImage(i.image_url)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />}</span>
+          <Heading class="mini-title">{i.title}</Heading>
+          <span class="mini-cast">{castLine(i.actress, 1, '')}</span>
+        </a>
+      </li>
+    );
+  })}
+</ul>

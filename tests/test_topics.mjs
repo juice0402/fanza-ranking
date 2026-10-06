@@ -94,6 +94,9 @@ check('急上昇: 上がり幅の大きい順・前の日の順位から（圏�
   rise.map((t) => t.text).join('/') === '新着の人気順 40位 → 4位/新着の人気順 圏外 → 6位', rise.map((t) => t.text).join('/'));
 check('VR作品の話題には印（VR作品を隠すと消える）', rise[0].vr === false && rise[1].vr === true);
 check('VR作品の急上昇には、VRでない次の作品の代わり（繰り上げ）が付く。VRでない話題には付かない', rise[1].alt?.title === '作品 r4' && rise[1].alt.vr === false && rise[1].alt.kind === 'rise' && rise[1].alt.text === '新着の人気順 30位 → 12位' && !rise[0].alt, JSON.stringify(rise[1].alt));
+// 未成年を連想させるタイトルの作品は、どの作品の話題にも入れない（こちらから案内する欄。2026-10-06）。急上昇の1位がそうなら、次の作品が出る
+const minorRise = T.buildTopics({ ...ctx, items: many.map((i) => (i.cid === 'r1' ? { ...i, title: '女子校生の放課後' } : i)) }).filter((t) => t.kind === 'rise');
+check('きょうの話題: 未成年を連想させるタイトルの作品は出さない（急上昇は次の作品に）', minorRise.every((t) => t.title !== '女子校生の放課後') && minorRise[0]?.text === '新着の人気順 圏外 → 6位', minorRise.map((t) => t.title).join());
 const tday = topics.find((t) => t.kind === 'today');
 check('きょう発売: 出演者・メーカー・順位', tday.title === '作品 n1' && tday.text === '月子｜メーカーA｜新着の人気順 7位' && tday.href === '/item/n1/', tday.text);
 const up = topics.find((t) => t.kind === 'upcoming');
@@ -185,6 +188,8 @@ const allowed = new Set(['巨乳', '人妻・主婦', '熟女', 'OL', '痴女'])
 const hg = T.hotGenres(gItems, TODAY, { allowed });
 check('いま人気の女優と同じ点（101−順位）をジャンルごとに足して、上から3つ。決めた一覧のジャンルだけ（単体作品などは数えない）', hg.map((g) => g.name).join() === '巨乳,人妻・主婦,熟女' && hg[0].score === 100 + 99 && hg[0].count === 2, JSON.stringify(hg.map((g) => [g.name, g.score])));
 check('表紙は、そのジャンルでいちばん点の高い作品（VRでない作品を先に）', hg[0].top.cid === 'g2' && hg[1].top.cid === 'g2' && hg[2].top.cid === 'g3');
+const hgMinor = T.hotGenres(gItems.map((i) => (i.cid === 'g2' ? { ...i, title: '女子校生の作品' } : i)), TODAY, { allowed });
+check('札の表紙に、未成年を連想させるタイトルの作品は使わない（ほかの作品が無いジャンルは出さない。2026-10-06）', hgMinor.every((g) => g.top.cid !== 'g2') && hgMinor.find((g) => g.name === '人妻・主婦')?.top.cid === 'g3', JSON.stringify(hgMinor.map((g) => [g.name, g.top?.cid])));
 check('TOP100の外・1週間より前の作品は数えない・人気の作品が無ければ空', !T.hotGenres(gItems, TODAY, { allowed, limit: 10 }).some((g) => g.name === '痴女') && T.hotGenres([], TODAY, { allowed }).length === 0 && T.HOT_GENRE_LIMIT === 3 && T.HOT_GENRE_SKIP.includes('ベスト・総集編'));
 
 console.log('\n■ 今週のデビュー作（weekDebuts）');
@@ -196,6 +201,7 @@ const deb = [
 ];
 check('きょうまでの7日間に発売された「デビュー作品」を、新着の人気順に（順位の無い作品はあと）', T.weekDebuts(deb, TODAY).map((i) => i.cid).join() === 'd2,d1,d3', T.weekDebuts(deb, TODAY).map((i) => i.cid).join());
 check('出すのは3本・データは差し替え用に6本まで', T.DEBUT_SHOWN === 3 && T.DEBUT_DATA === 6 && T.weekDebuts(deb, TODAY, 1).length === 1);
+check('未成年を連想させるタイトルの作品は入れない（こちらから案内する欄。2026-10-06）', T.weekDebuts([...deb, it('d7', '2026-10-04', 1, { genres: ['デビュー作品'], title: '女子校生デビュー' })], TODAY).every((i) => i.cid !== 'd7'));
 
 console.log('\n■ 誕生日の近い女優（birthdaySoon）');
 check('誕生日まで何日か（きょうは0・過ぎていたら来年）', T.daysUntilBirthday('10-07', TODAY) === 2 && T.daysUntilBirthday('10-05', TODAY) === 0 && T.daysUntilBirthday('10-04', TODAY) === 364 && T.daysUntilBirthday('01-02', '2026-12-31') === 2);

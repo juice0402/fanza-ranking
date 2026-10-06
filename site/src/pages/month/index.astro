@@ -3,7 +3,6 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import { monthGroups } from '../../lib/data.js';
 import { MONTH_INDEX_PATH } from '../../lib/collections.js';
-import { MONTH_MIN_ITEMS } from '../../config.js';
 import { breadcrumbLd, SITE_NAME } from '../../lib/items.js';
 
 const trail = [
@@ -23,7 +22,7 @@ const trail = [
 
     <section class="hero">
       <h1 class="hero-title">月ごとの新作・予約</h1>
-      <p class="hero-lead">発売月ごとに、FANZAの新作・予約作品をまとめています。掲載している作品が{MONTH_MIN_ITEMS}本以上ある月の一覧です。</p>
+      <p class="hero-lead">発売月ごとの、FANZAの新作・予約作品です。</p>
     </section>
 
     <section class="section" aria-labelledby="month-list-title">
