@@ -976,12 +976,15 @@ else:
 # 人気のジャンル（いま人気の女優の真下）: 同じ数え方を、ジャンルのページの一覧（TAG_PAGE_GENRES。ベスト・総集編は除く）のジャンルごとに足して3つ
 _tag_genres = re.findall(r"'([^']+)'", re.search(r"export const TAG_PAGE_GENRES = \[(.*?)\];", read(os.path.join(ROOT, "site", "src", "config.js")), re.S).group(1))
 _gboard = {}
+_gcand = {}  # ジャンルごとの、札の表紙に使える作品の本数
 for c in sorted((c for c in everything if c in pop_new and pop_new[c] <= 100 and _top_from <= str(everything[c]["date"])[:10] <= JST_TODAY),
                 key=lambda c: (pop_new[c], -int(str(everything[c]["date"])[:10].replace("-", "")), c))[:100]:
     for g in dict.fromkeys(everything[c].get("genres") or []):
         if g in _tag_genres and g != "ベスト・総集編":
             sc, n, ok_ = _gboard.get(g, (0, 0, False))
             _gboard[g] = (sc + 101 - pop_new[c], n + 1, ok_ or not is_minor_title(everything[c].get("title")))
+            if not is_minor_title(everything[c].get("title")):
+                _gcand[g] = _gcand.get(g, 0) + 1
 # 上から3つのうち、札の表紙に使える作品（未成年を連想させるタイトルでない作品）が無いジャンルは出さない（site/src/lib/topics.js の hotGenres と同じ）
 want_genres = [g for g, v in sorted(_gboard.items(), key=lambda kv: (-kv[1][0], -kv[1][1], kv[0]))[:3] if v[2]]
 genre_m = re.search(r'<ol class="hot-genres">(.*?)</ol>', home_html, re.S)
@@ -990,6 +993,10 @@ if want_genres:
     check(f"人気のジャンル: {len(want_genres)}つが、いま人気の女優と同じ数え方の順に並ぶ（ジャンルのページの一覧のジャンルだけ）・いま人気の女優の真下", got_genres == want_genres and home_html.find('id="hot"') < home_html.find('id="genres"') < home_html.find('id="topics"'), (got_genres, want_genres))
     bad_glink = [h for h in re.findall(r'<a class="genre-link" href="([^"]+)"', genre_m.group(1)) if not (h.startswith("/tag/") and os.path.isfile(page_file(h))) and not h.startswith("/search/?tag=")]
     check("人気のジャンル: タップで、ジャンルのページ（無ければ作品検索のジャンル絞り込み）へ", not bad_glink, bad_glink[:3])
+    # 札の表紙は、上のジャンルで使った作品を使わず、次の作品へ繰り下げる（運営者の希望。2026-10-07）。どのジャンルにも3本以上あれば、必ず別々になる
+    genre_srcs = re.findall(r'<img class="genre-img[^"]*" src="([^"]+)"', genre_m.group(1))
+    if all(_gcand.get(g, 0) >= len(want_genres) for g in want_genres):
+        check("人気のジャンル: 札の表紙が重ならない（上のジャンルで使った作品は、人気順に次の作品へ繰り下げる）", len(genre_srcs) == len(want_genres) and len(set(genre_srcs)) == len(genre_srcs), genre_srcs)
 else:
     check("人気のジャンルが無いときは、欄を出さない", 'id="genres"' not in home_html)
 
@@ -1385,6 +1392,12 @@ check("CSS: すき間 — ジャンルなどの札（.chips）は8px以上・ス
 trio_ok = all(css_has(sel, r"gap\s*:\s*var\(--trio-gap\)") and css_has(sel, r"max-width\s*:\s*var\(--trio-max\)") for sel in (".medals", ".hot", ".hot-genres", ".slot-reels", ".debut-list"))
 check("CSS: 3つ並び（TOP3・いま人気の女優・人気のジャンル・運命の作品・今週のデビュー作）は、同じすき間・同じ最大の幅の3等分の列で、丸は列の幅に合わせる（.hot-face は%）",
       trio_ok and css_has(".hot-face", r"width\s*:\s*\d+%") and css_has(".genre-thumb", r"width\s*:\s*100%") and not css_has(".genre-thumb", r"max-width\s*:\s*\d+px"))
+# 人気のジャンルの表紙: 見開きでない形（VRなどの横長・表紙だけの縦長）は、読み込んだあとに印 is-flat を付けて、画像の全体から切り出す（運営者の指摘「右上しか写ってない」。2026-10-07）
+_gimgs = re.findall(r'<img class="genre-img"[^>]*>', genre_m.group(1)) if genre_m else []
+check("人気のジャンル: 表紙は、見開きでない形（横長・縦長）なら印 is-flat を付ける（onload で縦横の比を見る）・CSS は、その印のとき画像の全体から切り出す（横長は右・縦長は上から少し下）",
+      (not _gimgs or all("naturalWidth" in g_ and "is-flat" in g_ and "onload=" in g_ for g_ in _gimgs))
+      and css_has(".genre-img.is-flat", r"object-fit\s*:\s*cover") and css_has(".genre-img.is-flat", r"object-position\s*:\s*100%\s+\d{1,2}%") and css_has(".genre-img.is-flat", r"(?<![-\w])height\s*:\s*100%"),
+      _gimgs[:1])
 all_css = "".join(read(p_) for p_ in glob.glob(os.path.join(DIST, "**", "*.css"), recursive=True))
 check("CSS: 棚・作品検索の結果・注目の作品は、置かれた場所の幅で列の数を決める（コンテナクエリ）。使えない古いブラウザには、画面の幅で決める予備がある",
       re.search(r"container-type\s*:\s*inline-size", all_css) is not None and len(re.findall(r"@container\s*\(\s*min-width", all_css)) >= 6 and "@supports not" in all_css)

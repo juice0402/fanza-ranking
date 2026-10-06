@@ -114,6 +114,18 @@ export const smallImage = (url) => (/^https:\/\/pics\.dmm\.co\.jp\/.+pl\.jpg$/.t
 export const SMALL_IMG_ONERROR = "if(/ps\\.jpg$/.test(this.src)){this.src=this.src.replace(/ps\\.jpg$/,'pl.jpg');this.classList.remove('is-small')}else{this.style.visibility='hidden'}";
 
 /**
+ * パッケージ画像の形の見分け（人気のジャンルの四角い表紙。運営者の指摘「パッケージの右上しか写ってない」。2026-10-07）。
+ * FANZAのパッケージ画像は、ふつうは見開き（800×538 前後。左から裏表紙・背表紙・表紙）で、四角は右端の表紙の上のほうから切り出す。
+ * 見開きでない形もある（2026-10-07 に本物の約800枚を調べた: 見開き 8割・VRなどの横長 800×500/600/450 が2割弱・表紙だけの縦長 563×800 など 3%）。
+ * 同じ切り方だと、縦長は右上の角だけになる。読み込んだあとに縦横の比を見て、見開きの比（COVER_SPREAD_MIN〜MAX）でなければ印 is-flat を付ける
+ * （CSS が画像の全体から切り出す。横長は右にそろえ、縦長は上から少し下＝顔の多い所。調べた顔の位置から決めた）。img の onload に入れる
+ */
+export const COVER_SPREAD_MIN = 1.35;
+export const COVER_SPREAD_MAX = 1.53;
+// （属性に入れるので、< > & " を使わない形で書く。大きさが分からないときは見開きとみなす）
+export const COVER_SHAPE_ONLOAD = `var r=this.naturalWidth/this.naturalHeight||1.5;if(Math.min(Math.max(r,${COVER_SPREAD_MIN}),${COVER_SPREAD_MAX})!=r)this.classList.add('is-flat')`;
+
+/**
  * 一覧の1マス（li）に付ける目印。VR作品に data-vr、単体作品に data-solo が付く（「VR作品を隠す」「単体作品のみ表示」スイッチが、これを目印に隠す。site/public/vr-filter.js）。
  * vr: false のときは data-vr を付けない（VR作品のページ。そこで全部が消えて空になるのを防ぐ）
  */
