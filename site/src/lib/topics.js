@@ -110,7 +110,7 @@ export const HOT_GENRE_SKIP = ['ベスト・総集編']; // ジャンルのペ�
  * 人気のジャンル（トップ。「いま人気の女優」の真下。運営者の希望。2026-10-05）: いま人気の女優と同じ数え方（この1週間の発売で新着の人気順100位までの
  * 作品に「101−順位」の点）を、ジャンルごとに足して、上から3つ。数えるのは allowed のジャンルだけ（サイトの「ジャンルのページ」の一覧
  * config.js の TAG_PAGE_GENRES から HOT_GENRE_SKIP を除いたもの。過激・未成年を連想させる名前は入っていない）。
- * [{ name, score, count（本数）, top（いちばん点の高い作品。VRでない作品を先に） }]
+ * [{ name, score, count（本数）, top（いちばん点の高い作品。VRでない作品を先に。上のジャンルの札と同じ作品は使わない） }]
  */
 export function hotGenres(items, today, { allowed, limit = HOT_GENRE_LIMIT }) {
   const board = new Map();
@@ -125,13 +125,19 @@ export function hotGenres(items, today, { allowed, limit = HOT_GENRE_LIMIT }) {
       board.set(g, row);
     }
   }
+  // 札の表紙は、上のジャンルで使った作品を使わず、人気順に次の作品へ繰り下げる（運営者の希望「1位と3位が同じパッケージ」。2026-10-07）。
+  // 使っていない作品が無いジャンルだけ、使った作品でも出す
+  const used = new Set();
   return [...board.values()]
     .sort((a, b) => b.score - a.score || b.count - a.count || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
     .slice(0, limit)
     .map(({ works, ...r }) => {
       // 札の表紙は、未成年を連想させるタイトルの作品を使わない（こちらから案内する欄のため。2026-10-06）
       const ok = works.filter((w) => !isMinorTitle(w.title));
-      return { ...r, top: ok.find((w) => !w.vr) ?? ok[0] ?? null };
+      const fresh = ok.filter((w) => !used.has(w.cid));
+      const top = fresh.find((w) => !w.vr) ?? fresh[0] ?? ok.find((w) => !w.vr) ?? ok[0] ?? null;
+      if (top) used.add(top.cid);
+      return { ...r, top };
     })
     .filter((r) => r.top);
 }

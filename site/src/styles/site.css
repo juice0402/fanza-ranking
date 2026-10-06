@@ -2899,6 +2899,16 @@ html.lightbox-open {
   height: auto;
 }
 
+/* 見開きでない形（VRなどの横長・表紙だけの縦長。読み込んだあとに印 is-flat。lib/items.js の COVER_SHAPE_ONLOAD）は、画像の全体から四角く切り出す。
+   横長は右にそろえ、縦長は上から1割（2026-10-07 に本物の画像で調べた顔の位置: 横長は右寄り・縦長は上から2割あたりが多い。運営者の指摘「右上しか写ってない」） */
+.genre-img.is-flat {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 100% 10%;
+}
+
 .genre-thumb .hot-rank {
   z-index: 1;
 }

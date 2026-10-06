@@ -243,6 +243,9 @@ console.log('\n■ 小さな表紙（ps.jpg）と、スクリプトのURLの印�
 check('smallImage: DMMの表紙（…pl.jpg）は、表紙だけの小さな画像（…ps.jpg）に', L.smallImage('https://pics.dmm.co.jp/digital/video/abc00001/abc00001pl.jpg') === 'https://pics.dmm.co.jp/digital/video/abc00001/abc00001ps.jpg' && L.smallImage('https://pics.dmm.co.jp/mono/movie/adult/x/xpl.jpg') === 'https://pics.dmm.co.jp/mono/movie/adult/x/xps.jpg');
 check('smallImage: DMM以外・pl.jpg でないもの・空は、そのまま', L.smallImage('https://example.net/apl.jpg') === 'https://example.net/apl.jpg' && L.smallImage('https://pics.dmm.co.jp/digital/video/a/a-1.jpg') === 'https://pics.dmm.co.jp/digital/video/a/a-1.jpg' && L.smallImage('') === '' && L.smallImage(undefined) === '');
 check('小さな画像が無いときは、大きい画像に戻す（onerror。2回目は隠す）', /ps\\\.jpg\$/.test(L.SMALL_IMG_ONERROR) && L.SMALL_IMG_ONERROR.includes("'pl.jpg'") && L.SMALL_IMG_ONERROR.includes("visibility='hidden'") && !L.SMALL_IMG_ONERROR.includes('"'));
+const shapeOf = (w, h) => { const got = []; new Function(L.COVER_SHAPE_ONLOAD).call({ naturalWidth: w, naturalHeight: h, classList: { add: (c) => got.push(c) } }); return got.join(); };
+check('パッケージ画像の形: 見開き（800×533〜540・800×565 など）はそのまま、見開きでない形（VRなどの横長 800×500/600/450・800×516・正方形・表紙だけの縦長 563×800）には印 is-flat（2026-10-07）', ['800x538', '800x540', '800x536', '800x533', '800x565', '800x587'].every((s) => shapeOf(...s.split('x').map(Number)) === '') && ['800x500', '800x600', '800x450', '800x516', '500x500', '563x800', '90x122'].every((s) => shapeOf(...s.split('x').map(Number)) === 'is-flat'), [shapeOf(800, 538), shapeOf(563, 800)]);
+check('パッケージ画像の形: 大きさが分からないとき（0）は印を付けない・属性に入れても壊れない（" < > & を使わない）', shapeOf(0, 0) === '' && shapeOf(800, 0) === 'is-flat' && !/["<>&]/.test(L.COVER_SHAPE_ONLOAD));
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'asset-'));
 fs.writeFileSync(path.join(tmp, 'x.js'), 'console.log(1)');
 const want = createHash('sha1').update('console.log(1)').digest('hex').slice(0, 8);

@@ -187,7 +187,10 @@ const gItems = [
 const allowed = new Set(['巨乳', '人妻・主婦', '熟女', 'OL', '痴女']);
 const hg = T.hotGenres(gItems, TODAY, { allowed });
 check('いま人気の女優と同じ点（101−順位）をジャンルごとに足して、上から3つ。決めた一覧のジャンルだけ（単体作品などは数えない）', hg.map((g) => g.name).join() === '巨乳,人妻・主婦,熟女' && hg[0].score === 100 + 99 && hg[0].count === 2, JSON.stringify(hg.map((g) => [g.name, g.score])));
-check('表紙は、そのジャンルでいちばん点の高い作品（VRでない作品を先に）', hg[0].top.cid === 'g2' && hg[1].top.cid === 'g2' && hg[2].top.cid === 'g3');
+check('表紙は、そのジャンルでいちばん点の高い作品（VRでない作品を先に）', hg[0].top.cid === 'g2');
+check('表紙は、上のジャンルで使った作品を使わず、人気順に次の作品へ繰り下げる（2026-10-07）', hg[1].top.cid === 'g3' && hg[2].top.cid === 'g4' && new Set(hg.map((g) => g.top.cid)).size === 3, JSON.stringify(hg.map((g) => [g.name, g.top.cid])));
+const hgOnly = T.hotGenres([it('o1', '2026-10-03', 1, { genres: ['巨乳', 'OL'] }), it('o2', '2026-10-03', 2, { genres: ['巨乳'] })], TODAY, { allowed });
+check('ほかに作品が無いジャンルだけは、上で使った作品でも出す（ジャンルは消さない）', hgOnly.map((g) => `${g.name}:${g.top.cid}`).join() === '巨乳:o1,OL:o1', JSON.stringify(hgOnly.map((g) => [g.name, g.top.cid])));
 const hgMinor = T.hotGenres(gItems.map((i) => (i.cid === 'g2' ? { ...i, title: '女子校生の作品' } : i)), TODAY, { allowed });
 check('札の表紙に、未成年を連想させるタイトルの作品は使わない（ほかの作品が無いジャンルは出さない。2026-10-06）', hgMinor.every((g) => g.top.cid !== 'g2') && hgMinor.find((g) => g.name === '人妻・主婦')?.top.cid === 'g3', JSON.stringify(hgMinor.map((g) => [g.name, g.top?.cid])));
 check('TOP100の外・1週間より前の作品は数えない・人気の作品が無ければ空', !T.hotGenres(gItems, TODAY, { allowed, limit: 10 }).some((g) => g.name === '痴女') && T.hotGenres([], TODAY, { allowed }).length === 0 && T.HOT_GENRE_LIMIT === 3 && T.HOT_GENRE_SKIP.includes('ベスト・総集編'));
