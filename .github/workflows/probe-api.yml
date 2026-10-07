@@ -1,6 +1,7 @@
 name: Probe FANZA API
 
-# 作業用ブランチ（claude/probe-thumbs）だけの中身: 画像の小さい版を調べる。main には入れない。
+# 作業用ブランチ（claude/probe-thumbs）だけの中身: シリーズ・レーベルがあるかを調べる。main には入れない。
+# 新しい機能を作る前の下調べに使う。結果は実行ページの「結果の要約」に出る。
 on:
   workflow_dispatch:
 
@@ -10,13 +11,14 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Probe
-        run: |
-          true
-          python scripts/probe_credit.py 2> err.txt || { echo "::notice title=err::$(tail -c 2500 err.txt | tr '\n' ' ')"; exit 1; }
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python scripts/probe_series.py 2> err.txt || { echo "::notice title=err::$(tail -c 1500 err.txt | tr '\n' ' ')"; exit 1; }
