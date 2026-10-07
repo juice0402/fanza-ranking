@@ -31,7 +31,7 @@ const title = groups.length > 0
   ? `FANZAセール開催中の作品一覧【${day ? `${day.m}月${day.d}日` : '毎日'}更新】${maxOff ? `最大${maxOff}%OFF・` : ''}特集${groups.length}件｜${SITE_NAME}`
   : `FANZA動画のセール・キャンペーン中の作品｜${SITE_NAME}`;
 const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'FANZAセール開催中の作品一覧', url: SITE_URL + SALE_PATH, ...(sale.date ? { dateModified: sale.date } : {}) };
-import { assetUrl } from '../../lib/assets.js';
+import { inlineScript } from '../../lib/assets.js';
 ---
 
 <Base
@@ -41,6 +41,8 @@ import { assetUrl } from '../../lib/assets.js';
   noindex={noindex}
   jsonLd={[breadcrumbLd(trail), pageLd]}
 >
+  {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
+  {groups.length > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
@@ -91,5 +93,4 @@ import { assetUrl } from '../../lib/assets.js';
       : <p class="empty">いま、このサイトに載っている作品で、セール・キャンペーン中のものはありません。毎日、日付が変わったあとに更新します。</p>}
   </div>
 
-  {groups.length > 0 && <script is:inline src={assetUrl('/sale.js')} defer></script>}
 </Base>

@@ -541,8 +541,9 @@
     writeUrl(q);
   }
 
+  // 3桁ごとのカンマ（「10,177」）。toLocaleString は、はじめて使うときにスマホで0.1秒近くかかるので使わない（2026-10-07）
   function countText(n) {
-    return n ? n.toLocaleString('ja-JP') + '人が見つかりました' : '条件に合う女優がいません。条件をゆるめてみてね。';
+    return n ? String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '人が見つかりました' : '条件に合う女優がいません。条件をゆるめてみてね。';
   }
 
   function updateNotes(q) {

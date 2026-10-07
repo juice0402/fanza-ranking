@@ -130,6 +130,48 @@ const byCode = (q) => S.filterRows(crow, { terms: S.splitTerms(q), tags: [], sta
 check('品番で探せる（DLDSS-566・dldss566・dldss-566・DLDSS566・作品IDの dldss00566）', ['DLDSS-566', 'dldss566', 'dldss-566', 'DLDSS566', 'dldss00566'].every((q) => byCode(q) === '1dldss00566'), ['DLDSS-566', 'dldss566'].map(byCode).join('/'));
 check('タイトルの言葉で探すとき、文節の区切りがあっても見つかる（「作品です」）', byCode('作品です') === '1dldss00566');
 
+console.log('\n■ 作品検索の「はじめの一覧」（ページを作るときに入れる。ブラウザと同じ中身。2026-10-07）');
+{
+  // ジャンルが多い索引（「すべてのジャンル」のボタンが出る）と、少ない索引の両方で、ブラウザの部品と突き合わせる
+  const many = normalizeItems(Array.from({ length: 60 }, (_, i) => ({
+    cid: `m${String(i).padStart(3, '0')}`, title: `作品${i}`, date: `2026-${String(9 + (i % 3)).padStart(2, '0')}-${String(1 + (i % 28)).padStart(2, '0')}`,
+    maker: i % 5 ? `メーカー${i % 4}` : '不明', actress: Array.from({ length: i % 6 }, (_, k) => `出演者${k}${i % 2 ? 'のとても長い名前ですね' : ''}`),
+    genres: Array.from({ length: 1 + (i % 4) }, (_, k) => `ジャンル${(i * 7 + k * 3) % 20}`), tags: i % 9 === 0 ? ['VR'] : [],
+    image_url: i % 7 === 0 ? 'https://example.net/x.jpg' : i % 11 === 0 ? `https://pics.dmm.co.jp/digital/video/other${i}/other${i}pl.jpg` : `https://pics.dmm.co.jp/digital/video/m${String(i).padStart(3, '0')}/m${String(i).padStart(3, '0')}pl.jpg`,
+  })));
+  for (const [name, index] of [['ジャンルが多い', L.buildItemsIndex(many, today)], ['小さい', idx]]) {
+    const fp = L.searchFirstPage(index, today);
+    const rowsC = plain(index.items).map((r) => ({ ...r }));
+    S.prepare(rowsC, index.genres);
+    const o = { today, hideVr: false, onlySolo: false };
+    const st = { terms: [], tags: [], status: '', sort: 'new' };
+    const found = plain(S.filterRows(rowsC, st, o));
+    const counts = plain(S.facetCounts(rowsC, st, o, index.genres.length).counts);
+    const visible = plain(S.visibleTags(counts, [], S.TAGS_COLLAPSED, false));
+    const jp = (d) => `${+d.slice(0, 4)}年${+d.slice(5, 7)}月${+d.slice(8, 10)}日`;
+    const want = found.slice(0, S.PAGE_SIZE).map((r) => {
+      const cast = r.a.filter((n) => typeof n === 'string' && n);
+      const shown = plain(S.castShown(cast, S.CAST_LIMIT));
+      return { c: r.c, href: `/item/${r.c}/`, img: S.smallImageUrl(S.rowImage(r)), status: S.statusOf(r.d, today, index.newDays), title: r.t, cast: shown.names, castMore: shown.more, date: jp(r.d), maker: r.m || '', vr: r.v === 1, solo: r.o === 1 };
+    });
+    check(`${name}: はじめの一覧（新しい順・はじめの${S.PAGE_SIZE}本）と本数は、ブラウザで作る一覧と同じ（画像・新作/予約の札・出演者・発売日・メーカー）`, JSON.stringify(fp.rows) === JSON.stringify(want) && fp.total === found.length,
+      JSON.stringify(fp.rows.find((r, i) => JSON.stringify(r) !== JSON.stringify(want[i]))));
+    check(`${name}: ジャンルのボタン（本数・はじめに出す${S.TAGS_COLLAPSED}個・「すべてのジャンル」）は、ブラウザと同じ`, JSON.stringify(fp.tags.map((t) => [t.name, t.count, t.hidden])) === JSON.stringify(index.genres.map((g, n) => [g, counts[n], visible.indexOf(n) < 0])) && fp.tagMore === fp.tags.some((t) => t.hidden),
+      JSON.stringify(fp.tags.slice(0, 3)));
+  }
+  {
+    const idx2 = L.buildItemsIndex(many, today);
+    const r2 = plain(idx2.items).map((r) => ({ ...r }));
+    S.prepare(r2, idx2.genres);
+    const cases = [{ terms: [], tags: [], status: '', sort: 'new' }, { terms: ['作品1'], tags: [], status: '', sort: 'old' }, { terms: [], tags: [0, 2], status: 'released', sort: 'new' }, { terms: [], tags: [1], status: 'upcoming', sort: 'pop' }];
+    check('ジャンルごとの本数は、見つかった作品から数えても、facetCounts と同じ（絞り込みを2回しない）', cases.every((st) => [false, true].every((hv) => { const o = { today, hideVr: hv, onlySolo: false }; return JSON.stringify(plain(S.genreCounts(S.filterRows(r2, st, o), idx2.genres.length))) === JSON.stringify(plain(S.facetCounts(r2, st, o, idx2.genres.length).counts)); })));
+  }
+  check('1回に出す本数・ジャンルを最初に出す数は、ページとブラウザで同じ', L.SEARCH_PAGE_SIZE === S.PAGE_SIZE && L.SEARCH_TAGS_COLLAPSED === S.TAGS_COLLAPSED && S.CAST_LIMIT === CAST_LIMIT);
+  check('はじめの一覧: 索引が空・壊れていても落ちない', L.searchFirstPage({ genres: [], items: [] }, today).total === 0 && L.searchFirstPage(null, today).rows.length === 0);
+  const src = fs.readFileSync(new URL('../site/public/search.js', import.meta.url), 'utf-8');
+  check('ブラウザの検索は、ページの「はじめの一覧」（data-first）がいまの条件と同じなら作り直さず、キーワードは打ち終わってから探す', src.includes("list.getAttribute('data-first') === '1'") && src.includes("'読み込み中…'") && src.includes('TYPING_WAIT_MS'));
+}
+
 console.log('\n■ 「VR作品を隠す」「単体作品のみ表示」スイッチ（vr-filter.js）');
 check('保存のキーと、html に付ける印', V.KEY === 'hide-vr' && V.CLASS === 'hide-vr' && V.SOLO_KEY === 'only-solo' && V.SOLO_CLASS === 'only-solo');
 check('本数の注記: VRを隠す・単体作品のみ・両方・どちらも無し', V.filterNote(true, false) === '（VRを除く）' && V.filterNote(false, true) === '（単体作品のみ）' && V.filterNote(true, true) === '（単体作品・VRを除く）' && V.filterNote(false, false) === '');

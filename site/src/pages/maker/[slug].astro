@@ -7,7 +7,7 @@ import FavButton from '../../components/FavButton.astro';
 import NextWorks from '../../components/NextWorks.astro';
 import OnSaleWorks from '../../components/OnSaleWorks.astro';
 import CastFaces from '../../components/CastFaces.astro';
-import { assetUrl } from '../../lib/assets.js';
+import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
 import { makerGroups, actressByName, contentGenres, sale, tagByName, today } from '../../lib/data.js';
 import { campaignSummary, offPercent, onSaleItems } from '../../lib/sale.js';
@@ -88,6 +88,8 @@ const trail = [
   noindex={noindex}
   jsonLd={[breadcrumbLd(trail), pageLd]}
 >
+  {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
+  {saleWorks.length > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
@@ -169,5 +171,4 @@ const trail = [
       <DaySection groups={groups} />
     </section>
   </div>
-  {saleWorks.length > 0 && <script is:inline src={assetUrl('/sale.js')} defer></script>}
 </Base>

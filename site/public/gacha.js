@@ -53,7 +53,9 @@
   if (data) {
     try {
       start(JSON.parse(data.textContent || '[]'));
-    } catch (e) {}
+    } catch (e) {
+      section.hidden = true;
+    }
   } else if (src && typeof fetch === 'function') {
     fetch(src, { credentials: 'same-origin' })
       .then(function (res) {
@@ -61,18 +63,25 @@
         return res.json();
       })
       .then(start)
-      .catch(function () {});
+      .catch(function () {
+        section.hidden = true; // 候補を読めなかったら、欄ごと隠す
+      });
+  } else {
+    section.hidden = true;
   }
 
   function start(raw) {
   var pool = (Array.isArray(raw) ? raw : []).filter(function (row) {
     return row && typeof row.c === 'string' && /^[A-Za-z0-9_-]+$/.test(row.c) && row.c !== exclude && typeof row.t === 'string' && typeof row.i === 'string' && /^https:\/\/[^/]*dmm\.co\.jp\//.test(row.i);
   });
-  if (pool.length < REELS) return;
   var reels = section.querySelectorAll('.reel');
   var button = section.querySelector('[data-gacha-draw]');
-  if (reels.length !== REELS || !button) return;
+  if (pool.length < REELS || reels.length !== REELS || !button) {
+    section.hidden = true; // 候補が足りないときは、欄ごと隠す
+    return;
+  }
   section.hidden = false;
+  button.disabled = false; // 欄は、はじめから出ている（CSS の html.js）。候補がそろったので「まわす」を押せるように
 
   var recent = [];
   var busy = false;

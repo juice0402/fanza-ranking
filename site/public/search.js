@@ -173,6 +173,18 @@
     return { counts: counts, total: total };
   }
 
+  // 見つかった作品（filterRows の結果）の、ジャンルごとの本数。facetCounts と同じ数（結果は、選んだジャンルを全部含む作品なので）。
+  // 絞り込みを2回しないで済む（3,000本を、もう一度しらべない。2026-10-07）
+  function genreCounts(found, genreCount) {
+    var counts = [];
+    for (var i = 0; i < genreCount; i++) counts.push(0);
+    for (var r = 0; r < found.length; r++) {
+      var g = found[r].g;
+      for (var j = 0; j < g.length; j++) if (g[j] >= 0 && g[j] < genreCount) counts[g[j]]++;
+    }
+    return counts;
+  }
+
   // URL の ?q=…&tag=…&st=…&sort=… → 条件（ジャンルは名前から番号にする。知らない名前は捨てる）。q は入力欄に戻す元の文字
   function parseQuery(search, genres) {
     var params = new URLSearchParams(String(search || ''));
@@ -242,6 +254,7 @@
       prepare: prepare,
       filterRows: filterRows,
       facetCounts: facetCounts,
+      genreCounts: genreCounts,
       parseQuery: parseQuery,
       buildQuery: buildQuery,
       visibleTags: visibleTags,
@@ -276,6 +289,8 @@
   var selected = [];
   var expanded = false;
   var shown = PAGE_SIZE;
+  var ready = false; // 索引を読み終えたか
+  var TYPING_WAIT_MS = 180; // キーワードの欄: 打ち終わってから、この時間たったら絞り込む（1文字ごとに作り直さない。2026-10-07）
 
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -313,6 +328,7 @@
 
   function card(row, today) {
     var li = el('li', 'ws-row');
+    li.setAttribute('data-c', row.c);
     var article = el('article', 'item');
     var href = '/item/' + row.c + '/';
 
@@ -374,44 +390,79 @@
   function updateTags(counts) {
     var visible = visibleTags(counts, selected, TAGS_COLLAPSED, expanded);
     var focused = document.activeElement;
+    var show = {};
+    visible.forEach(function (n) {
+      show[n] = true;
+    });
+    // 変わったところだけ書きかえる（ジャンルは200以上あり、毎回すべてを書きかえると、スマホで描き直しが重かった。2026-10-07）
     tagButtons.forEach(function (button, n) {
       var on = selected.indexOf(n) >= 0;
       // 隠すのは外側の li（隠れた li に、並びの間隔が残らないように）。いま押したボタンは隠さない（フォーカスが、ページの先頭に飛ばないように）
-      button.parentNode.hidden = visible.indexOf(n) < 0 && button !== focused;
-      button.setAttribute('aria-pressed', on ? 'true' : 'false');
-      button.disabled = !on && counts[n] === 0; // 足すと0本になるジャンルは、押せなくする
-      button.querySelector('.tag-count').textContent = String(counts[n]);
+      var hide = !show[n] && button !== focused;
+      if (button.parentNode.hidden !== hide) button.parentNode.hidden = hide;
+      var pressed = on ? 'true' : 'false';
+      if (button.getAttribute('aria-pressed') !== pressed) button.setAttribute('aria-pressed', pressed);
+      var off = !on && counts[n] === 0; // 足すと0本になるジャンルは、押せなくする
+      if (button.disabled !== off) button.disabled = off;
+      var label = button.querySelector('.tag-count');
+      var text = String(counts[n]);
+      if (label.textContent !== text) label.textContent = text;
     });
-    var hiddenCount = tagButtons.filter(function (b) {
-      return b.parentNode.hidden;
-    }).length;
+    var hiddenCount = tagButtons.length - visible.length;
     tagMore.hidden = !expanded && hiddenCount === 0;
     tagMore.textContent = expanded ? 'ジャンルをたたむ' : 'すべてのジャンル';
     tagMore.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     tagList.classList.toggle('is-open', expanded); // スマホ: たたんでいるあいだは横に流れる1行、「すべてのジャンル」で折り返して全部
   }
 
-  function render() {
-    var o = opts();
-    var state = readState();
-    var found = filterRows(rows, state, o);
-    var facets = facetCounts(rows, state, o, genres.length);
-    updateTags(facets.counts);
-    var visible = found.slice(0, shown);
-    list.textContent = '';
-    visible.forEach(function (row) {
-      list.appendChild(card(row, o.today));
-    });
+  // 3桁ごとのカンマ（「3,000」）。toLocaleString は、はじめて使うときにスマホで0.1秒近くかかっていたので使わない（2026-10-07）
+  function withCommas(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  // いまの条件の印（同じ印なら、作り直さない。ラジオボタンなどは「input」と「change」の両方が来るため）
+  function stateKey(o) {
+    return [buildQuery({ q: form.elements.q.value, tags: selected, status: form.elements.status.value, sort: form.elements.sort.value }, genres), shown, o.hideVr ? 1 : 0, o.onlySolo ? 1 : 0, expanded ? 1 : 0, o.today].join('|');
+  }
+
+  function countHtml(n, o) {
     var vrNote = o.hideVr && o.onlySolo ? '（単体作品・VR作品を除く）' : o.onlySolo ? '（単体作品のみ）' : o.hideVr ? '（VR作品を除く）' : '';
     var offNote = (o.onlySolo ? '単体作品だけ表示しています。' : '') + (o.hideVr ? 'VR作品は隠しています。' : '');
     // 見つかった本数は、大きな数字で（「3,000本」。2026-10-06）
     count.textContent = '';
-    if (found.length) {
-      count.appendChild(el('strong', 'ws-num', found.length.toLocaleString('ja-JP')));
+    if (n) {
+      count.appendChild(el('strong', 'ws-num', withCommas(n)));
       count.appendChild(document.createTextNode('本' + vrNote));
     } else {
       count.textContent = '条件に合う作品がありません。条件をゆるめてみてね。' + offNote;
     }
+  }
+
+  var lastKey = '';
+  function render() {
+    var o = opts();
+    var key = stateKey(o);
+    if (key === lastKey) return;
+    if (!ready) {
+      // 索引がまだ届いていない: 条件は覚えておき（フォームに残っている）、届いたら作る
+      count.textContent = '読み込み中…';
+      list.setAttribute('aria-busy', 'true');
+      return;
+    }
+    lastKey = key;
+    list.removeAttribute('aria-busy');
+    list.removeAttribute('data-first'); // ページに入っていた「はじめの一覧」ではなくなる（CSS の「単体作品のみ」の仮の隠し方を外す）
+    var state = readState();
+    var found = filterRows(rows, state, o);
+    updateTags(genreCounts(found, genres.length));
+    var visible = found.slice(0, shown);
+    list.textContent = '';
+    var frag = document.createDocumentFragment();
+    visible.forEach(function (row) {
+      frag.appendChild(card(row, o.today));
+    });
+    list.appendChild(frag);
+    countHtml(found.length, o);
     more.hidden = found.length <= visible.length;
     if (filterNote) {
       var active = selected.length + (state.status ? 1 : 0) + (state.sort !== 'new' ? 1 : 0);
@@ -425,6 +476,16 @@
     render();
   }
 
+  function toggleTag(n) {
+    var at = selected.indexOf(n);
+    if (at >= 0) selected = selected.filter(function (x) {
+      return x !== n;
+    });
+    else selected = selected.concat([n]);
+    onChange();
+  }
+
+  // ジャンルのボタン（ページに入っているものを使う。索引のジャンルと違うときだけ作り直す）
   function buildTagButtons() {
     tagList.textContent = '';
     tagButtons = genres.map(function (name, n) {
@@ -432,35 +493,55 @@
       var button = el('button', 'tag-btn');
       button.type = 'button';
       button.setAttribute('aria-pressed', 'false');
+      button.setAttribute('data-n', String(n));
+      button.setAttribute('data-name', name);
       button.appendChild(el('span', 'tag-name', name));
       button.appendChild(el('span', 'tag-count', '0'));
-      button.addEventListener('click', function () {
-        var at = selected.indexOf(n);
-        if (at >= 0) selected = selected.filter(function (x) {
-          return x !== n;
-        });
-        else selected = selected.concat([n]);
-        onChange();
-      });
       li.appendChild(button);
       tagList.appendChild(li);
       return button;
     });
   }
+  tagList.addEventListener('click', function (event) {
+    var button = event.target && event.target.closest ? event.target.closest('.tag-btn') : null;
+    if (!button || button.disabled) return;
+    var n = parseInt(button.getAttribute('data-n'), 10);
+    if (n >= 0) toggleTag(n);
+  });
 
-  form.addEventListener('input', onChange);
-  form.addEventListener('change', onChange);
+  var typingTimer = 0;
+  form.addEventListener('input', function (event) {
+    clearTimeout(typingTimer);
+    if (event.target && event.target.name === 'q') typingTimer = setTimeout(onChange, TYPING_WAIT_MS);
+    else onChange();
+  });
+  form.addEventListener('change', function (event) {
+    if (event.target && event.target.name === 'q') return; // キーワードの欄は input で扱う
+    clearTimeout(typingTimer);
+    onChange();
+  });
   form.addEventListener('submit', function (event) {
     event.preventDefault();
+    clearTimeout(typingTimer);
     onChange();
   });
   form.addEventListener('reset', function () {
+    clearTimeout(typingTimer);
     selected = [];
     setTimeout(onChange, 0); // リセットで項目が空に戻ったあとに、結果を作り直す
   });
   tagMore.addEventListener('click', function () {
     expanded = !expanded;
-    render();
+    if (ready) render();
+    else {
+      // 索引を待つあいだも、ジャンルの全部の表示は切りかえられる（ページに入っているボタンで）
+      tagButtons.forEach(function (b) {
+        b.parentNode.hidden = !expanded && b.parentNode.hasAttribute('data-was-hidden');
+      });
+      tagMore.textContent = expanded ? 'ジャンルをたたむ' : 'すべてのジャンル';
+      tagMore.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      tagList.classList.toggle('is-open', expanded);
+    }
   });
   more.addEventListener('click', function () {
     var before = shown;
@@ -472,31 +553,67 @@
   });
   document.addEventListener('vrfilterchange', onChange); // 「VR作品を隠す」スイッチが押されたとき
 
+  // ページに入っている「はじめの一覧」・ジャンルのボタンを使う（索引を待たずに、検索の部品はページを開いたときから使える。2026-10-07）
+  tagButtons = Array.prototype.slice.call(tagList.querySelectorAll('.tag-btn'));
+  tagButtons.forEach(function (b) {
+    if (b.parentNode.hidden) b.parentNode.setAttribute('data-was-hidden', '');
+  });
+  genres = tagButtons.map(function (b) {
+    return b.getAttribute('data-name') || '';
+  });
+  var firstQuery = parseQuery(window.location.search, genres);
+  form.elements.q.value = firstQuery.q;
+  form.elements.status.value = firstQuery.status;
+  form.elements.sort.value = firstQuery.sort;
+  selected = firstQuery.tags;
+  // 広い画面か、ジャンル・発売・並び順の指定つきで開いたときは、たためる欄を最初から開いておく
+  var wide = typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 720px)').matches;
+  if (filters && (wide || firstQuery.tags.length || firstQuery.status || firstQuery.sort !== 'new')) filters.open = true;
+  var o0 = opts();
+  var prerendered = list.getAttribute('data-first') === '1' && list.getAttribute('data-today') === o0.today && !o0.hideVr && !o0.onlySolo;
+  if (prerendered && buildQuery({ q: firstQuery.q, tags: selected, status: firstQuery.status, sort: firstQuery.sort }, genres) === '') lastKey = stateKey(o0);
+  else render(); // 条件つき・絞り込みスイッチが入っているとき: 「読み込み中…」にして、索引が届いたら作る
+
   fetch(indexUrl, { credentials: 'same-origin' })
     .then(function (res) {
       if (!res.ok) throw new Error('status ' + res.status);
       return res.json();
     })
     .then(function (data) {
-      genres = data && Array.isArray(data.genres) ? data.genres.filter(function (g) { return typeof g === 'string'; }) : [];
+      var indexGenres = data && Array.isArray(data.genres) ? data.genres.filter(function (g) { return typeof g === 'string'; }) : [];
       rows = data && Array.isArray(data.items) ? data.items.filter(isRow) : [];
       if (data && typeof data.newDays === 'number') newDays = data.newDays;
-      if (!rows.length) return; // データが無いときは、最初から載っている案内のまま
-      prepare(rows, genres);
-      buildTagButtons();
-      var first = parseQuery(window.location.search, genres);
-      form.elements.q.value = first.q;
-      form.elements.status.value = first.status;
-      form.elements.sort.value = first.sort;
-      selected = first.tags;
-      // 広い画面か、ジャンル・発売・並び順の指定つきで開いたときは、たためる欄を最初から開いておく
-      var wide = typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 720px)').matches;
-      if (filters && (wide || first.tags.length || first.status || first.sort !== 'new')) filters.open = true;
-      root.hidden = false;
-      if (fallback) fallback.hidden = true;
+      if (!rows.length) throw new Error('empty');
+      prepare(rows, indexGenres);
+      // ページのジャンルのボタンが、索引のジャンルと違えば作り直す（選んでいるジャンルは、名前で引き継ぐ）
+      if (indexGenres.join('\n') !== genres.join('\n')) {
+        var names = selected.map(function (n) {
+          return genres[n];
+        });
+        genres = indexGenres;
+        selected = names.map(function (name) {
+          return genres.indexOf(name);
+        }).filter(function (n) {
+          return n >= 0;
+        });
+        buildTagButtons();
+        lastKey = '';
+      }
+      ready = true;
+      if (lastKey) {
+        // はじめの一覧が、ブラウザで作る一覧と同じか確かめる（違えば作り直す）
+        var o = opts();
+        var want = filterRows(rows, readState(), o).slice(0, shown);
+        var cells = list.children;
+        var same = cells.length === want.length && o.today === list.getAttribute('data-today');
+        for (var i = 0; same && i < cells.length; i++) same = cells[i].getAttribute('data-c') === want[i].c;
+        if (!same) lastKey = '';
+      }
       render();
     })
     .catch(function () {
-      // 読み込めなかったときも、最初から載っている案内のまま（何も起きない）
+      // 読み込めなかったとき: 検索の部品を隠し、ほかの探し方の案内を出す
+      root.hidden = true;
+      if (fallback) fallback.classList.add('is-fallback');
     });
 })();

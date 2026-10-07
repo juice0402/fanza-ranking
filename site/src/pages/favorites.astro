@@ -29,6 +29,8 @@ const trail = [
 
     <div id="fav-root">
       <noscript><p class="empty">お気に入りを使うには、ブラウザのJavaScriptを有効にしてください。</p></noscript>
+      {/* お気に入りがまだ無い人（html.fav-none。Base.astro の <head> が付ける）には、はじめから出しておく（あとから出てきて下がずれないように。favorites.js も同じ文を出す。2026-10-07） */}
+      <p class="empty" data-fav-empty>まだお気に入りがありません。作品・出演者・メーカーのページにある ☆ を押すと、ここに集まります。</p>
     </div>
 
     <p class="fine">お気に入りは、この端末のブラウザの中にだけ保存されます（別の端末には引き継がれません）。</p>

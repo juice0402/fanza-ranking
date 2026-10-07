@@ -110,7 +110,7 @@ const hasGacha = gacha.length >= 3 && released.length > 0;
 const saleCamps = saleGroups(all, sale, today, 0, { genres: contentGenres });
 const saleTotal = saleCamps.reduce((n, g) => n + g.total, 0);
 const saleDay = sale.date ? dateParts(sale.date) : null;
-import { assetUrl } from '../lib/assets.js';
+import { assetUrl, inlineScript } from '../lib/assets.js';
 // パソコン（960px〜）の右の欄（作品を探す → きょうの話題 → いま人気の女優 → 人気のジャンル → 週のまとめ → おすすめのコーナー → 月のまとめ）。
 // 運営者の希望「右のカラム（きょうの話題）の下に全て並べる」「作品を探すも右のカラムの上に」。2026-10-05。作品を探すがいつもあるので、右の欄はいつもある。
 // 右の欄は、左の欄（TOP3・セール・発売中・予約）の行をまたいで縦に伸ばす。またぐ行の数 = 左の欄の欄の数（site.css の .home.has-side）
@@ -129,8 +129,11 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
   path="/"
   jsonLd={[websiteLd()]}
 >
+  {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
+  {saleCamps.length > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
-    <a id="fav-banner" class="fav-banner" href="/favorites/" hidden></a>
+    {/* お気に入りの出演者・メーカーがある人だけに出る（html.has-favs。はじめから場所を取り、新作・予約があれば本数に書きかわる。favorites.js） */}
+    <a id="fav-banner" class="fav-banner" href="/favorites/" hidden>★ お気に入りの新作・予約を見る</a>
 
     {/* スマホ: 見出し → TOP3 → 作品を探す → いま人気の女優 → 人気のジャンル → きょうの話題 → セール → 発売中（いちばん新しい日付の下におすすめのコーナー）→ 予約 の1列
         （右の欄の中の並びは site.css の order。週のまとめ・月のまとめの欄は、パソコンだけ。スマホは「作品を探す」のリンクから）。
@@ -265,12 +268,11 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
         </div>
         <DaySection groups={upcomingGroups} fold={upcomingFold} />
         {upcomingFold > 0 && (
-          <p class="more"><button type="button" class="btn btn-quiet more-btn" data-fold-more hidden>もっと見る（あと<span data-fold-rest>{upcomingShown - upcomingFold}</span>本）</button></p>
+          <p class="more"><button type="button" class="btn btn-quiet more-btn" data-fold-more>もっと見る（あと<span data-fold-rest>{upcomingShown - upcomingFold}</span>本）</button></p>
         )}
       </section>
     )}
     </div>
   </div>
-  {saleCamps.length > 0 && <script is:inline src={assetUrl('/sale.js')} defer></script>}
   {hasGacha && <script is:inline src={assetUrl('/gacha.js')} defer></script>}
 </Base>

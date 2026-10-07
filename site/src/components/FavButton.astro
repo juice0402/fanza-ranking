@@ -1,5 +1,6 @@
 ---
-// お気に入り（☆）ボタン。押したときの動きは site/public/favorites.js（JavaScriptが使えないときは出さない）
+// お気に入り（☆）ボタン。押したときの動きは site/public/favorites.js（JavaScriptが使えないときは出さない＝CSS の html:not(.js)。
+// 保存できないブラウザでは favorites.js が隠す。前は hidden にしてスクリプトが出していたので、開いたあとに出てきて下がずれた。2026-10-07）
 // type: 'work' | 'actress' | 'maker' / favKey: 作品なら品番、出演者・メーカーなら名前 / slug: 専用ページがあるときの短い名前
 // size: 'mini'（名前の横の小さな☆。文字なし）/ 'lead'（出演者・メーカーのページの見出しの下。黄色で目立たせる。2026-10-06）/ それ以外は文字つき
 const { type, favKey, off = 'お気に入りに追加', on = 'お気に入り済み', slug = '', attrs = {}, size = 'normal' } = Astro.props;
@@ -10,7 +11,6 @@ const lead = size === 'lead';
 <button
   type="button"
   class:list={['fav-btn', mini && 'fav-btn-mini', lead && 'fav-btn-lead']}
-  hidden
   aria-pressed="false"
   aria-label={mini ? `${favKey}をお気に入りにする` : undefined}
   data-fav-type={type}
