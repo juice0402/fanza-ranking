@@ -674,7 +674,35 @@ if os.path.isfile(search_page):
     check("検索のスクリプト（actress-search.js）が公開されている", os.path.isfile(os.path.join(DIST, "actress-search.js")))
     if rows:
         section = [t for t in tags(stext, "section") if t.get("id") == "actress-search"]
-        check("検索の部品がある（最初は隠れていて、索引のURLを持つ）", bool(section) and "hidden" in section[0] and section[0].get("data-index") == "/data/actresses-index.json" and 'src="/actress-search.js?v=' in stext, section[:1])
+        check("検索の部品がある（ページを開いたときから見える＝索引を待たない。索引のURLを持つ）", bool(section) and "hidden" not in section[0] and section[0].get("data-index") == "/data/actresses-index.json" and 'src="/actress-search.js?v=' in stext, section[:1])
+        # はじめの一覧（条件なし・作品の多い順の、はじめの30人。2026-10-07）: ブラウザの actress-search.js と同じ並び（作品の多い順・同じ本数は読みの順）・同じ人数の文
+        _page_size = int(re.search(r"export const ACTRESS_PAGE_SIZE = (\d+);", read(os.path.join(ROOT, "site", "src", "lib", "profiles.js"))).group(1))
+        def _as_text(t):
+            t = "" if t is None else str(t)
+            if re.fullmatch(r"[ぁ-ゖー]*", t):
+                return t
+            t = _ud.normalize("NFKC", t).lower()
+            t = re.sub(r"[ァ-ヶ]", lambda m_: chr(ord(m_.group(0)) - 0x60), t)
+            return re.sub(r"[\s　・·.・]", "", t)
+        _tmpl = act_index.get("list", "") if isinstance(act_index, dict) else ""
+        def _row_ok(r):
+            if isinstance(r.get("s"), str) and re.fullmatch(r"[0-9a-f]{10}", r["s"]):
+                return True
+            if r.get("l"):
+                return fanza_https(r["l"], ["fanza.co.jp", "dmm.co.jp"])
+            return bool(re.fullmatch(r"\d{1,12}", str(r.get("id", "")))) and isinstance(_tmpl, str) and _tmpl.count("{ID}") == 1 and fanza_https(_tmpl, ["fanza.co.jp", "dmm.co.jp"])
+        _valid = [(i_, r) for i_, r in enumerate(x for x in rows if isinstance(x, dict) and isinstance(x.get("n"), str) and x.get("n"))]
+        _order = sorted(_valid, key=lambda p_: (-(p_[1].get("k") or 0), _as_text(p_[1].get("r") or p_[1]["n"]), p_[0]))
+        _want = [r for _, r in _order if _row_ok(r)]
+        _ul = re.search(r'<ul id="as-list" class="actress-list" data-first="1">(.*?)</ul>', stext, re.S)
+        _got_keys = [t.get("data-key") for t in tags(_ul.group(1), "li")] if _ul else []
+        _want_keys = [f"{r.get('id', '')}|{r['n']}" for r in _want[:_page_size]]
+        _count = re.search(r'<p id="as-count" class="as-count" aria-live="polite">(.*?)</p>', stext, re.S)
+        check(f"女優検索: はじめの一覧（条件なし・作品の多い順の、はじめの{_page_size}人）がページに入っていて、ブラウザで作る一覧と同じ並び・同じ人数の文（索引を待たずに見える）",
+              bool(_ul) and _got_keys == _want_keys and bool(_count) and strip_tags(_count.group(1)).strip() == f"{len(_want):,}人が見つかりました",
+              (_got_keys[:3], _want_keys[:3], strip_tags(_count.group(1)).strip() if _count else None, len(_want)))
+        _more = [t for t in tags(stext, "button") if t.get("id") == "as-more"]
+        check("女優検索: 「もっと見る」は、はじめの一覧より多いときだけ、はじめから出ている", bool(_more) and (("hidden" in _more[0]) == (len(_want) <= _page_size)), _more[:1])
         names = {t.get("name") for tag in ("input", "select") for t in tags(stext, tag)}
         need = {"q", "cup", "site", "face", "sort", "bust", "waist", "hip"} | {f"{k}_{e}" for k in ("age", "height") for e in ("min", "max")}
         check("検索の入力欄が揃っている（名前・年齢/身長の下限と上限・バスト/ウエスト/ヒップの幅・カップ・このサイトの作品・顔写真・並び順）", need <= names, sorted(need - names))
@@ -721,7 +749,8 @@ if os.path.isfile(search_page):
         check("検索結果の表示先（#as-list・#as-count・#as-more・#as-note）がある", {"as-list", "as-count", "as-more", "as-note"} <= ids, sorted({"as-list", "as-count", "as-more", "as-note"} - ids))
     else:
         check("索引が空のときは、検索の部品を出さない", 'id="actress-search"' not in stext and 'src="/actress-search.js?v=' not in stext)
-    static_rows = len([t for t in tags(stext, "li") if has_class(t, "actress-row")])
+    _static_m = re.search(r'<section id="actress-static"[^>]*>(.*?)</section>', stext, re.S)
+    static_rows = len([t for t in tags(_static_m.group(1) if _static_m else "", "li") if has_class(t, "actress-row")])
     index_limit = int(re.search(r"export const ACTRESS_FALLBACK_LIMIT = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1))
     check(f"JavaScriptが使えないとき用の一覧に、専用ページのある出演者がいる（{len(actress_pages)}人。多いときは作品数の多い順に{index_limit}人まで）", static_rows == min(len(actress_pages), index_limit) and any(t.get("id") == "actress-static" for t in tags(stext, "section")), (static_rows, len(actress_pages)))
     check("検索の注意書き（載っていない人は絞り込みで外れる・FANZA公式のデータ。短い1文。2026-10-06）が、ページにある", (not rows) or ("結果に出ません" in stext and "FANZA公式の情報" in stext))
@@ -1519,6 +1548,9 @@ check("CSS: きょうの話題の繰り上げ（.topic-alt）は、ふだんは�
 check("CSS: 1行の出演者の行（.item-cast・.medal-cast）では、文節の区切り（<wbr>）を消して、2行にしない（Chromium は nowrap でも <wbr> で改行する）", all(any(f"{c} wbr" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules) for c in (".item-cast", ".medal-cast")))
 check("CSS: 全部がVRのまとまり（[data-vr-group].vr-empty）を隠す", any("[data-vr-group].vr-empty" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules))
 check("CSS: html.hide-vr のとき、VR作品の目印（data-vr）のマスと、全部がVRの日付（.day.vr-empty）を隠す", bool(hide_rule) and all(re.search(r"display\s*:\s*none", b) for b in hide_rule) and any(".day.vr-empty" in sels for sels, b in css_rules if ".hide-vr [data-vr]" in sels), hide_rule[:1])
+as_rules = [b for sels, b in css_rules if any(re.sub(r"\s+", " ", s_) in ("html:not(.js) .actress-search", ".js .actress-static:not(.is-fallback)") for s_ in sels)]
+check("CSS: 女優検索の部品は JavaScript が使えるとき（html.js）だけ出し、使えないとき用の一覧は、使えるときは、はじめから隠す（索引を読めなかったら is-fallback で出す）",
+      len(as_rules) >= 1 and all(re.search(r"display\s*:\s*none", b) for b in as_rules) and sum(1 for sels, b in css_rules for s_ in sels if re.sub(r"\s+", " ", s_) in ("html:not(.js) .actress-search", ".js .actress-static:not(.is-fallback)")) == 2, as_rules[:1])
 fold_rule = [b for sels, b in css_rules if any(re.sub(r"\s+", " ", s_) == ".js [data-fold]:not(.is-open) .fold-off" for s_ in sels)]
 check("CSS: 「もっと見る」でたたんだ作品は、JavaScript が使えるとき（html.js）だけ、開くまで隠す（使えないときは全部見える）",
       bool(fold_rule) and all(re.search(r"display\s*:\s*none", b) for b in fold_rule) and not any(".fold-off" in s_ and ".js" not in s_ for sels, b in css_rules for s_ in sels), fold_rule[:1])
