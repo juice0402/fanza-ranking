@@ -6,9 +6,9 @@
 import { ARCHIVE_PAGE_SIZE, FILE_BUDGET, FIXED_FILES } from '../config.js';
 import { itemPath } from './items.js';
 
-/** 作品ページ以外のファイルの数（見積もり）。counts: 出演者・メーカー・月・ジャンル・まとめ記事・セール（特集ごと・履歴）のページの数、カレンダー（.ics）の数、過去の作品の一覧に並ぶ本数 */
-export function nonItemFileCount({ actress = 0, maker = 0, month = 0, tag = 0, weekly = 0, sale = 0, ics = 0, archiveItems = 0 } = {}, fixed = FIXED_FILES, pageSize = ARCHIVE_PAGE_SIZE) {
-  return fixed + actress + maker + month + tag + weekly + sale + ics + Math.max(1, Math.ceil(archiveItems / pageSize));
+/** 作品ページ以外のファイルの数（見積もり）。counts: 出演者・メーカー・シリーズ・レーベル・月・ジャンル・まとめ記事・セール（特集ごと・履歴）のページの数、カレンダー（.ics）の数、過去の作品の一覧に並ぶ本数 */
+export function nonItemFileCount({ actress = 0, maker = 0, series = 0, label = 0, month = 0, tag = 0, weekly = 0, sale = 0, ics = 0, archiveItems = 0 } = {}, fixed = FIXED_FILES, pageSize = ARCHIVE_PAGE_SIZE) {
+  return fixed + actress + maker + series + label + month + tag + weekly + sale + ics + Math.max(1, Math.ceil(archiveItems / pageSize));
 }
 
 /** 作品ページの優先順（小さいほど先）: 毎日の更新で載せた作品 → コメントのある過去作品 → そのほかの過去作品 */

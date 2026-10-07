@@ -1,0 +1,8 @@
+---
+// レーベルの一覧（/label/。2026-10-07）
+import EntryIndex from '../../components/EntryIndex.astro';
+import { labelGroups, today } from '../../lib/data.js';
+import { LABEL_INDEX_PATH } from '../../lib/insights.js';
+---
+
+<EntryIndex groups={labelGroups} kind="label" path={LABEL_INDEX_PATH} today={today} />

@@ -1,0 +1,15 @@
+---
+// メーカー・出演者のページの「シリーズ」「レーベル」のチップ（ページのあるものだけ・本数の多い順。lib/insights.js の entryChips。2026-10-07）
+const { chips, title, id, label } = Astro.props;
+---
+
+{chips.length > 0 && (
+  <section class="section" aria-labelledby={id}>
+    <div class="section-head">
+      <h2 id={id} class="section-title">{title}</h2>
+    </div>
+    <nav class="sale-jump genre-chips" aria-label={label}>
+      {chips.map((c) => <a class="chip-link" href={c.path}>{c.name}<span class="chip-count">{c.count}本</span></a>)}
+    </nav>
+  </section>
+)}

@@ -381,6 +381,12 @@ def cmd_list(args):
             row["title_hidden"] = True
             if title_block_reason(x) == "minor":
                 row["content_off"] = True  # 未成年を連想させるタイトル: 内容にも場面のジャンルにも触れず、出演者・メーカー・形式・日付・収録時間だけで書く
+        # シリーズ・レーベル（2026-10-07 から。無い作品もある）。内容に触れない作品（content_off）には出さない。レーベルがメーカーと同じなら出さない
+        if not row.get("content_off"):
+            if str(x.get("series") or "").strip() and title_block_reason({"title": x["series"]}) != "minor":
+                row["series"] = x["series"].strip()
+            if str(x.get("label") or "").strip() and x["label"].strip() != (maker or "") and title_block_reason({"title": x["label"]}) != "minor":
+                row["label"] = x["label"].strip()
         if x.get("comment_kind") in (DRAFT_KIND, FINAL_KIND):
             row["draft"] = x.get("comment") or ""  # 仕上げる前の文（Gemini の下書きなど）。そのまま使わず、書き直す
         rows.append(row)
@@ -444,7 +450,7 @@ def comment_problems(comment, item):
     for name in item.get("actress") or []:
         if name and text.count(name) > 1:
             problems.append(f"出演者名「{name}」が2回以上入っています（1回まで）")
-    copied = copied_from_title(text, str(item.get("title") or ""), [*(item.get("actress") or []), item.get("maker") or ""])
+    copied = copied_from_title(text, str(item.get("title") or ""), [*(item.get("actress") or []), item.get("maker") or "", item.get("series") or "", item.get("label") or ""])
     if copied:
         problems.append(f"タイトルの言葉をそのまま写しています（「{copied}」。内容は、自分の言葉で、やわらかく言いかえてください）")
     if text == (item.get("comment") or "").strip():

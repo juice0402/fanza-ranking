@@ -1,0 +1,58 @@
+---
+// まとめ記事の「注目の作品」（週のまとめ・月のまとめで共通。2026-10-07 に週のまとめのページから切り出した）。
+// 1本ずつ「小さな表紙｜タイトル・出演者・メーカー・発売日・札・ひとこと・FANZAへ」の横長のカード（運営者の指摘「注目の作品がとても読みづらい」。2026-10-05。
+// 前は棚のカードの横に文を並べていて、狭い所で縦に長く折り返していた）。スマホ1列（ひとことは横いっぱい）・広い画面2列。
+// 札: 新着の人気順の最高順位（記事の数字にあればそれ、無ければいまの記録）・デビュー作（2026-10-07）
+import Thumb from './Thumb.astro';
+import { paged, rankHistory } from '../lib/data.js';
+import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
+import { castLine, CAST_LIMIT, dateParts, filterAttrs } from '../lib/items.js';
+import { isMinorTitle } from '../lib/gacha.js';
+
+// picks: [{ note, item }]、facts: 記事の数字（人気の作品の最高順位を使う。無くてもよい）、id: 見出しの id。
+// こちらから勧める欄なので、未成年を連想させるタイトルの作品は出さない（道具の apply も選ばせない。前の記事のための守り）
+const { picks: allPicks, facts = null, id = 'picks-title', title = '注目の作品' } = Astro.props;
+const picks = allPicks.filter((p) => !isMinorTitle(p.item.title));
+const factBest = new Map((facts?.popular ?? []).map((p) => [p.cid, p.best]));
+const bestOf = (i) => factBest.get(i.cid) ?? rankHistory.get(i.cid)?.bestNew?.rank ?? null;
+const isDebut = (i) => i.genres.includes('デビュー作品');
+const md = (dateKey) => {
+  const p = dateParts(dateKey);
+  return `${p.m}月${p.d}日`;
+};
+---
+
+{picks.length > 0 && (
+  <section class="section" aria-labelledby={id} data-vr-group>
+    <h2 id={id} class="section-title">{title}</h2>
+    <ol class="pick-list">
+      {picks.map((p) => {
+        const link = itemHref(p.item, paged);
+        const outbound = link.external ? OUTBOUND_ATTRS : {};
+        const meta = [castLine(p.item.actress, CAST_LIMIT, ''), p.item.maker && p.item.maker !== '不明' ? p.item.maker : '', `${md(p.item.dateKey)}発売`].filter(Boolean).join('・');
+        const best = bestOf(p.item);
+        return (
+          <li class="shelf-cell pick" {...filterAttrs(p.item)}>
+            <article class="pick-card">
+              <a class="item-cover pick-cover" href={link.href} tabindex="-1" aria-hidden="true" {...outbound}>
+                {p.item.image_url && <Thumb src={p.item.image_url} kind="tiny" class="item-img is-small" />}
+              </a>
+              <div class="pick-head">
+                <h3 class="pick-title"><a class="item-title-link" href={link.href} {...outbound}>{p.item.title}</a></h3>
+                <p class="pick-meta">{meta}</p>
+                {(best || isDebut(p.item)) && (
+                  <p class="pick-badges">
+                    {best && <span class="pick-badge">新着の人気順 最高{best}位</span>}
+                    {isDebut(p.item) && <span class="pick-badge">デビュー作</span>}
+                  </p>
+                )}
+              </div>
+              <p class="pick-note">{p.note}</p>
+              {p.item.url && <a class="btn btn-card pick-btn" href={p.item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで見る</a>}
+            </article>
+          </li>
+        );
+      })}
+    </ol>
+  </section>
+)}

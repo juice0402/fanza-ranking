@@ -1,9 +1,11 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
-import { curated, paged, roundups, actressByName, makerByName } from '../../lib/data.js';
+import { curated, paged, roundups, actressByName, makerByName, monthGroups } from '../../lib/data.js';
+import TrendFacts from '../../components/TrendFacts.astro';
+import PickCards from '../../components/PickCards.astro';
 import { itemHref, OUTBOUND_ATTRS } from '../../lib/plan.js';
-import { breadcrumbLd, dateParts, formatDateJp, groupByDate, filterAttrs, castLine, CAST_LIMIT } from '../../lib/items.js';
+import { breadcrumbLd, dateParts, formatDateJp, groupByDate, castLine, CAST_LIMIT } from '../../lib/items.js';
 import Thumb from '../../components/Thumb.astro';
 import {
   WEEKLY_INDEX_PATH,
@@ -29,6 +31,8 @@ const stats = weekStats(curated, roundup.week_start);
 const byCid = new Map(curated.map((i) => [i.cid, i]));
 const picks = roundup.picks.map((p) => ({ note: p.note, item: byCid.get(p.cid) })).filter((p) => p.item);
 const { prev, next } = neighbours(roundups, roundup.week_start);
+// この週の発売日が入る月のページ（2026-10-07。内部リンク）
+const weekMonths = monthGroups.filter((g) => g.ym === roundup.week_start.slice(0, 7) || g.ym === roundup.week_end.slice(0, 7)).sort((a, b) => a.ym.localeCompare(b.ym));
 const trail = [
   { name: 'トップ', path: '/' },
   { name: '週のまとめ', path: WEEKLY_INDEX_PATH },
@@ -37,10 +41,6 @@ const trail = [
 const day = (dateKey) => {
   const p = dateParts(dateKey);
   return `${p.m}月${p.d}日（${p.wd}）`;
-};
-const md = (dateKey) => {
-  const p = dateParts(dateKey);
-  return `${p.m}月${p.d}日`;
 };
 ---
 
@@ -60,7 +60,15 @@ const md = (dateKey) => {
       </header>
 
       <p class="summary">{roundup.lead}</p>
-      <p class="fine">この導入文とひとことは、作品情報をもとに自動で作成しています（内容の正確さは保証できません。詳細はFANZAの公式ページで）。</p>
+      <p class="fine">この導入文・傾向・ひとことは、作品情報をもとに自動で作成しています（内容の正確さは保証できません。詳細はFANZAの公式ページで）。</p>
+
+      {roundup.trend && (
+        <section class="section" aria-labelledby="week-trend-title">
+          <h2 id="week-trend-title" class="section-title">この週の傾向</h2>
+          <p class="trend-text">{roundup.trend}</p>
+          {roundup.facts && <TrendFacts facts={roundup.facts} period="この週" prev="前の週" asOf={roundup.written} id="week-trend" />}
+        </section>
+      )}
 
       <section class="section" aria-labelledby="stats-title">
         <h2 id="stats-title" class="section-title">この週のデータ</h2>
@@ -113,35 +121,7 @@ const md = (dateKey) => {
         <p class="fine">数字は当サイトで紹介した作品の数で、FANZA全体の発売本数ではありません。</p>
       </section>
 
-      {picks.length > 0 && (
-        <section class="section" aria-labelledby="picks-title" data-vr-group>
-          <h2 id="picks-title" class="section-title">注目の作品</h2>
-          {/* 1本ずつ「小さな表紙｜タイトル・出演者・メーカー・発売日・ひとこと・FANZAへ」の横長のカード（運営者の指摘「注目の作品がとても読みづらい」。2026-10-05。
-              前は棚のカードの横に文を並べていて、狭い所で縦に長く折り返していた）。スマホ1列（ひとことは横いっぱい）・広い画面2列 */}
-          <ol class="pick-list">
-            {picks.map((p) => {
-              const link = itemHref(p.item, paged);
-              const outbound = link.external ? OUTBOUND_ATTRS : {};
-              const meta = [castLine(p.item.actress, CAST_LIMIT, ''), p.item.maker && p.item.maker !== '不明' ? p.item.maker : '', `${md(p.item.dateKey)}発売`].filter(Boolean).join('・');
-              return (
-                <li class="shelf-cell pick" {...filterAttrs(p.item)}>
-                  <article class="pick-card">
-                    <a class="item-cover pick-cover" href={link.href} tabindex="-1" aria-hidden="true" {...outbound}>
-                      {p.item.image_url && <Thumb src={p.item.image_url} kind="tiny" class="item-img is-small" />}
-                    </a>
-                    <div class="pick-head">
-                      <h3 class="pick-title"><a class="item-title-link" href={link.href} {...outbound}>{p.item.title}</a></h3>
-                      <p class="pick-meta">{meta}</p>
-                    </div>
-                    <p class="pick-note">{p.note}</p>
-                    {p.item.url && <a class="btn btn-card pick-btn" href={p.item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで見る</a>}
-                  </article>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      )}
+      <PickCards picks={picks} facts={roundup.facts} />
 
       <section class="section" aria-labelledby="week-list-title">
         <h2 id="week-list-title" class="section-title">この週に発売された作品のうち、当サイトで紹介したもの（{week.length}本）</h2>
@@ -170,6 +150,10 @@ const md = (dateKey) => {
         ))}
       </section>
     </article>
+
+    {weekMonths.length > 0 && (
+      <p class="side-more">{weekMonths.map((g, i) => <>{i > 0 && '・'}<a class="spec-link" href={g.path}>{g.name}発売の作品をすべて見る</a></>)}</p>
+    )}
 
     {(prev || next) && (
       <nav aria-label="前後の週のまとめ">

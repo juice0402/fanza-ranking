@@ -1,0 +1,45 @@
+---
+// シリーズ・レーベルの1ページ分（/series/<id>/・/label/<id>/ の両方が使う。2026-10-07）。タイトル・説明文・構造化データ・セールの「終わったら隠す」と、中身（EntryCollection）
+import Base from '../layouts/Base.astro';
+import EntryCollection from './EntryCollection.astro';
+import { inlineScript } from '../lib/assets.js';
+import { isMinorTitle } from '../lib/gacha.js';
+import { sale, today } from '../lib/data.js';
+import { offPercent, onSaleItems } from '../lib/sale.js';
+import { SITE_URL, breadcrumbLd, entityDescription, listLastmod } from '../lib/items.js';
+import { LABEL_INDEX_PATH, SERIES_INDEX_PATH, entryPageTitle, entrySummary } from '../lib/insights.js';
+import { listIndexable } from '../lib/plan.js';
+
+const { group } = Astro.props;
+const isSeries = group.kind === 'series';
+const trail = [
+  { name: 'トップ', path: '/' },
+  isSeries ? { name: 'シリーズから探す', path: SERIES_INDEX_PATH } : { name: 'レーベルから探す', path: LABEL_INDEX_PATH },
+  { name: group.name, path: group.path },
+];
+// コメントのある作品が1本も無いページ（過去作品だけ）は、検索エンジンには出さない（メーカーのページと同じ）
+const noindex = !listIndexable(group.items);
+const next = group.items.filter((i) => i.dateKey > today && !isMinorTitle(i.title)).sort((a, b) => a.dateKey.localeCompare(b.dateKey))[0] ?? null;
+const saleWorks = onSaleItems(group.items, sale, today).filter((i) => !isMinorTitle(i.title));
+const maxOff = Math.max(0, ...saleWorks.map((i) => offPercent(i.sale.price, i.sale.listPrice) ?? 0)) || null;
+const modified = listLastmod(group.items, today);
+const pageLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: `${group.name}の作品一覧`,
+  url: SITE_URL + group.path,
+  ...(modified ? { dateModified: modified } : {}),
+  about: isSeries ? { '@type': 'CreativeWorkSeries', name: group.name } : { '@type': 'Brand', name: group.name },
+};
+---
+
+<Base
+  title={entryPageTitle(group, today)}
+  description={entityDescription(entrySummary(group), { next, saleCount: saleWorks.length, maxOff })}
+  path={group.path}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail), pageLd]}
+>
+  {saleWorks.length > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
+  <EntryCollection group={group} trail={trail} />
+</Base>

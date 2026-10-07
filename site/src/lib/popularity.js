@@ -45,3 +45,32 @@ export function newRanking(items, today, limit = RANKING_LIMIT, days = NEW_RANK_
   return items.filter((i) => i.popNew && i.dateKey <= today && i.dateKey >= from).sort(byRank('popNew')).slice(0, limit);
 }
 
+// ------------------------------------------------------------------
+// 人気の動き（data/rank_history.json。運営者の希望「独自の価値を足す」。2026-10-07）
+// 毎日の更新が、新着の人気順（上位500本）に出てきた作品について、毎日の順位をためたもの（get_new_releases.py の merge_rank_history）。
+//   n: 新着の人気順（記録を始めた日から8日分）・a: 全体の人気順の上位1,000本（30日分）。0 は圏外、null はその日に取れなかった
+// ------------------------------------------------------------------
+const histRank = (v) => (v === null ? null : Number.isInteger(v) && v >= 0 && v <= UNKNOWN_RANK ? v : null);
+
+/** 順位の並びのうち、いちばん上の順位と、その日（何日目か。0から）。1つも無ければ null */
+export function bestOf(values) {
+  let best = null;
+  values.forEach((v, i) => {
+    if (v && (!best || v < best.rank)) best = { rank: v, day: i };
+  });
+  return best;
+}
+
+/** rank_history.json → Map(cid → { start: 記録を始めた日, n: [...], a: [...], bestNew: {rank, day}|null, bestAll: {rank, day}|null, daysIn: 新着の人気順に出ていた日数 }) */
+export function normalizeRankHistory(raw) {
+  const rows = raw && typeof raw === 'object' && raw.items && typeof raw.items === 'object' && !Array.isArray(raw.items) ? raw.items : {};
+  const out = new Map();
+  for (const [cid, r] of Object.entries(rows)) {
+    if (!r || typeof r !== 'object' || !/^\d{4}-\d{2}-\d{2}$/.test(String(r.d ?? '')) || !/^[A-Za-z0-9_-]+$/.test(cid)) continue;
+    const n = (Array.isArray(r.n) ? r.n : []).slice(0, 8).map(histRank);
+    const a = (Array.isArray(r.a) ? r.a : []).slice(0, 30).map(histRank);
+    out.set(cid, { start: r.d, n, a, bestNew: bestOf(n), bestAll: bestOf(a), daysIn: n.filter((v) => v > 0).length });
+  }
+  return out;
+}
+

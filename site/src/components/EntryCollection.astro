@@ -1,0 +1,134 @@
+---
+// シリーズ・レーベルのページの中身（/series/<id>/・/label/<id>/。運営者の希望「独自の価値を足す」→ シリーズ・レーベル別のページ。2026-10-07。lib/insights.js）。
+// メーカーのページと同じ形: 更新日・掲載作品の数・メーカー・出演・形式 → 次の新作 → セール中の作品 → 人気の作品（人気順の順位がある作品から6本）
+// → よく出ている女優 → 多いジャンル → 作品（新しい順）。こちらから案内する欄（次の新作・セール中・人気の作品）には、未成年を連想させるタイトルの作品を入れない
+import Breadcrumb from './Breadcrumb.astro';
+import VrToggle from './VrToggle.astro';
+import DaySection from './DaySection.astro';
+import NextWorks from './NextWorks.astro';
+import OnSaleWorks from './OnSaleWorks.astro';
+import CastFaces from './CastFaces.astro';
+import MiniShelf from './MiniShelf.astro';
+import { isMinorTitle } from '../lib/gacha.js';
+import { actressByName, makerByName, contentGenres, sale, tagByName, today } from '../lib/data.js';
+import { campaignSummary, onSaleItems } from '../lib/sale.js';
+import { formatsOf, groupByDate, listLastmod, rankedNames, shortSpan } from '../lib/items.js';
+import { bestRank } from '../lib/popularity.js';
+import { ENTITY_LIST_LIMIT } from '../config.js';
+import { entityListing } from '../lib/plan.js';
+
+// group: シリーズかレーベルのまとまり（groupByEntry）。trail: パンくず
+const { group, trail } = Astro.props;
+const kind = group.kind === 'series' ? 'シリーズ' : 'レーベル';
+const listing = entityListing(group.items, ENTITY_LIST_LIMIT);
+const groups = groupByDate(listing.shown);
+const castRanked = rankedNames(group.items.flatMap((i) => i.actress), 12);
+const formats = formatsOf(group.items);
+const upcomingWorks = group.items.filter((i) => i.dateKey > today && !isMinorTitle(i.title)).sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.cid.localeCompare(b.cid));
+const saleWorks = onSaleItems(group.items, sale, today).filter((i) => !isMinorTitle(i.title));
+// 人気の作品: 人気順の順位（全体・新着の上のほう）がある発売済みの作品から6本（作品が7本以上あるときだけ。少ないときは下の一覧で足りる）
+const popular = group.items.length >= 7
+  ? group.items.filter((i) => i.dateKey <= today && (i.popAll || i.popNew) && !isMinorTitle(i.title)).sort((a, b) => bestRank(a.popAll, a.popNew) - bestRank(b.popAll, b.popNew)).slice(0, 6)
+  : [];
+const counted = campaignSummary(group.items, { genres: contentGenres, limit: 8 });
+const castFaces = counted.actresses.slice(0, 6);
+const genreChips = counted.genres.slice(0, 8);
+const modified = listLastmod(group.items, today);
+const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
+---
+
+<div class="wrap">
+  <Breadcrumb trail={trail} />
+
+  <section class="hero">
+    <h1 class="hero-title">{group.name}<span class="hero-kind">（{kind}）</span>の作品一覧</h1>
+    {modified && <p class="page-updated">{md(modified)}更新</p>}
+  </section>
+
+  <dl class="spec section">
+    <dt class="spec-term">掲載作品</dt>
+    <dd class="spec-desc">{group.items.length}本（{shortSpan(group.items)}発売）</dd>
+    {group.makers.length > 0 && (
+      <>
+        <dt class="spec-term">メーカー</dt>
+        <dd class="spec-desc">
+          {group.makers.map((name, i) => (
+            <>
+              {i > 0 && '、'}
+              {makerByName.get(name) ? <a class="spec-link" href={makerByName.get(name).path}>{name}</a> : name}
+            </>
+          ))}
+        </dd>
+      </>
+    )}
+    {castRanked.names.length > 0 && (
+      <>
+        <dt class="spec-term">出演</dt>
+        <dd class="spec-desc">
+          {castRanked.names.map((name, i) => (
+            <>
+              {i > 0 && '、'}
+              {actressByName.get(name) ? <a class="spec-link" href={actressByName.get(name).path}>{name}</a> : name}
+            </>
+          ))}
+          {castRanked.more && 'ほか'}
+        </dd>
+      </>
+    )}
+    {formats.length > 0 && (
+      <>
+        <dt class="spec-term">形式</dt>
+        <dd class="spec-desc">{formats.join('・')}</dd>
+      </>
+    )}
+  </dl>
+
+  <NextWorks items={upcomingWorks} shown={6} />
+  <OnSaleWorks items={saleWorks} shown={6} label={`この${kind}の作品が入っているセール`} />
+
+  {popular.length > 0 && (
+    <section class="section" aria-labelledby="popular-title" data-vr-group>
+      <div class="section-head">
+        <h2 id="popular-title" class="section-title">人気の作品</h2>
+        <p class="section-note">FANZAの人気順（毎日の更新の時点）</p>
+      </div>
+      <MiniShelf items={popular} />
+    </section>
+  )}
+
+  {castFaces.length > 0 && (
+    <section class="section" aria-labelledby="cast-title">
+      <div class="section-head">
+        <h2 id="cast-title" class="section-title">よく出ている女優</h2>
+        <p class="section-note">このサイトに載っている作品の本数</p>
+      </div>
+      <CastFaces rows={castFaces} />
+    </section>
+  )}
+
+  {genreChips.length > 0 && (
+    <section class="section" aria-labelledby="genre-title">
+      <div class="section-head">
+        <h2 id="genre-title" class="section-title">多いジャンル</h2>
+      </div>
+      <nav class="sale-jump genre-chips" aria-label={`${group.name}の多いジャンル`}>
+        {genreChips.map((g) => (
+          tagByName.get(g.name)
+            ? <a class="chip-link" href={tagByName.get(g.name).path}>{g.name}<span class="chip-count">{g.count}本</span></a>
+            : <span class="chip-link chip-static">{g.name}<span class="chip-count">{g.count}本</span></span>
+        ))}
+      </nav>
+    </section>
+  )}
+
+  <section class="section" aria-labelledby="works-title">
+    <div class="section-head">
+      <h2 id="works-title" class="section-title">作品（{group.items.length}本）</h2>
+      <p class="section-note">{listing.hidden > 0 ? `発売日が新しい順に${listing.shown.length}本を表示` : '発売日が新しい順'}</p>
+    </div>
+    <div class="list-tools">
+      <VrToggle />
+    </div>
+    <DaySection groups={groups} />
+  </section>
+</div>

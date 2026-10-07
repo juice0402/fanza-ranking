@@ -9,7 +9,9 @@ import OnSaleWorks from '../../components/OnSaleWorks.astro';
 import CastFaces from '../../components/CastFaces.astro';
 import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
-import { makerGroups, actressByName, contentGenres, sale, tagByName, today } from '../../lib/data.js';
+import { makerGroups, actressByName, contentGenres, sale, tagByName, today, seriesById, labelById } from '../../lib/data.js';
+import { entryChips } from '../../lib/insights.js';
+import EntryChips from '../../components/EntryChips.astro';
 import { campaignSummary, offPercent, onSaleItems } from '../../lib/sale.js';
 import {
   MAKER_INDEX_PATH,
@@ -159,6 +161,9 @@ const trail = [
         </nav>
       </section>
     )}
+
+    <EntryChips chips={entryChips(group.items, seriesById, 'series')} title="シリーズ" id="series-title" label={`${group.name}のシリーズ`} />
+    <EntryChips chips={entryChips(group.items, labelById, 'label')} title="レーベル" id="label-title" label={`${group.name}のレーベル`} />
 
     <section class="section" aria-labelledby="works-title">
       <div class="section-head">

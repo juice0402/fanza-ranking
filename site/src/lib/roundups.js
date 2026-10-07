@@ -83,11 +83,55 @@ export function normalizeRoundups(raw, items) {
       week_start: weekStart,
       week_end: weekEndOf(weekStart),
       lead,
+      trend: String(r.trend ?? '').trim(), // この週の傾向（2026-10-07 から。Claude が書く）
+      facts: normalizeTrendFacts(r.facts), // 書いたときの傾向の数字（表にする）。読めなければ null
       picks,
       written: r.written,
     });
   }
   return out.sort((a, b) => b.week_start.localeCompare(a.week_start));
+}
+
+const isCount = (v) => Number.isInteger(v) && v >= 0;
+export const TREND_GENRES_MAX = 6; // scripts/claude_roundups.py の TREND_GENRES と同じ
+export const TREND_POPULAR_MAX = 5; // 同じく FACTS_POPULAR
+
+/**
+ * 記事と一緒に保存した、書いたときの傾向の数字（scripts/claude_roundups.py の trend_facts）を画面で使う形にする。
+ * 本数のどれかが読めなければ null（傾向の表を出さない）。ジャンル・人気の作品は、読めない行だけ捨てる。月のまとめ記事も同じ形
+ */
+export function normalizeTrendFacts(f) {
+  if (!f || typeof f !== 'object') return null;
+  const keys = ['total', 'prev_total', 'vr', 'prev_vr', 'debut'];
+  if (!keys.every((k) => isCount(f[k]))) return null;
+  const genres = (Array.isArray(f.genres) ? f.genres : [])
+    .filter((g) => g && typeof g.name === 'string' && g.name && isCount(g.count) && isCount(g.prev))
+    .slice(0, TREND_GENRES_MAX)
+    .map((g) => ({ name: g.name, count: g.count, prev: g.prev }));
+  const popular = (Array.isArray(f.popular) ? f.popular : [])
+    .filter((p) => p && typeof p.cid === 'string' && p.cid && isCount(p.best) && p.best >= 1 && isCount(p.days10))
+    .slice(0, TREND_POPULAR_MAX)
+    .map((p) => ({ cid: p.cid, best: p.best, days10: p.days10 }));
+  return { ...Object.fromEntries(keys.map((k) => [k, f[k]])), genres, popular };
+}
+
+/** 前と比べた増減の札。例: ▲21 / ▼3 / ±0（前が0で今もあれば「新しく」） */
+export function deltaLabel(now, prev) {
+  if (prev === 0 && now > 0) return '新しく';
+  const d = now - prev;
+  return d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : '±0';
+}
+
+/** 増減の向き（CSS の印に使う）: up / down / same */
+export const deltaKind = (now, prev) => (now > prev ? 'up' : now < prev ? 'down' : 'same');
+
+/**
+ * ジャンルの本数の横棒（いまと前の期間）。幅は、表の中のいちばん大きい本数を100%とした割合（1本でも見えるよう、0本でなければ4%以上）
+ */
+export function genreBars(genres) {
+  const max = Math.max(1, ...genres.flatMap((g) => [g.count, g.prev]));
+  const pct = (n) => (n > 0 ? Math.max(4, Math.round((n / max) * 100)) : 0);
+  return genres.map((g) => ({ ...g, now: pct(g.count), before: pct(g.prev), delta: deltaLabel(g.count, g.prev), kind: deltaKind(g.count, g.prev) }));
 }
 
 /** その週（月〜日）に発売された作品。日付の古い順 */

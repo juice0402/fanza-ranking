@@ -61,6 +61,18 @@ check("動画の取り直し回数(movie_tries)は 0 以上の整数", all(isins
 check("アフィリエイトのURLは https", all(str(x.get("url", "")).startswith("https://") for x in items if x.get("url")))
 check("cid はURLに使える文字だけ", all(re.match(r"^[A-Za-z0-9_\-]+$", c) for c in cids), [c for c in cids if not re.match(r"^[A-Za-z0-9_\-]+$", c)][:5])
 
+
+
+def _entry_ok(x, key):
+    """シリーズ・レーベル（2026-10-07 から保存）: id は0以上の整数・名前は文字。無いときは 0 と空、あるときは 1以上と空でない名前（「----」は無しとして保存しない）"""
+    i, n = x.get(key + "_id"), x.get(key)
+    if not (isinstance(i, int) and not isinstance(i, bool) and i >= 0 and isinstance(n, str)):
+        return False
+    return (i == 0 and n == "") or (i >= 1 and n.strip() == n and n not in ("", "----") and len(n) <= 80)
+
+
+check("シリーズ・レーベル: どの作品にも series_id・series・label_id・label がある（無いときは 0 と空）",
+      all(_entry_ok(x, "series") and _entry_ok(x, "label") for x in items), [x.get("cid") for x in items if not (_entry_ok(x, "series") and _entry_ok(x, "label"))][:5])
 text = open(DATA, encoding="utf-8").read()
 check("APIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}", text))
 
@@ -211,6 +223,8 @@ else:
           all(_fanza_https(x.get("url"), ["fanza.co.jp", "dmm.co.jp"]) and _ok_movie(x) and isinstance(x.get("movie_tries"), int) and not isinstance(x.get("movie_tries"), bool) and x["movie_tries"] >= 0 for x in cat_items),
           [x.get("cid") for x in cat_items if not (_fanza_https(x.get("url"), ["fanza.co.jp", "dmm.co.jp"]) and _ok_movie(x))][:5])
     check("過去作品: サンプル画像は8枚まで", all(isinstance(x.get("sample_images"), list) and len(x["sample_images"]) <= 8 for x in cat_items))
+    check("過去作品: シリーズ・レーベルの項目がある（無いときは 0 と空）", all(_entry_ok(x, "series") and _entry_ok(x, "label") for x in cat_items),
+          [x.get("cid") for x in cat_items if not (_entry_ok(x, "series") and _entry_ok(x, "label"))][:5])
     check("過去作品のファイルに、APIキーらしき文字列が入っていない", not any(re.search(r"AIza[0-9A-Za-z_\-]{20,}", open(os.path.join(CATALOG_DIR, n), encoding="utf-8").read()) for n in names))
     try:
         cst = json.load(open(CATALOG_STATE, encoding="utf-8"))
@@ -251,6 +265,24 @@ else:
               isinstance(popj, dict) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(popj.get("date", ""))) is not None and str(popj.get("date", "")) <= jst_tomorrow
               and all(isinstance(popj.get(k), dict) and all(_rank_ok(v) for v in popj[k].values()) for k in ("new", "all"))
               and isinstance(popj.get("prev", {}), dict) and all(_rank_ok(v) for v in popj.get("prev", {}).values()) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(popj.get("prev_date", ""))) is not None, str(popj)[:80])
+RANK_HISTORY = os.path.join(ROOT, "site", "src", "data", "rank_history.json")
+if not os.path.exists(RANK_HISTORY):
+    print("  （rank_history.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        rhj = json.load(open(RANK_HISTORY, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        rhj = None
+        check("rank_history.json を読める", False, str(e))
+    if rhj is not None:
+        _rv = lambda v: v is None or (isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 50000)
+        rows_rh = rhj.get("items") if isinstance(rhj, dict) else None
+        check("人気の動き（rank_history.json）: 更新日・作品ごとに {d: 記録を始めた日, n: 新着の人気順（8日分まで）, a: 全体の人気順（30日分まで）}。順位は 0（圏外）〜50000 か null（分からない日）・未来の日付でない",
+              isinstance(rows_rh, dict) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(rhj.get("updated", ""))) is not None and str(rhj.get("updated", "")) <= jst_tomorrow
+              and all(re.fullmatch(r"[A-Za-z0-9_\-]+", c) and isinstance(r, dict) and set(r) == {"d", "n", "a"} and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r["d"])) and r["d"] <= jst_tomorrow
+                      and isinstance(r["n"], list) and len(r["n"]) <= 8 and all(_rv(v) for v in r["n"]) and isinstance(r["a"], list) and len(r["a"]) <= 30 and all(_rv(v) for v in r["a"])
+                      for c, r in rows_rh.items()), str(rhj)[:80])
+        print(f"  （人気の動き: 記録中 {len(rows_rh or {})}本）")
 TODAY_JSON = os.path.join(ROOT, "site", "src", "data", "today.json")
 if not os.path.exists(TODAY_JSON):
     print("  （today.json はまだありません。毎日の更新で作られます）")
@@ -338,6 +370,28 @@ check("公開日が未来の日付になっていない", all(str(r.get("written
 check("導入文(lead)の文字数・使えない言葉などの点検に通る", all(
     isinstance(r.get("lead"), str) and not cc.text_problems(r["lead"].strip(), cr.LEAD_MIN, cr.LEAD_MAX) for r in rounds),
     [(r.get("week_start"), cc.text_problems(str(r.get("lead", "")).strip(), cr.LEAD_MIN, cr.LEAD_MAX)) for r in rounds][:2])
+check("この週の傾向(trend)がすべての記事にあり、文字数・使えない言葉・確かめられない評価などの点検に通る（2026-10-07 から）", all(
+    isinstance(r.get("trend"), str) and not cr.trend_text_problems(r["trend"].strip(), str(r.get("lead", "")).strip()) for r in rounds),
+    [(r.get("week_start"), cr.trend_text_problems(str(r.get("trend", "")).strip(), str(r.get("lead", "")).strip())) for r in rounds][:2])
+
+
+def _count_ok(v):
+    return isinstance(v, int) and not isinstance(v, bool) and v >= 0
+
+
+def _facts_ok(f):
+    return (isinstance(f, dict) and set(f) == {"total", "prev_total", "vr", "prev_vr", "debut", "genres", "popular"}
+            and all(_count_ok(f[k]) for k in ("total", "prev_total", "vr", "prev_vr", "debut"))
+            and isinstance(f["genres"], list) and len(f["genres"]) <= cr.TREND_GENRES
+            and all(isinstance(g, dict) and set(g) == {"name", "count", "prev"} and g["name"] in cr.CONTENT_GENRES and _count_ok(g["count"]) and _count_ok(g["prev"]) for g in f["genres"])
+            and isinstance(f["popular"], list) and len(f["popular"]) <= cr.FACTS_POPULAR
+            and all(isinstance(p, dict) and set(p) == {"cid", "best", "days10"} and isinstance(p["cid"], str) and p["cid"]
+                    and _count_ok(p["best"]) and p["best"] >= 1 and _count_ok(p["days10"]) for p in f["popular"])
+            and [p["best"] for p in f["popular"]] == sorted(p["best"] for p in f["popular"]))
+
+
+check("書いたときの傾向の数字(facts)が決まった形（本数・前の週・VR・デビュー作・ジャンル6つまで・人気の作品5本まで・順位の順）",
+      all(_facts_ok(r.get("facts")) for r in rounds), [r.get("week_start") for r in rounds if not _facts_ok(r.get("facts"))][:3])
 by_cid_date = {str(x.get("cid", "")).strip(): str(x.get("date", ""))[:10] for x in items}
 picks_ok = all(
     isinstance(r.get("picks"), list) and cr.PICKS_MIN <= len(r["picks"]) <= cr.PICKS_MAX
@@ -354,7 +408,40 @@ if picks_ok:
 rtext = open(ROUNDUPS, encoding="utf-8").read()
 check("roundups.json にAPIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}", rtext))
 
-print(f"\n  （{len(items)}件の作品データ・{len(rounds)}本のまとめ記事を確認）")
+# ---- 月のまとめ記事（monthly.json。2026-10-07 から）。Claude が毎月1日に書き足すので、壊れていないかを見張る ----
+print("\n■ 月のまとめ記事（monthly.json）")
+import claude_monthly as cm
+
+MONTHLY = os.path.join(ROOT, "site", "src", "data", "monthly.json")
+try:
+    with open(MONTHLY, encoding="utf-8") as f:
+        months = json.load(f)
+except (OSError, json.JSONDecodeError) as e:
+    print(f"  ❌ monthly.json を読めません: {e}")
+    sys.exit(1)
+check("monthly.json は配列で、すべて項目(辞書)になっている", isinstance(months, list) and all(isinstance(r, dict) for r in months))
+months = [r for r in months if isinstance(r, dict)] if isinstance(months, list) else []
+mkeys = [r.get("month") for r in months]
+check("月(month)がすべて YYYY-MM", all(isinstance(m, str) and cm.MONTH_RE.match(m) for m in mkeys), mkeys[:5])
+check("同じ月の記事が重複していない", len(set(mkeys)) == len(mkeys))
+check("新しい月が先頭に並んでいる", mkeys == sorted(mkeys, reverse=True))
+check("公開日(written)がすべてあり、その月が終わったあと・未来でない日付", all(
+    isinstance(r.get("written"), str) and DAY.match(r["written"]) and isinstance(r.get("month"), str) and cm.MONTH_RE.match(r["month"])
+    and cm.month_last(r["month"]) < r["written"] <= jst_tomorrow for r in months))
+check("導入文・傾向が点検に通る", all(
+    isinstance(r.get("lead"), str) and not cc.text_problems(r["lead"].strip(), cm.LEAD_MIN, cm.LEAD_MAX)
+    and isinstance(r.get("trend"), str) and not cr.trend_text_problems(r["trend"].strip(), r["lead"].strip()) for r in months))
+check("書いたときの傾向の数字(facts)が、週のまとめと同じ決まった形", all(_facts_ok(r.get("facts")) for r in months))
+mpicks_ok = all(isinstance(r.get("picks"), list) and cm.PICKS_MIN <= len(r["picks"]) <= cm.PICKS_MAX
+                and all(isinstance(q, dict) and isinstance(q.get("cid"), str) and isinstance(q.get("note"), str) for q in r["picks"]) for r in months)
+check("注目の作品(picks)が4〜8件で、cid と note がある", mpicks_ok)
+if mpicks_ok:
+    check("注目の作品がすべて、その月に発売の、データにある作品（重複なし）", all(
+        by_cid_date.get(q["cid"], "")[:7] == r["month"] for r in months for q in r["picks"]) and all(len({q["cid"] for q in r["picks"]}) == len(r["picks"]) for r in months))
+    check("ひとことが点検に通る", all(not cc.text_problems(q["note"].strip(), cm.NOTE_MIN, cm.NOTE_MAX) for r in months for q in r["picks"]))
+check("monthly.json にAPIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}", open(MONTHLY, encoding="utf-8").read()))
+
+print(f"\n  （{len(items)}件の作品データ・{len(rounds)}本の週のまとめ記事・{len(months)}本の月のまとめ記事を確認）")
 if problems:
     print("失敗:", problems)
     sys.exit(1)

@@ -282,14 +282,86 @@ check("出演者一覧ページ（/actress/）", os.path.isfile(os.path.join(DIS
 check("メーカー一覧ページ（/maker/）", os.path.isfile(os.path.join(DIST, "maker", "index.html")))
 if os.path.isfile(sitemap_path):
     check("sitemap に出演者一覧・メーカー一覧がある", "/actress/" in sm_paths and "/maker/" in sm_paths)
-    for kind in ("actress", "maker"):
+    for kind in ("actress", "maker", "series", "label"):
         entity_pages = glob.glob(os.path.join(DIST, kind, "*", "index.html"))
         in_sitemap = {p for p in sm_paths if p.startswith(f"/{kind}/") and p != f"/{kind}/"}
         indexable = {f"/{kind}/{os.path.basename(os.path.dirname(p))}/" for p in entity_pages if 'name="robots" content="noindex' not in read_raw(p)}
         check(f"{kind} ページのうち、noindex でないもの（{len(indexable)}/{len(entity_pages)}ページ）が、すべて sitemap に入っている", indexable == in_sitemap, (len(indexable), len(in_sitemap)))
 
+print("\n■ シリーズ・レーベルのページ・作品ページの人気の動きと内部リンク（2026-10-07。運営者の「独自の価値を足す」）")
+check("シリーズの一覧（/series/）・レーベルの一覧（/label/）のページがある", os.path.isfile(os.path.join(DIST, "series", "index.html")) and os.path.isfile(os.path.join(DIST, "label", "index.html")))
+bad_entry = []
+for kind, word, about in (("series", "シリーズ", "CreativeWorkSeries"), ("label", "レーベル", "Brand")):
+    for pth in glob.glob(os.path.join(DIST, kind, "*", "index.html")):
+        slug_ = os.path.basename(os.path.dirname(pth))
+        raw_ = read_raw(pth)
+        tm = re.search(r"<title>(.*?)</title>", raw_, re.S)
+        title_ = htmllib.unescape(tm.group(1)) if tm else ""
+        here = []
+        if not re.fullmatch(r"\d{1,9}", slug_):
+            here.append("URLは FANZA の id")
+        if not re.search(r"（" + word + r"）の新作(・予約)?・作品一覧【\d{4}年\d{1,2}月】（(\d+)本）｜", title_):
+            here.append(("タイトル", title_[:60]))
+        if not re.search(r'"@type":\s*"CollectionPage"', raw_) or f'"{about}"' not in raw_ or '"BreadcrumbList"' not in raw_:
+            here.append("構造化データ")
+        if is_minor_title(htmllib.unescape(re.sub(r"<[^>]+>", "", re.search(r'<h1 class="hero-title">(.*?)</h1>', raw_, re.S).group(1)))):
+            here.append("未成年を連想させる名前")
+        if here:
+            bad_entry.append((kind, slug_, here))
+check("シリーズ・レーベルのページ: URLは FANZA の id・タイトル「○○（シリーズ）の新作・作品一覧【年月】（○本）」・CollectionPage（CreativeWorkSeries / Brand）・パンくず・未成年を連想させる名前のページは無い",
+      not bad_entry, bad_entry[:3])
+bad_links, bad_trend, n_trend, n_chart = [], [], 0, 0
+for pth in sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html"))):
+    raw_ = read_raw(pth)
+    cid_ = os.path.basename(os.path.dirname(pth))
+    # 作品ページのシリーズ・レーベル・人気のジャンル・週のまとめへのリンクは、すべて実在するページ
+    for href_ in re.findall(r'href="(/(?:series|label|tag|weekly)/[^"]*)"', raw_):
+        if not os.path.isfile(page_file(href_)):
+            bad_links.append((cid_, href_))
+    tr = re.search(r'<section class="subsection" aria-labelledby="trend-title">(.*?)</section>', raw_, re.S)
+    if tr:
+        n_trend += 1
+        body_ = tr.group(1)
+        if "新着の人気順で最高" not in strip_tags(body_):
+            bad_trend.append((cid_, "文"))
+        if "<svg" in body_:
+            n_chart += 1
+            if len(re.findall(r"<circle", body_)) < 1 or 'class="trend-line"' not in body_ or "<title>" not in body_ or 'class="visually-hidden"' not in body_:
+                bad_trend.append((cid_, "グラフ"))
+check("作品ページのシリーズ・レーベル・ジャンル・週のまとめへのリンクは、すべて実在するページ", not bad_links, bad_links[:3])
+check(f"作品ページの「発売後の人気の動き」（{n_trend}ページ・うちグラフ {n_chart}ページ）: 最高順位の文・グラフ（線・点・点の上の順位・読み上げ用の一覧）", not bad_trend, bad_trend[:3])
+_rh_path = os.path.join(ROOT, "site", "src", "data", "rank_history.json")
+if os.path.isfile(_rh_path):
+    _rh = json.load(open(_rh_path, encoding="utf-8")).get("items", {})
+    _want_trend = {c for c, r in _rh.items() if any(isinstance(v, int) and v > 0 for v in r.get("n", [])) and os.path.isfile(os.path.join(DIST, "item", c, "index.html"))}
+    _got_trend = {os.path.basename(os.path.dirname(p_)) for p_ in glob.glob(os.path.join(DIST, "item", "*", "index.html")) if 'aria-labelledby="trend-title"' in read_raw(p_)}
+    check("人気の動きの記録があり、新着の人気順に入った作品のページには、すべて「発売後の人気の動き」がある（無い作品には出さない）", _want_trend == _got_trend, (sorted(_want_trend - _got_trend)[:3], sorted(_got_trend - _want_trend)[:3]))
+_rk = read_raw(os.path.join(DIST, "ranking", "index.html")) if os.path.isfile(os.path.join(DIST, "ranking", "index.html")) else ""
+check("新着の人気ランキング: 前日からの動き・最高順位の1行は、セールの価格と別の見た目（item-note is-rank）", 'class="item-note is-rank"' in _rk or "item-note" not in _rk, re.findall(r'class="item-note[^"]*"', _rk)[:2])
+
 print("\n■ 週のまとめ記事")
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def check_trend_facts(label, body_, fx, period, prev):
+    """まとめ記事の傾向の表（components/TrendFacts.astro）が、記事と一緒に保存した数字（facts）と同じか。週・月で共通"""
+    nums_ = re.findall(r'<span class="tf-num">(\d+)</span>', body_)
+    check(f"{label}: 本数の札が facts と同じ（発売・VR・デビュー作）", nums_ == [str(fx["total"]), str(fx["vr"]), str(fx["debut"])], nums_)
+    has_prev = fx["prev_total"] > 0
+    if has_prev:
+        check(f"{label}: {prev}の本数と増減が出ている", f'{prev} {fx["prev_total"]}本' in strip_tags(body_) and 'class="tf-move' in body_)
+    else:
+        check(f"{label}: {prev}の作品が無い（記録の始まり）ときは比べない（「{prev}の記録なし」・増減・{prev}の棒を出さない）",
+              f"{prev}の記録なし" in strip_tags(body_) and 'class="tf-move' not in body_ and "tf-bar is-before" not in body_ and "tf-legend" not in body_)
+    shown_g = [g for g in fx.get("genres", []) if g.get("count") or (has_prev and g.get("prev"))]
+    rows_ = re.findall(r'<li class="tf-row" aria-label="([^"]*)"', body_)
+    want_ = [f'{g["name"]}: {period}{g["count"]}本、{prev}{g["prev"]}本' if has_prev else f'{g["name"]}: {period}{g["count"]}本' for g in shown_g]
+    check(f"{label}: ジャンルの横棒が facts のジャンルの数だけあり、読み上げ用の文に本数が入っている", [htmllib.unescape(a) for a in rows_] == want_, rows_[:2])
+    pop = re.search(r'<div class="tf-popular"[\s\S]*?</ul>', body_)
+    pop_titles = [htmllib.unescape(strip_tags(t)) for t in re.findall(r'<a class="item-title-link"[^>]*>(.*?)</a>', pop.group(0), re.S)] if pop else []
+    check(f"{label}: 人気順で上位の作品に、未成年を連想させるタイトルの作品が無い", not any(is_minor_title(t) for t in pop_titles), pop_titles[:2])
+    check(f"{label}: 人気順で上位の作品は facts の5本まで", len(pop_titles) <= min(5, len(fx.get("popular", []))), len(pop_titles))
+
 
 
 def is_monday(day):
@@ -332,12 +404,64 @@ else:
         check(f"{week}: 記事の構造化データ（Article）の公開日がデータの written と同じ", len(art) == 1 and art[0].get("datePublished") == r["written"], art[:1])
         check(f"{week}: sitemap に入っていて lastmod が公開日", f"/weekly/{week}/" in sm_paths and lastmod_of.get(f"/weekly/{week}/") == r["written"], lastmod_of.get(f"/weekly/{week}/"))
         check(f"{week}: 本数は「当サイトで紹介した」数と分かる書き方（FANZA全体の発売本数と誤解されない）", html.count("当サイトで紹介した") >= 2 and "FANZA全体の発売本数ではありません" in html, html.count("当サイトで紹介した"))
-        picked = [q["cid"] for q in (r.get("picks") or []) if isinstance(q, dict) and q.get("cid") in valid]
+        # 注目の作品は、こちらから勧める欄なので、未成年を連想させるタイトルの作品は出さない（2026-10-07）
+        minor_picks = [q["cid"] for q in (r.get("picks") or []) if isinstance(q, dict) and q.get("cid") in valid and is_minor_title(valid[q["cid"]].get("title"))]
+        picked = [q["cid"] for q in (r.get("picks") or []) if isinstance(q, dict) and q.get("cid") in valid and q["cid"] not in minor_picks]
+        check(f"{week}: 未成年を連想させるタイトルの作品は、注目の作品のカードに出さない", all(f'href="/item/{c}/"' not in re.sub(r'<section class="section" aria-labelledby="week-list-title">[\s\S]*', "", html) for c in minor_picks), minor_picks)
         check(f"{week}: 注目の作品（{len(picked)}件）へのリンクが記事にある", all(f'href="/item/{c}/"' in html for c in picked), [c for c in picked if f'href="/item/{c}/"' not in html][:3])
         if picked:
-            notes_ = [str(q.get("note", "")).strip() for q in r["picks"] if isinstance(q, dict) and q.get("cid") in valid]
+            notes_ = [str(q.get("note", "")).strip() for q in r["picks"] if isinstance(q, dict) and q.get("cid") in picked]
             check(f"{week}: 注目の作品は、横長のカード（表紙・タイトル・出演者/メーカー/発売日・ひとこと）で読みやすく（運営者の指摘。2026-10-05）",
                   html.count('<article class="pick-card">') == len(picked) and html.count('class="pick-note"') == len(picked) and all(n[:15] in html for n in notes_), (html.count('<article class="pick-card">'), len(picked)))
+        # この週の傾向（2026-10-07 から）: 文と、書いたときの数字（facts）の表。表の作品に、未成年を連想させるタイトルの作品を入れない
+        trend_ = str(r.get("trend") or "").strip()
+        if not trend_:
+            check(f"{week}: 傾向の無い記事には「この週の傾向」の欄を出さない", 'id="week-trend-title"' not in html)
+        else:
+            tsec = re.search(r'<section class="section" aria-labelledby="week-trend-title">([\s\S]*?)</section>', html)
+            body_ = tsec.group(1) if tsec else ""
+            check(f"{week}: 「この週の傾向」の欄に、記事の傾向の文がある", bool(tsec) and trend_[:20] in body_ and trend_[-12:] in body_)
+            fx = r.get("facts") if isinstance(r.get("facts"), dict) else None
+            if fx:
+                check_trend_facts(week, body_, fx, "この週", "前の週")
+
+
+# ---- 月のまとめ記事（monthly.json。2026-10-07 から）: 月のページのいちばん上に、導入文・この月の傾向・注目の作品 ----
+print("\n■ 月のまとめ記事")
+MONTHLY = os.path.join(ROOT, "site", "src", "data", "monthly.json")
+months_raw = json.load(open(MONTHLY, encoding="utf-8")) if os.path.isfile(MONTHLY) else []
+month_dir = os.path.join(DIST, "month")
+month_pages_built = {os.path.basename(os.path.dirname(f)) for f in glob.glob(os.path.join(month_dir, "*", "index.html"))}
+shown_months = 0
+for r in months_raw if isinstance(months_raw, list) else []:
+    if not (isinstance(r, dict) and re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", str(r.get("month", ""))) and str(r.get("lead", "")).strip() and DAY.match(str(r.get("written", "")))):
+        continue
+    ym = r["month"]
+    if ym not in month_pages_built:
+        continue
+    shown_months += 1
+    html = read(os.path.join(month_dir, ym, "index.html"))
+    art = re.search(r'<article class="month-article"[\s\S]*?</article>\s*(?=<section|</div>)', html)
+    body_ = art.group(0) if art else ""
+    check(f"{ym}: 月のページのいちばん上（作品の一覧より前）に、月のまとめ記事（導入文・公開日）がある",
+          bool(art) and r["lead"].strip()[:20] in body_ and f'datetime="{r["written"]}"' in body_ and html.find('class="month-article"') < html.find('id="works-title"'))
+    arts = [a for a in (json.loads(b) for b in LD_BLOCK.findall(html)) if isinstance(a, dict) and a.get("@type") == "Article"]
+    check(f"{ym}: 記事の構造化データ（Article）の公開日がデータの written と同じ", len(arts) == 1 and arts[0].get("datePublished") == r["written"], arts[:1])
+    check(f"{ym}: sitemap の lastmod が公開日より前でない", lastmod_of.get(f"/month/{ym}/", "") >= r["written"], lastmod_of.get(f"/month/{ym}/"))
+    check(f"{ym}: 説明文(description)は記事の導入文から", r["lead"].strip()[:20] in htmllib.unescape(re.search(r'<meta name="description" content="([^"]*)"', html).group(1)))
+    picked = [q["cid"] for q in (r.get("picks") or []) if isinstance(q, dict) and q.get("cid") in valid and str(everything.get(q["cid"], {}).get("date", ""))[:7] == ym
+              and not is_minor_title(valid[q["cid"]].get("title"))]
+    check(f"{ym}: 注目の作品（{len(picked)}件）のカード", body_.count('<article class="pick-card">') == len(picked) and all(f'href="/item/{c}/"' in body_ for c in picked),
+          body_.count('<article class="pick-card">'))
+    trend_ = str(r.get("trend") or "").strip()
+    if trend_:
+        tsec = re.search(r'<section class="section" aria-labelledby="month-trend-title">([\s\S]*?)</section>', body_)
+        check(f"{ym}: 「この月の傾向」の欄に、記事の傾向の文がある", bool(tsec) and trend_[:20] in tsec.group(1))
+        if tsec and isinstance(r.get("facts"), dict):
+            check_trend_facts(ym, tsec.group(1), r["facts"], "この月", "前の月")
+check("月のまとめ記事の無い月のページには、記事の欄を出さない", all('class="month-article"' not in read(os.path.join(month_dir, m, "index.html"))
+      for m in month_pages_built - {r.get("month") for r in months_raw if isinstance(r, dict)}))
+print(f"  （月のまとめ記事 {shown_months}本を確認）")
 
 print("\n■ 作品ページの表示（サンプル画像の拡大・カード）")
 check("拡大表示のスクリプト（lightbox.js）が公開されている", os.path.isfile(os.path.join(DIST, "lightbox.js")))
@@ -1471,7 +1595,9 @@ check("人気のジャンル: 表紙は、見開きでない形（横長・縦�
       _gimgs[:1])
 all_css = "".join(read(p_) for p_ in glob.glob(os.path.join(DIST, "**", "*.css"), recursive=True))
 check("CSS: 棚・作品検索の結果・注目の作品は、置かれた場所の幅で列の数を決める（コンテナクエリ）。使えない古いブラウザには、画面の幅で決める予備がある",
-      re.search(r"container-type\s*:\s*inline-size", all_css) is not None and len(re.findall(r"@container\s*\(\s*min-width", all_css)) >= 6 and "@supports not" in all_css)
+      re.search(r"container-type\s*:\s*inline-size", all_css) is not None
+      # ビルドの道具が「(min-width: 600px)」を範囲の書き方「(width>=600px)」に縮めることがある（どちらも同じ意味）
+      and len(re.findall(r"@container\s*\(\s*(?:min-width\s*:|width\s*>=?)", all_css)) >= 6 and "@supports not" in all_css)
 # 18歳確認の背景: 真っ黒ではなく濃い曇りガラス（ぼかし）。ぼかしが弱すぎると後ろが読める・強すぎると画面のふちが逆にぼけない（Chromiumで確認済み）ので、10〜30pxに収める
 gate_rules = [body for sels, body in css_rules if ".gate" in sels]
 gate_blur = [float(m.group(1)) for b in gate_rules for m in [re.search(r"(?<![-\w])backdrop-filter\s*:\s*blur\(\s*(\d+(?:\.\d+)?)px", b)] if m]
@@ -1592,7 +1718,9 @@ for pth in all_html:
             kind_, want_ = "?", False
         pic_kinds[kind_] += 1
         onerr_ = a_.get("onerror", "")
-        if media_ != THUMB_MEDIA or not want_ or not fanza_https(src_, DMM) or not fanza_https(small_, DMM) or "previousElementSibling" not in onerr_ or "matchMedia(s.media)" not in onerr_ or "pl.jpg" not in onerr_ or a_.get("alt") is None:
+        # alt="" は、Astro が値の無い「alt」だけで書く（どちらも空の代替テキスト）
+        has_alt_ = a_.get("alt") is not None or re.search(r'(?:^|\s)alt(?=\s|/?$)', re.sub(r'"[^"]*"', '""', img_)) is not None
+        if media_ != THUMB_MEDIA or not want_ or not fanza_https(src_, DMM) or not fanza_https(small_, DMM) or "previousElementSibling" not in onerr_ or "matchMedia(s.media)" not in onerr_ or "pl.jpg" not in onerr_ or not has_alt_:
             bad_pic.append((rel_, kind_, src_[-20:], small_[-20:]))
     # 一覧のサムネ（item-img・genre-img）で、パッケージ画像（pl.jpg）を <picture> の外で読んでいるもの（スマホで重いまま）
     for t in tags(re.sub(r"<picture class=\"pic\">.*?</picture>", "", h_), "img"):
@@ -1800,7 +1928,7 @@ bad_month = []
 for ym, f in month_files.items():
     html_ = read(f)
     h1_ = re.search(r'<h1 class="hero-title">(.*?)</h1>', html_, re.S)
-    cards_ = len(re.findall(r'<article class="item">', html_))
+    cards_ = len(re.findall(r'<article class="item">', html_[html_.find('id="works-title"'):]))  # 作品の一覧の中だけ（上の月のまとめ記事の行は数えない）
     if not (h1_ and f"{int(ym[:4])}年{int(ym[5:7])}月発売" in h1_.group(1) and cards_ == months_want.get(ym) and 'name="robots" content="noindex' not in html_):
         bad_month.append((ym, h1_.group(1)[:30] if h1_ else None, cards_, months_want.get(ym)))
 check("月ごとのページ: 見出しに「○年○月発売」・並んでいる作品の数が、その月の作品の数と同じ・noindexではない", not bad_month, bad_month[:3])
@@ -1997,18 +2125,18 @@ if want_camps:
         want_maker = "・".join(n_ for n_, _ in makers_) + (" など" if sum(c_ for _, c_ in makers_) < len(works_) else "")
         tag_ = soon_tag(str(camp["end"]))
         vr_flags = [bool(v) for v, _ in covers_]
-        problems = []
-        if bool(more) != (i >= show_n): problems.append("見せる数")
-        if a_.get("href") != (f"/sale/{camp_slug(camp['title'])}/" if not camp_minor(camp["title"]) else f"/sale/#sale-{k}"): problems.append(a_.get("href"))
-        if end_ != end_iso(str(camp["end"])): problems.append("終わりの印")
-        if not title_ or strip_tags(title_.group(1)) != str(camp["title"]).strip(): problems.append("名前")
-        if f"{end_label(str(camp['end']))}まで・{len(works_):,}本" not in strip_tags(inner): problems.append("いつまで・本数")
-        if (f'<span class="camp-soon">{tag_}</span>' in inner) != bool(tag_) or (not tag_ and "camp-soon" in inner): problems.append("きょう・あすの札")
-        if (strip_tags(maker_line.group(1)) if maker_line else "") != (f"メーカー：{want_maker}" if makers_ else ""): problems.append(("メーカー", strip_tags(maker_line.group(1)) if maker_line else ""))
-        if not 1 <= len(covers_) <= 3 or vr_flags != sorted(vr_flags) or any(not fanza_https(dict(re.findall(r'(\w+)="([^"]*)"', img)).get("src", ""), ["dmm.co.jp", "fanza.co.jp"]) for _, img in covers_): problems.append("表紙")
-        if (sticker.group(1) if sticker else "") != (f"{off_.group(1)}%OFF" if off_ else ""): problems.append("値引きの札")
-        if problems:
-            bad_card.append((camp["title"], problems))
+        card_problems = []  # （前は problems という名前で、全体の失敗の一覧を上書きして消していた。2026-10-07 に直した）
+        if bool(more) != (i >= show_n): card_problems.append("見せる数")
+        if a_.get("href") != (f"/sale/{camp_slug(camp['title'])}/" if not camp_minor(camp["title"]) else f"/sale/#sale-{k}"): card_problems.append(a_.get("href"))
+        if end_ != end_iso(str(camp["end"])): card_problems.append("終わりの印")
+        if not title_ or strip_tags(title_.group(1)) != str(camp["title"]).strip(): card_problems.append("名前")
+        if f"{end_label(str(camp['end']))}まで・{len(works_):,}本" not in strip_tags(inner): card_problems.append("いつまで・本数")
+        if (f'<span class="camp-soon">{tag_}</span>' in inner) != bool(tag_) or (not tag_ and "camp-soon" in inner): card_problems.append("きょう・あすの札")
+        if (strip_tags(maker_line.group(1)) if maker_line else "") != (f"メーカー：{want_maker}" if makers_ else ""): card_problems.append(("メーカー", strip_tags(maker_line.group(1)) if maker_line else ""))
+        if not 1 <= len(covers_) <= 3 or vr_flags != sorted(vr_flags) or any(not fanza_https(dict(re.findall(r'(\w+)="([^"]*)"', img)).get("src", ""), ["dmm.co.jp", "fanza.co.jp"]) for _, img in covers_): card_problems.append("表紙")
+        if (sticker.group(1) if sticker else "") != (f"{off_.group(1)}%OFF" if off_ else ""): card_problems.append("値引きの札")
+        if card_problems:
+            bad_card.append((camp["title"], card_problems))
     check(f"セール中の特集のカード（{len(cards)}枚。先頭{show_n}枚を見せる）: 終わりが近い順・その特集のページへのリンク・名前・いつまで・本数・おもなメーカー・表紙（VRでない作品が先）・値引きの札",
           len(cards) == len(want_camps) and show_n >= 1 and not bad_card, bad_card[:2])
 else:
@@ -2195,11 +2323,16 @@ for pth in _item_pages:
         shown_titles += [htmllib.unescape(strip_tags(t)) for t in re.findall(r'class="item-title-link"[^>]*>(.*?)</a>', nx.group(1), re.S)]
     if any(is_minor_title(t) for t in shown_titles):
         here.append("未成年を連想させるタイトル")
-    if len(re.findall(r'class="shelf-cell mini-cell"', raw_)) > 6:
-        here.append("同じ出演者・メーカーの作品の本数")
+    # 小さな表紙の棚（同じシリーズ・同じ出演者/メーカー・同じジャンルで人気。2026-10-07 から3つ）: どれも6本まで・同じ作品が2つの棚に出ない・その作品自身は出ない
+    shelves_ = re.findall(r'<ul class="mini-shelf">(.*?)</ul>', raw_, re.S)
+    shelf_links = [h_ for sh_ in shelves_ for h_ in re.findall(r'<a class="mini-card" href="([^"]+)"', sh_)]
+    if any(len(re.findall(r'class="shelf-cell mini-cell"', sh_)) > 6 for sh_ in shelves_) or len(shelves_) > 3:
+        here.append("小さな表紙の棚の本数")
+    if len(set(shelf_links)) != len(shelf_links) or f"/item/{cid_}/" in shelf_links:
+        here.append("棚の重なり・その作品自身")
     if here:
         bad_stay.append((cid_, here))
-check(f"作品ページ（{len(_item_pages)}ページ）の次に見るもの: セール中の作品だけに札（と sale.js）・運命の作品（/data/gacha.json・その作品を除く）・小さな表紙の棚は6本まで・未成年を連想させるタイトルを出さない",
+check(f"作品ページ（{len(_item_pages)}ページ）の次に見るもの: セール中の作品だけに札（と sale.js）・運命の作品（/data/gacha.json・その作品を除く）・小さな表紙の棚は3つまで・どれも6本まで・同じ作品が2つの棚に出ない・未成年を連想させるタイトルを出さない",
       not bad_stay, bad_stay[:2])
 _gj = os.path.join(DIST, "data", "gacha.json")
 try:

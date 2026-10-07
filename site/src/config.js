@@ -26,6 +26,12 @@ export const FILE_BUDGET = 19000;
 export const FIXED_FILES = 150;        // 作品・出演者・メーカー・月・ジャンル・過去の作品・カレンダー・まとめ記事のページ以外のファイル（トップ・検索・画像・スクリプト・CSS など）の見積もり（実際は30ほど）
 
 // 月ごと（/month/2026-11/）・ジャンルごと（/tag/…）のページ。検索エンジンから「11月 新作」「巨乳 新作」のような言葉で来てもらうための、作品のまとめページ
+// シリーズ・レーベルのページ（運営者の希望「独自の価値を足す」→ シリーズ・レーベル別のページ。2026-10-07。lib/insights.js の groupByEntry）。
+// 作品が MIN 本以上あるものだけ、作品数の多い順に MAX 件まで（サイト全体を2万ファイル以内に収めるため。足りない分は作品ページの枠から引かれる）
+export const SERIES_MIN_ITEMS = 3;
+export const SERIES_PAGE_MAX = 800;
+export const LABEL_MIN_ITEMS = 3;
+export const LABEL_PAGE_MAX = 300;
 export const MONTH_MIN_ITEMS = 5;      // 月ごとのページを作る最小の作品数（少ない月は、内容が薄いので作らない）
 export const TAG_MIN_ITEMS = 3;        // ジャンルごとのページを作る最小の作品数
 export const TAG_PAGE_LIMIT = 90;      // ジャンルのページに並べる最大数（新しい順。それより多い分は、作品検索で探せる）

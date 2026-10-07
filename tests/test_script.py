@@ -666,6 +666,28 @@ it7["comment"] = "花子さん出演、11月1日に発売された一本です�
 af(it7, dict(fresh_item, date="2026-01-08 10:00:00", sample_images=[], duration_min=None, image_url=""), TODAY_STR)
 check("古い日付の照らし合わせは、日付の区切りを見る（「11月1日」の中の「1月1日」は、別の日）", it7["comment_kind"] == "claude", it7["comment_kind"])
 
+print("\n■ シリーズ・レーベル（APIの iteminfo.series・label。2026-10-07 から保存）")
+raw_s = make_api_item("srs00001", -3)
+raw_s["iteminfo"]["series"] = [{"id": 223790, "name": " unfinished  VR "}]
+raw_s["iteminfo"]["label"] = [{"id": 25739, "name": "SODVR"}]
+ps_ = mod.parse_api_item(raw_s)
+check("シリーズ・レーベルの id と名前を取る（名前の空白は1つにそろえる）", (ps_["series_id"], ps_["series"], ps_["label_id"], ps_["label"]) == (223790, "unfinished VR", 25739, "SODVR"), ps_)
+raw_n = make_api_item("srs00002", -3)
+raw_n["iteminfo"]["label"] = [{"id": 99999, "name": "----"}]
+pn_ = mod.parse_api_item(raw_n)
+check("シリーズが無い・レーベルが「----」（id 99999）なら、無し（0 と空）", (pn_["series_id"], pn_["series"], pn_["label_id"], pn_["label"]) == (0, "", 0, ""), pn_)
+check("読めない id・名前は無し（id が0以下・数字でない・名前が空）", mod.clean_entry("x", "名前") == (0, "") and mod.clean_entry(0, "名前") == (0, "") and mod.clean_entry(5, "  ") == (0, "") and mod.clean_entry("12", "名前") == (12, "名前"))
+nl_ = mod.normalize_loaded({"cid": "a", "title": "t", "date": "2026-10-01"})
+check("保存済みの作品にシリーズ・レーベルが無くても読める（無し＝0 と空）", (nl_["series_id"], nl_["series"], nl_["label_id"], nl_["label"]) == (0, "", 0, ""), nl_)
+nl2_ = mod.normalize_loaded({"cid": "a", "title": "t", "date": "2026-10-01", "series_id": 7, "series": "S", "label_id": 99999, "label": "----"})
+check("保存済みのシリーズは残し、無しの印のレーベルは空にする", (nl2_["series_id"], nl2_["series"], nl2_["label_id"], nl2_["label"]) == (7, "S", 0, ""), nl2_)
+it_s = json.loads(json.dumps(base_item))
+it_s.update(series_id=0, series="", label_id=0, label="")
+ch_s = af(it_s, dict(fresh_item, sample_images=[], duration_min=None, image_url="", series_id=5, series="シリーズA", label_id=6, label="レーベルB"), TODAY_STR)
+check("空だったシリーズ・レーベルを、取り直しで補う（id も一緒に）", (it_s["series_id"], it_s["series"], it_s["label_id"], it_s["label"]) == (5, "シリーズA", 6, "レーベルB") and sorted(ch_s) == ["label", "series"], (ch_s, it_s))
+it_s2 = json.loads(json.dumps(it_s))
+check("入っているシリーズ・レーベルは書き換えない", af(it_s2, dict(fresh_item, sample_images=[], duration_min=None, image_url="", series_id=9, series="別", label_id=9, label="別"), TODAY_STR) == [] and it_s2["series"] == "シリーズA")
+
 print("\n■ コメントの囲み記号の外し方（clean_comment）")
 cc = mod.clean_comment
 check("全体を囲む「」は外す", cc("「花子さん出演の新作です。」") == "花子さん出演の新作です。")
@@ -1434,6 +1456,58 @@ check("新着の人気順が取れなかった日は、前の日のまま（popu
 check("過去作品の1件: 発売日（YYYY-MM-DD）が無い・タイトルが無い作品は入れない", m_c6.catalog_item(dict(c_seed[0], date="")) is None and m_c6.catalog_item(dict(c_seed[0], title="")) is None and m_c6.catalog_item("x") is None)
 check("過去作品の1件: Gemini の下書き（ai）も、空にする（過去作品のコメントは Claude が書いたものだけ）", m_c6.catalog_item(dict(c_seed[0], comment_kind="ai", comment="下書き"))["comment_kind"] == "none")
 check("過去作品を取りに行かない設定（回数が0）なら、過去作品には触らない（ファイルも作らない）", not os.path.exists(os.path.join(scenario_dir("refetch"), "catalog")) and not os.path.exists(os.path.join(scenario_dir("refetch"), "catalog_rank.json")))
+
+print("\n■ 人気の動き（rank_history.json。新着の人気順に出てきた作品の、毎日の順位）")
+rh_path = os.path.join(n_dir, "rank_history.json")
+rh = json.load(open(rh_path, encoding="utf-8"))
+# （この時点で、上の新着の人気順の試しが4回動いている。2回目からは2本目が new0002 になるので、記録は151本。同じ日に動き直したら、その日の順位は新しいほうにする）
+check("新着の人気順に出てきた作品の記録を始める・始めた日・その日の順位（毎日の更新の作品も記録する）", rh["updated"] == TODAY_STR and len(rh["items"]) == 151
+      and rh["items"]["new0001"] == {"d": TODAY_STR, "n": [1], "a": []} and rh["items"]["bibivr00176"]["d"] == TODAY_STR and rh["items"]["new0002"]["n"] == [2], (rh.get("updated"), len(rh.get("items", {})), rh["items"].get("new0001")))
+rh_text = open(rh_path, encoding="utf-8").read()
+check("1作品1行（毎日の差分が、記録中の作品の行だけになるように）", rh_text.count("\n") == len(rh["items"]) + 3, rh_text.count("\n"))
+yday = (TODAY - timedelta(days=1)).strftime("%Y-%m-%d")
+two = (TODAY - timedelta(days=2)).strftime("%Y-%m-%d")
+rh_y = {"updated": yday, "items": {c: dict(r, d=yday) for c, r in rh["items"].items()}}
+rh_y["items"]["gone0001"] = {"d": (TODAY - timedelta(days=40)).strftime("%Y-%m-%d"), "n": [3], "a": []}  # データから消えた・記録を終えた作品
+open(rh_path, "w", encoding="utf-8").write(json.dumps(rh_y))
+m_r1 = load_module(n_path, catalog_calls=0, catalog_top=1, new_rank=2)
+run_main_capture(m_r1, Env())
+rh2 = json.load(open(rh_path, encoding="utf-8"))
+check("次の日: 前の日の順位のあとに、その日の順位を足す（同じ並びで2日分）", rh2["items"]["new0001"]["n"] == [1, 1] and rh2["items"]["new0001"]["d"] == yday, rh2["items"]["new0001"])
+check("毎日の更新・過去作品のどちらにも無く、記録を終えた作品は消す", "gone0001" not in rh2["items"])
+m_r2 = load_module(n_path, catalog_calls=0, catalog_top=1, new_rank=2)
+run_main_capture(m_r2, Env())
+check("同じ日に2回動いても、並びは増えない", json.load(open(rh_path, encoding="utf-8"))["items"]["new0001"]["n"] == [1, 1])
+rh3 = json.load(open(rh_path, encoding="utf-8"))
+rh3["items"] = {c: dict(r, d=two) for c, r in rh3["items"].items()}
+open(rh_path, "w", encoding="utf-8").write(json.dumps(rh3))
+env_rf = Env()
+env_rf.catalog_fail = True
+m_r3 = load_module(n_path, catalog_calls=0, catalog_top=1, new_rank=2)
+run_main_capture(m_r3, env_rf)
+check("人気順を取れなかった日は「分からない」（null）にする（圏外の 0 にしない）", json.load(open(rh_path, encoding="utf-8"))["items"]["new0001"]["n"] == [1, 1, None])
+mr = m_n
+h_ = {"updated": "", "items": {}}
+mr.merge_rank_history(h_, "2026-10-01", {"a1": 3, "a2": 10}, {"a1": 50, "z9": 7}, {"a1", "a2"})
+mr.merge_rank_history(h_, "2026-10-02", {"a1": 1}, {}, {"a1", "a2"})
+mr.merge_rank_history(h_, "2026-10-04", {"a2": 4, "b1": 9}, None, {"a1", "a2", "b1"})
+check("記録: 出てこなかった日は 0・動かなかった日は null で埋める・全体の人気順は記録中の作品だけ",
+      h_["items"]["a1"] == {"d": "2026-10-01", "n": [3, 1, None, 0], "a": [50, 0, None, None]} and h_["items"]["a2"]["n"] == [10, 0, None, 4] and "z9" not in h_["items"] and h_["items"]["b1"] == {"d": "2026-10-04", "n": [9], "a": [None]}, h_["items"])
+for k in range(5, 40):
+    mr.merge_rank_history(h_, f"2026-10-{k:02d}" if k <= 31 else f"2026-11-{k - 31:02d}", {}, {"a1": 20}, {"a1", "a2", "b1"})
+check("新着の人気順は8日分・全体の人気順は30日分まで記録する", len(h_["items"]["a1"]["n"]) == mr.RANK_NEW_DAYS == 8 and len(h_["items"]["a1"]["a"]) == mr.RANK_ALL_DAYS == 30, (len(h_["items"]["a1"]["n"]), len(h_["items"]["a1"]["a"])))
+mr.merge_rank_history(h_, "2026-11-20", {}, {}, {"a1"})
+check("どちらのデータにも無くなった作品は、全体の人気順を記録し終えたら消す（ある作品は残す）", "a2" not in h_["items"] and "a1" in h_["items"], sorted(h_["items"]))
+mr.merge_rank_history(h_, "2027-11-20", {}, {}, {"a1"})
+check("400日をすぎた記録は消す", h_["items"] == {}, h_["items"])
+bad_dir = scenario_dir("rankbad")
+open(os.path.join(bad_dir, "rank_history.json"), "w", encoding="utf-8").write("{壊れた")
+mr.RANK_HISTORY_PATH = os.path.join(bad_dir, "rank_history.json")
+with contextlib.redirect_stdout(io.StringIO()):
+    lb_ = mr.load_rank_history()
+check("壊れたファイルは、空から記録し直す（止まらない）", lb_ == {"updated": "", "items": {}}, lb_)
+check("読むときに、変な順位（文字・負の数・5万より大きい）を null に、9日目より先の新着の順位を捨てる",
+      mr.clean_rank_list([1, "x", -1, 50001, None, 0, 2, 3, 4, 5], 8) == [1, None, None, None, None, 0, 2, 3])
 
 print("\n■ ソースの安全チェック")
 src = open(SCRIPT, encoding="utf-8").read()

@@ -248,6 +248,17 @@ const shapeOf = (w, h) => { const got = []; new Function(L.COVER_SHAPE_ONLOAD).c
 check('パッケージ画像の形: 見開き（800×533〜540・800×565 など）はそのまま、見開きでない形（VRなどの横長 800×500/600/450・800×516・正方形・表紙だけの縦長 563×800）には印 is-flat（2026-10-07）', ['800x538', '800x540', '800x536', '800x533', '800x565', '800x587'].every((s) => shapeOf(...s.split('x').map(Number)) === '') && ['800x500', '800x600', '800x450', '800x516', '500x500', '563x800', '90x122'].every((s) => shapeOf(...s.split('x').map(Number)) === 'is-flat'), [shapeOf(800, 538), shapeOf(563, 800)]);
 check('パッケージ画像の形: 大きさが分からないとき（0）は印を付けない・属性に入れても壊れない（" < > & を使わない）', shapeOf(0, 0) === '' && shapeOf(800, 0) === 'is-flat' && !/["<>&]/.test(L.COVER_SHAPE_ONLOAD));
 
+console.log('\n■ シリーズ・レーベル（2026-10-07 から保存）');
+const withSeries = L.normalizeItems([
+  { cid: 's1', title: 'T', date: '2026-10-01', series_id: 223790, series: ' unfinished  VR ', label_id: 25739, label: 'SODVR' },
+  { cid: 's2', title: 'T', date: '2026-10-01', series_id: 0, series: '', label_id: 99999, label: '----' },
+  { cid: 's3', title: 'T', date: '2026-10-01' },
+]);
+check('シリーズ・レーベルは { id, name }（名前の空白をそろえる）。無い・「----」・id 99999 は null（get_new_releases.py の clean_entry と同じ）',
+  JSON.stringify(withSeries[0].series) === '{"id":223790,"name":"unfinished VR"}' && JSON.stringify(withSeries[0].label) === '{"id":25739,"name":"SODVR"}'
+  && withSeries[1].series === null && withSeries[1].label === null && withSeries[2].series === null && withSeries[2].label === null);
+check('entryOf: id が数字でない・0以下・名前が空なら null', L.entryOf('x', 'a') === null && L.entryOf(-1, 'a') === null && L.entryOf(3, ' ') === null && JSON.stringify(L.entryOf('12', 'a')) === '{"id":12,"name":"a"}');
+
 console.log('\n■ スマホのサムネ（軽い画像。components/Thumb.astro。2026-10-07）');
 const PL = 'https://pics.dmm.co.jp/digital/video/abc00001/abc00001pl.jpg';
 const PS = PL.replace('pl.jpg', 'ps.jpg');

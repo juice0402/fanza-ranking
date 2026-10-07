@@ -21,6 +21,7 @@ GitHub Actions から毎日自動で実行されます。
 保存先（人気順）: site/src/data/popularity.json … 新着の人気順（最近30日の発売の、その日の上位500本）と、毎日の更新の作品の全体の人気順の順位
 保存先（きょうの数字）: site/src/data/today.json … FANZA動画の日ごとの発売本数（7日分）・予約受付中の本数・予約の人気順の上位30本
 保存先（セール）: site/src/data/sale.json … その日に見かけた、セール・キャンペーン中の作品（キャンペーンの名前・期間・価格。FANZA公式のAPIから）
+保存先（人気の動き）: site/src/data/rank_history.json … 新着の人気順に出てきた作品の、毎日の順位（新着の人気順は8日分・全体の人気順の上位1,000本は30日分）
   コメントは無し（"none"）か、Claude が書いたもの（"claude"）
 
   python3 get_new_releases.py --refresh-only
@@ -107,6 +108,16 @@ UPCOMING_POPULAR = 30    # 予約の人気順を、上位何本まで残すか
 CATALOG_PRUNE_MAX_SHARE = 0.2  # 一回りで外す作品が、過去作品のこの割合をこえたら、念のため外さない（APIの答えがおかしかったときに、まとめて消さないため）
 CATALOG_SAMPLE_IMAGES = 8   # 過去作品のサンプル画像は8枚まで（作品ページに出すのは8枚まで。ファイルを小さくする）
 CATALOG_FILE = re.compile(r"^\d{4}-\d{2}\.json$")
+# 人気の動き（運営者の希望「独自の価値を足す」→ 発売後の人気の動きを毎日ためる。2026-10-07）。
+# 新着の人気順（上位500本）に出てきた作品について、毎日の順位をためる。作品ページのグラフ・ランキングの最高順位・週と月のまとめの材料
+RANK_HISTORY_PATH = os.environ.get("RANK_HISTORY_PATH", os.path.join(os.path.dirname(DATA_PATH), "rank_history.json"))
+RANK_NEW_DAYS = 8     # 新着の人気順を記録する日数（記録を始めた日から。新着の範囲＝発売から1週間なので、それより長くは出てこない）
+RANK_ALL_DAYS = 30    # 全体の人気順（毎日取り直す上位 CATALOG_TOP_CALLS×100本）を記録する日数
+RANK_KEEP_DAYS = 400  # 記録を残す日数（作品が毎日の更新・過去作品のどちらからも消えたら、RANK_ALL_DAYS をすぎたところで消す）
+# シリーズ・レーベル（APIの iteminfo.series・iteminfo.label。2026-10-07 に本物のAPIで、人気の上位400本の約6割にシリーズ・全部にレーベルがあることを確かめた）。
+# レーベルが無い作品は id 99999・名前「----」で返ってくるので、無いものとして扱う
+LABEL_NONE_IDS = {99999}
+LABEL_NONE_NAMES = {"----", "---", "-", ""}
 
 # --- コメントの書き分け ---
 # 作品ごとに「切り口」「書き出し」「結び」の組み合わせを決めてAIに頼む（同じ作品・同じ回数なら、いつも同じ組み合わせ）。
@@ -465,6 +476,8 @@ def normalize_loaded(item):
     if not cid or not title:
         return None
     actress = [a for a in (item.get("actress") or []) if a]
+    series_id, series = clean_entry(item.get("series_id"), item.get("series"))
+    label_id, label = clean_entry(item.get("label_id"), item.get("label"))
     out = {
         "cid": cid,
         "title": title,
@@ -475,6 +488,10 @@ def normalize_loaded(item):
         "maker": item.get("maker") or "不明",
         "actress": actress,
         "genres": item.get("genres") or [],
+        "series_id": series_id,
+        "series": series,
+        "label_id": label_id,
+        "label": label,
         "tags": clean_tags(item.get("tags")) or title_tags(title),  # 保存済みのタグも、形式タグだけに直す
         "duration_min": item.get("duration_min"),
         "sample_movie": safe_https_url(item.get("sample_movie"), MOVIE_HOSTS),
@@ -601,6 +618,24 @@ def pick_sample_movie(raw):
     return safe_https_url(movie.get("size_476_306"), MOVIE_HOSTS)
 
 
+def first_entry(entries):
+    """APIの iteminfo の series・label（[{"id": 123, "name": "…"}]）の先頭 → (id, 名前)。無い・読めない・「----」なら (0, "")"""
+    head = entries[0] if isinstance(entries, list) and entries and isinstance(entries[0], dict) else {}
+    return clean_entry(head.get("id"), head.get("name"))
+
+
+def clean_entry(entry_id, name):
+    """シリーズ・レーベルの (id, 名前) を整える。id は1以上の整数、名前は空でない文字（80文字まで）。どちらかが無ければ (0, "")"""
+    try:
+        num = int(entry_id)
+    except (TypeError, ValueError):
+        num = 0
+    text = " ".join(str(name or "").split())[:80]
+    if num < 1 or num in LABEL_NONE_IDS or text in LABEL_NONE_NAMES:
+        return 0, ""
+    return num, text
+
+
 def parse_api_item(raw):
     info = raw.get("iteminfo") or {}
     cid = raw.get("content_id") or raw.get("product_id")
@@ -615,6 +650,8 @@ def parse_api_item(raw):
                    or (sample.get("sample_s") or {}).get("image") or [])
     makers = info.get("maker") or []
     volume = re.search(r"\d+", str(raw.get("volume") or ""))
+    series_id, series_name = first_entry(info.get("series"))
+    label_id, label_name = first_entry(info.get("label"))
 
     return {
         "cid": cid,
@@ -626,6 +663,10 @@ def parse_api_item(raw):
         "maker": (makers[0].get("name") if makers else None) or "不明",
         "actress": [a.get("name") for a in (info.get("actress") or []) if a.get("name")],
         "genres": [g.get("name") for g in (info.get("genre") or []) if g.get("name")],
+        "series_id": series_id,
+        "series": series_name,
+        "label_id": label_id,
+        "label": label_name,
         "tags": title_tags(title),
         "duration_min": int(volume.group(0)) if volume else None,
         "sample_movie": pick_sample_movie(raw),
@@ -644,7 +685,7 @@ def apply_fresh(old, fresh, today_str):
     ・すでに入っている項目は書き換えない（空欄を埋めるだけ）。発売日だけは、FANZAで延期・前倒しされたら合わせる
     ・補ったら更新日（updated）を進める（sitemap の lastmod に使う）
     ・ジャンル（商品タグ）・サンプル画像・収録時間は、予約の作品には、発売が近づいてからFANZAに載ることが多い
-    補った項目名のリスト（"actress" / "genres" / "sample_movie" / "sample_images" / "duration_min" / "image_url" / "date"）を返す
+    補った項目名のリスト（"actress" / "genres" / "sample_movie" / "sample_images" / "duration_min" / "image_url" / "series" / "label" / "date"）を返す
     """
     changed = []
     fresh_day = day_key(fresh.get("date"))
@@ -680,6 +721,11 @@ def apply_fresh(old, fresh, today_str):
     if not old.get("sample_movie") and fresh.get("sample_movie"):
         old["sample_movie"] = fresh["sample_movie"]
         changed.append("sample_movie")
+    # シリーズ・レーベル（2026-10-07 から保存。それより前に集めた作品は、毎日の取り直しのついでに入る）
+    for key in ("series", "label"):
+        if not old.get(key) and fresh.get(key):
+            old[key], old[key + "_id"] = fresh[key], fresh[key + "_id"]
+            changed.append(key)
     if changed:
         old["updated"] = today_str
     return changed
@@ -1339,6 +1385,93 @@ def save_catalog(state):
     os.replace(CATALOG_STATE_PATH + ".tmp", CATALOG_STATE_PATH)
 
 
+def days_between(a, b):
+    """日付 a から b までの日数（"YYYY-MM-DD"。読めなければ None）"""
+    try:
+        return (datetime.strptime(b, "%Y-%m-%d") - datetime.strptime(a, "%Y-%m-%d")).days
+    except (TypeError, ValueError):
+        return None
+
+
+def clean_rank_list(values, limit):
+    """人気の動きの順位の並び（1日1つ。順位は1〜50000、圏外は0、取れなかった日は null）を整える"""
+    out = []
+    for v in (values if isinstance(values, list) else [])[:limit]:
+        out.append(v if v is None or (isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= CATALOG_MAX_OFFSET) else None)
+    return out
+
+
+def load_rank_history():
+    """rank_history.json → {"updated": 日付, "items": {cid: {"d": 記録を始めた日, "n": [新着の人気順], "a": [全体の人気順]}}}。
+    無い・壊れているときは空から始める（毎日の順位は、ほかのファイルに無いので、壊れていたら作り直すしかない）"""
+    try:
+        raw = read_json_file(RANK_HISTORY_PATH)
+    except ValueError as e:
+        print(f"⚠️ 人気の動きのファイル（rank_history.json）を読めませんでした（{e}）。空から記録し直します")
+        raw = None
+    items = {}
+    for cid, row in ((raw or {}).get("items") or {}).items() if isinstance(raw, dict) and isinstance(raw.get("items"), dict) else []:
+        if not isinstance(row, dict) or not re.match(r"^[A-Za-z0-9_\-]+$", str(cid)) or days_between(row.get("d"), row.get("d")) != 0:
+            continue
+        items[str(cid)] = {"d": row["d"], "n": clean_rank_list(row.get("n"), RANK_NEW_DAYS), "a": clean_rank_list(row.get("a"), RANK_ALL_DAYS)}
+    return {"updated": day_key((raw or {}).get("updated")) if isinstance(raw, dict) else "", "items": items}
+
+
+def put_rank(values, index, value):
+    """values の index 日目に順位を入れる（間の日は null で埋める）。同じ日に2回動いたとき、取れた順位を「分からない」で上書きしない"""
+    while len(values) <= index:
+        values.append(None)
+    if value is None and values[index] is not None:
+        return
+    values[index] = value
+
+
+def merge_rank_history(hist, today_str, new_ranks, all_ranks, keep):
+    """きょうの順位を、人気の動きに足す。
+    new_ranks: 新着の人気順 {cid: 順位}（取れなかった日は None）。ここに出てきた作品の記録を始める
+    all_ranks: 全体の人気順の上位 {cid: 順位}（取れなかった日は None）
+    keep: 毎日の更新・過去作品にある作品の cid（どちらにも無くなった作品は、全体の人気順を記録し終えたところで消す）
+    記録中の作品には、記録を始めた日からの日数の位置に、順位（出てこなければ 0）を入れる。消した作品の数を返す"""
+    items = hist["items"]
+    for cid in (new_ranks or {}):
+        items.setdefault(cid, {"d": today_str, "n": [], "a": []})
+    for cid, row in items.items():
+        i = days_between(row["d"], today_str)
+        if i is None or i < 0:
+            continue
+        if i < RANK_NEW_DAYS:
+            put_rank(row["n"], i, None if new_ranks is None else new_ranks.get(cid, 0))
+        if i < RANK_ALL_DAYS:
+            put_rank(row["a"], i, None if all_ranks is None else all_ranks.get(cid, 0))
+    gone = [cid for cid, row in items.items()
+            if (days_between(row["d"], today_str) or 0) > RANK_KEEP_DAYS or (cid not in keep and (days_between(row["d"], today_str) or 0) >= RANK_ALL_DAYS)]
+    for cid in gone:
+        del items[cid]
+    hist["updated"] = today_str
+    return len(gone)
+
+
+def save_rank_history(hist):
+    """1作品1行（記録を始めた日・cid の順）。全体の人気順が一度も上位に入らなかった作品は、a を空にして小さくする"""
+    rows = []
+    for cid, row in sorted(hist["items"].items(), key=lambda kv: (kv[1]["d"], kv[0])):
+        a = row["a"] if any(v for v in row["a"]) else []
+        rows.append(f'{json.dumps(cid)}:{{"d":{json.dumps(row["d"])},"n":{json.dumps(row["n"], separators=(",", ":"))},"a":{json.dumps(a, separators=(",", ":"))}}}')
+    text = f'{{"updated":{json.dumps(hist.get("updated", ""))},\n"items":{{\n' + ",\n".join(rows) + ("\n" if rows else "") + "}}\n"
+    with open(RANK_HISTORY_PATH + ".tmp", "w", encoding="utf-8") as f:
+        f.write(text)
+    os.replace(RANK_HISTORY_PATH + ".tmp", RANK_HISTORY_PATH)
+
+
+def update_rank_history(rank_today, keep):
+    """過去作品の取得のあとに呼ぶ。きょうの順位（update_catalog の state["rank_today"]）を人気の動きに足して保存する。
+    {"tracked": 記録中の作品の数, "removed": 消した数, "new_ok": 新着の人気順を取れたか, "all_ok": 全体の人気順を取れたか} を返す"""
+    hist = load_rank_history()
+    removed = merge_rank_history(hist, rank_today["date"], rank_today.get("new"), rank_today.get("all"), keep)
+    save_rank_history(hist)
+    return {"tracked": len(hist["items"]), "removed": removed, "new_ok": rank_today.get("new") is not None, "all_ok": rank_today.get("all") is not None}
+
+
 def prune_catalog(state):
     """一回りが終わったときに呼ぶ。2回続けて一回りで見かけなかった作品（人気の上位 CATALOG_LIMIT 本から外れた作品）を外し、外した本数を返す。
     1回だけ見かけなかった作品は外さない（順位が毎日少しずつ入れ替わるので、続きから取るあいだに取りこぼすことがあるため）。
@@ -1449,20 +1582,30 @@ def update_catalog(state, archive, today, top_calls=None, calls=None, new_calls=
             short = True
             break
         off += CATALOG_PAGE
+    top_full = top_end > 0 and (off > top_end or short)  # 上位を最後まで取れた（人気の動きの「全体の人気順」に使う）
     # 新着の人気順（最近 NEW_RANK_DAYS 日に発売された作品の、その日の人気順）
     new_extra = {"gte_date": iso(today - timedelta(days=NEW_RANK_DAYS))}
     off = 1
+    new_full = False  # 新着の人気順を最後まで取れた（人気の動きに使う。途中で失敗した日は「分からない」にする）
     while new_calls > 0 and off <= new_calls * CATALOG_PAGE and fails < MAX_API_FAILS_IN_ROW:
         got = fetch(off, new_extra)
         if got is None:
             continue
         new_ok = True
         if got < CATALOG_PAGE:
+            new_full = True
             break
         off += CATALOG_PAGE
+    new_full = new_full or (new_calls > 0 and off > new_calls * CATALOG_PAGE)
     if new_ok:
         state["popular_new"] = popular_new
         state["popular_date"] = today_str
+    # 人気の動き（rank_history.json）に入れる、きょうの順位。最後まで取れなかったほうは None（その日は「分からない」）
+    state["rank_today"] = {
+        "date": today_str,
+        "new": dict(popular_new) if new_full else None,
+        "all": {c: r for c, r in seen_now.items() if r <= top_end} if top_full else None,
+    }
     state["popular_all"] = popular_all
     if new_ok or not new_calls:
         state.setdefault("popular_new", {})
@@ -1767,6 +1910,9 @@ def main():
     def catalog_stage():
         result = update_catalog(catalog, archive, today)
         save_catalog(catalog)
+        if catalog.get("rank_today"):
+            # 人気の動き（失敗しても、過去作品の更新は止めない）
+            result["ranks"] = run_stage("人気の動きの記録", lambda: update_rank_history(catalog["rank_today"], set(catalog["items"]) | set(archive)))
         return result
 
     catalog_result = run_stage("過去作品の取得", catalog_stage) if catalog is not None else None
@@ -1775,6 +1921,9 @@ def main():
               f"人気の上位から外れて外した{catalog_result['pruned']}本（過去作品 {len(catalog['items'])}本。人気順の上位{CATALOG_LIMIT}本まで。次は{catalog['cursor']}本目から）")
         print(f"🔥 新着の人気順: {len(catalog.get('popular_new', {}))}本" + ("" if catalog.get("popular_date") == today_str else "（取れなかったので、前の日のまま）")
               + f" / セール中の作品: {catalog_result.get('sales', 0)}本")
+        if catalog_result.get("ranks"):
+            r_ = catalog_result["ranks"]
+            print(f"📈 人気の動き: 記録中 {r_['tracked']}本（新着の人気順 {'○' if r_['new_ok'] else '×（取れなかった日）'}・全体の人気順 {'○' if r_['all_ok'] else '×（取れなかった日）'}・消した {r_['removed']}本）")
 
     # ---- きょうの数字・予約の人気順（トップの「きょうの数字」「きょうの話題」用。失敗しても、ほかの更新は止めない）----
     def today_stage():
@@ -1820,6 +1969,9 @@ def main():
                        f"補った{catalog_result['filled']}本・人気の上位から外れて外した{catalog_result['pruned']}本。次は{catalog['cursor']}本目から。一回りした日: {catalog['cycle_done'] or 'まだ'}）")
         summary.append(f"- 新着の人気順（最近{NEW_RANK_DAYS}日の発売）: {len(catalog.get('popular_new', {}))}本" + ("" if catalog.get("popular_date") == today_str else "（取れなかったので、前の日のまま）")
                        + f" / セール中の作品: {catalog_result.get('sales', 0)}本")
+        if catalog_result.get("ranks"):
+            r_ = catalog_result["ranks"]
+            summary.append(f"- 人気の動き（rank_history.json）: 記録中 {r_['tracked']}本" + ("" if r_["new_ok"] and r_["all_ok"] else "（きょうの順位を一部取れなかったので、その日は「分からない」にしました）"))
     elif catalog_on and catalog is None:
         summary.append("- 過去作品: ファイル（site/src/data/catalog）が壊れているため、更新をスキップ（ファイルは変更していません）")
     if today_result:

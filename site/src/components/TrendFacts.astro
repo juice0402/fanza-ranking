@@ -1,0 +1,72 @@
+---
+// 週・月のまとめ記事の「傾向」の数字（運営者の希望「ランキングの傾向・考察を加える」。2026-10-07）。
+// 記事と一緒に保存した、書いたときの数字（facts。lib/roundups.js の normalizeTrendFacts）だけを表にする（記事の文と食い違わないように）。
+// ① 発売・VR・デビュー作の本数と、前の期間との増減 → ② ジャンルの本数の横棒（いまと前の期間の2本。凡例つき・数字は文字で）
+// → ③ 新着の人気順で上位に入った作品（最高順位・10位以内の日数）。③は、こちらから案内する欄なので、未成年を連想させるタイトルの作品は入れない
+import WorkRows from './WorkRows.astro';
+import { all, tagByName } from '../lib/data.js';
+import { deltaKind, deltaLabel, genreBars } from '../lib/roundups.js';
+import { isMinorTitle } from '../lib/gacha.js';
+
+// facts: 数字、period: 「この週」「この月」、prev: 「前の週」「前の月」、asOf: 記事を書いた日（YYYY-MM-DD）、id: 見出しの id の頭
+const { facts, period = 'この週', prev = '前の週', asOf, id = 'trend' } = Astro.props;
+const byCid = new Map(all.map((i) => [i.cid, i]));
+const popular = facts.popular.map((p) => ({ ...p, item: byCid.get(p.cid) })).filter((p) => p.item && !isMinorTitle(p.item.title));
+const rankOf = new Map(popular.map((p) => [p.cid, p]));
+// 前の期間の作品が1本も無い（サイトを始めた週など）ときは、比べない（「前の週 0本」「新しく」と出すと、前の週に作品が無かったように読めるため）
+const hasPrev = facts.prev_total > 0;
+const bars = genreBars(facts.genres.filter((g) => g.count > 0 || (hasPrev && g.prev > 0)).map((g) => (hasPrev ? g : { ...g, prev: 0 })));
+const tiles = [
+  { label: '発売', now: facts.total, before: facts.prev_total },
+  { label: 'VR作品', now: facts.vr, before: facts.prev_vr },
+];
+const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
+---
+
+<div class="tf">
+  <dl class="tf-tiles">
+    {tiles.map((t) => (
+      <div class="tf-tile">
+        <dt class="tf-label">{t.label}</dt>
+        <dd class="tf-value"><span class="tf-num">{t.now}</span>本</dd>
+        {hasPrev
+          ? <dd class="tf-delta">{prev} {t.before}本<span class={`tf-move is-${deltaKind(t.now, t.before)}`}>{deltaLabel(t.now, t.before)}</span></dd>
+          : <dd class="tf-delta">{prev}の記録なし</dd>}
+      </div>
+    ))}
+    <div class="tf-tile">
+      <dt class="tf-label">デビュー作</dt>
+      <dd class="tf-value"><span class="tf-num">{facts.debut}</span>本</dd>
+    </div>
+  </dl>
+
+  {bars.length > 0 && (
+    <figure class="tf-genres" aria-labelledby={`${id}-genres`}>
+      <figcaption class="tf-sub" id={`${id}-genres`}>{hasPrev ? `ジャンルの本数（${prev}と比べて）` : 'ジャンルの本数'}</figcaption>
+      {hasPrev && <p class="tf-legend" aria-hidden="true"><span class="tf-key is-now"></span>{period}<span class="tf-key is-before"></span>{prev}</p>}
+      <ul class="tf-bars">
+        {bars.map((g) => (
+          <li class="tf-row" aria-label={hasPrev ? `${g.name}: ${period}${g.count}本、${prev}${g.prev}本` : `${g.name}: ${period}${g.count}本`}>
+            {tagByName.get(g.name)
+              ? <a class="tf-name" href={tagByName.get(g.name).path}>{g.name}</a>
+              : <span class="tf-name">{g.name}</span>}
+            <span class="tf-track" aria-hidden="true">
+              <span class="tf-bar is-now" style={`width:${g.now}%`}></span>
+              {hasPrev && <span class="tf-bar is-before" style={`width:${g.before}%`}></span>}
+            </span>
+            <span class="tf-n" aria-hidden="true">{g.count}本{hasPrev && <span class={`tf-move is-${g.kind}`}>{g.delta}</span>}</span>
+          </li>
+        ))}
+      </ul>
+    </figure>
+  )}
+
+  {popular.length > 0 && (
+    <div class="tf-popular" data-vr-group>
+      <h3 class="tf-sub" id={`${id}-popular`}>新着の人気順で上位に入った作品</h3>
+      <WorkRows items={popular.map((p) => p.item)} level="h4" note={(i) => `最高${rankOf.get(i.cid).best}位${rankOf.get(i.cid).days10 > 0 ? `・10位以内に${rankOf.get(i.cid).days10}日` : ''}`} />
+    </div>
+  )}
+
+  <p class="fine">数字は{asOf ? `${md(asOf)}（記事を書いた日）` : '記事を書いたとき'}の時点で、このサイトに載っている作品から数えたもの（FANZA全体の本数ではありません）。人気順はFANZAの新着の人気順の毎日の順位で、記録は2026年10月5日から。</p>
+</div>
