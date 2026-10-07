@@ -23,7 +23,7 @@ import {
   shortRange,
 } from '../../lib/sale.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
-import { assetUrl } from '../../lib/assets.js';
+import { inlineScript } from '../../lib/assets.js';
 
 const facts = saleHistoryFacts(saleHistory, saleCampaignBySlug);
 const active = saleCampaignPages.filter((p) => p.active);
@@ -87,6 +87,8 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'WebPage', name: 'FA
   noindex={facts.runs.length === 0}
   jsonLd={[breadcrumbLd(trail), pageLd]}
 >
+  {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
+  {nowRows.length > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
@@ -185,5 +187,4 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'WebPage', name: 'FA
     </p>
   </div>
 
-  {nowRows.length > 0 && <script is:inline src={assetUrl('/sale.js')} defer></script>}
 </Base>

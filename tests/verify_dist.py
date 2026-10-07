@@ -106,6 +106,14 @@ def config_value(name):
     return int(m_.group(1)) if m_.group(1).isdigit() else re.findall(r"'([^']+)'", m_.group(1))
 
 
+
+def sale_js_ok(h):
+    """セールの「終わったら隠す」（public/sale.js の中身）が、ページの中の、最初の終わりの印（data-sale-end）より前に入っているか（2026-10-07。
+    前は、読み込みのあとで隠していたので、終わったものが見えてから消えて、下がずれていた）"""
+    i = h.find('<script id="sale-early">')
+    j = h.find("data-sale-end=")
+    return i >= 0 and (j < 0 or i < j) and "shownSlots" in h[i:i + 8000] and "MutationObserver" in h[i:i + 8000] and 'src="/sale.js' not in h
+
 def has_class(attrs, name):
     return name in attrs.get("class", "").split()
 
@@ -863,7 +871,7 @@ check(f"きょうの話題（{len(topic_cells)}件。{TOPICS_LIMIT}件まで）:
 topic_text = " ".join(re.sub(r"<[^>]+>", "", re.sub(r'<span class="topic-title">.*?</span>', "", inner, flags=re.S) if k in ("sale", "salenew") else inner) for k, _, _, inner in topic_all)
 check("きょうの話題: 評価の言葉を書かない（データで決まった形の文だけ）", not re.search(r"おすすめ|話題作|必見|最高傑作|大人気|神作", topic_text))
 if any(k in SALE_END_KINDS for k, _, _ in topic_cells):
-    check("きょうの話題に、セール開始・もうすぐ終わるセール・セールで人気があるときは、終わったら隠すスクリプト（sale.js）がある", 'src="/sale.js?v=' in home_html)
+    check("きょうの話題に、セール開始・もうすぐ終わるセール・セールで人気があるときは、終わったら隠すスクリプト（sale.js）がある", sale_js_ok(read_raw(os.path.join(DIST, 'index.html'))))
 warn("きょうの話題が、トップにある（データがそろっていれば出る）", bool(topic_cells) or not pop_new)
 
 # 女優のイベント情報（data/events.json。所属事務所の公式サイトのイベントの一覧から毎日。運営者の希望。2026-10-05）。
@@ -1057,8 +1065,8 @@ if _shown_m and _up_m:
     check("予約受付中: 「○本」と同じ数の作品が、HTMLにすべて入っている（予約の一覧ページは無いため）", bool(_note_n) and int(_note_n.group(1)) == len(_up_cells), (_note_n.group(1) if _note_n else None, len(_up_cells)))
     if len(_up_cells) > _fold_n:
         _offs = ["fold-off" in c for c, _ in _up_cells]
-        _btn = re.search(r'<button type="button" class="btn btn-quiet more-btn" data-fold-more hidden>もっと見る（あと<span data-fold-rest>(\d+)</span>本）</button>', _up_m.group(1))
-        check(f"予約受付中: 発売日が近い{_fold_n}本だけを先に見せ、残りはたたむ（data-fold・fold-off）。「もっと見る（あと○本）」のボタンは、スクリプトが出す（はじめは hidden）",
+        _btn = re.search(r'<button type="button" class="btn btn-quiet more-btn" data-fold-more>もっと見る（あと<span data-fold-rest>(\d+)</span>本）</button>', _up_m.group(1))
+        check(f"予約受付中: 発売日が近い{_fold_n}本だけを先に見せ、残りはたたむ（data-fold・fold-off）。「もっと見る（あと○本）」のボタンは、はじめから出ている（あとから出てきて下がずれないように。JavaScript が使えないときだけ CSS で隠す）",
               f'data-fold="{_fold_n}"' in _up_open and _offs == [i >= _fold_n for i in range(len(_offs))] and bool(_btn) and int(_btn.group(1)) == len(_up_cells) - _fold_n, (_up_open, sum(_offs), _btn.group(0) if _btn else None))
         check("予約受付中: たたんだ作品の画像は、すぐには読まない（loading=\"lazy\"）", all('loading="lazy"' in inner and 'loading="eager"' not in inner for c, inner in _up_cells if "fold-off" in c))
         _days = re.findall(r'<section class="day([^"]*)"[^>]*>(.*?)</section>', _up_m.group(1), re.S)
@@ -1123,9 +1131,9 @@ if gacha_m:
                  or _cc.title_block_reason(everything[r["c"]]) == "minor" or bool(r.get("v")) != is_vr_raw(everything[r["c"]]) or bool(r.get("o")) != is_solo_raw(everything[r["c"]]) or not fanza_https(r.get("i"), DMM)]
     check(f"運命の作品: 候補（{len(gacha_rows)}本。80本まで）は、ひとことコメントと作品ページのある発売済みの作品だけ・未成年を連想させるタイトルは入れない・VR・単体作品の印が合う", 3 <= len(gacha_rows) <= 80 and not bad_gacha, bad_gacha[:3])
     gacha_sec = re.search(r'<section id="gacha".*?</section>', home_html, re.S)
-    check("運命の作品: 見出し「運命の作品」・窓が3つ・「まわす」ボタン・最初は隠れている（JavaScript が出す）・スクリプト（gacha.js）がある",
-          bool(gacha_sec) and 'id="gacha-title" class="corner-title">運命の作品</h3>' in gacha_sec.group(0) and gacha_sec.group(0).count('class="reel"') == 3 and ">まわす</button>" in gacha_sec.group(0)
-          and re.search(r'<section id="gacha"[^>]*\bhidden\b', home_html) is not None and 'src="/gacha.js?v=' in home_html and os.path.isfile(os.path.join(DIST, "gacha.js")) and gacha_home_at >= 0)
+    check("運命の作品: 見出し「運命の作品」・窓が3つ・「まわす」ボタン（候補がそろうまで押せない）・はじめから出ている（あとから出てきて下がずれないように。JavaScript が使えないときだけ CSS で隠す）・スクリプト（gacha.js）がある",
+          bool(gacha_sec) and 'id="gacha-title" class="corner-title">運命の作品</h3>' in gacha_sec.group(0) and gacha_sec.group(0).count('class="reel"') == 3 and re.search(r'<button type="button" class="btn btn-hot gacha-btn" data-gacha-draw disabled>まわす</button>', gacha_sec.group(0)) is not None
+          and re.search(r'<section id="gacha"[^>]*\bhidden\b', home_html) is None and 'src="/gacha.js?v=' in home_html and os.path.isfile(os.path.join(DIST, "gacha.js")) and gacha_home_at >= 0)
     check("運命の作品: ページに入れたデータの中に、タグの始まり（<）が無い", "<" not in gacha_m.group(1))
 else:
     check("運命の作品の候補が無いときは、欄もスクリプトも出さない", 'id="gacha"' not in home_html and 'src="/gacha.js?v=' not in home_html)
@@ -1201,7 +1209,14 @@ for label, path in (("お気に入り（/favorites/）", "/favorites/"), ("発�
 fav_page = page_file("/favorites/")
 if os.path.isfile(fav_page):
     check("お気に入りページに、表示先（#fav-root）がある", 'id="fav-root"' in read(fav_page))
-check("トップに、お気に入りのお知らせ欄（#fav-banner）がある（最初は隠れている）", bool(re.search(r'<a id="fav-banner"[^>]*\bhidden\b', home_html)))
+    _fav_html = read_raw(os.path.join(DIST, "favorites", "index.html")) if os.path.isfile(os.path.join(DIST, "favorites", "index.html")) else ""
+    _fav_msg = re.search(r'<p class="empty" data-fav-empty>(.*?)</p>', _fav_html, re.S)
+    _fav_js = read(os.path.join(DIST, "favorites.js")) if os.path.isfile(os.path.join(DIST, "favorites.js")) else ""
+    check("お気に入りページ: お気に入りが無い人（html.fav-none）には「まだお気に入りがありません」を、はじめから出しておく（スクリプトと同じ文。あとから出てきて下がずれないように。2026-10-07）",
+          bool(_fav_msg) and strip_tags(_fav_msg.group(1)).strip().replace("\u200b", "") in _fav_js.replace("\u200b", "") and "classList.add('fav-none')" in read_raw(os.path.join(DIST, "index.html")),
+          _fav_msg.group(1)[:60] if _fav_msg else None)
+check("トップに、お気に入りのお知らせ欄（#fav-banner）がある（ふだんは隠れていて、お気に入りの出演者・メーカーがある人（html.has-favs）には、はじめから場所を出す。はじめの文字つき）",
+      bool(re.search(r'<a id="fav-banner"[^>]*\bhidden\b[^>]*>★ お気に入りの新作・予約を見る</a>', home_html)))
 
 # 索引: お気に入りの出演者・メーカーの新作を、ブラウザ側で探すための小さなJSON
 fav_index_path = os.path.join(DIST, "data", "favorites-index.json")
@@ -1554,6 +1569,14 @@ check("CSS: 女優検索の部品は JavaScript が使えるとき（html.js）�
 fold_rule = [b for sels, b in css_rules if any(re.sub(r"\s+", " ", s_) == ".js [data-fold]:not(.is-open) .fold-off" for s_ in sels)]
 check("CSS: 「もっと見る」でたたんだ作品は、JavaScript が使えるとき（html.js）だけ、開くまで隠す（使えないときは全部見える）",
       bool(fold_rule) and all(re.search(r"display\s*:\s*none", b) for b in fold_rule) and not any(".fold-off" in s_ and ".js" not in s_ for sels, b in css_rules for s_ in sels), fold_rule[:1])
+js_only = {re.sub(r"\s+", " ", s_) for sels, b in css_rules for s_ in sels if re.search(r"display\s*:\s*none", b)}
+check("CSS: JavaScript が使えるときだけ使える部品（VR・単体のスイッチ・お気に入りのボタン・運命の作品・「もっと見る」・作品検索）は、使えないときだけ隠す（はじめから出しておき、あとから出てきて下がずれないように。2026-10-07）",
+      {"html:not(.js) .vr-toggle", "html:not(.js) .fav-btn", "html:not(.js) #gacha", "html:not(.js) [data-fold-more]", "html:not(.js) .work-search", ".js .ws-fallback:not(.is-fallback)"} <= js_only,
+      sorted({"html:not(.js) .vr-toggle", "html:not(.js) .fav-btn", "html:not(.js) #gacha", "html:not(.js) [data-fold-more]", "html:not(.js) .work-search", ".js .ws-fallback:not(.is-fallback)"} - js_only))
+check("CSS: お気に入りの出演者・メーカーがある人（html.has-favs）には、トップのお知らせの場所を、はじめから出す（あとから上に出てきて、ページ全体がずれないように）",
+      any(".has-favs .fav-banner[hidden]" in [re.sub(r"\s+", " ", x) for x in sels] and re.search(r"display\s*:\s*block", b) for sels, b in css_rules))
+_press = [sels for sels, b in css_rules if any(re.sub(r"\s+", " ", s_) == ".hide-vr .vr-toggle[data-vr-toggle]" for s_ in sels) and re.search(r"border-color", b)]
+check("CSS: VR・単体のスイッチの押した見た目は、html の印（hide-vr・only-solo）でもすぐに出る（スクリプトを待たない）", bool(_press) and any(".only-solo .vr-toggle[data-solo-toggle]" in [re.sub(r"\s+", " ", x) for x in sels] for sels in _press), _press[:1])
 hidden_ok = [sels for sels, b in css_rules if ".vr-toggle[hidden]" in sels and re.search(r"display\s*:\s*none", b)]
 check("CSS: 隠れているスイッチ・検索（hidden）が、display の指定に負けずに隠れる", bool(hidden_ok) and any(".work-search[hidden]" in sels for sels in hidden_ok), hidden_ok[:1])
 
@@ -1562,7 +1585,7 @@ no_head_vr, no_vr_js, no_nav_search, no_foot_search = [], [], [], []
 for p in pages:
     html_ = read(p)
     head_ = html_[: html_.find("</head>")] if "</head>" in html_ else ""
-    if not re.search(r"localStorage\.getItem\('hide-vr'\)\s*===\s*'1'", head_) or "classList.add('hide-vr')" not in head_ or "classList.add('only-solo')" not in head_ or "classList.add('js')" not in head_:
+    if not re.search(r"localStorage\.getItem\('hide-vr'\)\s*===\s*'1'", head_) or "classList.add('hide-vr')" not in head_ or "classList.add('only-solo')" not in head_ or "classList.add('js')" not in head_ or "classList.add('has-favs')" not in head_:
         no_head_vr.append(os.path.relpath(p, DIST))
     if 'src="/vr-filter.js?v=' not in html_:
         no_vr_js.append(os.path.relpath(p, DIST))
@@ -1609,16 +1632,16 @@ for tp in toggle_pages:
         bad_toggle.append((os.path.relpath(tp, DIST), "ページが無い"))
         continue
     btns = [t for t in tags(read(tp), "button") if "data-vr-toggle" in t]
-    if len(btns) != 1 or "hidden" not in btns[0] or btns[0].get("aria-pressed") != "false" or not btns[0].get("data-on") or not btns[0].get("data-off") or btns[0].get("type") != "button":
+    if len(btns) != 1 or "hidden" in btns[0] or btns[0].get("aria-pressed") != "false" or not btns[0].get("data-on") or not btns[0].get("data-off") or btns[0].get("type") != "button":
         bad_toggle.append((os.path.relpath(tp, DIST), btns[:1]))
-check("「VR作品を隠す」スイッチが、トップ・検索・過去の作品・出演者・メーカーのページに1つずつある（最初は隠れている・押された状態ではない・文言つき）", not bad_toggle, bad_toggle[:3])
+check("「VR作品を隠す」スイッチが、トップ・検索・過去の作品・出演者・メーカーのページに1つずつある（はじめから出ている＝JavaScript が使えないときだけ CSS で隠す・押された状態ではない・文言つき）", not bad_toggle, bad_toggle[:3])
 bad_solo_toggle = []
 for tp in toggle_pages:
     if os.path.isfile(tp):
         btns = [t for t in tags(read(tp), "button") if "data-solo-toggle" in t]
-        if len(btns) != 1 or "hidden" not in btns[0] or btns[0].get("aria-pressed") != "false" or btns[0].get("data-off") != "単体作品のみ" or not btns[0].get("data-on"):
+        if len(btns) != 1 or "hidden" in btns[0] or btns[0].get("aria-pressed") != "false" or btns[0].get("data-off") != "単体作品のみ" or not btns[0].get("data-on"):
             bad_solo_toggle.append((os.path.relpath(tp, DIST), btns[:1]))
-check("「単体作品のみ表示」スイッチが、「VR作品を隠す」の隣に1つずつある（最初は隠れている・押された状態ではない）", not bad_solo_toggle, bad_solo_toggle[:3])
+check("「単体作品のみ表示」スイッチが、「VR作品を隠す」の隣に1つずつある（はじめから出ている＝JavaScript が使えないときだけ CSS で隠す・押された状態ではない）", not bad_solo_toggle, bad_solo_toggle[:3])
 check("CSS: html.only-solo のとき、単体作品の印（data-solo）の無いマスを隠す", any(".only-solo .shelf-cell:not([data-solo])" in sels and re.search(r"display\s*:\s*none", b) for sels, b in css_rules))
 
 # 作品ページ: ジャンルは、ジャンルのページ（/tag/…。ページがあるジャンル）か、そのジャンルで絞り込んだ検索へのリンク
@@ -1850,7 +1873,7 @@ if os.path.isfile(sale_page):
     heads = [t for _, t in head_ids]
     check(f"キャンペーンのまとまりの数（{len(heads)}）が、データ（今日より前に終わったものを除く・このサイトの作品があるもの）と同じ", len(heads) == len(want_camps), (len(heads), len(want_camps)))
     if heads:
-        check("セールのページに「○日の時点」「くわしくはFANZAで確かめて」の注意書き・終わりの時刻の印（data-sale-end）・sale.js がある", "時点" in sh and "FANZAの作品ページで確かめてください" in sh and "data-sale-end=" in sh and 'src="/sale.js?v=' in sh)
+        check("セールのページに「○日の時点」「くわしくはFANZAで確かめて」の注意書き・終わりの時刻の印（data-sale-end）・sale.js がある", "時点" in sh and "FANZAの作品ページで確かめてください" in sh and "data-sale-end=" in sh and sale_js_ok(read_raw(sale_page)))
         bad_badge = [b for b in re.findall(r'<span class="rank-badge">([^<]*)</span>', sh) if not re.fullmatch(r"\d{1,2}%OFF|セール", b)]
         check("セールの札は「○%OFF」か「セール」だけ", not bad_badge, bad_badge[:3])
         check("特集の見出しの id は、キャンペーンの番号（sale-番号。トップ・きょうの話題からのリンク先）・終わりが近い順",
@@ -1884,7 +1907,7 @@ camp_ul = re.search(r'<ul class="camps" data-sale-show="(\d+)">(.*?)</ul>', home
 home_sale = re.search(r'<section id="sale"[^>]*>(.*?)</section>', home_html, re.S)
 if want_camps:
     check("トップに「セール中の特集」があり、発売中の新作より前・作品の棚は無い（特集のカードだけ）・終わったら隠すスクリプト（sale.js）がある",
-          bool(home_sale) and "セール中の特集" in home_sale.group(1) and "shelf-cell" not in home_sale.group(1) and home_html.find('id="sale"') < home_html.find('id="released"') and 'src="/sale.js?v=' in home_html)
+          bool(home_sale) and "セール中の特集" in home_sale.group(1) and "shelf-cell" not in home_sale.group(1) and home_html.find('id="sale"') < home_html.find('id="released"') and sale_js_ok(read_raw(os.path.join(DIST, 'index.html'))))
     cards = re.findall(r'<li class="camp( sale-more)?" data-sale-end="([^"]+)">(.*?)</li>', camp_ul.group(2), re.S) if camp_ul else []
     show_n = int(camp_ul.group(1)) if camp_ul else 0
     bad_card = []
@@ -1955,7 +1978,7 @@ for slug_, title_ in want_camp_slugs.items():
         in_name_ = bool(mo_) and f"{mo_}%OFF" in _ud.normalize("NFKC", title_).upper()
         if not t_.startswith(f"{title_}の対象作品【") or "まで】" not in t_ or (mo_ and ((f"最大{mo_}%OFF" in t_) == in_name_)):
             here.append(("タイトル", t_))
-        if "shelf-cell" not in html_ or 'data-sale-over="' not in raw_ or 'src="/sale.js?v=' not in raw_:
+        if "shelf-cell" not in html_ or 'data-sale-over="' not in raw_ or not sale_js_ok(raw_):
             here.append("作品・終わったときの印")
     else:
         if "いまは開催していません" not in html_ or not noidx or "shelf-cell" in html_:
@@ -1984,7 +2007,7 @@ if _hist_ok:
           and len(re.findall(r'<details class="month-fold" open', hh)) == 1 and hh.find('<details class="month-fold" open') == hh.find('<details class="month-fold"')
           and "記録は2026年10月5日から" in hh and 'name="robots" content="noindex' not in read_raw(hist_page) and "/sale/history/" in sm_paths, (len(_month_blocks), _missing_runs[:3]))
     check(f"「FANZAのセールはいつ？」のいま開催中の帯（{len(_now_rows)}件）: 開催中の特集の数と同じ・終わったら隠す印・帯の見かた・きょうの印・sale.js",
-          len(_now_rows) == len(_active_titles) and (not _active_titles or ('class="bars-legend"' in hh and "is-today" in hh and 'src="/sale.js?v=' in read_raw(hist_page))), (len(_now_rows), len(_active_titles)))
+          len(_now_rows) == len(_active_titles) and (not _active_titles or ('class="bars-legend"' in hh and "is-today" in hh and sale_js_ok(read_raw(hist_page)))), (len(_now_rows), len(_active_titles)))
     check("「FANZAのセールはいつ？」に、予想の言葉を書かない（データから数えた事実だけ）", not re.search(r"予想|予測|はずです|でしょう|見込み", strip_tags(hh)))
 else:
     check("セールの履歴が無いあいだは、「FANZAのセールはいつ？」を検索エンジンに出さない", not os.path.isfile(hist_page) or 'name="robots" content="noindex' in read_raw(hist_page))
@@ -2063,7 +2086,7 @@ for pth in maker_pages:
         here.append("次の新作")
     if ('id="onsale-title"' in raw_) != sale_:
         here.append("セール中の作品")
-    if sale_ and ('class="in-sales"' not in raw_ or 'src="/sale.js?v=' not in raw_):
+    if sale_ and ('class="in-sales"' not in raw_ or not sale_js_ok(raw_)):
         here.append("入っているセール")
     faces_ = re.findall(r'<li class="hot-cell">.*?<span class="hot-name">(?:<span class="visually-hidden">[^<]*</span>)?(.*?)</span>\s*<span class="cast-count">(\d+)本</span>', html_, re.S)
     got_cast = [(htmllib.unescape(strip_tags(n)).strip(), int(c)) for n, c in faces_]
@@ -2089,7 +2112,7 @@ for pth in _item_pages:
     x_ = everything.get(cid_, {})
     on_ = cid_ in _on_sale and str(x_.get("date", ""))[:10] <= JST_TODAY
     here = []
-    if ('class="sale-strip"' in raw_) != on_ or (on_ and 'src="/sale.js?v=' not in raw_):
+    if ('class="sale-strip"' in raw_) != on_ or (on_ and not sale_js_ok(raw_)):
         here.append("セールの札")
     if not re.search(r'<section id="gacha"[^>]*data-src="/data/gacha.json"[^>]*data-exclude="' + re.escape(cid_) + '"', raw_) or 'src="/gacha.js?v=' not in raw_:
         here.append("運命の作品")
@@ -2134,7 +2157,27 @@ if os.path.isfile(sp):
     stext_ = read(sp)
     check("検索ページは noindex で、sitemap に入っていない（条件ごとに内容が変わる画面のため）", 'name="robots" content="noindex' in stext_ and "/search/" not in sm_paths)
     section_ = next((t for t in tags(stext_, "section") if t.get("id") == "work-search"), None)
-    check("検索の部品（#work-search）: 最初は隠れている・索引は /data/items-index.json・search.js を読む", section_ is not None and "hidden" in section_ and section_.get("data-index") == "/data/items-index.json" and 'src="/search.js?v=' in stext_, section_)
+    check("検索の部品（#work-search）: ページを開いたときから見える（索引を待たない）・索引は /data/items-index.json・search.js を読む", section_ is not None and "hidden" not in section_ and section_.get("data-index") == "/data/items-index.json" and 'src="/search.js?v=' in stext_, section_)
+    # はじめの一覧（条件なし・新しい順の、はじめの24本）・本数・ジャンルのボタンが、索引と同じ（2026-10-07）
+    _ii = load_json(os.path.join(DIST, "data", "items-index.json")) if os.path.isfile(os.path.join(DIST, "data", "items-index.json")) else None
+    if isinstance(_ii, dict) and isinstance(_ii.get("items"), list) and isinstance(_ii.get("genres"), list):
+        _sps = int(re.search(r"export const SEARCH_PAGE_SIZE = (\d+);", read(os.path.join(ROOT, "site", "src", "lib", "search.js"))).group(1))
+        _stc = int(re.search(r"export const SEARCH_TAGS_COLLAPSED = (\d+);", read(os.path.join(ROOT, "site", "src", "lib", "search.js"))).group(1))
+        _want_c = [r["c"] for r in sorted(_ii["items"], key=lambda r: (-int(r["d"].replace("-", "")), r["c"]))[:_sps]]
+        _wl = re.search(r'<ul id="ws-list" class="ws-list" data-first="1" data-today="(\d{4}-\d{2}-\d{2})">(.*?)</ul>', stext_, re.S)
+        _got_c = [t.get("data-c") for t in tags(_wl.group(2), "li")] if _wl else []
+        _cnt = re.search(r'<p id="ws-count" class="as-count ws-count" aria-live="polite">(.*?)</p>', stext_, re.S)
+        _gcount = [0] * len(_ii["genres"])
+        for r in _ii["items"]:
+            for n in r.get("g", []):
+                if 0 <= n < len(_gcount):
+                    _gcount[n] += 1
+        _tag_ul = re.search(r'<ul id="ws-tag-list" class="ws-tag-list" data-first="1">(.*?)</ul>', stext_, re.S)
+        _tag_lis = re.findall(r'<li( hidden)?><button type="button" class="tag-btn" aria-pressed="false" data-n="(\d+)" data-name="([^"]*)"[^>]*><span class="tag-name">(.*?)</span><span class="tag-count">(\d+)</span>', _tag_ul.group(1), re.S) if _tag_ul else []
+        _tags_ok = [(htmllib.unescape(nm), int(ct), bool(hd)) for hd, n_, nm, _, ct in _tag_lis] == [(g, _gcount[i], i >= _stc) for i, g in enumerate(_ii["genres"])]
+        check(f"作品検索: はじめの一覧（新しい順の、はじめの{_sps}本）・本数・ジャンルのボタン（本数・はじめに出す{_stc}個）が、ページに入っていて、索引と同じ（索引を待たずに見える）",
+              bool(_wl) and _wl.group(1) == JST_TODAY and _got_c == _want_c and bool(_cnt) and strip_tags(_cnt.group(1)).strip() == f"{len(_ii['items']):,}本" and _tags_ok,
+              (_got_c[:3], _want_c[:3], strip_tags(_cnt.group(1)).strip() if _cnt else None, _tag_lis[:2]))
     names_ = {t.get("name") for tag in ("input", "select") for t in tags(stext_, tag)}
     ids_ = {t.get("id") for tag in ("ul", "p", "button", "section") for t in tags(stext_, tag)}
     check("検索のフォーム（q・status・sort）と、結果の表示先（#ws-tag-list・#ws-tag-more・#ws-count・#ws-list・#ws-more）がある", {"q", "status", "sort"} <= names_ and {"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} <= ids_, (sorted({"q", "status", "sort"} - names_), sorted({"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} - ids_)))

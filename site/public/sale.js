@@ -25,34 +25,51 @@
     return;
   }
   if (typeof document === 'undefined') return;
-  var now = Date.now();
-  var marks = document.querySelectorAll('[data-sale-end]');
-  for (var i = 0; i < marks.length; i++) {
-    if (ended(marks[i].getAttribute('data-sale-end'), now)) marks[i].classList.add('sale-ended');
-  }
-  // 見せる数の決まった一覧（トップの特集のカード）: 終わっていないものを先頭から n 個
-  var lists = document.querySelectorAll('[data-sale-show]');
-  for (var l = 0; l < lists.length; l++) {
-    var n = parseInt(lists[l].getAttribute('data-sale-show'), 10) || 0;
-    var rows = lists[l].querySelectorAll('[data-sale-end]');
-    var flags = [];
-    for (var r = 0; r < rows.length; r++) flags.push(rows[r].classList.contains('sale-ended'));
-    var show = shownSlots(flags, n);
-    for (var s = 0; s < rows.length; s++) {
-      if (!flags[s]) rows[s].classList.toggle('sale-more', !show[s]);
+
+  function apply() {
+    var now = Date.now();
+    var marks = document.querySelectorAll('[data-sale-end]');
+    for (var i = 0; i < marks.length; i++) {
+      if (ended(marks[i].getAttribute('data-sale-end'), now)) marks[i].classList.add('sale-ended');
+    }
+    // 見せる数の決まった一覧（トップの特集のカード）: 終わっていないものを先頭から n 個
+    var lists = document.querySelectorAll('[data-sale-show]');
+    for (var l = 0; l < lists.length; l++) {
+      var n = parseInt(lists[l].getAttribute('data-sale-show'), 10) || 0;
+      var rows = lists[l].querySelectorAll('[data-sale-end]');
+      var flags = [];
+      for (var r = 0; r < rows.length; r++) flags.push(rows[r].classList.contains('sale-ended'));
+      var show = shownSlots(flags, n);
+      for (var s = 0; s < rows.length; s++) {
+        if (!flags[s]) rows[s].classList.toggle('sale-more', !show[s]);
+      }
+    }
+    // 「この特集は終わりました」（特集ごとのページ）: 終わりの時刻をすぎたら出す
+    var overs = document.querySelectorAll('[data-sale-over]');
+    for (var o = 0; o < overs.length; o++) {
+      if (ended(overs[o].getAttribute('data-sale-over'), now)) overs[o].hidden = false;
+    }
+    // まとまり（キャンペーン・トップの欄）の中が全部終わっていたら、まとまりごと隠す（読み込みの途中でも、あとから続きが来たら戻す）
+    var groups = document.querySelectorAll('[data-sale-group]');
+    for (var j = 0; j < groups.length; j++) {
+      if (groups[j].hasAttribute('data-sale-end')) continue;
+      var cells = groups[j].querySelectorAll('[data-sale-end]');
+      var left = 0;
+      for (var k = 0; k < cells.length; k++) if (!cells[k].classList.contains('sale-ended')) left++;
+      groups[j].classList.toggle('sale-ended', Boolean(cells.length) && !left);
     }
   }
-  // 「この特集は終わりました」（特集ごとのページ）: 終わりの時刻をすぎたら出す
-  var overs = document.querySelectorAll('[data-sale-over]');
-  for (var o = 0; o < overs.length; o++) {
-    if (ended(overs[o].getAttribute('data-sale-over'), now)) overs[o].hidden = false;
-  }
-  // まとまり（キャンペーン・トップの欄）の中が全部終わっていたら、まとまりごと隠す
-  var groups = document.querySelectorAll('[data-sale-group]');
-  for (var j = 0; j < groups.length; j++) {
-    var cells = groups[j].querySelectorAll('[data-sale-end]');
-    var left = 0;
-    for (var k = 0; k < cells.length; k++) if (!cells[k].classList.contains('sale-ended')) left++;
-    if (cells.length && !left) groups[j].classList.add('sale-ended');
+
+  // ページの先頭に、このファイルの中身をそのまま入れて使う（lib/assets.js の inlineScript。<script id="sale-early">）。
+  // 中身が読み込まれるそばから印を付けるので、終わった特集・作品が、いちど見えてから消えて下がずれる、ということが無い（2026-10-07）
+  if (document.readyState === 'loading' && typeof MutationObserver === 'function') {
+    var watcher = new MutationObserver(apply);
+    watcher.observe(document.documentElement, { childList: true, subtree: true });
+    document.addEventListener('DOMContentLoaded', function () {
+      watcher.disconnect();
+      apply();
+    });
+  } else {
+    apply();
   }
 })();

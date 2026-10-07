@@ -13,7 +13,7 @@ import { sale, saleCampaignPages, today } from '../../lib/data.js';
 import { SALE_HISTORY_PATH, SALE_HISTORY_START, SALE_PATH, endIso, endLabel, endSoonTag, runDays, runRange, saleBadge, salePriceNote } from '../../lib/sale.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, daysBetween, filterAttrs, formatDateJp } from '../../lib/items.js';
-import { assetUrl } from '../../lib/assets.js';
+import { inlineScript } from '../../lib/assets.js';
 
 export function getStaticPaths() {
   return saleCampaignPages.map((page) => ({ params: { slug: page.slug }, props: { page } }));
@@ -46,6 +46,8 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 ---
 
 <Base title={title} description={description} path={page.path} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd]}>
+  {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
+  {g && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
@@ -134,5 +136,4 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
     </p>
   </div>
 
-  {g && <script is:inline src={assetUrl('/sale.js')} defer></script>}
 </Base>

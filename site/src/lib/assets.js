@@ -22,3 +22,16 @@ export function assetUrl(publicPath, roots = [path.join(process.cwd(), 'public')
   cache.set(key, url);
   return url;
 }
+
+/**
+ * public/ のスクリプトの中身（ページの中に、そのまま入れる用。読み込みを待たずに、ページの途中から動かしたいもの）。見つからなければ ''。
+ * 例: セールの「終わったら隠す」（/sale.js）を、ページの先頭に入れる（中身が読み込まれるそばから印を付け、あとから消えて下がずれないように。2026-10-07）
+ */
+export function inlineScript(publicPath, roots = [path.join(process.cwd(), 'public'), path.join(process.cwd(), 'site', 'public')]) {
+  for (const root of roots) {
+    const file = path.join(root, publicPath);
+    if (fs.existsSync(file)) return fs.readFileSync(file, 'utf-8').replace(/<\/script/gi, '<\\/script');
+  }
+  return '';
+}
+

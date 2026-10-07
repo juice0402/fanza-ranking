@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { assetUrl } from '../site/src/lib/assets.js';
+import * as A from '../site/src/lib/assets.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -252,6 +253,7 @@ const want = createHash('sha1').update('console.log(1)').digest('hex').slice(0, 
 check('assetUrl: public のファイルの中身から作った8文字の印を付ける', assetUrl('/x.js', [tmp]) === `/x.js?v=${want}`, assetUrl('/x.js', [tmp]));
 check('assetUrl: 見つからなければ、そのまま（ビルドは止めない）', assetUrl('/nothing.js', [tmp]) === '/nothing.js');
 check('assetUrl: 本物の public の vr-filter.js にも付く', /^\/vr-filter\.js\?v=[0-9a-f]{8}$/.test(assetUrl('/vr-filter.js', [path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'site', 'public')])));
+check('inlineScript: public のスクリプトの中身を、ページにそのまま入れる形で返す（無ければ空。</script を含まない）', (() => { const t = A.inlineScript('/sale.js', [new URL('../site/public', import.meta.url).pathname]); return t.includes('MutationObserver') && t.includes('shownSlots') && !/<\/script/i.test(t) && A.inlineScript('/nothing.js', [new URL('../site/public', import.meta.url).pathname]) === ''; })());
 fs.rmSync(tmp, { recursive: true, force: true });
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);

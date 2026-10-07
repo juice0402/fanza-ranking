@@ -189,7 +189,13 @@
     storage = null; // 保存できない環境（プライベートブラウズなど）
   }
   if (!storage) {
-    // 保存できない環境（プライベートブラウズなど）。「お気に入り」ページが空白にならないよう、理由を出す
+    // 保存できない環境（プライベートブラウズなど）。☆のボタンは使えないので隠す（ボタンは、はじめから出ている。CSS の html.js）
+    Array.prototype.forEach.call(document.querySelectorAll('.fav-btn'), function (button) {
+      button.hidden = true;
+    });
+    var noBanner = document.getElementById('fav-banner');
+    if (noBanner) noBanner.hidden = true;
+    // 「お気に入り」ページが空白にならないよう、理由を出す
     var emptyRoot = document.getElementById('fav-root');
     if (emptyRoot) {
       emptyRoot.textContent = '';
@@ -293,18 +299,21 @@
   }
 
   // ---- トップの小さなお知らせ ----
+  // お気に入りの出演者・メーカーがある人には、場所をはじめから出しておく（<head> の小さなスクリプトが html.has-favs を付ける。
+  // あとから上に出てきて、ページ全体が下にずれないように。2026-10-07）。新作・予約があれば、本数に書きかえる
   var banner = document.getElementById('fav-banner');
   if (banner) {
     var s = read();
     if (hasPeople(s)) {
+      banner.hidden = false;
       loadIndex().then(function (index) {
         var found = pickNew(s, index.items, jstToday(Date.now()), BANNER_DAYS);
         var count = found.upcoming.length + found.recent.length;
-        if (count > 0) {
-          banner.textContent = '★ お気に入りの新作・予約が ' + count + '本あります';
-          banner.hidden = false;
-        }
+        if (count > 0) banner.textContent = '★ お気に入りの新作・予約が ' + count + '本あります';
       }).catch(function () {});
+    } else {
+      banner.hidden = true;
+      document.documentElement.classList.remove('has-favs');
     }
   }
 
@@ -387,9 +396,14 @@
     container.textContent = '';
 
     if (!people && !Object.keys(store.work).length) {
-      container.appendChild(el('p', 'empty', 'まだお気に入りがありません。作品・出演者・メーカーのページにある ☆ を押すと、ここに集まります。'));
+      // ページに入っている文と同じ（お気に入りが無い人には、はじめから出ている。site/src/pages/favorites.astro）
+      var empty = el('p', 'empty', 'まだお気に入りがありません。作品・出演者・メーカーのページにある ☆ を押すと、ここに集まります。');
+      empty.setAttribute('data-fav-empty', '');
+      document.documentElement.classList.add('fav-none');
+      container.appendChild(empty);
       return;
     }
+    document.documentElement.classList.remove('fav-none');
 
     // 1) お気に入りの新作・予約
     if (people) {

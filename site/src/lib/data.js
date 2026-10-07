@@ -13,6 +13,7 @@ import { normalizeAgencies, withAgencies } from './agencies.js';
 import { eventsByName, normalizeEvents, upcomingEvents } from './events.js';
 import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
 import { TAG_PAGE_GENRES } from '../config.js';
+import { buildItemsIndex } from './search.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
@@ -118,3 +119,10 @@ export const actressIndexCoverage = indexCoverage(actressSearchIndex);
 
 // 売れ筋ランキング（FANZAの人気順の上位3本）。無い・古いときは null（画面に出さない）
 export const ranking = rankingForDisplay(optionalData('ranking'), today, new Set(all.filter((i) => i.vr).map((i) => i.cid)));
+
+// 作品検索の索引（/data/items-index.json と、検索ページの「はじめの一覧」が同じものを使う。作るのは1回だけ。lib/search.js）
+let itemsIndexCache = null;
+export function itemsIndex() {
+  if (!itemsIndexCache) itemsIndexCache = buildItemsIndex(all.filter((i) => paged.has(i.cid)), today);
+  return itemsIndexCache;
+}

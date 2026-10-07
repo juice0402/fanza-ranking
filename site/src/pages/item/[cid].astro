@@ -69,7 +69,7 @@ const facts = itemFacts(item, factsContext, {
   actress: new Map([...actressByName].map(([name, g]) => [name, g.path])),
   vr: tagByName.get(VR_TAG_NAME)?.path ?? '',
 });
-import { assetUrl } from '../../lib/assets.js';
+import { assetUrl, inlineScript } from '../../lib/assets.js';
 ---
 
 <Base
@@ -81,6 +81,8 @@ import { assetUrl } from '../../lib/assets.js';
   noindex={noindex}
   jsonLd={[breadcrumbLd(trail)]}
 >
+  {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
+  {saleNow && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
@@ -277,7 +279,6 @@ import { assetUrl } from '../../lib/assets.js';
   </div>
 
   {zoomable && <script is:inline src={assetUrl('/lightbox.js')} defer></script>}
-  {saleNow && <script is:inline src={assetUrl('/sale.js')} defer></script>}
   <script is:inline src={assetUrl('/gacha.js')} defer></script>
   {hasMovie && <script is:inline src={assetUrl('/movie.js')} defer></script>}
 

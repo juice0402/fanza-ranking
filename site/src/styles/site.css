@@ -3687,18 +3687,24 @@ a.reel-card:hover .reel-title {
   border-radius: var(--r-media);
 }
 
-.vr-toggle[aria-pressed='true'] {
+.vr-toggle[aria-pressed='true'],
+.hide-vr .vr-toggle[data-vr-toggle],
+.only-solo .vr-toggle[data-solo-toggle] {
   border-color: var(--pop);
   background: rgba(255, 210, 63, 0.12);
   color: var(--pop);
 }
 
-.vr-toggle[aria-pressed='true'] .vr-toggle-mark {
+.vr-toggle[aria-pressed='true'] .vr-toggle-mark,
+.hide-vr .vr-toggle[data-vr-toggle] .vr-toggle-mark,
+.only-solo .vr-toggle[data-solo-toggle] .vr-toggle-mark {
   border-color: var(--pop);
   background: var(--pop);
 }
 
-.vr-toggle[aria-pressed='true'] .vr-toggle-mark::after {
+.vr-toggle[aria-pressed='true'] .vr-toggle-mark::after,
+.hide-vr .vr-toggle[data-vr-toggle] .vr-toggle-mark::after,
+.only-solo .vr-toggle[data-solo-toggle] .vr-toggle-mark::after {
   content: '';
   position: absolute;
   left: 4px;
@@ -3710,6 +3716,38 @@ a.reel-card:hover .reel-title {
   transform: rotate(45deg);
 }
 
+/* JavaScript が使えるとき（html.js。Base.astro の <head> が付ける）だけ使える部品は、使えないときだけ隠す（2026-10-07）。
+   前は hidden にしておき、スクリプトが読み終わってから出していたので、スマホでは開いたあとに出てきて、下の中身がずれていた
+   （VR作品を隠す・単体作品のみのスイッチ・お気に入りのボタン・運命の作品・「もっと見る」・作品検索）。運営者の「ほかのページでも同じ現象を直して」 */
+html:not(.js) .vr-toggle,
+html:not(.js) .fav-btn,
+html:not(.js) #gacha,
+html:not(.js) [data-fold-more],
+html:not(.js) .work-search,
+.js .ws-fallback:not(.is-fallback) {
+  display: none;
+}
+
+/* 作品検索の「はじめの一覧」（ページに入っているもの）: 「単体作品のみ」のときは、単体でない作品を、索引が届くまで隠す（VR作品は .hide-vr [data-vr] で隠れる） */
+.only-solo #ws-list[data-first] > li:not([data-solo]) {
+  display: none;
+}
+
+/* お気に入りの出演者・メーカーがある人（html.has-favs。Base.astro の <head> が付ける）には、トップのお知らせの場所を、はじめから出しておく
+   （前は、お気に入りの索引を読んでから上に出てきて、ページ全体が下にずれていた。2026-10-07） */
+.has-favs .fav-banner[hidden] {
+  display: block;
+}
+
+/* 「お気に入り」ページの「まだお気に入りがありません」: お気に入りが無い人（html.fav-none）にだけ、はじめから出す（あとから出てきて、下がずれないように） */
+[data-fav-empty] {
+  display: none;
+}
+
+.fav-none [data-fav-empty] {
+  display: block;
+}
+
 /* 女優検索（2026-10-07）: 検索の部品は、JavaScript が使えるとき（html.js）だけ出す（ページを開いたときから。索引を待たない）。
    JavaScript が使えないとき用の一覧（.actress-static）は、使えるときは、はじめから隠す（索引を読めなかったときは is-fallback で出す） */
 html:not(.js) .actress-search,
@@ -3717,7 +3755,8 @@ html:not(.js) .actress-search,
   display: none;
 }
 
-.actress-list[aria-busy='true'] {
+.actress-list[aria-busy='true'],
+.ws-list[aria-busy='true'] {
   opacity: 0.5;
 }
 

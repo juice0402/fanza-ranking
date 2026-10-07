@@ -1,5 +1,6 @@
 ---
-// 「VR作品を隠す」「単体作品のみ表示」スイッチ（2つ並べる）。押したときの動きは site/public/vr-filter.js（JavaScriptが使えないときは出さない）。
+// 「VR作品を隠す」「単体作品のみ表示」スイッチ（2つ並べる）。押したときの動きは site/public/vr-filter.js（JavaScriptが使えないときは出さない＝CSS の html:not(.js)。
+// 前は hidden にしてスクリプトが出していたので、開いたあとに出てきて下がずれた。2026-10-07。押した見た目は html.hide-vr・html.only-solo でもすぐに出る）。
 // 状態は、この端末のブラウザの中（localStorage）にだけ保存して、サイト全体の一覧に効く（サーバーには送らない）。
 // 「単体作品のみ表示」は運営者の希望（2026-10-05）。単体作品＝FANZAのジャンル「単体作品」（items.js の isSoloWork）
 // 文字は押しても変えない（「VR作品を隠しています（解除する）」のように長くなると、スマホで急に折り返して押しにくかった。2026-10-05）。
@@ -7,9 +8,9 @@
 const { off = 'VR作品を隠す', on = off, soloOff = '単体作品のみ', soloOn = soloOff } = Astro.props;
 ---
 
-<button type="button" class="vr-toggle" hidden aria-pressed="false" data-vr-toggle data-off={off} data-on={on}>
+<button type="button" class="vr-toggle" aria-pressed="false" data-vr-toggle data-off={off} data-on={on}>
   <span class="vr-toggle-mark" aria-hidden="true"></span><span class="vr-toggle-label">{off}</span>
 </button>
-<button type="button" class="vr-toggle" hidden aria-pressed="false" data-solo-toggle data-off={soloOff} data-on={soloOn}>
+<button type="button" class="vr-toggle" aria-pressed="false" data-solo-toggle data-off={soloOff} data-on={soloOn}>
   <span class="vr-toggle-mark" aria-hidden="true"></span><span class="vr-toggle-label">{soloOff}</span>
 </button>
