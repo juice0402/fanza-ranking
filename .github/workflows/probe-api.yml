@@ -18,5 +18,5 @@ jobs:
           python-version: '3.12'
       - name: Probe
         run: |
-          pip install -q pillow > pip.txt 2>&1 || echo "::notice title=pip::$(tail -c 1500 pip.txt | tr '\n' ' ')"
-          python scripts/probe_thumbs3.py 2> err.txt || { echo "::notice title=err::$(tail -c 2500 err.txt | tr '\n' ' ')"; exit 1; }
+          true
+          python scripts/probe_thumbs4.py 2> err.txt || { echo "::notice title=err::$(tail -c 2500 err.txt | tr '\n' ' ')"; exit 1; }
