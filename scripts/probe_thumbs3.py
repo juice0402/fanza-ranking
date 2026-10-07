@@ -54,7 +54,15 @@ def probe(u):
         box = ((W-nw)//2, (H-nh)//2, (W-nw)//2+nw, (H-nh)//2+nh)
         dfit = ImageStat.Stat(ImageChops.difference(fit.crop(box), s.crop(box))).mean[0]
         dcrop = ImageStat.Stat(ImageChops.difference(crop, s)).mean[0]
-        return {"k": kind(w, h), "ls": (w, h), "ss": (W, H), "fit": round(dfit, 1), "crop": round(dcrop, 1), "bands": bands(s), "lb": lb, "sb": sb}
+        b = bands(s)
+        band_px = []
+        px = s.load()
+        for y in list(range(b[0])) + list(range(H - b[1], H)):
+            band_px += [px[x, y] for x in range(W)]
+        for x in list(range(b[2])) + list(range(W - b[3], W)):
+            band_px += [px[x, y] for y in range(H)]
+        col = round(sum(band_px) / len(band_px)) if band_px else -1
+        return {"col": col, "k": kind(w, h), "ls": (w, h), "ss": (W, H), "fit": round(dfit, 1), "crop": round(dcrop, 1), "bands": bands(s), "lb": lb, "sb": sb}
     except Exception as e:
         return {"err": repr(e)[:60]}
 with ThreadPoolExecutor(8) as ex:
@@ -71,4 +79,18 @@ for k, bl in bd.items():
     tb = Counter((b[0] > 3 or b[1] > 3) for b in bl); sd = Counter((b[2] > 3 or b[3] > 3) for b in bl)
     note(f"s-bands-{k}", f"n={len(bl)} topbottom={dict(tb)} sides={dict(sd)} ex={Counter(bl).most_common(6)}")
 ex = [r for r in rows if "err" not in r][:6]
+note("s-color", Counter((r["col"] // 16) * 16 for r in rows if "col" in r and r["col"] >= 0).most_common(8))
+# 大きさの指定（?w=）が効くか（参考）
+try:
+    u0 = pairs[0]
+    for q in ("?w=240", "?w=240&h=160&t=margin", "?f=webp"):
+        with urllib.request.urlopen(urllib.request.Request(u0 + q, headers=UA), timeout=20) as r:
+            bb = r.read()
+            try:
+                im = Image.open(io.BytesIO(bb)); d = (im.size, im.format)
+            except Exception:
+                d = None
+            note("s-q" + q.replace("&", "+").replace("?", "_").replace("=", "-"), (r.status, r.headers.get("Content-Type"), len(bb), d, r.geturl()[-50:]))
+except Exception as e:
+    note("s-q-err", repr(e)[:200])
 note("s-ex", [(r["ls"], r["ss"], r["fit"], r["crop"], r["lb"], r["sb"]) for r in ex])
