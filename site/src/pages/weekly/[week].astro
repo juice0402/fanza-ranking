@@ -3,7 +3,8 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import { curated, paged, roundups, actressByName, makerByName } from '../../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../../lib/plan.js';
-import { breadcrumbLd, dateParts, formatDateJp, groupByDate, filterAttrs, castLine, CAST_LIMIT, SMALL_IMG_ONERROR, smallImage } from '../../lib/items.js';
+import { breadcrumbLd, dateParts, formatDateJp, groupByDate, filterAttrs, castLine, CAST_LIMIT } from '../../lib/items.js';
+import Thumb from '../../components/Thumb.astro';
 import {
   WEEKLY_INDEX_PATH,
   articleLd,
@@ -126,7 +127,7 @@ const md = (dateKey) => {
                 <li class="shelf-cell pick" {...filterAttrs(p.item)}>
                   <article class="pick-card">
                     <a class="item-cover pick-cover" href={link.href} tabindex="-1" aria-hidden="true" {...outbound}>
-                      {p.item.image_url && <img class="item-img is-small" src={smallImage(p.item.image_url)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />}
+                      {p.item.image_url && <Thumb src={p.item.image_url} kind="tiny" class="item-img is-small" />}
                     </a>
                     <div class="pick-head">
                       <h3 class="pick-title"><a class="item-title-link" href={link.href} {...outbound}>{p.item.title}</a></h3>
@@ -156,7 +157,7 @@ const md = (dateKey) => {
                   <li class="ws-row">
                     <article class="item">
                       <a class="item-cover" href={link.href} tabindex="-1" aria-hidden="true" {...outbound}>
-                        {i.image_url && <img class="item-img is-small" src={smallImage(i.image_url)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />}
+                        {i.image_url && <Thumb src={i.image_url} kind="tiny" class="item-img is-small" />}
                       </a>
                       <h4 class="item-title"><a class="item-title-link week-list-link" href={link.href} {...outbound}>{i.title}</a></h4>
                       <p class="item-cast">{castLine(i.actress, CAST_LIMIT, '出演者の記載なし')}</p>

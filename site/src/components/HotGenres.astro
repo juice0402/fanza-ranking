@@ -2,9 +2,11 @@
 // 人気のジャンル（トップ。「いま人気の女優」の真下）: この1週間の人気作に多いジャンルを3つ（lib/topics.js の hotGenres）。
 // 1つずつ、そのジャンルでいちばん人気の作品の表紙（四角く切り出す。上のジャンルと同じ作品は使わない）・順位・ジャンルの名前。タップで、ジャンルのページ（無ければ作品検索のジャンル絞り込み）へ
 // 表紙の切り出し: 見開きのパッケージは表紙の部分、見開きでない1枚絵（横長など）は、読み込んだあとに印 is-flat を付けて、まん中より少し上（lib/items.js の COVER_SHAPE_ONLOAD）
+// スマホは、表紙のいちばん小さい版（…pt.jpg。90×122。運営者の「ジャンルの画像は特に荒くても良い」。2026-10-07）から四角く切り出す（components/Thumb.astro）
 import { tagByName } from '../lib/data.js';
 import { COVER_SHAPE_ONLOAD } from '../lib/items.js';
 import { searchPath } from '../lib/search.js';
+import Thumb from './Thumb.astro';
 
 const { list } = Astro.props;
 const hrefOf = (name) => tagByName.get(name)?.path ?? searchPath(name);
@@ -15,7 +17,7 @@ const hrefOf = (name) => tagByName.get(name)?.path ?? searchPath(name);
     <li class="genre-cell">
       <a class="genre-link" href={hrefOf(g.name)}>
         <span class="genre-thumb">
-          <span class="genre-pic">{g.top?.image_url && <img class="genre-img" src={g.top.image_url} alt="" loading="lazy" decoding="async" onload={COVER_SHAPE_ONLOAD} onerror="this.style.visibility='hidden'" />}</span>
+          <span class="genre-pic">{g.top?.image_url && <Thumb src={g.top.image_url} kind="genre" class="genre-img" onload={COVER_SHAPE_ONLOAD} />}</span>
           <span class="hot-rank" aria-hidden="true">{i + 1}</span>
         </span>
         <span class="genre-name"><span class="visually-hidden">{i + 1}位 </span>{g.name}</span>

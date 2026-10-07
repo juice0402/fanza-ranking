@@ -115,6 +115,40 @@ export const smallImage = (url) => (/^https:\/\/pics\.dmm\.co\.jp\/.+pl\.jpg$/.t
 export const SMALL_IMG_ONERROR = "if(/ps\\.jpg$/.test(this.src)){this.src=this.src.replace(/ps\\.jpg$/,'pl.jpg');this.classList.remove('is-small')}else{this.style.visibility='hidden'}";
 
 /**
+ * スマホのサムネを軽くする（運営者の希望「スマホの低速な回線だと画像が重い。サムネだけ画素数を落として最高速化。開いたときは元のまま」。2026-10-07）。
+ * 画面の幅が THUMB_MEDIA（スマホの縦向き）のときだけ、<picture> の <source> で小さい版を読む。パソコン・タブレットは今までどおり
+ * （components/Thumb.astro。ブラウザで作るサムネも同じ幅で切りかえる。CSS の @media も同じ幅）。
+ * FANZAの画像の大きさと重さ（2026-10-07 に本物の約300本で調べた。どれも、小さい版が無い作品は無かった）:
+ *   パッケージ …pl.jpg 800×538 前後・平均 約165KB ／ 表紙 …ps.jpg 147×200・約14KB ／ 表紙の小 …pt.jpg 90×122・約6KB
+ * 作品ページのサンプル画像の並びは、スマホでも大きい版（…jp-N.jpg）のまま。小さい版（…-N.jpg。120×90・約5KB）は、
+ * 形の違う画像に白い余白を足して 120×90 にしてある（縦長の写真は左右に、横長は上下に。2026-10-07 に本物の約2000枚で確かめた。
+ * 縦長が2割ほど）ので、暗い背景の並びでは白い帯が目立つ。どの写真が縦長かは、読み込むまで分からない
+ */
+export const THUMB_MEDIA = '(max-width: 480px)';
+const DMM_IMG = /^https:\/\/pics\.dmm\.co\.jp\//;
+/** 表紙のいちばん小さい版（…pl.jpg・…ps.jpg → …pt.jpg。90×122）。形が違うURLはそのまま */
+export const tinyImage = (url) => {
+  const s = String(url ?? '');
+  return DMM_IMG.test(s) && /p[ls]\.jpg$/.test(s) ? s.replace(/p[ls]\.jpg$/, 'pt.jpg') : s;
+};
+/**
+ * サムネの画像のURL: src＝パソコン・タブレット（今までどおり）、small＝スマホ（src と同じなら、切りかえない）。
+ * kind: 'card'＝作品カード・TOP3（スマホは表紙 ps）／'tiny'＝小さな表紙（話題・セールの特集・今週のデビュー作・小さな棚・行の一覧。ふだん ps・スマホは pt）／
+ *       'genre'＝人気のジャンルの四角（スマホは pt。運営者の「ジャンル・セールの画像は特に荒くても良い」）
+ */
+export function thumbSources(url, kind = 'card') {
+  const s = String(url ?? '');
+  if (kind === 'tiny') return { src: smallImage(s), small: tinyImage(s) };
+  if (kind === 'genre') return { src: s, small: tinyImage(s) };
+  return { src: s, small: smallImage(s) };
+}
+/**
+ * <picture> の中の img の onerror: スマホで小さい版が読めなかったら、<source> を外して、ふだんの画像に戻す
+ * （ふだんの画像が表紙 ps なら、パッケージ pl に戻す。それも読めなければ隠す）。属性に入れるので、< > & " を使わない形で書く
+ */
+export const THUMB_ONERROR = "var s=this.previousElementSibling,m=s?s.tagName=='SOURCE'?matchMedia(s.media).matches:0:0;if(m){s.remove();this.classList.remove('has-small')}else if(/ps\\.jpg$/.test(this.src)){this.src=this.src.replace(/ps\\.jpg$/,'pl.jpg');this.classList.remove('is-small')}else{this.style.visibility='hidden'}";
+
+/**
  * パッケージ画像の形の見分け（人気のジャンルの四角い表紙。運営者の指摘「パッケージの右上しか写ってない」。2026-10-07）。
  * FANZAのパッケージ画像は、ふつうは見開き（800×538 前後。左から裏表紙・背表紙・表紙）で、四角は右端の表紙の上のほうから切り出す。
  * 見開きでない形もある（2026-10-07 に本物の約800枚を調べた: 見開き 8割・VRなどの横長 800×500/600/450 が2割弱・表紙だけの縦長 563×800 など 3%）。

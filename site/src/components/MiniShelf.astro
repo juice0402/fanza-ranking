@@ -4,7 +4,8 @@
 // 作品ページが無い作品はFANZAへ）。大きなカードを8枚並べていたときより、すっきり見えて、次の作品を選びやすい（運営者の希望「スッキリした見た目に」）
 import { paged } from '../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
-import { SMALL_IMG_ONERROR, castLine, filterAttrs, smallImage } from '../lib/items.js';
+import { castLine, filterAttrs } from '../lib/items.js';
+import Thumb from './Thumb.astro';
 
 const { items, level = 'h3' } = Astro.props;
 const Heading = level;
@@ -17,7 +18,7 @@ const Heading = level;
     return (
       <li class="shelf-cell mini-cell" {...filterAttrs(i)}>
         <a class="mini-card" href={link.href} {...outbound}>
-          <span class="mini-cover">{i.image_url && <img class="item-img is-small" src={smallImage(i.image_url)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />}</span>
+          <span class="mini-cover">{i.image_url && <Thumb src={i.image_url} kind="tiny" class="item-img is-small" />}</span>
           <Heading class="mini-title">{i.title}</Heading>
           <span class="mini-cast">{castLine(i.actress, 1, '')}</span>
         </a>

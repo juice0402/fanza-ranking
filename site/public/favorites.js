@@ -167,9 +167,20 @@
     return { names: names, more: list.length - names.length };
   }
 
+  // サムネの画像のURL（site/src/lib/items.js の smallImage・tinyImage・THUMB_MEDIA と同じ）
+  var THUMB_MEDIA = '(max-width: 480px)';
+  function smallImageUrl(url) {
+    var s = String(url || '');
+    return /^https:\/\/pics\.dmm\.co\.jp\/.+pl\.jpg$/.test(s) ? s.replace(/pl\.jpg$/, 'ps.jpg') : s;
+  }
+  function tinyImageUrl(url) {
+    var s = String(url || '');
+    return /^https:\/\/pics\.dmm\.co\.jp\//.test(s) && /p[ls]\.jpg$/.test(s) ? s.replace(/p[ls]\.jpg$/, 'pt.jpg') : s;
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-      castShown: castShown, CAST_LIMIT: CAST_LIMIT,
+      castShown: castShown, CAST_LIMIT: CAST_LIMIT, THUMB_MEDIA: THUMB_MEDIA, smallImageUrl: smallImageUrl, tinyImageUrl: tinyImageUrl,
       emptyStore: emptyStore, parseStore: parseStore, isOn: isOn, toggle: toggle, remove: remove,
       hasPeople: hasPeople, matches: matches, pickNew: pickNew, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT,
     };
@@ -326,12 +337,27 @@
     var link = el('a', 'fav-row-link');
     link.href = '/item/' + item.c + '/';
     if (item.i && item.i.indexOf('https://') === 0) {
+      // サムネは小さいので、表紙だけの軽い画像（…ps.jpg。スマホは、いちばん小さい …pt.jpg）。
+      // 読めなければ、ps → パッケージ画像（…pl.jpg）の順に戻し、それも読めなければ隠す（運営者の希望「スマホのサムネは最高速化」。2026-10-07）
       var img = el('img', 'fav-thumb');
-      img.src = item.i;
+      var small = smallImageUrl(item.i);
+      if (small !== item.i) img.classList.add('is-small');
       img.alt = '';
       img.loading = 'lazy';
+      img.decoding = 'async';
       img.width = 60;
       img.height = 84;
+      img.addEventListener('error', function () {
+        if (/pt\.jpg$/.test(img.src)) {
+          img.src = img.src.replace(/pt\.jpg$/, 'ps.jpg');
+        } else if (/ps\.jpg$/.test(img.src)) {
+          img.src = img.src.replace(/ps\.jpg$/, 'pl.jpg');
+          img.classList.remove('is-small');
+        } else {
+          img.style.visibility = 'hidden';
+        }
+      });
+      img.src = window.matchMedia && window.matchMedia(THUMB_MEDIA).matches ? tinyImageUrl(small) : small;
       link.appendChild(img);
     }
     var body = el('span', 'fav-row-body');

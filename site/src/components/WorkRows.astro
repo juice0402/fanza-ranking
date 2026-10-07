@@ -3,7 +3,8 @@
 // 出演者のページの「次の新作」「セール中の作品」で使う（2026-10-06）。note: 作品ごとの短い文（発売日・価格など）、saleEnd: セールの終わり（すぎたらブラウザで隠す）
 import { paged } from '../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
-import { CAST_LIMIT, SMALL_IMG_ONERROR, castLine, filterAttrs, smallImage } from '../lib/items.js';
+import { CAST_LIMIT, castLine, filterAttrs } from '../lib/items.js';
+import Thumb from './Thumb.astro';
 
 const { items, note = () => '', level = 'h3', saleEnd = () => '' } = Astro.props;
 const Heading = level;
@@ -17,7 +18,7 @@ const Heading = level;
       <li class="ws-row" {...filterAttrs(i)} {...(saleEnd(i) ? { 'data-sale-end': saleEnd(i) } : {})}>
         <article class="item">
           <a class="item-cover" href={link.href} tabindex="-1" aria-hidden="true" {...outbound}>
-            {i.image_url && <img class="item-img is-small" src={smallImage(i.image_url)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />}
+            {i.image_url && <Thumb src={i.image_url} kind="tiny" class="item-img is-small" />}
           </a>
           <Heading class="item-title"><a class="item-title-link" href={link.href} {...outbound}>{i.title}</a></Heading>
           <p class="item-cast">{castLine(i.actress, CAST_LIMIT, '出演者の記載なし')}</p>

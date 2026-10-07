@@ -80,6 +80,48 @@
     return /^https:\/\/pics\.dmm\.co\.jp\/.+pl\.jpg$/.test(String(url || '')) ? String(url).replace(/pl\.jpg$/, 'ps.jpg') : String(url || '');
   }
 
+  // スマホ（画面の幅が THUMB_MEDIA）のときだけ読む、表紙のいちばん小さい版（…pt.jpg。90×122）
+  // （運営者の希望「スマホのサムネは画素数を落として最高速化」。2026-10-07。site/src/lib/items.js の THUMB_MEDIA・tinyImage と同じ）
+  var THUMB_MEDIA = '(max-width: 480px)';
+  function tinyImageUrl(url) {
+    var s = String(url || '');
+    return /^https:\/\/pics\.dmm\.co\.jp\//.test(s) && /p[ls]\.jpg$/.test(s) ? s.replace(/p[ls]\.jpg$/, 'pt.jpg') : s;
+  }
+
+  // 小さな表紙（site/src/components/Thumb.astro の kind="tiny" と同じ形）: スマホは <picture> の <source> で …pt.jpg、ほかは …ps.jpg。
+  // 読めなければ、<source> を外して ps に、ps も読めなければパッケージ画像（…pl.jpg）に戻し、それも読めなければ隠す（items.js の THUMB_ONERROR と同じ）
+  function thumbImage(src) {
+    var img = document.createElement('img');
+    img.className = 'item-img is-small';
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.addEventListener('error', function () {
+      var source = img.previousElementSibling;
+      if (source && source.tagName === 'SOURCE' && window.matchMedia && window.matchMedia(source.media).matches) {
+        source.parentNode.removeChild(source);
+        img.classList.remove('has-small');
+      } else if (/ps\.jpg$/.test(img.src)) {
+        img.src = img.src.replace(/ps\.jpg$/, 'pl.jpg');
+        img.classList.remove('is-small');
+      } else {
+        img.style.visibility = 'hidden';
+      }
+    });
+    var small = tinyImageUrl(src);
+    var box = img;
+    if (small !== src) {
+      box = el('picture', 'pic');
+      var source = document.createElement('source');
+      source.media = THUMB_MEDIA;
+      source.srcset = small;
+      box.appendChild(source);
+      box.appendChild(img);
+    }
+    img.src = src;
+    return box;
+  }
+
   // 索引の1行が、使える形か
   function isRow(row) {
     return Boolean(
@@ -241,6 +283,8 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       smallImageUrl: smallImageUrl,
+      tinyImageUrl: tinyImageUrl,
+      THUMB_MEDIA: THUMB_MEDIA,
       rowImage: rowImage,
       castShown: castShown,
       CAST_LIMIT: CAST_LIMIT,
@@ -336,25 +380,9 @@
     cover.href = href;
     cover.tabIndex = -1;
     cover.setAttribute('aria-hidden', 'true');
+    // 結果のサムネは小さいので、表紙だけの軽い画像（…ps.jpg。スマホは …pt.jpg）
     var src = smallImageUrl(rowImage(row));
-    if (src) {
-      var img = document.createElement('img');
-      img.className = 'item-img is-small';
-      img.alt = '';
-      img.loading = 'lazy';
-      img.decoding = 'async';
-      // 結果のサムネは小さいので、表紙だけの軽い画像（…ps.jpg）。読めなければパッケージ画像（…pl.jpg）に戻し、それも読めなければ隠す
-      img.addEventListener('error', function () {
-        if (/ps\.jpg$/.test(img.src)) {
-          img.src = img.src.replace(/ps\.jpg$/, 'pl.jpg');
-          img.classList.remove('is-small');
-        } else {
-          img.style.visibility = 'hidden';
-        }
-      });
-      img.src = src;
-      cover.appendChild(img);
-    }
+    if (src) cover.appendChild(thumbImage(src));
     var status = statusOf(row.d, today, newDays);
     if (status === 'new') cover.appendChild(el('span', 'pop pop-new', '新作'));
     if (status === 'wait') cover.appendChild(el('span', 'pop pop-wait', '予約'));

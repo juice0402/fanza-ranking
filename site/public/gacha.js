@@ -38,8 +38,16 @@
     return out;
   }
 
+  // スマホ（画面の幅が THUMB_MEDIA）のときは、表紙のいちばん小さい版（…pt.jpg。90×122）を読む
+  // （運営者の希望「スマホのサムネは画素数を落として最高速化」。2026-10-07。site/src/lib/items.js の THUMB_MEDIA・tinyImage と同じ）
+  var THUMB_MEDIA = '(max-width: 480px)';
+  function tinyImageUrl(url) {
+    var s = String(url || '');
+    return /^https:\/\/pics\.dmm\.co\.jp\//.test(s) && /p[ls]\.jpg$/.test(s) ? s.replace(/p[ls]\.jpg$/, 'pt.jpg') : s;
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { pickMany: pickMany, eligible: eligible, REELS: REELS, RECENT: RECENT }; // tests/test_gacha.mjs 用
+    module.exports = { pickMany: pickMany, eligible: eligible, REELS: REELS, RECENT: RECENT, THUMB_MEDIA: THUMB_MEDIA, tinyImageUrl: tinyImageUrl }; // tests/test_gacha.mjs 用
     return;
   }
   if (typeof document === 'undefined') return;
@@ -95,21 +103,25 @@
     return node;
   }
 
+  var tiny = Boolean(window.matchMedia && window.matchMedia(THUMB_MEDIA).matches);
+
   function windowWith(src) {
     var win = el('span', 'reel-window');
     var img = el('img', 'item-img is-small');
     img.alt = '';
     img.decoding = 'async';
-    // 表紙だけの軽い画像（…ps.jpg）が読めなければ、パッケージ画像（…pl.jpg）に戻す。それも読めなければ隠す
+    // 小さい版（…pt.jpg）が読めなければ表紙（…ps.jpg）に、それも読めなければパッケージ画像（…pl.jpg）に戻す。それも読めなければ隠す
     img.addEventListener('error', function () {
-      if (/ps\.jpg$/.test(img.src)) {
+      if (/pt\.jpg$/.test(img.src)) {
+        img.src = img.src.replace(/pt\.jpg$/, 'ps.jpg');
+      } else if (/ps\.jpg$/.test(img.src)) {
         img.src = img.src.replace(/ps\.jpg$/, 'pl.jpg');
         img.classList.remove('is-small');
       } else {
         img.style.visibility = 'hidden';
       }
     });
-    img.src = src;
+    img.src = tiny ? tinyImageUrl(src) : src;
     win.appendChild(img);
     return win;
   }
