@@ -1,7 +1,6 @@
 name: Probe FANZA API
 
-# FANZA(DMM) アフィリエイトAPI の「本物の応答の形」を調べるだけの手動実行用（データは保存しない・Geminiは使わない）。
-# 新しい機能を作る前の下調べに使う。結果は実行ページの「結果の要約」に出る。
+# 作業用ブランチ（claude/probe-thumbs）だけの中身: 画像の小さい版を調べる。main には入れない。
 on:
   workflow_dispatch:
 
@@ -11,14 +10,11 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Probe
-        env:
-          API_ID: ${{ secrets.API_ID }}
-          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
-        run: python scripts/probe_api.py
+        run: python scripts/probe_thumbs.py 2> err.txt || { echo "::notice title=err::$(tail -c 2500 err.txt | tr '\n' ' ')"; exit 1; }
