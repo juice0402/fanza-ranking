@@ -1107,6 +1107,96 @@ summary:focus-visible {
   max-width: var(--trio-max);
 }
 
+/* シリーズ・レーベルのページの見出しの「（シリーズ）」（2026-10-07） */
+.hero-kind {
+  color: var(--paper-dim);
+  font-size: 0.55em;
+  white-space: nowrap;
+}
+
+/* 見出しの横の「○○を見る」（作品ページの「同じシリーズの作品」「○○で人気の作品」。2026-10-07） */
+.subsection-more {
+  color: var(--paper-dim);
+  font-size: 13px;
+  text-underline-offset: 3px;
+}
+
+.subsection-more:hover {
+  color: var(--paper);
+}
+
+/* 作品ページの「発売後の人気の動き」（components/RankTrend.astro。2026-10-07）: 短い文と、1日1点の線のグラフ（1つの系列なので凡例は無し）。
+   線は POP の黄色 2px・点は直径8px（背景色の2pxの輪）・罫線は細い1px・文字は控えめな色（データの色を文字に使わない） */
+.trend-facts {
+  max-width: 760px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.trend {
+  max-width: 520px;
+  margin: 0;
+  padding: 10px 12px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--board);
+}
+
+.trend-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.trend-grid line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.trend-grid text,
+.trend-day {
+  fill: var(--paper-dim);
+  font-size: 10px;
+}
+
+.trend-line {
+  fill: none;
+  stroke: var(--pop);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.trend-pt circle {
+  fill: var(--pop);
+  stroke: var(--board);
+  stroke-width: 2;
+}
+
+.trend-pt.is-best circle {
+  r: 5;
+}
+
+.trend-out line {
+  stroke: var(--paper-dim);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.trend-best {
+  fill: var(--paper);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.trend .fine {
+  margin: 6px 0 0;
+}
+
 /* 作品ページの「この作品のデータ」欄（保存データから数えた事実の文）。1つの枠の中に、罫線で区切った行を並べる（表のように読める） */
 .facts {
   max-width: 760px;
@@ -1564,6 +1654,24 @@ summary:focus-visible {
   color: var(--paper-dim);
   font-size: 12px;
   line-height: 1.6;
+}
+
+/* 注目の作品の札（新着の人気順の最高順位・デビュー作。2026-10-07） */
+.pick-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 6px 0 0;
+}
+
+.pick-badge {
+  padding: 1px 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-pill);
+  color: var(--paper);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
 }
 
 .pick-note {
@@ -4208,6 +4316,12 @@ html:not(.js) .actress-search,
   font-weight: 700;
 }
 
+/* 新着の人気ランキングの1行（前日からの動き・最高順位。2026-10-07）。セールの価格の赤と分けて、ふつうの控えめな色 */
+.item-note.is-rank {
+  color: var(--paper-dim);
+  font-weight: 400;
+}
+
 /* 終わったキャンペーン（ブラウザの時計で、終わりの時刻をすぎたもの。/sale.js が付ける） */
 .sale-ended {
   display: none;
@@ -5296,4 +5410,176 @@ html:not(.js) .actress-search,
   font-size: 12px;
   font-weight: 700;
   line-height: 1.5;
+}
+
+/* 週・月のまとめ記事の「傾向」（components/TrendFacts.astro。2026-10-07）。
+   本数の3つの札 → ジャンルの横棒（いま＝POPの黄色・前＝控えめな色の2本。凡例つき・本数と増減は文字で）→ 人気順で上位の作品（行の一覧）。
+   増減の ▲▼ は文字の色のまま（データの色を文字に使わない。赤・緑の「良い・悪い」の色も使わない） */
+.trend-text {
+  max-width: 40em;
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.tf {
+  max-width: 760px;
+}
+
+.tf-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--trio-gap);
+  margin: 0;
+}
+
+.tf-tile {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--board);
+}
+
+.tf-label {
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.tf-value {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+
+.tf-num {
+  margin-right: 2px;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.tf-delta {
+  margin: 2px 0 0;
+  color: var(--paper-dim);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.tf-move {
+  margin-left: 6px;
+  color: var(--paper);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tf-move.is-same {
+  color: var(--paper-dim);
+  font-weight: 400;
+}
+
+.tf-genres {
+  margin: 18px 0 0;
+}
+
+.tf-sub {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tf-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 8px;
+  color: var(--paper-dim);
+  font-size: 11px;
+}
+
+.tf-key {
+  display: inline-block;
+  width: 14px;
+  height: 6px;
+  border-radius: var(--r-media);
+}
+
+.tf-key.is-before {
+  margin-left: 10px;
+}
+
+.tf-bars {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tf-row {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 1fr) 6.5em;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.tf-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.tf-name {
+  text-underline-offset: 3px;
+}
+
+.tf-track {
+  display: grid;
+  gap: 2px; /* 2本の棒の間（同じ行の2つの系列） */
+}
+
+.tf-bar {
+  display: block;
+  height: 6px;
+  border-radius: var(--r-media);
+}
+
+.tf-bar.is-now,
+.tf-key.is-now {
+  background: var(--pop);
+}
+
+.tf-bar.is-before,
+.tf-key.is-before {
+  background: var(--paper-dim);
+  opacity: 0.55;
+}
+
+.tf-n {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tf-popular {
+  margin: 18px 0 0;
+}
+
+.tf-popular .tf-sub {
+  margin-bottom: 4px;
+}
+
+.tf .fine {
+  margin-top: 12px;
+}
+
+@media (forced-colors: active) {
+  .tf-bar.is-now,
+  .tf-key.is-now {
+    background: CanvasText;
+  }
+
+  .tf-bar.is-before,
+  .tf-key.is-before {
+    background: GrayText;
+    opacity: 1;
+  }
 }

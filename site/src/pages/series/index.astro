@@ -1,0 +1,8 @@
+---
+// シリーズの一覧（/series/。2026-10-07）
+import EntryIndex from '../../components/EntryIndex.astro';
+import { seriesGroups, today } from '../../lib/data.js';
+import { SERIES_INDEX_PATH } from '../../lib/insights.js';
+---
+
+<EntryIndex groups={seriesGroups} kind="series" path={SERIES_INDEX_PATH} today={today} />

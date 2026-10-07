@@ -10,7 +10,9 @@ import NextWorks from '../../components/NextWorks.astro';
 import OnSaleWorks from '../../components/OnSaleWorks.astro';
 import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
-import { actressByName, actressGroups, agencyOfName, events, eventsOfName, makerByName, profilesByName, sale, today } from '../../lib/data.js';
+import { actressByName, actressGroups, agencyOfName, events, eventsOfName, makerByName, profilesByName, sale, today, seriesById } from '../../lib/data.js';
+import { entryChips } from '../../lib/insights.js';
+import EntryChips from '../../components/EntryChips.astro';
 import { offPercent, onSaleItems } from '../../lib/sale.js';
 import { EVENT_ACTRESS_LIMIT, EVENT_PATH } from '../../lib/events.js';
 import {
@@ -193,6 +195,8 @@ const trail = [
         <p class="side-more"><a class="spec-link" href={EVENT_PATH}>{myEvents.length > EVENT_ACTRESS_LIMIT ? `ほか${myEvents.length - EVENT_ACTRESS_LIMIT}件と、` : ''}ほかの女優のイベントの予定</a></p>
       </section>
     )}
+
+    <EntryChips chips={entryChips(group.items, seriesById, 'series')} title="出演しているシリーズ" id="series-title" label={`${group.name}さんが出演しているシリーズ`} />
 
     <section class="section" aria-labelledby="works-title">
       <div class="section-head">

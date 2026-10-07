@@ -1,0 +1,13 @@
+---
+// シリーズごとのページ（/series/<FANZAのシリーズの id>/。作品が3本以上のシリーズ。2026-10-07。lib/insights.js の groupByEntry）
+import EntryRoute from '../../components/EntryRoute.astro';
+import { seriesGroups } from '../../lib/data.js';
+
+export function getStaticPaths() {
+  return seriesGroups.map((group) => ({ params: { id: group.slug }, props: { group } }));
+}
+
+const { group } = Astro.props;
+---
+
+<EntryRoute group={group} />

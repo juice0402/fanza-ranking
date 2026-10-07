@@ -6,6 +6,8 @@ import VrToggle from './VrToggle.astro';
 import ItemCard from './ItemCard.astro';
 import { formatDateJp, filterAttrs } from '../lib/items.js';
 import { NEW_RANK_DAYS } from '../lib/popularity.js';
+import { popularity, rankHistory } from '../lib/data.js';
+import { rankNote } from '../lib/insights.js';
 
 // list: 並べる作品（順位の順）。date: 順位を取った日
 const { list, date, trail } = Astro.props;
@@ -24,7 +26,7 @@ const { list, date, trail } = Astro.props;
   <section class="section" aria-labelledby="ranking-title">
     <div class="section-head">
       <h2 id="ranking-title" class="section-title">新着の人気順{list.length > 0 && ` TOP${list.length}`}</h2>
-      {date && <p class="section-note">{formatDateJp(date)}のFANZAの人気順</p>}
+      {date && <p class="section-note">{formatDateJp(date)}のFANZAの人気順（▲▼は前の日から・最高は記録を始めてからの最高順位）</p>}
     </div>
     {list.length > 0
       ? (
@@ -34,7 +36,7 @@ const { list, date, trail } = Astro.props;
           </div>
           <ul class="shelf">
             {list.map((item, i) => (
-              <li class="shelf-cell" {...filterAttrs(item)}><ItemCard item={item} level="h3" badge={`${i + 1}位`} eager={i < 4} /></li>
+              <li class="shelf-cell" {...filterAttrs(item)}><ItemCard item={item} level="h3" badge={`${i + 1}位`} eager={i < 4} note={rankNote(item, popularity.prevRank, rankHistory.get(item.cid))} noteKind="rank" /></li>
             ))}
           </ul>
         </>

@@ -20,6 +20,9 @@ python3 tests/test_claude_comments.py || failed=1
 step "Claudeの週のまとめ記事の道具 (Python)"
 python3 tests/test_claude_roundups.py || failed=1
 
+step "Claudeの月のまとめ記事の道具 (Python)"
+python3 tests/test_claude_monthly.py || failed=1
+
 step "保存データの形式"
 python3 tests/test_data.py || failed=1
 
@@ -35,8 +38,14 @@ node tests/test_stay.mjs || failed=1
 step "RSS（新着のお知らせの配信）の部品 (Node.js)"
 node tests/test_feed.mjs || failed=1
 
+step "人気の動き・シリーズ/レーベル・内部リンクの部品 (Node.js)"
+node tests/test_insights.mjs || failed=1
+
 step "週のまとめ記事の部品 (Node.js + Pythonとの突き合わせ)"
 node tests/test_roundups.mjs || failed=1
+
+step "月のまとめ記事の部品 (Node.js + Pythonとの突き合わせ)"
+node tests/test_monthly.mjs || failed=1
 
 step "サンプル画像の拡大表示 (Node.js)"
 node tests/test_lightbox.mjs || failed=1

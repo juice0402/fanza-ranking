@@ -547,6 +547,20 @@ check("過去作品のファイルが壊れていたら、止める（書き戻�
 shutil.rmtree(CAT_DIR)
 os.remove(os.path.join(tmp, "catalog_state.json"))
 
+print("\n■ シリーズ・レーベル（2026-10-07 から。あるときだけ list に出す）")
+fresh_data()
+rows_sl = read_data()
+tgt = next(x for x in rows_sl if x["comment_kind"] == "template")
+tgt.update(series_id=7, series="テストシリーズ", label_id=8, label=tgt.get("maker") or "m")
+tgt2 = next(x for x in rows_sl if x["comment_kind"] == "template" and x["cid"] != tgt["cid"])
+tgt2.update(series_id=9, series="別のシリーズ", label_id=10, label="別のレーベル")
+with open(DATA, "w", encoding="utf-8") as f:
+    json.dump(rows_sl, f, ensure_ascii=False, indent=1)
+outs = {x["cid"]: x for x in json.loads(run("list", "--today", "2026-11-03", "--limit", "100").stdout)["items"]}
+check("シリーズはあれば出す・レーベルはメーカーと同じなら出さない", outs[tgt["cid"]].get("series") == "テストシリーズ" and "label" not in outs[tgt["cid"]]
+      and outs[tgt2["cid"]].get("series") == "別のシリーズ" and outs[tgt2["cid"]].get("label") == "別のレーベル", (outs[tgt["cid"]], outs[tgt2["cid"]]))
+check("シリーズの名前は、タイトルの写しに数えない", cc_mod.copied_from_title("テストシリーズ長い名前の一作です", "テストシリーズ長い名前 第2弾", ["テストシリーズ長い名前"]) == "")
+
 print("\n■ 全件を書き換えた後")
 fresh_data()
 everything = {x["cid"]: good_comment(x, i) for i, x in enumerate(pending)}

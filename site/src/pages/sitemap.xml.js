@@ -1,7 +1,8 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
-import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, tagGroups } from '../lib/data.js';
+import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups } from '../lib/data.js';
+import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemIndexable, listIndexable } from '../lib/plan.js';
 import { RANKING_PATH, newRanking } from '../lib/popularity.js';
@@ -52,8 +53,18 @@ export function GET() {
     ...groupPages(actressGroups),
     { path: MAKER_INDEX_PATH, lastmod: listLastmod(makerGroups.flatMap((g) => g.items), today) },
     ...groupPages(makerGroups),
+    // シリーズ・レーベルのページ（2026-10-07。コメントのある作品があるページだけ。一覧のページは、載せたページが1つでもあるとき）
+    ...(groupPages(seriesGroups).length > 0 ? [{ path: SERIES_INDEX_PATH, lastmod: listLastmod(seriesGroups.flatMap((g) => g.items), today) }, ...groupPages(seriesGroups)] : []),
+    ...(groupPages(labelGroups).length > 0 ? [{ path: LABEL_INDEX_PATH, lastmod: listLastmod(labelGroups.flatMap((g) => g.items), today) }, ...groupPages(labelGroups)] : []),
     // 月ごと・ジャンルごとのまとめページ（1つも無いあいだは、一覧ページも地図に入れない）
-    ...(monthGroups.length > 0 ? [{ path: MONTH_INDEX_PATH, lastmod: listLastmod(monthGroups.flatMap((g) => g.items), today) }, ...groupPages(monthGroups)] : []),
+    // 月のページは、月のまとめ記事があれば、その公開日のほうが新しければそれ（2026-10-07）
+    ...(monthGroups.length > 0
+      ? [{ path: MONTH_INDEX_PATH, lastmod: listLastmod(monthGroups.flatMap((g) => g.items), today) },
+        ...groupPages(monthGroups).map((e) => {
+          const written = monthlyByMonth.get(e.path.slice(7, 14))?.written ?? '';
+          return written > e.lastmod ? { ...e, lastmod: written } : e;
+        })]
+      : []),
     ...(tagGroups.length > 0 ? [{ path: TAG_INDEX_PATH, lastmod: listLastmod(tagGroups.flatMap((g) => g.items), today) }, ...groupPages(tagGroups)] : []),
     ...all.filter((item) => itemIndexable(item, paged)).map((item) => ({ path: itemPath(item.cid), lastmod: item.updated })),
     // このサイトについて（lastmod は、中身を最後に変えた日）

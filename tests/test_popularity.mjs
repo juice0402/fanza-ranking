@@ -29,5 +29,20 @@ check('同じ順位なら、新しい作品から（並びがぶれない）', P
 check('元の並びは変えない・空でも落ちない', items[0].cid === 'old' && P.newRanking([], today).length === 0);
 check('ページの場所・新着は1週間。「全体の人気ランキング」のページはやめた（運営者の判断。2026-10-05）', P.RANKING_PATH === '/ranking/' && !('RANKING_ALL_PATH' in P) && !('allRanking' in P) && P.RANKING_LIMIT === 100 && P.NEW_RANK_DAYS === 7);
 
+
+console.log('\n■ 人気の動き（rank_history.json）');
+const RH = P.normalizeRankHistory({ updated: '2026-10-08', items: {
+  a1: { d: '2026-10-01', n: [3, 1, null, 0, 2, 9, 9, 9, 9, 9], a: [50, 0, 'x', -1] },
+  b2: { d: '2026-10-02', n: [0, 0], a: [] },
+  'bad cid': { d: '2026-10-02', n: [1], a: [] },
+  c3: { d: '10/2', n: [1], a: [] },
+} });
+const a1 = RH.get('a1');
+check('作品ごとの記録（始めた日・新着の人気順は8日分まで・全体の人気順）。変な順位は「分からない」（null）', a1 && a1.start === '2026-10-01' && JSON.stringify(a1.n) === '[3,1,null,0,2,9,9,9]' && JSON.stringify(a1.a) === '[50,0,null,null]', JSON.stringify(a1));
+check('いちばん上の順位と、その日（何日目か）・新着の人気順に出ていた日数', a1.bestNew.rank === 1 && a1.bestNew.day === 1 && a1.bestAll.rank === 50 && a1.daysIn === 6, JSON.stringify([a1.bestNew, a1.bestAll, a1.daysIn]));
+check('一度も入らなかった作品は、いちばん上の順位が無い（null）', RH.get('b2').bestNew === null && RH.get('b2').bestAll === null && RH.get('b2').daysIn === 0);
+check('読めない行（cid の形・始めた日が違う）は捨てる・形が違うファイルでも落ちない', !RH.has('bad cid') && !RH.has('c3') && P.normalizeRankHistory(null).size === 0 && P.normalizeRankHistory({ items: [] }).size === 0);
+check('bestOf: 0（圏外）と null は数えない', JSON.stringify(P.bestOf([0, null, 5, 2, 2])) === '{"rank":2,"day":3}' && P.bestOf([]) === null);
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

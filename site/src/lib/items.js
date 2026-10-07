@@ -181,6 +181,14 @@ export function castLine(actress, max = CAST_LIMIT, empty = '出演者の記載�
 }
 
 /** JSONの中身を、画面で使いやすい形に揃える（足りない項目があっても落ちない） */
+/** シリーズ・レーベルの { id, name }（get_new_releases.py の clean_entry と同じ決まり。id は1以上の整数・名前は空でない。「----」は無し）。無ければ null */
+export function entryOf(id, name) {
+  const num = Number(id);
+  const text = String(name ?? '').trim().replace(/\s+/g, ' ').slice(0, 80);
+  if (!Number.isInteger(num) || num < 1 || num === 99999 || !text || /^-+$/.test(text)) return null;
+  return { id: num, name: text };
+}
+
 export function normalizeItems(raw) {
   const list = Array.isArray(raw) ? raw : [];
   const seen = new Set();
@@ -208,6 +216,9 @@ export function normalizeItems(raw) {
       maker: String(r.maker ?? '') || '不明',
       actress,
       genres,
+      // シリーズ・レーベル（FANZAのAPIの iteminfo。2026-10-07 から保存。無ければ null）。レーベルがメーカーと同じ名前のときも、そのまま持つ
+      series: entryOf(r.series_id, r.series),
+      label: entryOf(r.label_id, r.label),
       duration_min: Number.isFinite(+r.duration_min) && +r.duration_min > 0 ? +r.duration_min : null,
       // サンプル動画のページURL（FANZAの476x306の再生ページ）。無い・怪しいURLなら ''（その作品は表紙画像のまま）
       sample_movie: safeHttpsUrl(r.sample_movie, FANZA_HOSTS),

@@ -1,0 +1,13 @@
+---
+// レーベルごとのページ（/label/<FANZAのレーベルの id>/。作品が3本以上で、メーカーと違う名前のレーベル。2026-10-07。lib/insights.js の groupByEntry）
+import EntryRoute from '../../components/EntryRoute.astro';
+import { labelGroups } from '../../lib/data.js';
+
+export function getStaticPaths() {
+  return labelGroups.map((group) => ({ params: { id: group.slug }, props: { group } }));
+}
+
+const { group } = Astro.props;
+---
+
+<EntryRoute group={group} />

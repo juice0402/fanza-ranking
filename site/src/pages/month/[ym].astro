@@ -3,9 +3,14 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import VrToggle from '../../components/VrToggle.astro';
 import DaySection from '../../components/DaySection.astro';
-import { monthGroups } from '../../lib/data.js';
+import TrendFacts from '../../components/TrendFacts.astro';
+import PickCards from '../../components/PickCards.astro';
+import { curated, monthGroups, monthlyByMonth, roundups } from '../../lib/data.js';
+import { monthlyDescription, monthlyLd } from '../../lib/monthly.js';
+import { roundupsInMonth } from '../../lib/insights.js';
+import { roundupTitle, weeklyPath } from '../../lib/roundups.js';
 import { MONTH_INDEX_PATH, monthPageTitle, monthSummary, neighborMonths } from '../../lib/collections.js';
-import { breadcrumbLd, groupByDate, shortSpan, summaryDescription } from '../../lib/items.js';
+import { breadcrumbLd, formatDateJp, groupByDate, shortSpan, summaryDescription } from '../../lib/items.js';
 
 // 作品が MONTH_MIN_ITEMS 本以上ある月ごとに1ページ作る
 export function getStaticPaths() {
@@ -16,6 +21,12 @@ const { group } = Astro.props;
 const summary = monthSummary(group);
 const groups = groupByDate(group.items);
 const { newer, older } = neighborMonths(monthGroups, group.ym);
+// この月の週のまとめ（週の月曜日がこの月に入る記事。2026-10-07。内部リンク）
+const weeks = roundupsInMonth(roundups, group.ym);
+// この月のまとめ記事（Claude が翌月1日に書く。2026-10-07 から。lib/monthly.js）
+const article = monthlyByMonth.get(group.ym) ?? null;
+const byCid = new Map(curated.map((i) => [i.cid, i]));
+const picks = article ? article.picks.map((p) => ({ note: p.note, item: byCid.get(p.cid) })).filter((p) => p.item) : [];
 const trail = [
   { name: 'トップ', path: '/' },
   { name: '月ごとの新作', path: MONTH_INDEX_PATH },
@@ -25,9 +36,9 @@ const trail = [
 
 <Base
   title={monthPageTitle(group)}
-  description={summaryDescription(summary)}
+  description={article ? monthlyDescription(article) : summaryDescription(summary)}
   path={group.path}
-  jsonLd={[breadcrumbLd(trail)]}
+  jsonLd={article ? [breadcrumbLd(trail), monthlyLd(article)] : [breadcrumbLd(trail)]}
 >
   <div class="wrap">
     <Breadcrumb trail={trail} />
@@ -42,6 +53,32 @@ const trail = [
       <a class="month-nav-link" href={MONTH_INDEX_PATH}>月の一覧</a>
       {newer ? <a class="month-nav-link" href={newer.path}>{newer.name} →</a> : <span></span>}
     </nav>
+
+    {article && (
+      <article class="month-article" aria-labelledby="month-article-title">
+        <h2 id="month-article-title" class="section-title">{group.name}のまとめ</h2>
+        <p class="meta"><time datetime={article.written}>{formatDateJp(article.written)}</time>に公開</p>
+        <p class="summary">{article.lead}</p>
+        <p class="fine">この導入文・傾向・ひとことは、作品情報をもとに自動で作成しています（内容の正確さは保証できません。詳細はFANZAの公式ページで）。</p>
+        {article.trend && (
+          <section class="section" aria-labelledby="month-trend-title">
+            <h2 id="month-trend-title" class="section-title">この月の傾向</h2>
+            <p class="trend-text">{article.trend}</p>
+            {article.facts && <TrendFacts facts={article.facts} period="この月" prev="前の月" asOf={article.written} id="month-trend" />}
+          </section>
+        )}
+        <PickCards picks={picks} facts={article.facts} id="month-picks-title" title={`${group.name}の注目の作品`} />
+      </article>
+    )}
+
+    {weeks.length > 0 && (
+      <section class="section" aria-labelledby="weeks-title">
+        <h2 id="weeks-title" class="section-title">この月の週のまとめ</h2>
+        <ul class="side-links">
+          {weeks.map((r) => <li><a class="spec-link" href={weeklyPath(r.week_start)}>{roundupTitle(r)}</a></li>)}
+        </ul>
+      </section>
+    )}
 
     <section class="section" aria-labelledby="works-title">
       <div class="section-head">

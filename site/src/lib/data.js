@@ -3,21 +3,23 @@ import raw from '../data/new_releases.json';
 import rawRoundups from '../data/roundups.json';
 import { normalizeItems, splitByRelease, jstToday, groupByActress, groupByMaker, indexByName } from './items.js';
 import { normalizeRoundups } from './roundups.js';
+import { normalizeMonthly } from './monthly.js';
 import { groupByMonth, groupByTag, monthPathByKey } from './collections.js';
 import { buildFactsContext } from './facts.js';
 import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay, ACTRESS_IMAGE_BASE, faceUrl } from './profiles.js';
 import { hasCalendar, planPages } from './plan.js';
-import { bestRank, catalogAllRank, normalizePopularity } from './popularity.js';
+import { bestRank, catalogAllRank, normalizePopularity, normalizeRankHistory } from './popularity.js';
 import { campaignPages, normalizeSale, normalizeSaleHistory } from './sale.js';
 import { normalizeAgencies, withAgencies } from './agencies.js';
 import { eventsByName, normalizeEvents, upcomingEvents } from './events.js';
 import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
-import { TAG_PAGE_GENRES } from '../config.js';
+import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG_PAGE_GENRES } from '../config.js';
+import { genreTopLists, groupByEntry } from './insights.js';
 import { buildItemsIndex } from './search.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -28,6 +30,8 @@ const catalogRaw = Object.keys(catalogShards).sort().flatMap((k) => (Array.isArr
 export const today = jstToday();
 // 人気順（毎日の更新が、その日のFANZAの人気順を取り直したもの）。popNew: 新着の人気順 / popAll: 全体の人気順（分からなければ null）
 export const popularity = normalizePopularity(optionalData('popularity'));
+// 人気の動き（毎日の更新が、新着の人気順に出てきた作品の毎日の順位をためたもの。2026-10-07 から。lib/popularity.js）。cid → 記録
+export const rankHistory = normalizeRankHistory(optionalData('rank_history'));
 // セール・キャンペーン（毎日の更新が、FANZA公式のAPIから、その日に見かけたセール中の作品を保存したもの。lib/sale.js）
 export const sale = normalizeSale(optionalData('sale'));
 // セールの履歴（毎日の更新が、その日に見かけたキャンペーンを足していく。2026-10-05 から。lib/sale.js）
@@ -73,14 +77,26 @@ export const contentGenres = new Set(TAG_PAGE_GENRES.filter((g) => !HOT_GENRE_SK
 export const saleCampaignPages = campaignPages(all, sale, saleHistory, today, { genres: contentGenres });
 export const saleCampaignBySlug = new Map(saleCampaignPages.map((p) => [p.slug, p]));
 export const factsContext = buildFactsContext(all);
+// シリーズ・レーベルのページ（2026-10-07。作品が3本以上のもの。名前が未成年を連想させるもの・メーカーと同じ名前のレーベルは作らない。lib/insights.js）
+export const seriesGroups = groupByEntry(all, 'series', { minItems: SERIES_MIN_ITEMS, max: SERIES_PAGE_MAX });
+export const labelGroups = groupByEntry(all, 'label', { minItems: LABEL_MIN_ITEMS, max: LABEL_PAGE_MAX });
+export const seriesById = new Map(seriesGroups.map((g) => [g.id, g]));
+export const labelById = new Map(labelGroups.map((g) => [g.id, g]));
+// ジャンルごとの人気の作品（作品ページの「○○で人気の作品」。中身のジャンルだけ。1回だけ数える）
+export const genreTops = genreTopLists(all, contentGenres, today);
 
 // 週のまとめ記事（Claudeが毎週月曜に書く。まだ1本も無いときは空）
 export const roundups = normalizeRoundups(rawRoundups, curated);
+// 月のまとめ記事（Claudeが毎月1日に書く。月のページのいちばん上に出す。まだ無いときは空。2026-10-07 から）
+export const monthly = normalizeMonthly(optionalData('monthly'), curated);
+export const monthlyByMonth = new Map(monthly.map((r) => [r.month, r]));
 
 // 作品ページを作る作品（サイト全体を2万ファイル以内に収める。lib/plan.js）
 export const pagePlan = planPages(all, {
   actress: actressGroups.length,
   maker: makerGroups.length,
+  series: seriesGroups.length + (seriesGroups.length > 0 ? 1 : 0), // ＋一覧のページ
+  label: labelGroups.length + (labelGroups.length > 0 ? 1 : 0),
   month: monthGroups.length,
   tag: tagGroups.length,
   weekly: roundups.length,

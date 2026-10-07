@@ -7,7 +7,10 @@ import SampleMovie from '../../components/SampleMovie.astro';
 import MiniShelf from '../../components/MiniShelf.astro';
 import WorkRows from '../../components/WorkRows.astro';
 import GachaCorner from '../../components/GachaCorner.astro';
-import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, saleCampaignBySlug, today } from '../../lib/data.js';
+import RankTrend from '../../components/RankTrend.astro';
+import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, saleCampaignBySlug, today, rankHistory, seriesById, labelById, roundups, genreTops, contentGenres } from '../../lib/data.js';
+import { popularInGenre, roundupFor, sameSeries } from '../../lib/insights.js';
+import { weekRangeShort, weeklyPath } from '../../lib/roundups.js';
 import { campaignSlug, endIso, endLabel, offPercent, onSaleItems, saleHref } from '../../lib/sale.js';
 import { nextWorksOf, relatedForPage } from '../../lib/stay.js';
 import {
@@ -36,7 +39,19 @@ const { item } = Astro.props;
 const noindex = !item.comment.trim();
 // 次に見るもの（運営者の希望「サイト滞在時間を伸ばしたい」。2026-10-06。lib/stay.js）:
 // セール中なら札と価格（特集のページへ）・出演者の次の新作（お気に入りのボタンつき）・同じ出演者/メーカーの作品（小さな表紙の棚）・運命の作品
-const related = relatedForPage(item, all);
+// 同じシリーズの作品（シリーズのページがあるときだけ。発売日の近い順に6本）・同じ出演者/メーカーの作品・同じジャンルで人気の作品（2026-10-07。内部リンクを増やす）。
+// 同じ作品が2つの欄に出ないよう、先の欄に出た作品は後の欄から除く
+const seriesGroup = item.series ? seriesById.get(item.series.id) : null;
+const labelGroup = item.label ? labelById.get(item.label.id) : null;
+const seriesWorks = sameSeries(item, seriesGroup);
+const shownCids = new Set(seriesWorks.map((w) => w.cid));
+const related = relatedForPage(item, all, 6 + seriesWorks.length).filter((w) => !shownCids.has(w.cid)).slice(0, 6);
+for (const w of related) shownCids.add(w.cid);
+const genrePop = popularInGenre(item, genreTops, contentGenres, shownCids);
+// 人気の動き（毎日の更新が記録した、新着の人気順の毎日の順位。lib/popularity.js）
+const hist = rankHistory.get(item.cid) ?? null;
+// その作品の発売週の「週のまとめ」（あれば、この作品のデータの欄にリンク）
+const weekly = roundupFor(item, roundups);
 const next = nextWorksOf(item, actressByName, today);
 const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 const saleNow = onSaleItems([item], sale, today)[0]?.sale ?? null;
@@ -69,6 +84,9 @@ const facts = itemFacts(item, factsContext, {
   actress: new Map([...actressByName].map(([name, g]) => [name, g.path])),
   vr: tagByName.get(VR_TAG_NAME)?.path ?? '',
 });
+if (weekly) {
+  facts.push({ key: 'weekly', label: '週のまとめ', text: `${weekRangeShort(weekly.roundup.week_start)}の新作まとめ${weekly.pick ? '（注目の作品として紹介）' : ''}`, href: weeklyPath(weekly.roundup.week_start), linkLabel: '記事を見る' });
+}
 import { assetUrl, inlineScript } from '../../lib/assets.js';
 ---
 
@@ -129,6 +147,18 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
             {makerPage ? <a class="spec-link" href={makerPage}>{item.maker}</a> : item.maker}
             {item.maker !== '不明' && <FavButton type="maker" favKey={item.maker} slug={makerByName.get(item.maker)?.slug ?? ''} size="mini" />}
           </dd>
+          {item.series && (
+            <>
+              <dt class="spec-term">シリーズ</dt>
+              <dd class="spec-desc">{seriesGroup ? <a class="spec-link" href={seriesGroup.path}>{item.series.name}</a> : item.series.name}</dd>
+            </>
+          )}
+          {item.label && item.label.name !== item.maker && (
+            <>
+              <dt class="spec-term">レーベル</dt>
+              <dd class="spec-desc">{labelGroup ? <a class="spec-link" href={labelGroup.path}>{item.label.name}</a> : item.label.name}</dd>
+            </>
+          )}
           {item.actress.length > 0 && (
             <>
               <dt class="spec-term">出演</dt>
@@ -241,6 +271,8 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
       </ul>
     </section>
 
+    <RankTrend hist={hist} />
+
     {zoomable && (
       <dialog id="lightbox" class="lightbox" aria-label="画像の拡大表示" tabindex="-1">
         <div class="lightbox-stage">
@@ -268,10 +300,30 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
       </section>
     )}
 
+    {seriesWorks.length > 0 && (
+      <section class="subsection" aria-labelledby="series-title" data-vr-group>
+        <div class="subsection-head">
+          <h2 id="series-title" class="subsection-title">同じシリーズの作品</h2>
+          <a class="subsection-more" href={seriesGroup.path}>「{seriesGroup.name}」の{seriesGroup.items.length}本を見る</a>
+        </div>
+        <MiniShelf items={seriesWorks} />
+      </section>
+    )}
+
     {related.length > 0 && (
       <section class="subsection" aria-labelledby="related-title" data-vr-group>
         <h2 id="related-title" class="subsection-title">同じ出演者・メーカーの作品</h2>
         <MiniShelf items={related} />
+      </section>
+    )}
+
+    {genrePop.items.length > 0 && (
+      <section class="subsection" aria-labelledby="genre-pop-title" data-vr-group>
+        <div class="subsection-head">
+          <h2 id="genre-pop-title" class="subsection-title">「{genrePop.genre}」で人気の作品</h2>
+          {tagByName.get(genrePop.genre) && <a class="subsection-more" href={tagByName.get(genrePop.genre).path}>ジャンルのページへ</a>}
+        </div>
+        <MiniShelf items={genrePop.items} />
       </section>
     )}
 

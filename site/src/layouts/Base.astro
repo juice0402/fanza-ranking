@@ -2,7 +2,8 @@
 import '../styles/site.css';
 import { SITE_NAME, SITE_URL, jsonLdScript, ABOUT_PATH, ACTRESS_INDEX_PATH, MAKER_INDEX_PATH, DMM_CREDIT_HTML } from '../lib/items.js';
 import { GOOGLE_SITE_VERIFICATION } from '../config.js';
-import { roundups, monthGroups, tagGroups, upcoming, upcomingEventList } from '../lib/data.js';
+import { roundups, monthGroups, tagGroups, upcoming, upcomingEventList, seriesGroups, labelGroups } from '../lib/data.js';
+import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
 import { FAVORITES_PATH } from '../lib/favorites.js';
 import { CALENDAR_PATH } from '../lib/calendar.js';
 import { WEEKLY_INDEX_PATH } from '../lib/roundups.js';
@@ -190,6 +191,8 @@ import { assetUrl } from '../lib/assets.js';
           {tagGroups.length > 0 && <a class="foot-link" href={TAG_INDEX_PATH}>ジャンルから探す</a>}
           <a class="foot-link" href={ACTRESS_INDEX_PATH}>女優検索（出演者から探す）</a>
           <a class="foot-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
+          {seriesGroups.length > 0 && <a class="foot-link" href={SERIES_INDEX_PATH}>シリーズから探す</a>}
+          {labelGroups.length > 0 && <a class="foot-link" href={LABEL_INDEX_PATH}>レーベルから探す</a>}
           {roundups.length > 0 && <a class="foot-link" href={WEEKLY_INDEX_PATH}>週ごとのまとめ</a>}
         </nav>
         {/* FANZA のクレジット: DMMの規定のHTMLを、1文字も変えずにそのまま入れる（lib/items.js の DMM_CREDIT_HTML） */}

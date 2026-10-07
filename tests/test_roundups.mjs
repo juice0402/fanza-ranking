@@ -45,6 +45,23 @@ check('picks が無くても読める', R.normalizeRoundups([{ ...good, picks: u
 check('新しい週が先頭', R.normalizeRoundups([good, { ...good, week_start: '2026-10-05', written: '2026-10-12' }], items).map((r) => r.week_start).join() === '2026-10-05,2026-09-28');
 check('壊れた入力でも落ちない', R.normalizeRoundups(null, items).length === 0 && R.normalizeRoundups({}, items).length === 0 && R.normalizeRoundups([1, 'a', null], items).length === 0);
 
+console.log('\n■ この週の傾向（trend・facts。2026-10-07 から）');
+const facts = { total: 24, prev_total: 3, vr: 5, prev_vr: 5, debut: 2, genres: [{ name: '巨乳', count: 12, prev: 2 }, { name: '熟女', count: 0, prev: 4 }], popular: [{ cid: 'a1', best: 1, days10: 4 }] };
+const withTrend = R.normalizeRoundups([{ ...good, trend: '  傾向の文です。  ', facts }], items)[0];
+check('傾向の文と数字を読む（前後の空白は除く）', withTrend.trend === '傾向の文です。' && JSON.stringify(withTrend.facts) === JSON.stringify(facts), JSON.stringify(withTrend));
+check('傾向が無い記事は、文が空・数字が null（傾向の欄を出さない）', norm[0].trend === '' && norm[0].facts === null);
+check('本数のどれかが読めない数字なら null', R.normalizeTrendFacts({ ...facts, total: -1 }) === null && R.normalizeTrendFacts({ ...facts, vr: '5' }) === null
+  && R.normalizeTrendFacts({ ...facts, debut: 1.5 }) === null && R.normalizeTrendFacts(null) === null && R.normalizeTrendFacts('x') === null);
+const messy = R.normalizeTrendFacts({ ...facts, genres: [...facts.genres, null, { name: '', count: 1, prev: 1 }, { name: 'X', count: -1, prev: 0 }, ...Array.from({ length: 8 }, (_, k) => ({ name: `g${k}`, count: 1, prev: 1 }))],
+  popular: [{ cid: 'a1', best: 0, days10: 1 }, { cid: '', best: 1, days10: 1 }, ...Array.from({ length: 8 }, (_, k) => ({ cid: `p${k}`, best: k + 1, days10: 0, extra: 'x' }))] });
+check('ジャンル・人気の作品は、読めない行だけ捨てて、6つ・5本まで（余計な項目は持ち出さない）', messy.genres.length === R.TREND_GENRES_MAX && messy.genres[0].name === '巨乳' && messy.genres.every((g) => g.name && g.count >= 0)
+  && messy.popular.length === R.TREND_POPULAR_MAX && messy.popular[0].cid === 'p0' && messy.popular.every((p) => !('extra' in p)), JSON.stringify(messy));
+check('増減の札: ▲・▼・±0・前が0なら「新しく」', R.deltaLabel(24, 3) === '▲21' && R.deltaLabel(0, 4) === '▼4' && R.deltaLabel(5, 5) === '±0' && R.deltaLabel(3, 0) === '新しく' && R.deltaLabel(0, 0) === '±0');
+check('増減の向き', R.deltaKind(2, 1) === 'up' && R.deltaKind(1, 2) === 'down' && R.deltaKind(1, 1) === 'same');
+const bars = R.genreBars([{ name: 'a', count: 12, prev: 2 }, { name: 'b', count: 0, prev: 4 }, { name: 'c', count: 1, prev: 100 }]);
+check('ジャンルの横棒: いちばん大きい本数が100%・0本は0・1本でも4%以上', bars[2].before === 100 && bars[0].now === 12 && bars[1].now === 0 && bars[2].now === 4 && bars[0].delta === '▲10' && bars[1].kind === 'down', JSON.stringify(bars));
+check('ジャンルの横棒: 空でも落ちない', R.genreBars([]).length === 0);
+
 console.log('\n■ 前後の週・タイトル・構造化データ');
 const three = R.normalizeRoundups([
   good, { ...good, week_start: '2026-10-05', written: '2026-10-12' }, { ...good, week_start: '2026-10-12', written: '2026-10-19' },
@@ -93,11 +110,16 @@ import json, sys
 sys.path.insert(0, ${JSON.stringify(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'scripts'))})
 import claude_roundups as r
 items = json.load(open(sys.argv[1], encoding="utf-8"))
-print(json.dumps({w: r.week_stats(items, w) for w in sys.argv[2:]}, ensure_ascii=False))
+print(json.dumps({"stats": {w: r.week_stats(items, w) for w in sys.argv[2:]},
+                  "facts": r.trend_facts(r.week_trend(items, "2026-09-28", hist={}, pool=items)),
+                  "limits": [r.TREND_GENRES, r.FACTS_POPULAR]}, ensure_ascii=False))
 `;
 let py = null;
 try {
-  py = JSON.parse(execFileSync('python3', ['-c', code, dataFile, ...weeks], { encoding: 'utf-8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } }));
+  const out = JSON.parse(execFileSync('python3', ['-c', code, dataFile, ...weeks], { encoding: 'utf-8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } }));
+  py = out.stats;
+  check('Python の傾向の数字（trend_facts）は、サイトの読み込みでそのまま読める', same(R.normalizeTrendFacts(out.facts), out.facts) && out.facts.total > 0, JSON.stringify(out.facts).slice(0, 200));
+  check('ジャンル・人気の作品の数の上限が Python と同じ', out.limits[0] === R.TREND_GENRES_MAX && out.limits[1] === R.TREND_POPULAR_MAX, JSON.stringify(out.limits));
 } catch (e) {
   check('Python の week_stats を呼べる', false, String(e.message).slice(0, 200));
 }
