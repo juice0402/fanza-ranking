@@ -6,6 +6,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { splitPhrases, phraseText, phraseHtml, unphraseHtml, phraseZwsp, namesPattern, MIN_JAPANESE, MAX_PHRASE, NOWRAP_MAX, ZWSP } from '../site/src/lib/phrase.js';
 import { namesFromData } from '../site/src/integrations/phrase-breaks.js';
+import { DMM_CREDIT_HTML } from '../site/src/lib/items.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -129,6 +130,11 @@ check('「～」は、前の1文字（と、あいだの空白）と一緒に <s
 check('元に戻せる・2回かけても同じ', unphraseHtml(th) === tl && phraseHtml(th) === th);
 const tz = phraseZwsp('お客様のザーメンを気持ちよ～く膣奥中出し アングルVR ～精子を全搾り');
 check('ブラウザで作る文章では、「～」の前に改行を止める見えない文字（U+2060）・改行しない空白（U+00A0）を入れる', tz.includes('よ\u2060～') && tz.includes('R\u00a0～') && !/\u200b[～〜]/.test(tz), JSON.stringify(tz));
+
+const credit = `<footer><p class="foot-note">ひとことコメントは自動で作成しています。</p><p class="foot-credit">${DMM_CREDIT_HTML}</p></footer>`;
+const creditOut = phraseHtml(credit);
+check('FANZA のクレジット（DMMの規定のHTML）には、文節の区切りを入れない（改変しない）・ほかの文章には入れる', creditOut.includes(`<p class="foot-credit">${DMM_CREDIT_HTML}</p>`) && creditOut.includes('<span class="ph">'), creditOut);
+check('FANZA のクレジットは、DMMアフィリエイト公式の FANZA クレジット（テキスト形式）と1文字も違わない', DMM_CREDIT_HTML === 'Powered by <a href="https://affiliate.dmm.com/api/">FANZA Webサービス</a>');
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

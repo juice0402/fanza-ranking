@@ -360,6 +360,13 @@ export const actressPath = (slug) => `/actress/${slug}/`;
 export const makerPath = (slug) => `/maker/${slug}/`;
 export const ACTRESS_INDEX_PATH = '/actress/';
 export const MAKER_INDEX_PATH = '/maker/';
+/**
+ * FANZA のクレジット（DMMアフィリエイト公式の「クレジット表示」にある、FANZA クレジットのテキスト形式。2026-10-07 に運営者が公式のページで確かめた）。
+ * 規定のHTMLを改変すると API の利用を止められることがあるので、1文字も変えない（Base.astro が set:html でそのまま入れる。
+ * 文節の区切りも入れない＝lib/phrase.js が <p class="foot-credit"> の中を飛ばす。tests/verify_dist.py が全ページで突き合わせる）
+ */
+export const DMM_CREDIT_HTML = 'Powered by <a href="https://affiliate.dmm.com/api/">FANZA Webサービス</a>';
+
 export const ABOUT_PATH = '/about/'; // このサイトについて（運営者の希望「SEOの対策として。フッターのいちばん下に小さくリンク」。2026-10-06）
 export const ABOUT_UPDATED = '2026-10-06'; // 「このサイトについて」の中身を最後に変えた日（sitemap の lastmod。中身を変えたら、この日付も変える）
 
