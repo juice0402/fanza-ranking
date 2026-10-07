@@ -1595,7 +1595,9 @@ check("人気のジャンル: 表紙は、見開きでない形（横長・縦�
       _gimgs[:1])
 all_css = "".join(read(p_) for p_ in glob.glob(os.path.join(DIST, "**", "*.css"), recursive=True))
 check("CSS: 棚・作品検索の結果・注目の作品は、置かれた場所の幅で列の数を決める（コンテナクエリ）。使えない古いブラウザには、画面の幅で決める予備がある",
-      re.search(r"container-type\s*:\s*inline-size", all_css) is not None and len(re.findall(r"@container\s*\(\s*min-width", all_css)) >= 6 and "@supports not" in all_css)
+      re.search(r"container-type\s*:\s*inline-size", all_css) is not None
+      # ビルドの道具が「(min-width: 600px)」を範囲の書き方「(width>=600px)」に縮めることがある（どちらも同じ意味）
+      and len(re.findall(r"@container\s*\(\s*(?:min-width\s*:|width\s*>=?)", all_css)) >= 6 and "@supports not" in all_css)
 # 18歳確認の背景: 真っ黒ではなく濃い曇りガラス（ぼかし）。ぼかしが弱すぎると後ろが読める・強すぎると画面のふちが逆にぼけない（Chromiumで確認済み）ので、10〜30pxに収める
 gate_rules = [body for sels, body in css_rules if ".gate" in sels]
 gate_blur = [float(m.group(1)) for b in gate_rules for m in [re.search(r"(?<![-\w])backdrop-filter\s*:\s*blur\(\s*(\d+(?:\.\d+)?)px", b)] if m]
@@ -1716,7 +1718,9 @@ for pth in all_html:
             kind_, want_ = "?", False
         pic_kinds[kind_] += 1
         onerr_ = a_.get("onerror", "")
-        if media_ != THUMB_MEDIA or not want_ or not fanza_https(src_, DMM) or not fanza_https(small_, DMM) or "previousElementSibling" not in onerr_ or "matchMedia(s.media)" not in onerr_ or "pl.jpg" not in onerr_ or a_.get("alt") is None:
+        # alt="" は、Astro が値の無い「alt」だけで書く（どちらも空の代替テキスト）
+        has_alt_ = a_.get("alt") is not None or re.search(r'(?:^|\s)alt(?=\s|/?$)', re.sub(r'"[^"]*"', '""', img_)) is not None
+        if media_ != THUMB_MEDIA or not want_ or not fanza_https(src_, DMM) or not fanza_https(small_, DMM) or "previousElementSibling" not in onerr_ or "matchMedia(s.media)" not in onerr_ or "pl.jpg" not in onerr_ or not has_alt_:
             bad_pic.append((rel_, kind_, src_[-20:], small_[-20:]))
     # 一覧のサムネ（item-img・genre-img）で、パッケージ画像（pl.jpg）を <picture> の外で読んでいるもの（スマホで重いまま）
     for t in tags(re.sub(r"<picture class=\"pic\">.*?</picture>", "", h_), "img"):
