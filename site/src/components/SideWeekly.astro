@@ -3,7 +3,7 @@
 // その前の週は、期間のリンクだけ（運営者の希望「週のまとめは概要だけカラム内に書いて、詳細は別ページに」。2026-10-05）
 import { roundups, curated } from '../lib/data.js';
 import { WEEKLY_INDEX_PATH, roundupCovers, roundupSummary, weekRangeShort, weeklyPath } from '../lib/roundups.js';
-import { SMALL_IMG_ONERROR, smallImage } from '../lib/items.js';
+import Thumb from './Thumb.astro';
 
 const OLDER_SHOWN = 3;
 const latest = roundups[0];
@@ -23,7 +23,7 @@ const covers = latest ? roundupCovers(latest, curated) : [];
         <span class="weekly-covers" aria-hidden="true">
           {covers.map((item) => (
             <span class="weekly-cover">
-              <img class="item-img is-small" src={smallImage(item.image_url)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />
+              <Thumb src={item.image_url} kind="tiny" class="item-img is-small" />
             </span>
           ))}
         </span>

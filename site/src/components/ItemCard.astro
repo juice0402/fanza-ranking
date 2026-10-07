@@ -2,6 +2,7 @@
 import { castLine, statusOf } from '../lib/items.js';
 import { today, paged } from '../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
+import Thumb from './Thumb.astro';
 
 // level: 見出しの階層（ページの構造に合わせて h3 / h4 を指定）
 // eager: 最初の画面に入る作品だけ、画像をすぐ読む（ほかは、見えそうになってから読む loading="lazy"）
@@ -17,16 +18,8 @@ const outbound = external ? OUTBOUND_ATTRS : {};
 
 <article class="item">
   <a class="item-cover" href={href} tabindex="-1" aria-hidden="true" {...outbound}>
-    {item.image_url && (
-      <img
-        class="item-img"
-        src={item.image_url}
-        alt=""
-        loading={eager ? 'eager' : 'lazy'}
-        decoding="async"
-        onerror="this.style.visibility='hidden'"
-      />
-    )}
+    {/* スマホは表紙だけの軽い画像（…ps.jpg）、パソコン・タブレットはパッケージ画像（components/Thumb.astro） */}
+    {item.image_url && <Thumb src={item.image_url} kind="card" loading={eager ? 'eager' : 'lazy'} />}
     {badge && <span class="rank-badge">{badge}</span>}
     {status === 'new' && <span class="pop pop-new">新作</span>}
     {status === 'wait' && <span class="pop pop-wait">予約</span>}

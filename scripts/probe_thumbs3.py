@@ -22,11 +22,16 @@ catalog = []
 for p in sorted(glob.glob(os.path.join(D, "catalog", "*.json"))): catalog += load(p)
 random.seed(9)
 pool = [i for i in curated if i.get("sample_images")] + random.sample([i for i in catalog if i.get("sample_images")], 120)
+import re
+def is_vr(it):
+    return bool(re.search(r"【[^】]*VR[^】]*】", it.get("title", ""), re.I)) or any(re.search("VR", f, re.I) for f in (it.get("formats") or []) + (it.get("genres") or []) + (it.get("tags") or []))
 pairs = []
+VR = {}
 for it in pool:
     s = [u for u in it["sample_images"] if "jp-" in u]
-    for u in s[:3]:
+    for u in s[:8]:
         pairs.append(u)
+        VR[u] = is_vr(it)
 def bands(s):
     w, h = s.size; px = s.load()
     def fr(y):
@@ -62,7 +67,7 @@ def probe(u):
         for x in list(range(b[2])) + list(range(W - b[3], W)):
             band_px += [px[x, y] for y in range(H)]
         col = round(sum(band_px) / len(band_px)) if band_px else -1
-        return {"col": col, "k": kind(w, h), "ls": (w, h), "ss": (W, H), "fit": round(dfit, 1), "crop": round(dcrop, 1), "bands": bands(s), "lb": lb, "sb": sb}
+        return {"vr": VR[u], "col": col, "k": kind(w, h), "ls": (w, h), "ss": (W, H), "fit": round(dfit, 1), "crop": round(dcrop, 1), "bands": bands(s), "lb": lb, "sb": sb}
     except Exception as e:
         return {"err": repr(e)[:60]}
 with ThreadPoolExecutor(8) as ex:
@@ -79,6 +84,9 @@ for k, bl in bd.items():
     tb = Counter((b[0] > 3 or b[1] > 3) for b in bl); sd = Counter((b[2] > 3 or b[3] > 3) for b in bl)
     note(f"s-bands-{k}", f"n={len(bl)} topbottom={dict(tb)} sides={dict(sd)} ex={Counter(bl).most_common(6)}")
 ex = [r for r in rows if "err" not in r][:6]
+vk = Counter((r["vr"], r["k"]) for r in rows if "k" in r)
+note("s-vr-kind", sorted(vk.items()))
+# 作品ごと: 1本の中で形がそろっているか
 note("s-color", Counter((r["col"] // 16) * 16 for r in rows if "col" in r and r["col"] >= 0).most_common(8))
 # 大きさの指定（?w=）が効くか（参考）
 try:

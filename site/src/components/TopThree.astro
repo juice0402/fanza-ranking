@@ -8,6 +8,7 @@ import { paged, popularity } from '../lib/data.js';
 import { itemHref, OUTBOUND_ATTRS } from '../lib/plan.js';
 import { castLine, dateParts, filterAttrs, isSoloWork } from '../lib/items.js';
 import { TOP_SHOWN, rankMove } from '../lib/topics.js';
+import Thumb from './Thumb.astro';
 
 // entries: 新着の人気順の作品（作品データの形）か、売れ筋ランキング（ranking.json）の作品
 const { entries } = Astro.props;
@@ -26,9 +27,7 @@ const shown = Math.min(entries.length, TOP_SHOWN);
         <a class="medal-card" href={link.href} {...(link.external ? OUTBOUND_ATTRS : {})}>
           <span class="medal-art">
             <span class="medal-cover">
-              {item.image_url && (
-                <img class="item-img" src={item.image_url} alt="" loading={i < TOP_SHOWN ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} decoding="async" onerror="this.style.visibility='hidden'" />
-              )}
+              {item.image_url && <Thumb src={item.image_url} kind="card" loading={i < TOP_SHOWN ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />}
             </span>
             <span class="medal rank-badge">{i + 1}位</span>
             {move && <span class={`medal-move move-${move.kind}`} title={move.label}><span class="visually-hidden">{move.label}</span><span aria-hidden="true">{move.text}</span></span>}

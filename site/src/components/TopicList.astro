@@ -4,7 +4,7 @@
 // タップで、作品ページ（無ければFANZA）・まとめ記事・セールのページの、その特集の見出し・イベント情報のページの、そのイベントの行へ。
 // 話題の作品がVR作品のときは、すぐ後ろに、同じ種類のVRでない次の作品（.topic-alt）も入れておき、「VR作品を隠す」のときだけ出す（繰り上げ）
 import { OUTBOUND_ATTRS } from '../lib/plan.js';
-import { SMALL_IMG_ONERROR, smallImage } from '../lib/items.js';
+import Thumb from './Thumb.astro';
 
 const { topics } = Astro.props;
 const rows = topics.flatMap((t) => (t.alt ? [{ ...t, isAlt: false }, { ...t.alt, isAlt: true }] : [{ ...t, isAlt: false }]));
@@ -16,7 +16,7 @@ const rows = topics.flatMap((t) => (t.alt ? [{ ...t, isAlt: false }, { ...t.alt,
       <a class="topic-link" href={t.href} {...(t.external ? OUTBOUND_ATTRS : {})}>
         <span class={t.face ? 'topic-thumb is-face' : t.image ? 'topic-thumb' : 'topic-thumb is-icon'}>
           {t.face && <img class="topic-face" src={t.face} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" />}
-          {!t.face && t.image && <img class="item-img is-small" src={smallImage(t.image)} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />}
+          {!t.face && t.image && <Thumb src={t.image} kind="tiny" class="item-img is-small" />}
           {!t.face && !t.image && (
             <svg class="topic-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <rect x="3.5" y="5" width="17" height="15.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.6" />

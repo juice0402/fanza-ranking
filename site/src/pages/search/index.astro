@@ -3,7 +3,8 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import VrToggle from '../../components/VrToggle.astro';
 import { all, itemsIndex, paged, today } from '../../lib/data.js';
-import { ACTRESS_INDEX_PATH, MAKER_INDEX_PATH, SITE_NAME, SMALL_IMG_ONERROR, archivePath, breadcrumbLd } from '../../lib/items.js';
+import { ACTRESS_INDEX_PATH, MAKER_INDEX_PATH, SITE_NAME, archivePath, breadcrumbLd } from '../../lib/items.js';
+import Thumb from '../../components/Thumb.astro';
 import { ITEMS_INDEX_PATH, SEARCH_PATH, searchFirstPage } from '../../lib/search.js';
 
 const trail = [
@@ -90,7 +91,7 @@ import { assetUrl } from '../../lib/assets.js';
             <li class="ws-row" data-c={v.c} data-vr={v.vr ? '' : undefined} data-solo={v.solo ? '' : undefined}>
               <article class="item">
                 <a class="item-cover" href={v.href} tabindex="-1" aria-hidden="true">
-                  {v.img && <img class="item-img is-small" src={v.img} alt="" loading="lazy" decoding="async" onerror={SMALL_IMG_ONERROR} />}
+                  {v.img && <Thumb src={v.img} kind="tiny" class="item-img is-small" />}
                   {v.status === 'new' && <span class="pop pop-new">新作</span>}
                   {v.status === 'wait' && <span class="pop pop-wait">予約</span>}
                 </a>
