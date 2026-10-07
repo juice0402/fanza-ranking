@@ -2,6 +2,7 @@
 // （ブラウザでの☆ボタン・ページの動きは、PRごとの確認で見る。ここでは、保存データの読み書きと新作の見つけ方を見る）
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { smallImage, tinyImage, THUMB_MEDIA } from '../site/src/lib/items.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -13,7 +14,13 @@ const source = fs.readFileSync(new URL('../site/public/favorites.js', import.met
 const sandbox = { module: { exports: {} } };
 vm.runInNewContext(source, sandbox); // document が無い環境（node）では、部品だけを出して終わる
 const F = sandbox.module.exports;
-const plain = (v) => JSON.parse(JSON.stringify(v)); // vm の中で作られたオブジェクトを、普通のオブジェクトにする
+const plain = (v) => JSON.parse(JSON.stringify(v));
+
+console.log('■ 作品の行のサムネ（表紙だけの軽い画像。スマホは、いちばん小さい版）');
+const urls = ['https://pics.dmm.co.jp/digital/video/a/apl.jpg', 'https://pics.dmm.co.jp/digital/video/a/aps.jpg', 'https://example.net/apl.jpg', ''];
+check('サイト側の smallImage・tinyImage・THUMB_MEDIA と同じ', F.THUMB_MEDIA === THUMB_MEDIA && urls.every((u) => F.smallImageUrl(u) === smallImage(u) && F.tinyImageUrl(u) === tinyImage(u)));
+check('読めなければ pt → ps → pl の順に戻し、それも読めなければ隠す・印 is-small（まん中で切る）', source.includes("img.src = img.src.replace(/pt\\.jpg$/, 'ps.jpg');") && source.includes("img.src = img.src.replace(/ps\\.jpg$/, 'pl.jpg');") && source.includes("img.classList.add('is-small')") && source.includes('window.matchMedia(THUMB_MEDIA).matches ? tinyImageUrl(small) : small'));
+ // vm の中で作られたオブジェクトを、普通のオブジェクトにする
 
 const work = { t: 'タイトル', i: 'https://pics.example/x.jpg', d: '2026-10-17', a: ['花子'], m: 'メーカーA' };
 

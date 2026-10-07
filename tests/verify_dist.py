@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import unicodedata as _ud
+from collections import Counter
 from urllib.parse import urlparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1458,7 +1459,7 @@ trio_ok = all(css_has(sel, r"gap\s*:\s*var\(--trio-gap\)") and css_has(sel, r"ma
 check("CSS: 3つ並び（TOP3・いま人気の女優・人気のジャンル・運命の作品・今週のデビュー作）は、同じすき間・同じ最大の幅の3等分の列で、丸は列の幅に合わせる（.hot-face は%）",
       trio_ok and css_has(".hot-face", r"width\s*:\s*\d+%") and css_has(".genre-thumb", r"width\s*:\s*100%") and not css_has(".genre-thumb", r"max-width\s*:\s*\d+px"))
 # 人気のジャンルの表紙: 見開きでない形（VRなどの横長・表紙だけの縦長）は、読み込んだあとに印 is-flat を付けて、画像の全体から切り出す（運営者の指摘「右上しか写ってない」。2026-10-07）
-_gimgs = re.findall(r'<img class="genre-img"[^>]*>', genre_m.group(1)) if genre_m else []
+_gimgs = re.findall(r'<img class="genre-img[^"]*"[^>]*>', genre_m.group(1)) if genre_m else []
 check("人気のジャンル: 表紙は、見開きでない形（横長・縦長）なら印 is-flat を付ける（onload で縦横の比を見る）・CSS は、その印のとき画像の全体から切り出す（横長は右・縦長は上から少し下）",
       (not _gimgs or all("naturalWidth" in g_ and "is-flat" in g_ and "onload=" in g_ for g_ in _gimgs))
       and css_has(".genre-img.is-flat", r"object-fit\s*:\s*cover") and css_has(".genre-img.is-flat", r"object-position\s*:\s*100%\s+\d{1,2}%") and css_has(".genre-img.is-flat", r"(?<![-\w])height\s*:\s*100%"),
@@ -1537,6 +1538,73 @@ check("CSS: サムネの画像（.item-img）は、枠いっぱいに、右端�
 thumb = " ".join(rule_bodies(".fav-thumb"))
 tw, th = re.search(r"width\s*:\s*(\d+)px", thumb), re.search(r"height\s*:\s*(\d+)px", thumb)
 check("CSS: お気に入りのサムネ（.fav-thumb）も、表紙の比率に近い（0.68〜0.72）・右端にそろえる", bool(tw and th) and 0.68 <= int(tw.group(1)) / int(th.group(1)) <= 0.72 and re.search(r"object-position\s*:\s*100%\s*50%", thumb) is not None, thumb[:120])
+check("CSS: お気に入りのサムネが表紙だけの軽い画像（印 is-small）のときは、まん中で切る", css_has(".fav-thumb.is-small", r"object-position\s*:\s*(50%\s+50%|50%|center)\s*[;}]?"))
+
+# スマホのサムネ（運営者の希望「スマホの低速な回線だと画像が重い。サムネだけ画素数を落として最高速化。開いたときは元のまま」。2026-10-07）:
+# スマホ（THUMB_MEDIA）のときだけ <picture> の <source> で小さい版を読む（components/Thumb.astro）。パソコン・タブレットは今までどおり
+THUMB_MEDIA = re.search(r"export const THUMB_MEDIA = '([^']+)';", read(os.path.join(ROOT, "site", "src", "lib", "items.js"))).group(1)
+_media_px = re.fullmatch(r"\(max-width: (\d+)px\)", THUMB_MEDIA).group(1)
+_media_css = {f"(max-width:{_media_px}px)", f"(width<={_media_px}px)"}  # ビルド後のCSSは空白が縮む（範囲の書き方に変わることもある）
+
+
+def _media_rule(sel, pattern):
+    """@media THUMB_MEDIA の中に、sel の規則があり、pattern を満たす（空白の有無は問わない）"""
+    for m in re.finditer(r"@media([^{]*)\{((?:[^{}]*\{[^{}]*\})*)[^{}]*\}", all_css):
+        if re.sub(r"\s+", "", m.group(1)) not in _media_css:
+            continue
+        for r_ in re.finditer(r"([^{}]+)\{([^{}]*)\}", m.group(2)):
+            if sel in [x.strip() for x in r_.group(1).split(",")] and re.search(pattern, r_.group(2)):
+                return True
+    return False
+
+
+check(f"CSS: スマホ（{THUMB_MEDIA}）のときだけ、作品カード・TOP3の表紙だけの画像（印 has-small）はまん中で切る・人気のジャンルは画像の全体から切り出す・<picture> は箱を作らない",
+      _media_rule(".item-img.has-small", r"object-position\s*:\s*(50%\s+50%|50%|center)")
+      and _media_rule(".genre-img.has-small", r"object-fit\s*:\s*cover") and _media_rule(".genre-img.has-small", r"(?<![-\w])height\s*:\s*100%")
+      and css_has(".pic", r"display\s*:\s*contents"))
+_PIC = re.compile(r'<picture class="pic"><source media="([^"]*)" srcset="([^"]*)"><img ([^>]*)></picture>')
+bad_pic, bad_bare, n_pic, pic_kinds = [], [], 0, Counter()
+for pth in all_html:
+    h_ = read_raw(pth)
+    if "<picture" not in h_ and "pl.jpg" not in h_:
+        continue
+    rel_ = os.path.relpath(pth, DIST)
+    if h_.count("<picture") != len(_PIC.findall(h_)):
+        bad_pic.append((rel_, "形が違う <picture>"))
+    for media_, small_, img_ in _PIC.findall(h_):
+        n_pic += 1
+        a_ = dict((k, htmllib.unescape(v)) for k, v in re.findall(r'([\w-]+)="([^"]*)"', img_))
+        cls_ = a_.get("class", "").split()
+        src_ = a_.get("src", "")
+        small_ = htmllib.unescape(small_)
+        if "is-small" in cls_:
+            kind_, want_ = "tiny", (src_.endswith("ps.jpg") and small_ == src_[:-6] + "pt.jpg")
+        elif "genre-img" in cls_:
+            kind_, want_ = "genre", (src_.endswith("pl.jpg") and small_ == src_[:-6] + "pt.jpg" and "has-small" in cls_)
+        elif "item-img" in cls_:
+            kind_, want_ = "card", (src_.endswith("pl.jpg") and small_ == src_[:-6] + "ps.jpg" and "has-small" in cls_)
+        else:
+            kind_, want_ = "?", False
+        pic_kinds[kind_] += 1
+        onerr_ = a_.get("onerror", "")
+        if media_ != THUMB_MEDIA or not want_ or not fanza_https(src_, DMM) or not fanza_https(small_, DMM) or "previousElementSibling" not in onerr_ or "matchMedia(s.media)" not in onerr_ or "pl.jpg" not in onerr_ or a_.get("alt") is None:
+            bad_pic.append((rel_, kind_, src_[-20:], small_[-20:]))
+    # 一覧のサムネ（item-img・genre-img）で、パッケージ画像（pl.jpg）を <picture> の外で読んでいるもの（スマホで重いまま）
+    for t in tags(re.sub(r"<picture class=\"pic\">.*?</picture>", "", h_), "img"):
+        if (has_class(t, "item-img") or has_class(t, "genre-img")) and str(t.get("src", "")).endswith("pl.jpg"):
+            bad_bare.append((rel_, t.get("src", "")[-24:]))
+    # 作品ページの大きな表紙・パッケージ写真・サンプル画像は、元の画像のまま（<picture> に入れない）
+    for cls_name in ("detail-cover", "package-img", "sample-img"):
+        if re.search(r'<picture class="pic"><source [^>]*><img class="%s' % cls_name, h_):
+            bad_pic.append((rel_, cls_name + " が小さい版になっている"))
+check(f"スマホのサムネ（{n_pic}枚 {dict(pic_kinds)}）: 作品カード・TOP3はスマホで表紙（ps）・小さな表紙はスマホで pt・人気のジャンルはスマホで pt。幅は {THUMB_MEDIA}・読めなければ元の画像に戻す",
+      n_pic > 0 and pic_kinds["card"] > 0 and not bad_pic, bad_pic[:4])
+check("スマホのサムネ: 一覧のパッケージ画像（pl.jpg）は、すべて <picture> の中（スマホは小さい版を読む）・作品ページの表紙・パッケージ写真・サンプル画像は元のまま", not bad_bare, bad_bare[:4])
+_home_raw = read_raw(os.path.join(DIST, "index.html"))
+_top3 = re.search(r'<ol class="medals rank-podium".*?</ol>', _home_raw, re.S)
+_top3_imgs = re.findall(r'<img ([^>]*)>', _top3.group(0)) if _top3 else []
+check("トップのTOP3: スマホは表紙（ps）を <picture> で読み、1本目はすぐに・優先して読む（fetchpriority=high）",
+      bool(_top3_imgs) and _top3.group(0).count('<picture class="pic">') == len(_top3_imgs) and 'fetchpriority="high"' in _top3_imgs[0] and 'loading="eager"' in _top3_imgs[0], _top3_imgs[:1])
 
 # 「VR作品を隠す」の見た目の決まり
 hide_rule = [b for sels, b in css_rules if ".hide-vr [data-vr]" in sels]
@@ -1918,7 +1986,7 @@ if want_camps:
         a_ = next((t for t in tags(inner, "a") if has_class(t, "camp-link")), {})
         title_ = re.search(r'<span class="camp-title">(.*?)</span>', inner, re.S)
         maker_line = re.search(r'<span class="camp-makers">(.*?)</span>', inner, re.S)
-        covers_ = re.findall(r'<span class="camp-cover"( data-vr="true")?>\s*<img ([^>]*)>', inner)
+        covers_ = re.findall(r'<span class="camp-cover"( data-vr="true")?>\s*(?:<picture class="pic"><source [^>]*>)?<img ([^>]*)>', inner)
         off_ = re.search(r"(\d{1,2})\s*[％%]\s*OFF", str(camp["title"]), re.I)
         sticker = re.search(r'<span class="camp-off">([^<]*)</span>', inner)
         want_maker = "・".join(n_ for n_, _ in makers_) + (" など" if sum(c_ for _, c_ in makers_) < len(works_) else "")

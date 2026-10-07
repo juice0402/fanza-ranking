@@ -247,6 +247,44 @@ check('小さな画像が無いときは、大きい画像に戻す（onerror。
 const shapeOf = (w, h) => { const got = []; new Function(L.COVER_SHAPE_ONLOAD).call({ naturalWidth: w, naturalHeight: h, classList: { add: (c) => got.push(c) } }); return got.join(); };
 check('パッケージ画像の形: 見開き（800×533〜540・800×565 など）はそのまま、見開きでない形（VRなどの横長 800×500/600/450・800×516・正方形・表紙だけの縦長 563×800）には印 is-flat（2026-10-07）', ['800x538', '800x540', '800x536', '800x533', '800x565', '800x587'].every((s) => shapeOf(...s.split('x').map(Number)) === '') && ['800x500', '800x600', '800x450', '800x516', '500x500', '563x800', '90x122'].every((s) => shapeOf(...s.split('x').map(Number)) === 'is-flat'), [shapeOf(800, 538), shapeOf(563, 800)]);
 check('パッケージ画像の形: 大きさが分からないとき（0）は印を付けない・属性に入れても壊れない（" < > & を使わない）', shapeOf(0, 0) === '' && shapeOf(800, 0) === 'is-flat' && !/["<>&]/.test(L.COVER_SHAPE_ONLOAD));
+
+console.log('\n■ スマホのサムネ（軽い画像。components/Thumb.astro。2026-10-07）');
+const PL = 'https://pics.dmm.co.jp/digital/video/abc00001/abc00001pl.jpg';
+const PS = PL.replace('pl.jpg', 'ps.jpg');
+const PT = PL.replace('pl.jpg', 'pt.jpg');
+const SL = 'https://pics.dmm.co.jp/digital/video/abc00001/abc00001jp-3.jpg'; // サンプル画像（切りかえない）
+check('スマホの幅は1つ（THUMB_MEDIA。スマホの縦向き）', L.THUMB_MEDIA === '(max-width: 480px)');
+check('tinyImage: DMMの …pl.jpg・…ps.jpg は、いちばん小さい …pt.jpg に。DMM以外・形の違うもの・空はそのまま', L.tinyImage(PL) === PT && L.tinyImage(PS) === PT && L.tinyImage('https://example.net/apl.jpg') === 'https://example.net/apl.jpg' && L.tinyImage(SL) === SL && L.tinyImage('') === '' && L.tinyImage(undefined) === '');
+const ts = (u, k) => JSON.stringify(L.thumbSources(u, k));
+check('thumbSources: 作品カード・TOP3（card）＝ふだんパッケージ・スマホは表紙 ps', ts(PL, 'card') === JSON.stringify({ src: PL, small: PS }) && ts(PL) === ts(PL, 'card'));
+check('thumbSources: 小さな表紙（tiny）＝ふだん ps・スマホは pt（索引の ps から作っても同じ）', ts(PL, 'tiny') === JSON.stringify({ src: PS, small: PT }) && ts(PS, 'tiny') === JSON.stringify({ src: PS, small: PT }));
+check('thumbSources: 人気のジャンル（genre）＝ふだんパッケージ・スマホは pt', ts(PL, 'genre') === JSON.stringify({ src: PL, small: PT }));
+check('thumbSources: FANZA以外の画像・サンプル画像は、切りかえない（src と small が同じ）', ['card', 'tiny', 'genre'].every((k) => { const t = L.thumbSources('https://example.net/a.jpg', k); const u = L.thumbSources(SL, k); return t.src === t.small && u.src === u.small; }));
+// onerror を、ブラウザの代わりの小さな見本で動かす
+const runErr = ({ src, prev, matches }) => {
+  const log = [];
+  const img = {
+    src,
+    previousElementSibling: prev ? { tagName: prev, media: L.THUMB_MEDIA, remove: () => log.push('remove-source') } : null,
+    classList: { remove: (c) => log.push('-' + c) },
+    style: {},
+  };
+  new Function('matchMedia', L.THUMB_ONERROR).call(img, () => ({ matches }));
+  if (img.src !== src) log.push('src=' + img.src.slice(-6));
+  if (img.style.visibility) log.push('hidden');
+  return log.join(',');
+};
+check('THUMB_ONERROR: スマホで小さい版が読めない → <source> を外し、印 has-small も外す（ふだんの画像に戻る）', runErr({ src: PL, prev: 'SOURCE', matches: true }) === 'remove-source,-has-small');
+check('THUMB_ONERROR: パソコン（<source> の幅に合わない）でふだんの ps が読めない → パッケージ pl に戻し、印 is-small を外す', runErr({ src: PS, prev: 'SOURCE', matches: false }) === '-is-small,src=pl.jpg' && runErr({ src: PS, prev: null, matches: false }) === '-is-small,src=pl.jpg');
+check('THUMB_ONERROR: パッケージ pl も読めない・前の要素が <source> でない → 隠す', runErr({ src: PL, prev: null, matches: true }) === 'hidden' && runErr({ src: PL, prev: 'SPAN', matches: true }) === 'hidden' && runErr({ src: PL, prev: 'SOURCE', matches: false }) === 'hidden');
+check('THUMB_ONERROR: 属性に入れても壊れない（" < > & を使わない）', !/["<>&]/.test(L.THUMB_ONERROR));
+const css = fs.readFileSync(new URL('../site/src/styles/site.css', import.meta.url), 'utf-8');
+const thumbMedias = [...css.matchAll(/@media \(max-width: (\d+)px\) \{\s*\.(?:item-img|genre-img)\.has-small/g)].map((m) => `(max-width: ${m[1]}px)`);
+check('CSS: スマホの切り出し（印 has-small）の @media が、THUMB_MEDIA と同じ幅（作品カード・ジャンル）', thumbMedias.length === 2 && thumbMedias.every((m) => m === L.THUMB_MEDIA), thumbMedias.join(' '));
+check('CSS: <picture> は箱を作らない（.pic { display: contents }）', /\.pic \{\s*display: contents;/.test(css));
+const thumbAstro = fs.readFileSync(new URL('../site/src/components/Thumb.astro', import.meta.url), 'utf-8');
+check('Thumb.astro: <source> は THUMB_MEDIA・img は THUMB_ONERROR（小さい版が無ければ戻す）', thumbAstro.includes('<source media={THUMB_MEDIA} srcset={small} />') && (thumbAstro.match(/onerror=\{THUMB_ONERROR\}/g) || []).length === 2);
+
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'asset-'));
 fs.writeFileSync(path.join(tmp, 'x.js'), 'console.log(1)');
 const want = createHash('sha1').update('console.log(1)').digest('hex').slice(0, 8);

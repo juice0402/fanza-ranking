@@ -555,6 +555,19 @@ summary:focus-visible {
   object-position: 50% 50%;
 }
 
+/* スマホのサムネ（components/Thumb.astro。運営者の希望「スマホの低速な回線だと画像が重い」。2026-10-07）:
+   <picture> は箱を作らない（中の img が、今までどおり枠に入る）。スマホ（lib/items.js の THUMB_MEDIA と同じ幅）のときだけ、
+   <source> の小さい版を読む。印 has-small は「スマホでは表紙だけの画像」の目印で、表紙の全体が入っているので、まん中で切る（読めずに戻したら外す） */
+.pic {
+  display: contents;
+}
+
+@media (max-width: 480px) {
+  .item-img.has-small {
+    object-position: 50% 50%;
+  }
+}
+
 .pop {
   position: absolute;
   top: 8px;
@@ -1957,6 +1970,11 @@ html.lightbox-open {
   object-position: 100% 50%;
 }
 
+/* お気に入りのサムネは、表紙だけの軽い画像（…ps.jpg・スマホは …pt.jpg。public/favorites.js）。表紙の全体が入っているので、まん中で切る */
+.fav-thumb.is-small {
+  object-position: 50% 50%;
+}
+
 .fav-row-body {
   display: grid;
   flex: 1;
@@ -2907,6 +2925,17 @@ html.lightbox-open {
   height: 100%;
   object-fit: cover;
   object-position: 100% 10%;
+}
+
+/* スマホは、表紙のいちばん小さい版（…pt.jpg。表紙だけの縦長。印 has-small）から、見開きでない形と同じに切り出す（読み込む前から。読めずに戻したら外す） */
+@media (max-width: 480px) {
+  .genre-img.has-small {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 100% 10%;
+  }
 }
 
 .genre-thumb .hot-rank {

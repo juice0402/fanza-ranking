@@ -120,7 +120,9 @@ export const SMALL_IMG_ONERROR = "if(/ps\\.jpg$/.test(this.src)){this.src=this.s
  * （components/Thumb.astro。ブラウザで作るサムネも同じ幅で切りかえる。CSS の @media も同じ幅）。
  * FANZAの画像の大きさと重さ（2026-10-07 に本物の約300本で調べた。どれも、小さい版が無い作品は無かった）:
  *   パッケージ …pl.jpg 800×538 前後・平均 約165KB ／ 表紙 …ps.jpg 147×200・約14KB ／ 表紙の小 …pt.jpg 90×122・約6KB
- *   サンプル画像 …jp-N.jpg 800×450 など・約99KB ／ 小 …-N.jpg 120×90・約5KB（形の違う画像は、上下か左右に余白を足して 120×90 にしてある）
+ * 作品ページのサンプル画像の並びは、スマホでも大きい版（…jp-N.jpg）のまま。小さい版（…-N.jpg。120×90・約5KB）は、
+ * 形の違う画像に白い余白を足して 120×90 にしてある（縦長の写真は左右に、横長は上下に。2026-10-07 に本物の約2000枚で確かめた。
+ * 縦長が2割ほど）ので、暗い背景の並びでは白い帯が目立つ。どの写真が縦長かは、読み込むまで分からない
  */
 export const THUMB_MEDIA = '(max-width: 480px)';
 const DMM_IMG = /^https:\/\/pics\.dmm\.co\.jp\//;
@@ -129,21 +131,15 @@ export const tinyImage = (url) => {
   const s = String(url ?? '');
   return DMM_IMG.test(s) && /p[ls]\.jpg$/.test(s) ? s.replace(/p[ls]\.jpg$/, 'pt.jpg') : s;
 };
-/** サンプル画像の小さい版（…jp-3.jpg → …-3.jpg。120×90）。形が違うURLはそのまま */
-export const smallSample = (url) => {
-  const s = String(url ?? '');
-  return DMM_IMG.test(s) && /jp-\d+\.jpg$/.test(s) ? s.replace(/jp-(\d+)\.jpg$/, '-$1.jpg') : s;
-};
 /**
  * サムネの画像のURL: src＝パソコン・タブレット（今までどおり）、small＝スマホ（src と同じなら、切りかえない）。
- * kind: 'card'＝作品カード・TOP3（スマホは表紙 ps）／'tiny'＝小さな表紙の行・話題・セールの特集（ふだん ps・スマホは pt）／
- *       'genre'＝人気のジャンルの四角（スマホは pt）／'sample'＝作品ページのサンプル画像の並び（スマホは 120×90。拡大はリンク先の大きい画像のまま）
+ * kind: 'card'＝作品カード・TOP3（スマホは表紙 ps）／'tiny'＝小さな表紙（話題・セールの特集・今週のデビュー作・小さな棚・行の一覧。ふだん ps・スマホは pt）／
+ *       'genre'＝人気のジャンルの四角（スマホは pt。運営者の「ジャンル・セールの画像は特に荒くても良い」）
  */
 export function thumbSources(url, kind = 'card') {
   const s = String(url ?? '');
   if (kind === 'tiny') return { src: smallImage(s), small: tinyImage(s) };
   if (kind === 'genre') return { src: s, small: tinyImage(s) };
-  if (kind === 'sample') return { src: s, small: smallSample(s) };
   return { src: s, small: smallImage(s) };
 }
 /**

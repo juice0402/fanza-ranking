@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as G from '../site/src/lib/gacha.js';
+import { tinyImage, THUMB_MEDIA } from '../site/src/lib/items.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -27,6 +28,8 @@ check('伏せ字の形（J● など）も、claude_comments.py と同じ', py.i
 check('未成年を連想させるタイトル', ['制服の少女', '女子校生の放課後', 'ＪＫ', '過去最高！制服J●の', '女子○生', 'ロ●'].every(G.isMinorTitle));
 check('大人どうしの言葉は数えない（幼なじみ・姉妹・母娘・女の子・処女）', ['幼なじみの人妻', '美人姉妹', '母娘', '近所の女の子', '処女作'].every((t) => !G.isMinorTitle(t)) && !G.isMinorTitle('人妻の温泉旅行'));
 
+check('スマホの窓の表紙は、いちばん小さい表紙（pt.jpg）。サイト側の tinyImage・THUMB_MEDIA と同じ', B.THUMB_MEDIA === THUMB_MEDIA && ['https://pics.dmm.co.jp/digital/video/a/aps.jpg', 'https://pics.dmm.co.jp/digital/video/a/apl.jpg', 'https://example.net/aps.jpg', ''].every((u) => B.tinyImageUrl(u) === tinyImage(u)));
+check('窓の表紙が読めなければ、pt → ps → pl の順に戻し、それも読めなければ隠す', /if \(\/pt\\\.jpg\$\/\.test\(img\.src\)\) \{\s*img\.src = img\.src\.replace\(\/pt\\\.jpg\$\/, 'ps\.jpg'\);/.test(source) && source.includes("img.src = img.src.replace(/ps\\.jpg$/, 'pl.jpg');") && source.includes("img.style.visibility = 'hidden';"));
 console.log('\n■ 候補（gachaPool）');
 const it = (cid, extra = {}) => ({ cid, title: `作品 ${cid}`, dateKey: '2026-10-01', comment: 'ひとこと。', image_url: `https://pics.dmm.co.jp/${cid}.jpg`, actress: ['花子'], maker: 'M', vr: false, popAll: null, popNew: null, ...extra });
 const items = [
