@@ -33,9 +33,11 @@ REQUIRED_ON_EVERY_PAGE = {
     "18歳確認": 'id="age-gate"',
     "広告表記（フッターのくわしい文）": "アフィリエイト広告",
     "広告ラベル（ヘッダー。最初に見える画面に出す）": 'class="pr-chip"',
-    "FANZAクレジット": "Powered by FANZA Webサービス",
+    "FANZAクレジット（DMMの規定のHTMLのまま）": '<p class="foot-credit">Powered by <a href="https://affiliate.dmm.com/api/">FANZA Webサービス</a></p>',
 }
 
+# DMMアフィリエイト公式「クレジット表示」の FANZA クレジット（テキスト形式）。規定のHTMLは改変しない（2026-10-07 に運営者が公式のページで確かめた）
+DMM_CREDIT_OFFICIAL = 'Powered by <a href="https://affiliate.dmm.com/api/">FANZA Webサービス</a>'
 problems = []
 LD_BLOCK = re.compile(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', re.S)  # 構造化データ（JSON-LD）
 
@@ -1353,9 +1355,11 @@ for p in pages:
     yes = [t for t in tags(html, "button") if t.get("id") == "gate-yes"]
     if not gate or "hidden" not in gate or gate.get("role") != "dialog" or gate.get("aria-modal") != "true" or not yes or "いいえ" not in html or "<noscript>" not in html or "18歳未満の方はご利用いただけません" not in html.split("<noscript>", 1)[-1]:
         bad_gate.append(name)
-    # FANZAクレジット: リンクになっていて、規約の指す先（affiliate.dmm.com）へ行く
-    credit = [t for t in tags(html, "a") if str(t.get("href", "")).startswith("https://affiliate.dmm.com/api")]
-    if not credit or "Powered by FANZA Webサービス" not in html or not any("noopener" in t.get("rel", "") for t in credit):
+    # FANZAクレジット: DMMアフィリエイト公式の規定のHTML（FANZA クレジットのテキスト形式）を、1文字も変えずに（文節の区切りも入れずに）入れている。
+    # ほかの形のクレジットのリンクは無い（2026-10-07。前は文字ぜんぶをリンクにして、class・target・rel を足していた）
+    raw_ = read_raw(p)
+    credit = [t for t in tags(raw_, "a") if str(t.get("href", "")).startswith("https://affiliate.dmm.com/api")]
+    if raw_.count(DMM_CREDIT_OFFICIAL) != 1 or len(credit) != 1 or set(credit[0]) != {"href"}:
         bad_credit.append(name)
     # <head>: 言語・画面幅・OGP・アイコン
     metas = {(t.get("property") or t.get("name")): t.get("content", "") for t in tags(html, "meta")}
@@ -1378,7 +1382,8 @@ for p in pages:
 check("全ページの最初に見える画面（ヘッダー）に、小さな「広告」ラベルがある（上の細い帯はやめた）", not bad_label, bad_label[:3])
 check("全ページのフッターに、広告のくわしい文がある", not bad_foot_ad, bad_foot_ad[:3])
 check(f"全ページの18歳確認: 最初は隠れている・ダイアログ・「はい」「いいえ」・JavaScriptが無効のときの注意書き", not bad_gate, bad_gate[:3])
-check(f"全ページの「Powered by FANZA Webサービス」が、規約の指す先へのリンクになっている", not bad_credit, bad_credit[:3])
+check(f"全ページの FANZA のクレジットが、DMMの規定のHTML（テキスト形式）のまま・1つだけ・items.js の DMM_CREDIT_HTML と同じ",
+      not bad_credit and re.search(r"export const DMM_CREDIT_HTML = '([^']+)';", read(os.path.join(ROOT, "site", "src", "lib", "items.js"))).group(1) == DMM_CREDIT_OFFICIAL, bad_credit[:3])
 bad_about = []
 for p in pages:
     foot_ = read(p)[read(p).find("<footer") :]

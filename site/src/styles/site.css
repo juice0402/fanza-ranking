@@ -1270,6 +1270,13 @@ summary:focus-visible {
   margin: 0;
 }
 
+/* FANZA のクレジットのリンク（規定のHTMLのまま。class を付けられないので、ここで押しやすい高さにする） */
+.foot-credit a {
+  display: inline-block;
+  padding: 11px 0;
+  text-underline-offset: 3px;
+}
+
 .foot-link {
   display: inline-flex;
   align-items: center;

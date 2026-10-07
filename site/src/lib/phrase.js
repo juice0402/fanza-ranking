@@ -259,8 +259,10 @@ function wrapNames(text, namesRe) {
 }
 
 // 触らない所: コメント・script・style・title・textarea・pre・code・noscript・svg・template・select・option・button（中身ごと飛ばす）、
+// FANZA のクレジット（<p class="foot-credit">。DMMの規定のHTMLを改変しないため。lib/items.js の DMM_CREDIT_HTML）、
 // すでに処理した <span class="ph">…</span>（もう一度かけても二重にならない）、ふつうのタグ、doctype
 const SKIP = String.raw`<!--[\s\S]*?-->` +
+  String.raw`|<p class="foot-credit">[\s\S]*?<\/p>` +
   String.raw`|<(script|style|textarea|title|pre|code|noscript|svg|template|select|option|button)\b(?:"[^"]*"|'[^']*'|[^>"'])*>[\s\S]*?<\/\1\s*>` +
   String.raw`|<span class="ph">(?:[^<]|<wbr>|<span class="nb">[^<]*<\/span>)*<\/span>` +
   String.raw`|<span class="nb">[^<]*<\/span>` +

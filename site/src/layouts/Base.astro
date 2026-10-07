@@ -1,6 +1,6 @@
 ---
 import '../styles/site.css';
-import { SITE_NAME, SITE_URL, jsonLdScript, ABOUT_PATH, ACTRESS_INDEX_PATH, MAKER_INDEX_PATH } from '../lib/items.js';
+import { SITE_NAME, SITE_URL, jsonLdScript, ABOUT_PATH, ACTRESS_INDEX_PATH, MAKER_INDEX_PATH, DMM_CREDIT_HTML } from '../lib/items.js';
 import { GOOGLE_SITE_VERIFICATION } from '../config.js';
 import { roundups, monthGroups, tagGroups, upcoming, upcomingEventList } from '../lib/data.js';
 import { FAVORITES_PATH } from '../lib/favorites.js';
@@ -192,9 +192,8 @@ import { assetUrl } from '../lib/assets.js';
           <a class="foot-link" href={MAKER_INDEX_PATH}>メーカーから探す</a>
           {roundups.length > 0 && <a class="foot-link" href={WEEKLY_INDEX_PATH}>週ごとのまとめ</a>}
         </nav>
-        <p class="foot-credit">
-          <a class="foot-link" href="https://affiliate.dmm.com/api/" target="_blank" rel="noopener noreferrer">Powered by FANZA Webサービス</a>
-        </p>
+        {/* FANZA のクレジット: DMMの規定のHTMLを、1文字も変えずにそのまま入れる（lib/items.js の DMM_CREDIT_HTML） */}
+        <p class="foot-credit" set:html={DMM_CREDIT_HTML} />
         <p class="foot-about">
           <a class="foot-link foot-small" href={ABOUT_PATH}>このサイトについて</a>
           <a class="foot-link foot-small" href={FEED_PATH}>RSS</a>
