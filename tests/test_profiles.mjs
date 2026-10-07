@@ -219,8 +219,33 @@ check('画像・リンクは FANZA(DMM) の https だけ', S.safeUrl('https://pi
 check('見せかけのURL（ユーザー名の欄にFANZAのホストを入れる・バックスラッシュ・空白）は通さない', ['https://dmm.co.jp:@evil.example/a.jpg', 'https://pics.dmm.co.jp:80@evil.example/a.jpg', 'https://pics.dmm.co.jp@evil.example/a.jpg', 'https://pics.dmm.co.jp\\@evil.example/a.jpg', 'https://pics.dmm.co.jp/a b.jpg', 'https://pics.dmm.co.jp/a\nb.jpg', 'https://pics.dmm.co.jp:x/a.jpg'].every((u) => S.safeUrl(u, ['dmm.co.jp']) === ''));
 check('ポート番号つき・?だけ・#だけ・ホストだけのFANZAのURLは通す', ['https://pics.dmm.co.jp:443/a.jpg', 'https://pics.dmm.co.jp?x=1', 'https://pics.dmm.co.jp#top', 'https://pics.dmm.co.jp'].every((u) => S.safeUrl(u, ['dmm.co.jp']) === u));
 check('出演者ページの短い名前: 10桁の英数字（小文字）だけ', S.pagePath('abcdef0123') === '/actress/abcdef0123/' && ['', 'ABCDEF0123', 'abcdef012', '../../etc/x', 'abcdef01234', null].every((s) => S.pagePath(s) === ''));
-check('1回に出す人数・カップの選択肢・並び順・数字の条件', S.PAGE_SIZE === 60 && S.CUPS.join('') === 'ABCDEFGHIJK' && S.SORTS.length === 11 && S.RANGES.join() === 'age,height,bust,waist,hip');
+check('1回に出す人数（30人。ページの「はじめの一覧」と同じ）・カップの選択肢・並び順・数字の条件', S.PAGE_SIZE === 30 && S.PAGE_SIZE === P.ACTRESS_PAGE_SIZE && S.CUPS.join('') === 'ABCDEFGHIJK' && S.SORTS.length === 11 && S.RANGES.join() === 'age,height,bust,waist,hip');
 const searchSource = fs.readFileSync(new URL('../site/public/actress-search.js', import.meta.url), 'utf-8');
+
+console.log('\n■ 女優検索の「はじめの一覧」（ページを作るときに入れる。ブラウザと同じ並び・同じ中身。2026-10-07）');
+const texts = ['テスト はなこ', 'てすと・ハナコ', 'ＡＢＣ', 'さくらゆの', 'あいだー', '', null, undefined, '桜 ゆの', 'ﾃｽﾄ', 'Ａｂ・ｃ．ｄ', 'あいう　えお', 'ヴィーナス', 'ゐゑ', 'つばさ・Ｒ'];
+check('名前のそろえ方は、ブラウザ（normalizeText）とサーバー（actressSearchText）で同じ', texts.every((t) => S.normalizeText(t) === P.actressSearchText(t)), texts.filter((t) => S.normalizeText(t) !== P.actressSearchText(t)).join());
+const ctxOf = (index) => ({ template: index.list, img: index.img, agencies: index.agencies || {} });
+const viewRows = [
+  ...rows,
+  { n: 'ページの人', r: 'ぺーじのひと', id: '3001', s: '0123456789', k: 4, i: 'page_hito', g: 'tpowers', a: 25 },
+  { n: 'リンクだけ', id: '3002', k: 1, i: 'https://pics.dmm.co.jp/mono/actjpgs/x.jpg' },
+  { n: '全作品の別URL', id: '3003', l: 'https://al.fanza.co.jp/?lurl=x' },
+  { n: '変なURL', id: 'abc', l: 'https://evil.example/' },
+  { n: '所属が知らない事務所', id: '3004', g: 'nosuch', i: '../x' },
+];
+const vIndex = { img: 'https://pics.dmm.co.jp/mono/actjpgs/thumbnail/', list: 'https://al.fanza.co.jp/?lurl=x%3D{ID}%2F&af_id=a', agencies: { tpowers: 'ティーパワーズ' }, actresses: viewRows };
+check('1行の中身（リンク・FANZAへか・顔写真・体型・所属・本数の文）は、ブラウザ（rowView）とサーバー（actressRowView）で同じ', viewRows.every((r) => JSON.stringify(plain(S.rowView(r, ctxOf(vIndex)))) === JSON.stringify(P.actressRowView(r, vIndex))),
+  viewRows.filter((r) => JSON.stringify(plain(S.rowView(r, ctxOf(vIndex)))) !== JSON.stringify(P.actressRowView(r, vIndex))).map((r) => r.n).join());
+check('リンクの無い人（専用ページも全作品のURLも無い）は、行にしない', P.actressRowView({ n: '変なURL', id: 'abc', l: 'https://evil.example/' }, vIndex) === null && S.rowView({ n: 'x' }, ctxOf({ list: '' })) === null);
+const big2 = Array.from({ length: 120 }, (_, i) => ({ n: `${['テスト', 'さくら', '桜', 'あい', 'ﾃｽﾄ'][i % 5]}${i % 9}`, r: i % 4 ? `${['てすと', 'さくら', 'さくら', 'あい', 'てすと'][i % 5]}${i % 9}` : undefined, id: String(7000 + i), k: i % 6 === 0 ? 0 : (i * 7) % 5, s: i % 3 === 0 ? (1000000000 + i).toString(16).padStart(10, '0').slice(-10) : undefined }));
+const bigIndex = { img: vIndex.img, list: vIndex.list, agencies: {}, actresses: big2 };
+const clientFirst = S.filterRows(big2, {}).map((r) => S.rowView(r, ctxOf(bigIndex))).filter(Boolean);
+const serverFirst = P.actressFirstPage(bigIndex);
+check('はじめの一覧（条件なし・作品の多い順の、はじめの30人）と全体の人数は、ブラウザで作る一覧と同じ（同じ本数は読みの順）', serverFirst.total === clientFirst.length && JSON.stringify(serverFirst.rows.map((v) => v.key)) === JSON.stringify(clientFirst.slice(0, 30).map((v) => v.key)) && serverFirst.rows.length === 30,
+  [serverFirst.total, clientFirst.length, serverFirst.rows.slice(0, 3).map((v) => v.key).join(' '), clientFirst.slice(0, 3).map((v) => v.key).join(' ')].join(' / '));
+check('はじめの一覧: 索引が空・壊れていても落ちない', P.actressFirstPage({ actresses: [] }).total === 0 && P.actressFirstPage(null).rows.length === 0 && P.actressFirstPage({ actresses: [null, 5, { n: '' }] }).total === 0);
+check('ブラウザの検索は、ページの「はじめの一覧」（data-first）がいまの条件と同じなら作り直さず、索引を待たずに検索欄を使える', searchSource.includes("list.getAttribute('data-first') === '1'") && searchSource.includes("'読み込み中…'") && searchSource.includes('TYPING_WAIT_MS'));
 check('検索結果の「FANZAで全作品を見る」に、（広告）の文字を付けない（広告であることは、全ページのヘッダー・フッターに出している）', searchSource.includes("'FANZAで全作品を見る ›'") && !searchSource.includes('（広告）'));
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);

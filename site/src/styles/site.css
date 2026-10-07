@@ -3710,6 +3710,17 @@ a.reel-card:hover .reel-title {
   transform: rotate(45deg);
 }
 
+/* 女優検索（2026-10-07）: 検索の部品は、JavaScript が使えるとき（html.js）だけ出す（ページを開いたときから。索引を待たない）。
+   JavaScript が使えないとき用の一覧（.actress-static）は、使えるときは、はじめから隠す（索引を読めなかったときは is-fallback で出す） */
+html:not(.js) .actress-search,
+.js .actress-static:not(.is-fallback) {
+  display: none;
+}
+
+.actress-list[aria-busy='true'] {
+  opacity: 0.5;
+}
+
 /* 「もっと見る」でたたんだ残り（トップの予約受付中。DaySection の fold・vr-filter.js）。JavaScript が使えるとき（html.js。Base.astro の <head> が付ける）だけ隠す。
    隠れているあいだは、中の画像を読まない（運営者の「下のほうが重い」。2026-10-07） */
 .js [data-fold]:not(.is-open) .fold-off,

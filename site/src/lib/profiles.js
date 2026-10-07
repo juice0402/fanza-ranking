@@ -310,3 +310,86 @@ export function rankingForDisplay(raw, today, vrCids = new Set()) {
   }
   return items.length ? { date: raw.date, items } : null;
 }
+
+// ---- 女優検索の「はじめの一覧」（運営者の「女優検索が重い」。2026-10-07） ----
+// 女優検索は、索引（約1万人）を読み終えるまで、検索欄も一覧も出ていなかった（スマホで開いてから約1.5秒）。
+// 条件なしのときの、はじめの1ページ（作品の多い順に ACTRESS_PAGE_SIZE 人）を、ページを作るときに先に入れておく。
+// 並び・行の中身は、ブラウザの actress-search.js と同じになるように、同じ決まりで作る（tests/test_profiles.mjs で突き合わせている）。
+// ブラウザは、索引が届いたら、入っている一覧が自分の作る一覧と同じかを確かめ、同じなら作り直さない（違えば作り直す）
+
+/** 女優検索で1回に出す人数（actress-search.js の PAGE_SIZE と同じ） */
+export const ACTRESS_PAGE_SIZE = 30;
+
+/** 名前の照らし合わせ・並べ替え用に、全角/半角・大文字小文字・カタカナ/ひらがな・空白や中点の違いをそろえる（actress-search.js の normalizeText と同じ） */
+export function actressSearchText(text) {
+  let s = String(text == null ? '' : text);
+  if (/^[ぁ-ゖー]*$/.test(s)) return s;
+  s = s.normalize('NFKC');
+  s = s.toLowerCase().replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+  return s.replace(/[\s　・·.・]/g, '');
+}
+
+// actress-search.js の safeUrl と同じ（ホストのあとはポート・パス・?・# だけ。ユーザー名の欄に見せかける形は通さない）
+function searchSafeUrl(url, hosts) {
+  if (typeof url !== 'string') return '';
+  const m = /^https:\/\/([A-Za-z0-9.-]+)(?::\d{1,5})?(?:[/?#]|$)/.exec(url);
+  if (!m || /[\\\s\x00-\x1f\x7f]/.test(url)) return '';
+  const host = m[1].toLowerCase();
+  return hosts.some((h) => host === h || host.slice(-(h.length + 1)) === '.' + h) ? url : '';
+}
+
+function searchPagePath(slug) {
+  return typeof slug === 'string' && /^[0-9a-f]{10}$/.test(slug) ? `/actress/${slug}/` : '';
+}
+
+function searchListUrl(row, template) {
+  if (row.l) return searchSafeUrl(row.l, FANZA_LIST_HOSTS);
+  if (!row.id || !/^\d{1,12}$/.test(String(row.id)) || typeof template !== 'string' || template.split('{ID}').length !== 2) return '';
+  return searchSafeUrl(template.replace('{ID}', String(row.id)), FANZA_LIST_HOSTS);
+}
+
+function searchImageUrl(i, base) {
+  if (typeof i !== 'string' || !i) return '';
+  if (/^[a-z0-9_]{1,60}$/.test(i)) return searchSafeUrl(String(base || '') + i + '.jpg', ['dmm.co.jp']);
+  return searchSafeUrl(i, ['dmm.co.jp']);
+}
+
+/**
+ * 検索結果の1行の中身（actress-search.js の rowView と同じ）。行を出せない（専用ページも全作品のリンクも無い）ときは null。
+ * → { key, name, initial, href, external（FANZAへのリンクか）, img, spec, agency, meta }
+ */
+export function actressRowView(row, index) {
+  const page = searchPagePath(row.s);
+  const out = searchListUrl(row, index.list);
+  if (!page && !out) return null;
+  const names = index.agencies && typeof index.agencies === 'object' ? index.agencies : {};
+  const g = String(row.g || '');
+  const agencyName = /^[a-z]{2,12}$/.test(g) && Object.prototype.hasOwnProperty.call(names, g) ? String(names[g] || '') : '';
+  return {
+    key: `${row.id ?? ''}|${row.n}`,
+    name: row.n,
+    initial: Array.from(row.n)[0] || '',
+    href: page || out,
+    external: !page,
+    img: searchImageUrl(row.i, index.img),
+    spec: compactSpec({ age: row.a ?? null, height: row.h ?? null, bust: row.b ?? null, cup: row.c ?? '', waist: row.wa ?? null, hip: row.hi ?? null }),
+    agency: agencyName ? `所属：${agencyName}` : '',
+    meta: page ? `このサイトの作品 ${row.k}本 ›` : row.k ? `このサイトの作品 ${row.k}本・FANZAで全作品を見る ›` : 'FANZAで全作品を見る ›',
+  };
+}
+
+/**
+ * 条件なしのときの検索結果（作品の多い順。同じ本数は読みの順）の、はじめの size 人と、全体の人数。
+ * actress-search.js の filterRows(rows, {}) から、出せない行（専用ページも全作品のリンクも無い人）を除いたものと同じ
+ */
+export function actressFirstPage(index, size = ACTRESS_PAGE_SIZE) {
+  const rows = Array.isArray(index?.actresses) ? index.actresses.filter((r) => r && typeof r === 'object' && typeof r.n === 'string' && r.n) : [];
+  const keyed = rows.map((row, i) => ({ row, i, k: row.k || 0, name: actressSearchText(row.r || row.n) }));
+  keyed.sort((a, b) => b.k - a.k || (a.name < b.name ? -1 : a.name > b.name ? 1 : a.i - b.i));
+  const views = [];
+  for (const { row } of keyed) {
+    const v = actressRowView(row, index);
+    if (v) views.push(v);
+  }
+  return { total: views.length, rows: views.slice(0, size) };
+}

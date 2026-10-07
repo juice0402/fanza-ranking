@@ -4,7 +4,7 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import Face from '../../components/Face.astro';
 import { actressGroups, actressSearchIndex, actressIndexCoverage, profilesByName } from '../../lib/data.js';
 import { ACTRESS_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
-import { ACTRESS_SEARCH_INDEX_PATH, SIZE_BUCKETS, commonSizeBucket, compactSpec, faceUrl, sizeBucketLabel } from '../../lib/profiles.js';
+import { ACTRESS_PAGE_SIZE, ACTRESS_SEARCH_INDEX_PATH, SIZE_BUCKETS, actressFirstPage, commonSizeBucket, compactSpec, faceUrl, sizeBucketLabel } from '../../lib/profiles.js';
 import { ACTRESS_FALLBACK_LIMIT } from '../../config.js';
 import { agencyCounts } from '../../lib/agencies.js';
 
@@ -18,6 +18,8 @@ const fmt = (n) => n.toLocaleString('ja-JP');
 // JavaScriptが使えないとき用の一覧は、作品数の多い順に ACTRESS_FALLBACK_LIMIT 人まで（ふだんは「条件で探す」に入れかわって隠れるので、
 // ページを軽くするため少なめ。全員は、上の「条件で探す」で探せる）
 const staticShown = actressGroups.slice(0, ACTRESS_FALLBACK_LIMIT);
+// 条件なしのときの、はじめの一覧（作品の多い順に ACTRESS_PAGE_SIZE 人）。索引を待たずに、ページを開いたときから見える（2026-10-07。lib/profiles.js）
+const firstPage = hasSearch ? actressFirstPage(actressSearchIndex) : { total: 0, rows: [] };
 
 // 数字の条件（下限・上限を、数字で入れる）。name は actress-search.js の RANGES と同じ
 const RANGES = [
@@ -69,7 +71,7 @@ import { assetUrl } from '../../lib/assets.js';
     </section>
 
     {hasSearch && (
-      <section id="actress-search" class="actress-search section search-layout" data-index={ACTRESS_SEARCH_INDEX_PATH} aria-labelledby="as-title" hidden>
+      <section id="actress-search" class="actress-search section search-layout" data-index={ACTRESS_SEARCH_INDEX_PATH} aria-labelledby="as-title">
         {/* スマホは「条件 → 結果」の1列、パソコン（960px〜）は「左に条件（画面に固定）｜右に結果」の2列（運営者の希望。2026-10-05） */}
         <div class="search-side">
         <h2 id="as-title" class="visually-hidden">条件で探す</h2>
@@ -132,6 +134,8 @@ import { assetUrl } from '../../lib/assets.js';
               <label class="as-check"><input type="checkbox" name="face" value="1" /> 顔写真がある人だけ</label>
             </div>
           </details>
+          {/* 広い画面では、くわしい条件を、はじめから開いておく（スクリプトの読み込みを待つと、開いたときに下の一覧がずれるため） */}
+          <script is:inline>(function(){var d=document.getElementById('as-filters');if(d&&window.matchMedia&&window.matchMedia('(min-width: 720px)').matches)d.open=true})();</script>
           <label class="as-field as-field-wide">
             並び順
             <select name="sort">
@@ -144,10 +148,24 @@ import { assetUrl } from '../../lib/assets.js';
         </form>
         </div>
         <div class="search-main">
-        <p id="as-count" class="as-count" aria-live="polite"></p>
+        <p id="as-count" class="as-count" aria-live="polite">{firstPage.total > 0 ? `${fmt(firstPage.total)}人が見つかりました` : ''}</p>
         <p id="as-note" class="as-note" hidden>年齢・身長・スリーサイズ・カップで絞り込むと、FANZAにその情報が載っていない人は結果に出ません。</p>
-        <ul id="as-list" class="actress-list"></ul>
-        <p class="more"><button id="as-more" type="button" class="btn btn-quiet more-btn" hidden>もっと見る</button></p>
+        <ul id="as-list" class="actress-list" data-first="1">
+          {firstPage.rows.map((v) => (
+            <li class="actress-row" data-key={v.key}>
+              <a class="actress-row-link" href={v.href} target={v.external ? '_blank' : undefined} rel={v.external ? 'sponsored nofollow noopener noreferrer' : undefined}>
+                <Face name={v.name} src={v.img} size="md" />
+                <span class="actress-row-text">
+                  <span class="actress-row-name">{v.name}</span>
+                  {v.spec && <span class="actress-row-spec">{v.spec}</span>}
+                  {v.agency && <span class="actress-row-agency">{v.agency}</span>}
+                  <span class="actress-row-meta">{v.meta}</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p class="more"><button id="as-more" type="button" class="btn btn-quiet more-btn" hidden={firstPage.total <= ACTRESS_PAGE_SIZE}>もっと見る</button></p>
         <p class="as-coverage">
           年齢・サイズはFANZA公式の情報（{fmt(cov.total)}人）{agencyTotal > 0 && `、所属は${agencyOptions.length}つの事務所の公式サイトの情報（${fmt(agencyTotal)}人）`}です。
         </p>
@@ -155,7 +173,8 @@ import { assetUrl } from '../../lib/assets.js';
       </section>
     )}
 
-    <section id="actress-static" class="actress-static section" aria-labelledby="actress-list-title">
+    {/* JavaScript が使えないとき（と、索引を読めなかったとき）用の一覧。使えるときは、はじめから隠す（CSS の html.js。並べて描く手間を省く。2026-10-07） */}
+    <section id="actress-static" class:list={['actress-static', 'section', { 'is-fallback': !hasSearch }]} aria-labelledby="actress-list-title">
       <h2 id="actress-list-title" class="visually-hidden">出演者の一覧</h2>
       {actressGroups.length > 0
         ? (

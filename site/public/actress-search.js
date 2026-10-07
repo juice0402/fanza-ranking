@@ -4,7 +4,9 @@
 // 条件は URL（?q=&age=20-25&bust=85-89,90-94&cup=E,F&sort=…）にも書くので、その条件のまま、ほかの人に送ったり、あとで開き直したりできる。
 // JavaScript が使えないときは、ページに最初から載っている「作品が2本以上の出演者」の一覧がそのまま使える。
 (function () {
-  var PAGE_SIZE = 60; // 1回に出す人数（「もっと見る」で増やす）
+  var PAGE_SIZE = 30; // 1回に出す人数（「もっと見る」で増やす。site/src/lib/profiles.js の ACTRESS_PAGE_SIZE と同じ。2026-10-07 に 60→30）
+  var TYPING_WAIT_MS = 180; // 名前の欄: 打ち終わってから、この時間たったら絞り込む
+  var WARM_CHUNK = 1500; // 手のあいたときに、照らし合わせ用の文字を一度に作る人数
   var CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']; // カップの選択肢（L以上は「L〜」の1つにまとめる）
   // 数字の条件（下限・上限）。名前は URL とフォームの項目名、key は索引の項目名、lo/hi は入力してよい範囲
   var RANGES = [
@@ -317,6 +319,26 @@
     return typeof slug === 'string' && /^[0-9a-f]{10}$/.test(slug) ? '/actress/' + slug + '/' : '';
   }
 
+  // 検索結果の1行の中身。行を出せない（専用ページも全作品のリンクも無い）ときは null。
+  // ctx: { template: 索引の list, img: 索引の img, agencies: 索引の agencies }。
+  // ページを作るときに入れる「はじめの一覧」（site/src/lib/profiles.js の actressRowView）と同じ（tests/test_profiles.mjs で突き合わせている）
+  function rowView(row, ctx) {
+    var page = pagePath(row.s);
+    var out = listUrl(row, ctx.template);
+    if (!page && !out) return null;
+    return {
+      key: (row.id == null ? '' : row.id) + '|' + row.n,
+      name: row.n,
+      initial: Array.from(row.n)[0] || '',
+      href: page || out,
+      external: !page,
+      img: imageUrl(row.i, ctx.img),
+      spec: specText(row),
+      agency: agencyLabel(row, ctx.agencies),
+      meta: page ? 'このサイトの作品 ' + row.k + '本 ›' : row.k ? 'このサイトの作品 ' + row.k + '本・FANZAで全作品を見る ›' : 'FANZAで全作品を見る ›',
+    };
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       normalizeText: normalizeText,
@@ -333,6 +355,7 @@
       imageUrl: imageUrl,
       listUrl: listUrl,
       pagePath: pagePath,
+      rowView: rowView,
       agencyLabel: agencyLabel,
       PAGE_SIZE: PAGE_SIZE,
       CUPS: CUPS,
@@ -360,10 +383,14 @@
   if (!form || !list || !count || !more || !indexUrl) return;
 
   var rows = [];
-  var imgBase = '';
-  var template = '';
-  var agencyNames = {};
+  var ctx = { template: '', img: '', agencies: {} };
   var shown = PAGE_SIZE;
+  var ready = false; // 索引を読み終えたか
+  var staticFallback = function () {
+    // 索引を読めなかったとき: 検索の部品を隠し、JavaScript が使えないとき用の一覧を出す
+    root.hidden = true;
+    if (staticList) staticList.classList.add('is-fallback');
+  };
 
   function field(name) {
     return form.elements[name];
@@ -433,11 +460,11 @@
     return node;
   }
 
-  function face(row) {
+  function face(view) {
     var wrap = el('span', 'face face-md');
     wrap.setAttribute('aria-hidden', 'true');
-    wrap.appendChild(el('span', 'face-initial', Array.from(row.n)[0] || ''));
-    var src = imageUrl(row.i, imgBase);
+    wrap.appendChild(el('span', 'face-initial', view.initial));
+    var src = view.img;
     if (src) {
       var img = document.createElement('img');
       img.className = 'face-img';
@@ -456,26 +483,22 @@
   }
 
   function item(row) {
-    var page = pagePath(row.s);
-    var out = listUrl(row, template);
-    if (!page && !out) return null;
+    var view = rowView(row, ctx);
+    if (!view) return null;
     var li = el('li', 'actress-row');
+    li.setAttribute('data-key', view.key);
     var a = el('a', 'actress-row-link');
-    if (page) {
-      a.href = page;
-    } else {
-      a.href = out;
+    a.href = view.href;
+    if (view.external) {
       a.target = '_blank';
       a.rel = 'sponsored nofollow noopener noreferrer';
     }
-    a.appendChild(face(row));
+    a.appendChild(face(view));
     var text = el('span', 'actress-row-text');
-    text.appendChild(el('span', 'actress-row-name', row.n));
-    var spec = specText(row);
-    if (spec) text.appendChild(el('span', 'actress-row-spec', spec)); // 数字が載っていない人は、行ごと出さない（同じ文が何十行も並ばないように）
-    var agency = agencyLabel(row, agencyNames);
-    if (agency) text.appendChild(el('span', 'actress-row-agency', agency));
-    text.appendChild(el('span', 'actress-row-meta', page ? 'このサイトの作品 ' + row.k + '本 ›' : row.k ? 'このサイトの作品 ' + row.k + '本・FANZAで全作品を見る ›' : 'FANZAで全作品を見る ›'));
+    text.appendChild(el('span', 'actress-row-name', view.name));
+    if (view.spec) text.appendChild(el('span', 'actress-row-spec', view.spec)); // 数字が載っていない人は、行ごと出さない（同じ文が何十行も並ばないように）
+    if (view.agency) text.appendChild(el('span', 'actress-row-agency', view.agency));
+    text.appendChild(el('span', 'actress-row-meta', view.meta));
     a.appendChild(text);
     li.appendChild(a);
     return li;
@@ -493,18 +516,36 @@
     // 同じ条件・同じ人数なら、作り直さない（チェックボックスなどは「input」と「change」の両方が来て、同じ一覧を2回作っていたため）
     var key = buildQuery(q) + '|' + shown;
     if (key === lastKey) return;
+    if (!ready) {
+      // 索引がまだ届いていない: 条件は覚えておき（フォームに残っている）、届いたら作る
+      count.textContent = '読み込み中…';
+      list.setAttribute('aria-busy', 'true');
+      return;
+    }
     lastKey = key;
+    list.removeAttribute('aria-busy');
     var found = filterRows(rows, q).filter(function (row) {
-      return pagePath(row.s) || listUrl(row, template);
+      return pagePath(row.s) || listUrl(row, ctx.template);
     });
     var visible = found.slice(0, shown);
     list.textContent = '';
+    var frag = document.createDocumentFragment();
     visible.forEach(function (row) {
       var li = item(row);
-      if (li) list.appendChild(li);
+      if (li) frag.appendChild(li);
     });
-    count.textContent = found.length ? found.length.toLocaleString('ja-JP') + '人が見つかりました' : '条件に合う女優がいません。条件をゆるめてみてね。';
+    list.appendChild(frag);
+    count.textContent = countText(found.length);
     more.hidden = found.length <= visible.length;
+    updateNotes(q);
+    writeUrl(q);
+  }
+
+  function countText(n) {
+    return n ? n.toLocaleString('ja-JP') + '人が見つかりました' : '条件に合う女優がいません。条件をゆるめてみてね。';
+  }
+
+  function updateNotes(q) {
     if (note) note.hidden = !hasNumericFilter(q);
     if (filterNote) {
       var active = RANGES.filter(function (r) {
@@ -512,7 +553,6 @@
       }).length + (q.cup ? 1 : 0) + (q.ag ? 1 : 0) + (q.site ? 1 : 0) + (q.face ? 1 : 0);
       filterNote.textContent = active ? '（' + active + '件を指定中）' : '';
     }
-    writeUrl(q);
   }
 
   function onChange() {
@@ -520,13 +560,25 @@
     render();
   }
 
-  form.addEventListener('input', onChange);
-  form.addEventListener('change', onChange);
+  // 名前の欄は、打ち終わるのを少し待ってから作る（1文字ごとに約1万人を絞り込んで、一覧を作り直さないように）
+  var typingTimer = 0;
+  form.addEventListener('input', function (event) {
+    clearTimeout(typingTimer);
+    if (event.target && event.target.name === 'q') typingTimer = setTimeout(onChange, TYPING_WAIT_MS);
+    else onChange();
+  });
+  form.addEventListener('change', function (event) {
+    if (event.target && event.target.name === 'q') return; // 名前の欄は input で扱う（欄から離れたときの change で、もう一度作らない）
+    clearTimeout(typingTimer);
+    onChange();
+  });
   form.addEventListener('submit', function (event) {
     event.preventDefault();
+    clearTimeout(typingTimer);
     onChange();
   });
   form.addEventListener('reset', function () {
+    clearTimeout(typingTimer);
     setTimeout(onChange, 0); // リセットで項目が空に戻ったあとに、一覧を作り直す
   });
   more.addEventListener('click', function () {
@@ -538,6 +590,29 @@
     if (first) first.focus();
   });
 
+  // URL の条件を、索引を待たずにフォームへ入れる（検索欄はページを開いたときから使える。2026-10-07）
+  var first = parseQuery(window.location.search);
+  writeForm(first);
+  // 広い画面か、条件つきで開いたときは、くわしい条件の欄を最初から開いておく（スマホでは、たたんだまま。結果がすぐ見えるように）
+  var wide = typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 720px)').matches;
+  if (filters && (wide || hasNumericFilter(first) || first.site || first.face || first.sort !== 'works')) filters.open = true;
+  // ページを作るときに入れた「はじめの一覧」（条件なし・作品の多い順の、はじめの PAGE_SIZE 人）が、いまの条件の一覧なら、そのまま使う
+  var prerendered = list.getAttribute('data-first') === '1';
+  if (prerendered && buildQuery(first) === '') lastKey = '|' + PAGE_SIZE;
+  else render(); // 条件つきで開いたとき: 「読み込み中…」にして、索引が届いたら作る
+
+  // 索引を読み終えたあと、手のあいたときに、名前の照らし合わせ用の文字を先に作っておく（最初の1文字が重くならないように）
+  function warmUp(start) {
+    var idle = window.requestIdleCallback || function (fn) {
+      return setTimeout(fn, 50);
+    };
+    idle(function () {
+      var end = Math.min(rows.length, start + WARM_CHUNK);
+      for (var i = start; i < end; i++) matchKeys(rows[i]);
+      if (end < rows.length) warmUp(end);
+    });
+  }
+
   fetch(indexUrl, { credentials: 'same-origin' })
     .then(function (res) {
       if (!res.ok) throw new Error('status ' + res.status);
@@ -547,20 +622,33 @@
       rows = data && Array.isArray(data.actresses) ? data.actresses.filter(function (r) {
         return r && typeof r === 'object' && typeof r.n === 'string' && r.n;
       }) : [];
-      if (!rows.length) return; // データが無いときは、最初から載っている一覧のまま
-      imgBase = data && typeof data.img === 'string' ? data.img : '';
-      template = data && typeof data.list === 'string' ? data.list : '';
-      agencyNames = data && data.agencies && typeof data.agencies === 'object' ? data.agencies : {};
-      var first = parseQuery(window.location.search);
-      writeForm(first);
-      // 広い画面か、条件つきで開いたときは、くわしい条件の欄を最初から開いておく（スマホでは、たたんだまま。結果がすぐ見えるように）
-      var wide = typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 720px)').matches;
-      if (filters && (wide || hasNumericFilter(first) || first.site || first.face || first.sort !== 'works')) filters.open = true;
-      root.hidden = false;
-      if (staticList) staticList.hidden = true;
+      if (!rows.length) {
+        staticFallback(); // データが無いときは、最初から載っている一覧
+        return;
+      }
+      ctx = {
+        template: data && typeof data.list === 'string' ? data.list : '',
+        img: data && typeof data.img === 'string' ? data.img : '',
+        agencies: data && data.agencies && typeof data.agencies === 'object' ? data.agencies : {},
+      };
+      ready = true;
+      if (lastKey) {
+        // はじめの一覧が、ブラウザで作る一覧と同じか確かめる（違えば作り直す）
+        var want = filterRows(rows, readQuery()).filter(function (row) {
+          return pagePath(row.s) || listUrl(row, ctx.template);
+        });
+        var cells = list.children;
+        var same = cells.length === Math.min(PAGE_SIZE, want.length) && countText(want.length) === count.textContent;
+        for (var i = 0; same && i < cells.length; i++) {
+          var view = rowView(want[i], ctx);
+          same = Boolean(view) && cells[i].getAttribute('data-key') === view.key;
+        }
+        if (!same) lastKey = '';
+      }
       render();
+      warmUp(0);
     })
     .catch(function () {
-      // 読み込めなかったときも、最初から載っている一覧のまま（何も起きない）
+      staticFallback();
     });
 })();
