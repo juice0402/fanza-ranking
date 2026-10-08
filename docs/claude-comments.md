@@ -45,9 +45,10 @@ Claude が書き上げたコメントは `comment_kind: "claude"` にします�
 5. `bash scripts/check.sh` を実行して全部成功することを確認する
 6. `git status` で、変わったのが **`site/src/data/new_releases.json` と `site/src/data/catalog/` の中のファイルだけ**であることを確認する。他のファイルが変わっていたらコミットしない
 7. コミット → ブランチをpush → PRを作る（`gh api repos/juice0402/fanza-ranking/pulls`。CLAUDE.md の守ること1・2）
-   - コミットメッセージ: `コメントの仕上げ（Claude）: N件`
+   - コミットメッセージ: `コメントの仕上げ（Claude）: N件 [CI Skip]`（プレビューは作らない: ブランチのコミットメッセージの最後に必ず `[CI Skip]` を付ける。Cloudflare のビルドの回数を節約するため。PRの「Cloudflare Pages」のチェックは出ないので待たない）
+   - PRのタイトル: `コメントの仕上げ（Claude）: N件`（`[CI Skip]` を入れない）
 8. CIが終わるまで待つ（`gh api repos/juice0402/fanza-ranking/commits/<ブランチの先頭>/check-runs` で `conclusion` を見る。数分）
-   - **緑ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭>`）
+   - **緑ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: コメントの仕上げ（Claude）: N件" -f commit_message=""`。**Merge のメッセージに `[CI Skip]` を入れない**。入れると本番がビルドされない）
    - 赤・時間切れ・衝突（Mergeできない）のときは**Mergeしない**。PRを開いたまま、理由を報告して終了する。衝突のときは、ブランチを捨てて手順1からやり直してよい（1回だけ）
 9. 最後に報告する: 何件書いたか（下書きの仕上げ・定型文・予約の言い方の書き直し・過去作品、それぞれ）／PR番号／CIの結果／Mergeしたか／残りの件数（毎日の更新の作品と、過去作品）
 

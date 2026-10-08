@@ -38,9 +38,10 @@
 5. `bash scripts/check.sh` を実行して全部成功することを確認する
 6. `git status` で、変わったのが **`site/src/data/roundups.json` だけ**であることを確認する。他のファイルが変わっていたらコミットしない
 7. コミット → ブランチをpush → PRを作る（`gh api repos/juice0402/fanza-ranking/pulls`。CLAUDE.md の守ること1・2）
-   - コミットメッセージ: `週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日`
+   - コミットメッセージ: `週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日 [CI Skip]`（プレビューは作らない: ブランチのコミットメッセージの最後に必ず `[CI Skip]` を付ける。Cloudflare のビルドの回数を節約するため。PRの「Cloudflare Pages」のチェックは出ないので待たない）
+   - PRのタイトル: `週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日`（`[CI Skip]` を入れない）
 8. CIが終わるまで待つ（`gh api repos/juice0402/fanza-ranking/commits/<ブランチの先頭>/check-runs` で `conclusion` を見る。数分）
-   - **緑ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭>`）
+   - **緑ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: 週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日" -f commit_message=""`。**Merge のメッセージに `[CI Skip]` を入れない**。入れると本番がビルドされない）
    - 赤・時間切れ・衝突（Mergeできない）のときは**Mergeしない**。PRを開いたまま、理由を報告して終了する。衝突のときは、ブランチを捨てて手順1からやり直してよい（1回だけ）
 9. Merge したら、数分待って本番の `https://fanza-ranking.pages.dev/weekly/<週の月曜日>/?cb=日時` を WebFetch で見て、記事が出ているかを確認する（`?cb=` を付けないと古い内容が返ることがある）。見られなかったら「未確認」と書く
 10. 最後に報告する: どの週の記事か／PR番号／CIの結果／Mergeしたか／本番で確認できたか
