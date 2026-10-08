@@ -36,7 +36,23 @@ def get(url, ref):
         return f"{type(e).__name__}: {str(e)[:80]}"
 
 
+def headers_of(url, extra):
+    h = {"User-Agent": UA, "Accept": "image/avif,image/webp,image/*,*/*;q=0.8", "Referer": "https://claude-doujin-game.fanza-ranking.pages.dev/doujin/",
+         "Sec-Fetch-Dest": "image", "Sec-Fetch-Mode": "no-cors", "Sec-Fetch-Site": "cross-site", "Accept-Language": "ja-JP,ja;q=0.9"}
+    h.update(extra)
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=20) as r:
+            body = r.read(400000)
+            keep = {k: v for k, v in r.headers.items() if k.lower().startswith(("cross-origin", "content-security", "x-frame", "access-control", "timing", "vary", "content-type", "set-cookie", "x-cache", "server", "via", "cache-control"))}
+            return f"{r.status} {len(body)}B 最終={re.sub(r'[0-9]+', '#', r.geturl())[-50:]} ヘッダー={keep}"
+    except Exception as e:  # noqa: BLE001
+        return f"{type(e).__name__}: {str(e)[:120]}"
+
+
 def main():
+    say("## ブラウザと同じ形の問い合わせ（Sec-Fetch・日本語）での答えとヘッダー")
+    for name, url in IMGS.items():
+        say(f"- {name}: {headers_of(url, {})}")
     say("## 画像を、Referer ごとに読む")
     for name, url in IMGS.items():
         for rn, ref in REFS.items():
