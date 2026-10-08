@@ -12,8 +12,10 @@ Gemini が書けなかった作品は、定型文（comment_kind: template）の
         ・Gemini の下書きのままの作品（reason: 下書きを仕上げる。draft に下書きが入る）
         ・発売日をすぎたのに、コメントに「予約」「発売予定」「発売前」などの言い方が残っている作品（reason: 予約の言い方が残っている）
         ・枠が余ったら、過去作品（site/src/data/catalog/YYYY-MM.json）のコメントがまだ無い作品を、FANZAの人気順の順位が上の作品から（reason: 過去作品・catalog: true）
+        ・FANZA同人（site/src/data/doujin.json）・FANZAゲーム（game.json）のコメントがまだ無い作品を、人気順の順位が上の作品から（reason: 同人 / ゲーム・floor: doujin / game）。
+          1日40件のうち、同人4件・ゲーム1件（運営者の希望。2026-10-09。FLOOR_QUOTA。対象が足りない日は、残りを動画に回す）
   python3 scripts/claude_comments.py apply コメント.json [--dry-run]
-      {"cid": "コメント", ...} を点検して、問題が無ければ new_releases.json（過去作品なら、その発売月のファイル）に書き込む
+      {"cid": "コメント", ...} を点検して、問題が無ければ new_releases.json（過去作品なら、その発売月のファイル。同人・ゲームなら doujin.json・game.json）に書き込む
       （1件でも問題があれば何も書き込まない）
 
 書き込んだコメントは comment_kind を "claude" にし、その作品の updated（更新日）を今日（日本時間）にします
@@ -29,6 +31,9 @@ import sys
 import unicodedata
 from datetime import datetime, timedelta, timezone
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import floor_data as F  # noqa: E402  FANZA同人・FANZAゲームのデータの読み書き（scripts/doujin_game.py と同じ）
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.environ.get("DATA_PATH", os.path.join(ROOT, "site", "src", "data", "new_releases.json"))
 # 過去作品（get_new_releases.py が FANZAの人気順に集める。発売月ごとのファイル YYYY-MM.json・1作品1行。コメントは無し（none）か、Claude が書いたもの）
@@ -43,6 +48,10 @@ MIN_LEN_SPARSE = 80     # 書ける事実が少ない作品（タイトルを見
 MAX_LEN = 200           # 上限
 DEFAULT_LIMIT = 30      # list で一度に出す件数
 DAILY_LIMIT = 40        # 1日に仕上げる件数の上限（試運転で、1回の予約タスクが40件を2回続けて書いたため。--rewrite は数えない）
+# 1日40件のうち、FANZA同人・FANZAゲームに回す件数（運営者の希望「動画35本・同人4本・ゲーム1本」。2026-10-09）。
+# list の --limit が40でないときは、同じ割合（四捨五入）。対象が足りない日は、残りを動画（毎日の更新の作品・過去作品）に回す
+FLOOR_QUOTA = {"doujin": 4, "game": 1}
+FLOOR_REASON = {"doujin": "同人", "game": "ゲーム"}
 
 # コメントに書けない言葉: 行為・体の部位の言葉、性的暴行・連れ去り・拷問・人をモノ扱いする言葉。
 # 痴漢・催眠・寝取り・セクハラ・拘束などは、フィクションの「設定」を伝える言葉として書いてよい（運営者の希望。2026-10-04）
@@ -102,6 +111,15 @@ COMMENT_EXTRA_GENRES = ["ドラマ", "企画", "ドキュメンタリー", "恋�
                         "ニューハーフ", "キス・接吻", "美脚", "長身", "スポーツ", "アイドル・芸能人", "キャバ嬢・風俗嬢", "メイド", "OL",
                         "VR専用", "ハイクオリティVR", "8KVR", "4K", "ハイビジョン", "独占配信", "単体作品", "4時間以上作品", "複数話"]
 COPY_RUN = 10           # タイトルの文字を、これより長く続けて写したら断る（タイトルは手がかり。文章は自分の言葉で）
+# 同人・ゲームのコメントの手がかりに出すジャンル（決めた一覧だけ。舞台・関係・作品の形を表す、おだやかなもの。
+# 過激な行為・未成年を連想させるもの・同意の無い行為は入れない。同人・ゲームの作品は、未成年を連想させる作品をデータに入れていない）
+FLOOR_COMMENT_GENRES = ["巨乳", "人妻・主婦", "人妻", "熟女", "ギャル", "お姉さん", "OL", "メイド", "ナース", "巫女", "シスター", "エルフ", "魔法使い・魔女",
+                        "女騎士", "ファンタジー", "異世界", "異世界転生", "恋愛", "純愛", "ラブラブ・あまあま", "ラブコメ", "ハーレム", "コメディ", "ギャグ",
+                        "日常・生活", "シリアス", "ほのぼの", "バトル", "アクション", "RPG", "アドベンチャー", "シミュレーション", "ノベル", "パズル",
+                        "動画・アニメーション", "アニメーション", "フルカラー", "ボイス付き", "癒し", "耳かき", "バイノーラル/ダミヘ", "ASMR", "水着",
+                        "着物・和服", "褐色・日焼け", "スレンダー", "めがね", "コスプレ", "温泉・銭湯", "旅行", "オフィス・職場", "同棲", "夫婦", "不倫",
+                        "浮気", "未亡人", "アイドル・芸能人", "スポーツ", "SF", "ホラー", "ミステリー", "歴史", "和風", "ダークファンタジー", "ケモミミ",
+                        "獣人", "天使・悪魔", "お嬢様・令嬢", "王女・姫", "主従", "上司・部下"]
 
 # コメントの種類（get_new_releases.py と同じ）: template＝定型文、ai＝Gemini の下書き、claude＝Claude が仕上げたもの
 FINAL_KIND = "claude"
@@ -263,6 +281,37 @@ def load_catalog_ranks():
     return ranks
 
 
+def floor_file(key):
+    """同人・ゲームのデータのファイル（保存データと同じフォルダの doujin.json・game.json。環境変数 DOUJIN_PATH・GAME_PATH で変えられる）"""
+    return os.environ.get(F.FLOORS[key]["env"], os.path.join(os.path.dirname(DATA_PATH), F.FLOORS[key]["file"]))
+
+
+def load_floors():
+    """同人・ゲームのデータ {"doujin": data, "game": data}（scripts/floor_data.py の load_floor。無ければ入れない）。
+    壊れていれば止める（書き戻して壊さないように）"""
+    floors = {}
+    for key in F.FLOORS:
+        try:
+            data = F.load_floor(floor_file(key))
+        except ValueError as e:
+            sys.exit(f"❌ {F.FLOORS[key]['label']}のデータを読めませんでした（{e}）")
+        if data:
+            floors[key] = data
+    return floors
+
+
+def floor_pending(data, today):
+    """同人・ゲームの、書く対象の作品（コメントがまだ無い・予約の言い方が残っている）。人気順の順位が上の作品から（順位の無い予約は、そのあと発売日の近い順）"""
+    rows = [x for x in data["items"].values() if x.get("comment_kind") != FINAL_KIND or stale_status_word(x, today)]
+    ranks = data.get("ranks") or {}
+    return sorted(rows, key=lambda x: (ranks.get(x["cid"], float("inf")), (x.get("date") or ""), x["cid"]))
+
+
+def floor_quota(limit):
+    """--limit の数のうち、同人・ゲームに回す件数（FLOOR_QUOTA と同じ割合。四捨五入）"""
+    return {k: int(q * max(limit, 0) / DAILY_LIMIT + 0.5) for k, q in FLOOR_QUOTA.items()}
+
+
 def catalog_index(shards, curated_cids):
     """過去作品の cid → (ファイル名, 作品)。毎日の更新で載せた作品と同じ作品は除く（サイトは、毎日の更新のほうを使う）"""
     index = {}
@@ -337,13 +386,19 @@ def cmd_list(args):
         return released + upcoming
     urgent = [x for x in todo if pending_reason(x, today) != "下書きを仕上げる"]
     drafts = [x for x in todo if pending_reason(x, today) == "下書きを仕上げる"]
-    shown = (ordered(urgent) + ordered(drafts))[: max(args.limit, 0)]
+    # FANZA同人・FANZAゲームの分（1日40件のうち、同人4件・ゲーム1件。対象が足りない日は、残りを動画に回す）
+    floors = load_floors()
+    floor_todo = {k: floor_pending(d, today) for k, d in floors.items()}
+    quota = floor_quota(args.limit)
+    floor_shown = [(k, x) for k in F.FLOORS for x in floor_todo.get(k, [])[: quota[k]]]
+    video_limit = max(args.limit, 0) - len(floor_shown)
+    shown = (ordered(urgent) + ordered(drafts))[: video_limit]
     # 毎日の更新で載せた作品を先に。枠が余ったら、過去作品（コメントがまだ無いもの）を、FANZAの人気順の順位が上の作品から
     # （順位が分からない作品は、そのあとに発売日の新しい順。サイトも、過去作品の作品ページを同じ順に作る。コメントが付くと、検索エンジンにも出る）
     catalog = catalog_index(load_catalog_raw(), {x["cid"] for x in items})
     catalog_todo = pending_items([x for _, x in catalog.values()], today)
     ranks = load_catalog_ranks()
-    room = max(args.limit, 0) - len(shown)
+    room = video_limit - len(shown)
     if room > 0:
         by_date = sorted(catalog_todo, key=lambda x: (x.get("date") or "", x["cid"]), reverse=True)
         shown += sorted(by_date, key=lambda x: ranks.get(x["cid"], float("inf")))[:room]  # 安定した並べ替えなので、同じ順位の中は新しい順のまま
@@ -390,8 +445,44 @@ def cmd_list(args):
         if x.get("comment_kind") in (DRAFT_KIND, FINAL_KIND):
             row["draft"] = x.get("comment") or ""  # 仕上げる前の文（Gemini の下書きなど）。そのまま使わず、書き直す
         rows.append(row)
-    print(json.dumps({"today": today, "total_pending": len(todo) + len(catalog_todo), "catalog_pending": len(catalog_todo), "shown": len(rows), "items": rows},
+    for key, x in floor_shown:
+        rows.append(floor_row(key, x, today))
+    floor_left = {k: len(v) for k, v in floor_todo.items()}
+    print(json.dumps({"today": today, "total_pending": len(todo) + len(catalog_todo) + sum(floor_left.values()), "catalog_pending": len(catalog_todo),
+                      "doujin_pending": floor_left.get("doujin", 0), "game_pending": floor_left.get("game", 0), "shown": len(rows), "items": rows},
                      ensure_ascii=False, indent=1))
+
+
+def floor_row(key, x, today):
+    """同人・ゲームの1件を、コメント作りに必要な情報だけで出す（価格・セール・順位は、日がたつと変わるので出さない）"""
+    allowed = set(FLOOR_COMMENT_GENRES)
+    genres = [g for g in x.get("genres") or [] if g in allowed and not any(w.lower() in g.lower() for w in EXPLICIT_WORDS + TITLE_BLOCK)]
+    row = {
+        "cid": x["cid"],
+        "floor": key,
+        "reason": FLOOR_REASON[key] + ("（予約の言い方が残っている）" if stale_status_word(x, today) else ""),
+        "status": "発売済み" if (x.get("date") or "")[:10] <= today else "予約",
+        "date": (x.get("date") or "")[:10],
+        ("circle" if key == "doujin" else "brand"): x.get("maker") or None,
+        "genres": genres,
+        "sample_images": len(x.get("sample_images") or []),
+        "min_len": min_length_for(x, key),
+    }
+    if key == "game" and x.get("authors"):
+        row["authors"] = [a for a in x["authors"] if title_block_reason({"title": a}) != "minor"]
+    if x.get("series") and title_block_reason({"title": x["series"]}) != "minor":
+        row["series"] = x["series"]
+    title = safe_title(x)
+    if title:
+        row["title"] = title
+        if title_block_reason(x) == "theme":
+            row["fiction_theme"] = True
+    else:
+        row["title_hidden"] = True
+        row["content_off"] = True
+    if x.get("comment_kind") == FINAL_KIND:
+        row["draft"] = x.get("comment") or ""
+    return row
 
 
 # ------------------------------------------------------------------
@@ -430,17 +521,20 @@ def is_sparse(item):
     return not (has_minutes and has_genres)
 
 
-def min_length_for(item):
-    """その作品のコメントの文字数の下限（未成年を連想させるタイトルの作品は、書ける事実が少ないので80）"""
+def min_length_for(item, floor=None):
+    """その作品のコメントの文字数の下限（未成年を連想させるタイトルの作品は、書ける事実が少ないので80）。
+    同人・ゲーム（floor）は、タイトルを見せる作品なら100、見せない作品なら80"""
+    if floor:
+        return MIN_LEN if safe_title(item) else MIN_LEN_SPARSE
     return MIN_LEN_SPARSE if is_sparse(item) or title_block_reason(item) == "minor" else MIN_LEN
 
 
-def comment_problems(comment, item):
-    """コメント1件の問題点（なければ空のリスト）"""
+def comment_problems(comment, item, floor=None):
+    """コメント1件の問題点（なければ空のリスト）。floor: 同人・ゲームの作品なら doujin / game"""
     if not isinstance(comment, str):
         return ["文字列ではありません"]
     text = comment.strip()
-    problems = text_problems(text, min_length_for(item), MAX_LEN)
+    problems = text_problems(text, min_length_for(item, floor), MAX_LEN)
     hype = [w for w in HYPE_WORDS if w in text]
     if hype:
         problems.append("確かめられない評価・大げさな言い方があります（事実だけで書いてください）: " + "、".join(hype))
@@ -450,7 +544,7 @@ def comment_problems(comment, item):
     for name in item.get("actress") or []:
         if name and text.count(name) > 1:
             problems.append(f"出演者名「{name}」が2回以上入っています（1回まで）")
-    copied = copied_from_title(text, str(item.get("title") or ""), [*(item.get("actress") or []), item.get("maker") or "", item.get("series") or "", item.get("label") or ""])
+    copied = copied_from_title(text, str(item.get("title") or ""), [*(item.get("actress") or []), *(item.get("authors") or []), item.get("maker") or "", item.get("series") or "", item.get("label") or ""])
     if copied:
         problems.append(f"タイトルの言葉をそのまま写しています（「{copied}」。内容は、自分の言葉で、やわらかく言いかえてください）")
     if text == (item.get("comment") or "").strip():
@@ -515,17 +609,20 @@ def cmd_apply(args):
     by_cid = {x["cid"]: x for x in items}
     shards = load_catalog_raw()
     catalog = catalog_index(shards, set(by_cid))  # 過去作品（cid → (ファイル名, 作品)）
+    floors = load_floors()
+    floor_of = {cid: key for key, data in floors.items() for cid in data["items"] if cid not in by_cid and cid not in catalog}  # 同人・ゲームの作品 cid → 売り場
     errors = []
     texts = {}
     for cid, comment in mapping.items():
-        item = by_cid.get(cid) or (catalog[cid][1] if cid in catalog else None)
+        floor = floor_of.get(cid)
+        item = by_cid.get(cid) or (catalog[cid][1] if cid in catalog else None) or (floors[floor]["items"][cid] if floor else None)
         if item is None:
-            errors.append((cid, ["保存データ（毎日の更新の作品・過去作品）にない cid です"]))
+            errors.append((cid, ["保存データ（毎日の更新の作品・過去作品・同人・ゲーム）にない cid です"]))
             continue
-        if item.get("comment_kind") == FINAL_KIND and not stale_status_word(item, stamp) and not info_added(item) and not args.rewrite:
+        if item.get("comment_kind") == FINAL_KIND and not stale_status_word(item, stamp) and (floor or not info_added(item)) and not args.rewrite:
             errors.append((cid, ["Claude が仕上げたコメントが、すでに付いています（上書きしません。書き直せるのは、定型文・Gemini の下書き・発売日をすぎて予約やこれから先の言い方が残っているもの・仕上げたあとに出演者や情報が増えたものだけ）"]))
             continue
-        problems = comment_problems(comment, item)
+        problems = comment_problems(comment, item, floor)
         if problems:
             errors.append((cid, problems))
         else:
@@ -542,7 +639,7 @@ def cmd_apply(args):
 
     # 1日に仕上げるのは DAILY_LIMIT 件まで（急いで大量に書くと、型どおりの文になりやすい。残りは次の日に回す）
     if not args.rewrite and not args.no_daily_limit:
-        done_today = sum(1 for x in [*items, *(row for _, row in catalog.values())]
+        done_today = sum(1 for x in [*items, *(row for _, row in catalog.values()), *(x for d in floors.values() for x in d["items"].values())]
                          if x.get("comment_kind") == FINAL_KIND and x.get("updated") == stamp and x["cid"] not in texts)
         if done_today + len(texts) > DAILY_LIMIT:
             errors.append(("(まとめて)", [f"今日（{stamp}）はもう {done_today} 件を仕上げています。1日に仕上げるのは {DAILY_LIMIT} 件までです"
@@ -583,11 +680,15 @@ def cmd_apply(args):
         return
 
     changed_shards = set()
+    changed_floors = set()
     for cid, text in texts.items():
         target = by_cid.get(cid)
-        if target is None:  # 過去作品
+        if target is None and cid in catalog:  # 過去作品
             name, target = catalog[cid]
             changed_shards.add(name)
+        elif target is None:  # 同人・ゲーム
+            changed_floors.add(floor_of[cid])
+            target = floors[floor_of[cid]]["items"][cid]
         target["comment"] = text
         target["comment_kind"] = FINAL_KIND
         target["updated"] = stamp  # コメントを変えた日（sitemap の lastmod に使う）
@@ -595,18 +696,26 @@ def cmd_apply(args):
         save_raw(items)
     for name in sorted(changed_shards):
         save_catalog_shard(name, shards[name])
+    for key in sorted(changed_floors):
+        F.save_floor(floor_file(key), floors[key])
     # 書いたものを読み直して確かめる
     check = load_raw()
     ok = len(check) == len(items) and all(x["cid"] == y["cid"] for x, y in zip(check, items))
     check_shards = load_catalog_raw()
     ok = ok and all(len(check_shards.get(n, [])) == len(shards[n]) and all(x["cid"] == y["cid"] for x, y in zip(check_shards[n], shards[n])) for n in changed_shards)
+    check_floors = load_floors()
+    ok = ok and all(set(check_floors.get(k, {"items": {}})["items"]) == set(floors[k]["items"])
+                    and all(check_floors[k]["items"][c]["comment"] == texts[c] for c in texts if floor_of.get(c) == k) for k in changed_floors)
     if not ok:
         sys.exit("❌ 書き込み後の確認に失敗しました。git で変更を取り消してください")
     left = len(pending_items(check, stamp))
     kinds = [x.get("comment_kind") for x in pending_items(check, stamp)]
     catalog_left = len(pending_items([x for _, x in catalog_index(check_shards, {x["cid"] for x in check}).values()], stamp))
-    print(f"✅ {len(texts)}件のコメントを書き込みました（うち過去作品 {sum(1 for c in texts if c not in by_cid)}件。まだ仕上げていない作品: 残り{left}件。"
-          f"うち定型文 {kinds.count('template')}件・Gemini の下書き {kinds.count(DRAFT_KIND)}件。コメントがまだ無い過去作品: {catalog_left}本）")
+    floor_left = {k: len(floor_pending(d, stamp)) for k, d in check_floors.items()}
+    print(f"✅ {len(texts)}件のコメントを書き込みました（うち過去作品 {sum(1 for c in texts if c in catalog)}件・同人 {sum(1 for c in texts if floor_of.get(c) == 'doujin')}件・"
+          f"ゲーム {sum(1 for c in texts if floor_of.get(c) == 'game')}件。まだ仕上げていない作品: 残り{left}件。"
+          f"うち定型文 {kinds.count('template')}件・Gemini の下書き {kinds.count(DRAFT_KIND)}件。コメントがまだ無い過去作品: {catalog_left}本・"
+          f"同人: {floor_left.get('doujin', 0)}本・ゲーム: {floor_left.get('game', 0)}本）")
 
 
 def main():
