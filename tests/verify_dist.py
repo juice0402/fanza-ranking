@@ -2381,9 +2381,16 @@ if os.path.isfile(sp):
         _tag_ul = re.search(r'<ul id="ws-tag-list" class="ws-tag-list" data-first="1">(.*?)</ul>', stext_, re.S)
         _tag_lis = re.findall(r'<li( hidden)?><button type="button" class="tag-btn" aria-pressed="false" data-n="(\d+)" data-name="([^"]*)"[^>]*><span class="tag-name">(.*?)</span><span class="tag-count">(\d+)</span>', _tag_ul.group(1), re.S) if _tag_ul else []
         _tags_ok = [(htmllib.unescape(nm), int(ct), bool(hd)) for hd, n_, nm, _, ct in _tag_lis] == [(g, _gcount[i], i >= _stc) for i, g in enumerate(_ii["genres"])]
-        check(f"作品検索: はじめの一覧（新しい順の、はじめの{_sps}本）・本数・ジャンルのボタン（本数・はじめに出す{_stc}個）が、ページに入っていて、索引と同じ（索引を待たずに見える）",
-              bool(_wl) and _wl.group(1) == JST_TODAY and _got_c == _want_c and bool(_cnt) and strip_tags(_cnt.group(1)).strip() == f"{len(_ii['items']):,}本" and _tags_ok,
-              (_got_c[:3], _want_c[:3], strip_tags(_cnt.group(1)).strip() if _cnt else None, _tag_lis[:2]))
+        # 本数は、絞り込んだときだけ。条件なしは「ーー本」（索引の本数（最大3,000本）が、掲載している作品の数と誤解されるため。運営者の希望。2026-10-09）
+        _blank = re.search(r"export const SEARCH_COUNT_BLANK = '([^']*)';", read(os.path.join(ROOT, "site", "src", "lib", "search.js"))).group(1)
+        _blank_note = re.search(r"export const SEARCH_COUNT_BLANK_NOTE = '([^']*)';", read(os.path.join(ROOT, "site", "src", "lib", "search.js"))).group(1)
+        check(f"作品検索: はじめの一覧（新しい順の、はじめの{_sps}本）・ジャンルのボタン（本数・はじめに出す{_stc}個）が、ページに入っていて、索引と同じ（索引を待たずに見える）",
+              bool(_wl) and _wl.group(1) == JST_TODAY and _got_c == _want_c and _tags_ok,
+              (_got_c[:3], _want_c[:3], _tag_lis[:2]))
+        _cnt_text = strip_tags(_cnt.group(1)).strip() if _cnt else None
+        check(f"作品検索: 条件なしの本数は「{_blank}本」（読み上げは「{_blank_note}」）で、索引の本数（{len(_ii['items']):,}本）をページに出さない",
+              _cnt_text == f"{_blank}本{_blank_note}" and 'aria-hidden="true"' in _cnt.group(1) and 'class="ws-num ws-num-blank"' in _cnt.group(1) and f"{len(_ii['items']):,}本" not in strip_tags(stext_),
+              _cnt_text)
     names_ = {t.get("name") for tag in ("input", "select") for t in tags(stext_, tag)}
     ids_ = {t.get("id") for tag in ("ul", "p", "button", "section") for t in tags(stext_, tag)}
     check("検索のフォーム（q・status・sort）と、結果の表示先（#ws-tag-list・#ws-tag-more・#ws-count・#ws-list・#ws-more）がある", {"q", "status", "sort"} <= names_ and {"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} <= ids_, (sorted({"q", "status", "sort"} - names_), sorted({"ws-tag-list", "ws-tag-more", "ws-count", "ws-list", "ws-more"} - ids_)))

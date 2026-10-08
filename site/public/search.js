@@ -6,6 +6,10 @@
 (function () {
   var PAGE_SIZE = 24; // 1回に出す作品の数（「もっと見る」で増やす）
   var TAGS_COLLAPSED = 14; // ジャンルを、最初に出す数（選んだものは、これとは別に必ず出す）
+  // 条件なしのときの本数の代わり（索引は最大3,000本なので、条件なしの本数が「掲載している作品の数」と誤解されるため。
+  // 本数は、キーワード・ジャンル・発売の状態で絞り込んだときだけ出す。運営者の希望。2026-10-09。site/src/lib/search.js の SEARCH_COUNT_BLANK と同じ）
+  var COUNT_BLANK = 'ーー';
+  var COUNT_BLANK_NOTE = '条件で絞り込むと、本数が出ます'; // 読み上げ用（画面には出さない）
   var DMM = ['dmm.co.jp'];
   var DMM_IMAGE_PREFIX = 'https://pics.dmm.co.jp/';
   var CID = /^[A-Za-z0-9_-]+$/;
@@ -280,6 +284,12 @@
     return { names: names, more: list.length - names.length };
   }
 
+  // 絞り込みの条件（キーワード・ジャンル・発売の状態）が1つでもあるか。並び順は絞り込まないので数えない。
+  // 条件が無いあいだは、本数を出さない（COUNT_BLANK）
+  function isNarrowed(state) {
+    return !!state && ((state.terms && state.terms.length > 0) || (state.tags && state.tags.length > 0) || !!state.status);
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       smallImageUrl: smallImageUrl,
@@ -288,6 +298,9 @@
       rowImage: rowImage,
       castShown: castShown,
       CAST_LIMIT: CAST_LIMIT,
+      isNarrowed: isNarrowed,
+      COUNT_BLANK: COUNT_BLANK,
+      COUNT_BLANK_NOTE: COUNT_BLANK_NOTE,
       normalizeText: normalizeText,
       splitTerms: splitTerms,
       jstToday: jstToday,
@@ -453,12 +466,20 @@
     return [buildQuery({ q: form.elements.q.value, tags: selected, status: form.elements.status.value, sort: form.elements.sort.value }, genres), shown, o.hideVr ? 1 : 0, o.onlySolo ? 1 : 0, expanded ? 1 : 0, o.today].join('|');
   }
 
-  function countHtml(n, o) {
+  function countHtml(n, o, narrowed) {
     var vrNote = o.hideVr && o.onlySolo ? '（単体作品・VR作品を除く）' : o.onlySolo ? '（単体作品のみ）' : o.hideVr ? '（VR作品を除く）' : '';
     var offNote = (o.onlySolo ? '単体作品だけ表示しています。' : '') + (o.hideVr ? 'VR作品は隠しています。' : '');
-    // 見つかった本数は、大きな数字で（「3,000本」。2026-10-06）
+    // 見つかった本数は、大きな数字で（「120本」。2026-10-06）。条件なしのときは「ーー本」（掲載数と誤解されないように。2026-10-09。
+    // ページに入っている形（site/src/pages/search/index.astro）と同じ）
     count.textContent = '';
-    if (n) {
+    if (n && !narrowed) {
+      var shown = el('span');
+      shown.setAttribute('aria-hidden', 'true');
+      shown.appendChild(el('strong', 'ws-num ws-num-blank', COUNT_BLANK));
+      shown.appendChild(document.createTextNode('本' + vrNote));
+      count.appendChild(shown);
+      count.appendChild(el('span', 'visually-hidden', COUNT_BLANK_NOTE));
+    } else if (n) {
       count.appendChild(el('strong', 'ws-num', withCommas(n)));
       count.appendChild(document.createTextNode('本' + vrNote));
     } else {
@@ -490,7 +511,7 @@
       frag.appendChild(card(row, o.today));
     });
     list.appendChild(frag);
-    countHtml(found.length, o);
+    countHtml(found.length, o, isNarrowed(state));
     more.hidden = found.length <= visible.length;
     if (filterNote) {
       var active = selected.length + (state.status ? 1 : 0) + (state.sort !== 'new' ? 1 : 0);

@@ -169,8 +169,17 @@ console.log('\n■ 作品検索の「はじめの一覧」（ページを作る�
   }
   check('1回に出す本数・ジャンルを最初に出す数は、ページとブラウザで同じ', L.SEARCH_PAGE_SIZE === S.PAGE_SIZE && L.SEARCH_TAGS_COLLAPSED === S.TAGS_COLLAPSED && S.CAST_LIMIT === CAST_LIMIT);
   check('はじめの一覧: 索引が空・壊れていても落ちない', L.searchFirstPage({ genres: [], items: [] }, today).total === 0 && L.searchFirstPage(null, today).rows.length === 0);
+  // 本数は、絞り込んだときだけ（条件なしの本数＝索引の3,000本が、掲載している作品の数と誤解されるため。運営者の希望。2026-10-09）
+  check('本数の代わりの「ーー」と読み上げの文は、ページとブラウザで同じ', L.SEARCH_COUNT_BLANK === S.COUNT_BLANK && L.SEARCH_COUNT_BLANK === 'ーー' && L.SEARCH_COUNT_BLANK_NOTE === S.COUNT_BLANK_NOTE && /本数/.test(S.COUNT_BLANK_NOTE));
+  const base = { terms: [], tags: [], status: '', sort: 'new' };
+  check('絞り込みの条件: キーワード・ジャンル・発売の状態のどれかがあれば本数を出す（並び順だけ・条件なしは出さない）',
+    !S.isNarrowed(base) && !S.isNarrowed({ ...base, sort: 'pop' }) && !S.isNarrowed({ ...base, sort: 'old' }) && !S.isNarrowed(null)
+      && S.isNarrowed({ ...base, terms: ['桜'] }) && S.isNarrowed({ ...base, tags: [0] }) && S.isNarrowed({ ...base, status: 'released' }) && S.isNarrowed({ ...base, status: 'upcoming' }));
   const src = fs.readFileSync(new URL('../site/public/search.js', import.meta.url), 'utf-8');
   check('ブラウザの検索は、ページの「はじめの一覧」（data-first）がいまの条件と同じなら作り直さず、キーワードは打ち終わってから探す', src.includes("list.getAttribute('data-first') === '1'") && src.includes("'読み込み中…'") && src.includes('TYPING_WAIT_MS'));
+  check('ブラウザの本数の表示は、絞り込みの条件で「ーー本」と本数を切りかえる', src.includes('countHtml(found.length, o, isNarrowed(state))') && src.includes("'ws-num ws-num-blank', COUNT_BLANK"));
+  const page = fs.readFileSync(new URL('../site/src/pages/search/index.astro', import.meta.url), 'utf-8');
+  check('検索ページの「はじめの一覧」の本数は「ーー本」（索引の本数を出さない）', page.includes('{SEARCH_COUNT_BLANK}</strong>本') && !page.includes('first.total.toLocaleString'));
 }
 
 console.log('\n■ 「VR作品を隠す」「単体作品のみ表示」スイッチ（vr-filter.js）');
