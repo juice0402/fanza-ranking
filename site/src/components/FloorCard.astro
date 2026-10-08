@@ -1,0 +1,30 @@
+---
+// FANZA同人・FANZAゲームの作品カード（一覧の1マス。動画の ItemCard と同じ形・同じ見た目。2026-10-09。lib/floors.js）。
+// 表紙: ゲームは、動画と同じく FANZA のパッケージ画像（スマホは表紙だけの軽い画像。components/Thumb.astro）。
+// 同人は、表紙の画像が横長（560×420 前後。2026-10-09 に本物で確かめた）なので、横長の枠（is-wide）にまるごと入れる。
+// 同人には、カードに使える小さい版が無い（90×90 だけ）ので、<picture> は使わない
+import Thumb from './Thumb.astro';
+import { floorItemPath, makerLine } from '../lib/floors.js';
+
+// level: 見出しの階層 / eager: 最初の画面に入る作品だけ、画像をすぐ読む / badge: 表紙の左上の札（順位・割引）/ note: 価格などの1行
+const { item, level = 'h3', eager = false, badge = '', note = '' } = Astro.props;
+const Heading = level;
+const href = floorItemPath(item.floor, item.cid);
+const wide = item.floor === 'doujin';
+const line = makerLine(item);
+---
+
+<article class="item">
+  <a class:list={['item-cover', { 'is-wide': wide }]} href={href} tabindex="-1" aria-hidden="true">
+    {item.image_url && (wide
+      ? <img class="floor-img" src={item.image_url} alt="" width="560" height="420" loading={eager ? 'eager' : 'lazy'} decoding="async" onerror="this.style.visibility='hidden'" />
+      : <Thumb src={item.image_url} kind="card" loading={eager ? 'eager' : 'lazy'} />)}
+    {badge && <span class="rank-badge">{badge}</span>}
+    {item.upcoming && <span class="pop pop-wait">予約</span>}
+  </a>
+  <Heading class="item-title">{badge && <span class="visually-hidden">{badge}：</span>}{item.upcoming && <span class="visually-hidden">予約：</span>}<a class="item-title-link" href={href}>{item.title}</a></Heading>
+  {line && <p class="item-cast">{line}</p>}
+  {note && <p class="item-note">{note}</p>}
+  {item.comment && <p class="item-comment">{item.comment}</p>}
+  <a class="btn btn-card btn-block" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで見る</a>
+</article>

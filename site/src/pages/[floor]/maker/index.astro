@@ -1,0 +1,57 @@
+---
+// FANZA同人のサークル一覧（/doujin/maker/）・FANZAゲームのブランド一覧（/game/maker/）。作品が2本以上あるものだけ、作品数の多い順（2026-10-09。lib/floors.js）
+import Base from '../../../layouts/Base.astro';
+import Breadcrumb from '../../../components/Breadcrumb.astro';
+import FloorTabs from '../../../components/FloorTabs.astro';
+import { activeFloors, floorMakerGroups, floors } from '../../../lib/data.js';
+import { FLOORS, FLOOR_MAKER_MIN, floorMakerIndexPath, floorPath } from '../../../lib/floors.js';
+import { listIndexable } from '../../../lib/plan.js';
+import { SITE_NAME, breadcrumbLd } from '../../../lib/items.js';
+
+export function getStaticPaths() {
+  return activeFloors.filter((k) => floorMakerGroups[k].length > 0).map((floor) => ({ params: { floor } }));
+}
+
+const { floor: key } = Astro.params;
+const f = FLOORS[key];
+const groups = floorMakerGroups[key];
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: `${f.maker}一覧`, path: floorMakerIndexPath(key) },
+];
+const noindex = !listIndexable(groups.flatMap((g) => g.items)) || groups.every((g) => g.items.every((i) => !i.comment));
+---
+
+<Base
+  title={`${f.label}の${f.maker}一覧（${groups.length}${key === 'doujin' ? 'サークル' : 'ブランド'}）人気作品｜${SITE_NAME}`}
+  description={`${f.label}の人気作品を、${f.maker}ごとにまとめた一覧です（${groups.length}件・作品数の多い順）。毎日更新。`}
+  path={floorMakerIndexPath(key)}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{f.maker}から探す</h1>
+      <p class="hero-lead">このサイトに載っている{f.label}の作品が{FLOOR_MAKER_MIN}本以上ある{f.maker}です。作品数の多い順。</p>
+      <FloorTabs floorKey={key} current="maker" />
+    </section>
+
+    <section class="section" aria-labelledby="fl-makers-title">
+      <h2 id="fl-makers-title" class="visually-hidden">{f.maker}の一覧</h2>
+      <ul class="name-grid">
+        {groups.map((g) => (
+          <li>
+            <a class="name-link" href={g.path} title={g.name}>
+              <span class="name-link-name">{g.name}</span>
+              <span class="name-link-count">{g.total}本</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+    <p class="section-note">本数は、このサイトに載っている{f.label}の作品（{floors[key].items.length}本）から数えています。</p>
+  </div>
+</Base>

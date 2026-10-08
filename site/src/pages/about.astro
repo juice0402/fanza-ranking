@@ -10,6 +10,8 @@ import { SALE_HISTORY_PATH, SALE_PATH } from '../lib/sale.js';
 import { SEARCH_PATH } from '../lib/search.js';
 import { FAVORITES_PATH } from '../lib/favorites.js';
 import { CALENDAR_PATH } from '../lib/calendar.js';
+import { activeFloors } from '../lib/data.js';
+import { FLOORS, floorPath } from '../lib/floors.js';
 
 const trail = [
   { name: 'トップ', path: '/' },
@@ -45,6 +47,7 @@ const pageLd = {
         <li><a class="spec-link" href={RANKING_PATH}>新着の人気ランキング</a>と<a class="spec-link" href={SALE_PATH}>開催中のセール</a>（<a class="spec-link" href={SALE_HISTORY_PATH}>これまでのセールの履歴</a>）を見る</li>
         <li><a class="spec-link" href={SEARCH_PATH}>作品</a>・<a class="spec-link" href={ACTRESS_INDEX_PATH}>女優</a>・<a class="spec-link" href={MAKER_INDEX_PATH}>メーカー</a>・ジャンルから探す</li>
         <li><a class="spec-link" href={FAVORITES_PATH}>お気に入り</a>に入れた女優・メーカーの新作をまとめて見る・<a class="spec-link" href={CALENDAR_PATH}>発売日をカレンダーで受け取る</a></li>
+        {activeFloors.length > 0 && <li>{activeFloors.map((k, i) => <>{i > 0 && '・'}<a class="spec-link" href={floorPath(k)}>{FLOORS[k].label}</a></>)}の人気作品とセールを見る（FANZAの人気順の上から。毎日入れかえます）</li>}
       </ul>
     </section>
 
@@ -75,7 +78,7 @@ const pageLd = {
       <ul class="about-list">
         <li>このサイトは18歳以上の方を対象としています。</li>
         <li>FANZAのアフィリエイト広告を利用しています。作品のリンクからFANZAで購入されると、このサイトに紹介料が入ります（購入する方の支払う金額は変わりません）。</li>
-        <li>こちらからおすすめする欄には、未成年を連想させるタイトルの作品を出していません。</li>
+        <li>こちらからおすすめする欄には、未成年を連想させるタイトルの作品を出していません。同人・ゲームのページには、未成年を連想させるタイトル・ジャンルの作品を載せていません。</li>
         <li>情報に違いがあるときは、FANZAの公式ページの情報が正しい情報です。</li>
       </ul>
     </section>

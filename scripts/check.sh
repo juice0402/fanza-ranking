@@ -87,6 +87,9 @@ node tests/test_plan.mjs || failed=1
 step "人気順（新着の人気順・全体の人気順）の部品 (Node.js)"
 node tests/test_popularity.mjs || failed=1
 
+step "FANZA同人・FANZAゲームのページの部品 (Node.js)"
+node tests/test_floors.mjs || failed=1
+
 step "セール・キャンペーンの部品 (Node.js)"
 node tests/test_sale.mjs || failed=1
 node tests/test_topics.mjs || failed=1
