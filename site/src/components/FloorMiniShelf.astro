@@ -14,7 +14,7 @@ const Heading = level;
       <a class="mini-card" href={floorItemPath(i.floor, i.cid)}>
         <span class:list={['mini-cover', { 'is-wide': i.floor === 'doujin' }]}>
           {i.image_url && (i.floor === 'doujin'
-            ? <img class="floor-img" src={i.image_url} alt="" width="560" height="420" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'" />
+            ? <img class="floor-img" src={i.image_url} alt="" width="560" height="420" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" />
             : <Thumb src={i.image_url} kind="tiny" class="item-img is-small" />)}
         </span>
         <Heading class="mini-title">{i.title}</Heading>

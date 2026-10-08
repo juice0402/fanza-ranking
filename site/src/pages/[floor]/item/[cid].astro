@@ -2,7 +2,8 @@
 // FANZA同人・FANZAゲームの作品ページ（/doujin/item/<品番>/・/game/item/<品番>/。2026-10-09。lib/floors.js）。
 // 表紙・タイトル・ひとこと（Claude が毎日 同人4本・ゲーム1本ずつ書く）・発売日・サークル/ブランド・作家・シリーズ・ジャンル・価格とセール・FANZAへ・
 // サンプル画像（拡大表示）・同じサークル/ブランドの作品・同じジャンルで人気の作品。
-// コメントがまだ無い作品は、FANZAの情報を並べただけのページなので、検索エンジンには出さない（noindex。sitemap にも入れない）
+// コメントがまだ無い作品は、FANZAの情報を並べただけのページなので、検索エンジンには出さない（noindex。sitemap にも入れない）。
+// 表紙・サンプル画像・拡大表示は、どのページから読んだかを送らない（referrerpolicy="no-referrer"。同人の画像がページの中で出なかったため。2026-10-09）
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorMiniShelf from '../../../components/FloorMiniShelf.astro';
@@ -60,6 +61,7 @@ const hasSalePage = floorSaleItems(items).length > 0;
             width={wide ? 560 : 411}
             height={wide ? 420 : 560}
             fetchpriority="high"
+            referrerpolicy="no-referrer"
           />
         )}
       </div>
@@ -138,7 +140,7 @@ const hasSalePage = floorSaleItems(items).length > 0;
           {gallery.map((g) => (
             <li>
               <a class="sample-link" href={g.src} data-label={g.label} target="_blank" rel="noopener noreferrer" aria-label={`${g.label} を拡大して見る`}>
-                <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" />
+                <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
               </a>
             </li>
           ))}
@@ -149,7 +151,7 @@ const hasSalePage = floorSaleItems(items).length > 0;
     {gallery.length > 0 && (
       <dialog id="lightbox" class="lightbox" aria-label="画像の拡大表示" tabindex="-1">
         <div class="lightbox-stage">
-          <div class="lightbox-view"><img class="lightbox-img" alt="" /></div>
+          <div class="lightbox-view"><img class="lightbox-img" alt="" referrerpolicy="no-referrer" /></div>
           <div class="lightbox-bar">
             <button type="button" class="lightbox-btn lightbox-prev" data-lightbox="prev" aria-label="前の画像"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-6 7 6 7" /></svg></button>
             <p class="lightbox-count" aria-live="polite"></p>
