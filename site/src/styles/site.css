@@ -4249,6 +4249,11 @@ html:not(.js) .actress-search,
   font-variant-numeric: tabular-nums;
 }
 
+/* 条件なしのときの「ーー本」（本数は、絞り込んだときだけ。2026-10-09）。数字ではないので、控えめな色 */
+.ws-num-blank {
+  color: var(--paper-dim);
+}
+
 .tag-btn {
   display: inline-flex;
   align-items: center;

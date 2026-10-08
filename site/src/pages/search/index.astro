@@ -5,14 +5,14 @@ import VrToggle from '../../components/VrToggle.astro';
 import { all, itemsIndex, paged, today } from '../../lib/data.js';
 import { ACTRESS_INDEX_PATH, MAKER_INDEX_PATH, SITE_NAME, archivePath, breadcrumbLd } from '../../lib/items.js';
 import Thumb from '../../components/Thumb.astro';
-import { ITEMS_INDEX_PATH, SEARCH_PATH, searchFirstPage } from '../../lib/search.js';
+import { ITEMS_INDEX_PATH, SEARCH_COUNT_BLANK, SEARCH_COUNT_BLANK_NOTE, SEARCH_PATH, searchFirstPage } from '../../lib/search.js';
 
 const trail = [
   { name: 'トップ', path: '/' },
   { name: '作品を探す', path: SEARCH_PATH },
 ];
 const hasWorks = all.some((i) => paged.has(i.cid));
-// 条件なし（新しい順・すべて）のときの、はじめの一覧・本数・ジャンルのボタン。索引を待たずに、ページを開いたときから見える（2026-10-07。lib/search.js）
+// 条件なし（新しい順・すべて）のときの、はじめの一覧・ジャンルのボタン。索引を待たずに、ページを開いたときから見える（2026-10-07。lib/search.js）
 const first = hasWorks ? searchFirstPage(itemsIndex(), today) : null;
 // 検索画面は、条件の組み合わせごとに内容が変わる（JavaScriptで作る）ので、検索エンジンには載せない（noindex）
 import { assetUrl } from '../../lib/assets.js';
@@ -85,7 +85,9 @@ import { assetUrl } from '../../lib/assets.js';
 
         <div class="search-main">
         <h2 class="visually-hidden">検索結果</h2>
-        <p id="ws-count" class="as-count ws-count" aria-live="polite">{first.total > 0 && <><strong class="ws-num">{first.total.toLocaleString('ja-JP')}</strong>本</>}</p>
+        {/* 本数は、絞り込んだときだけ（条件なしは「ーー本」。索引は最大3,000本で、掲載している作品の数と誤解されるため。運営者の希望。2026-10-09。
+            public/search.js の countHtml と同じ形） */}
+        <p id="ws-count" class="as-count ws-count" aria-live="polite">{first.total > 0 && <><span aria-hidden="true"><strong class="ws-num ws-num-blank">{SEARCH_COUNT_BLANK}</strong>本</span><span class="visually-hidden">{SEARCH_COUNT_BLANK_NOTE}</span></>}</p>
         <ul id="ws-list" class="ws-list" data-first="1" data-today={today}>
           {first.rows.map((v) => (
             <li class="ws-row" data-c={v.c} data-vr={v.vr ? '' : undefined} data-solo={v.solo ? '' : undefined}>

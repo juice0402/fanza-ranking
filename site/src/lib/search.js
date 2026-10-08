@@ -69,7 +69,8 @@ export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT, popular
 
 // ---- 作品検索の「はじめの一覧」（運営者の「ほかのページでも、あとから出てくる・重い所を直して」。2026-10-07） ----
 // 作品検索は、索引（3,000本・圧縮して約340KB）を読み終えるまで、検索の部品を隠していた（スマホで開いてから約1.6秒。出てきたときに画面が大きくずれた）。
-// 条件なし（新しい順・すべて）のときの、はじめの1ページ（SEARCH_PAGE_SIZE 本）・本数・ジャンルのボタンを、ページを作るときに先に入れておく。
+// 条件なし（新しい順・すべて）のときの、はじめの1ページ（SEARCH_PAGE_SIZE 本）・ジャンルのボタンを、ページを作るときに先に入れておく
+// （本数は、条件なしのあいだは出さない「ーー本」。total は「もっと見る」を出すかに使う）。
 // 中身は、ブラウザの public/search.js と同じ決まりで作る（tests/test_search.mjs で突き合わせている）。
 // ブラウザは、索引が届いたら、入っている一覧が自分の作る一覧と同じかを確かめ、同じなら作り直さない（違えば作り直す）
 
@@ -79,6 +80,13 @@ export const SEARCH_PAGE_SIZE = 24;
 export const SEARCH_TAGS_COLLAPSED = 14;
 /** 一覧に出す出演者の数（public/search.js の CAST_LIMIT と同じ） */
 const SEARCH_CAST_LIMIT = 3;
+/**
+ * 条件なしのときの本数の代わり（public/search.js の COUNT_BLANK・COUNT_BLANK_NOTE と同じ）。
+ * 索引は最大 ITEMS_INDEX_LIMIT 本なので、条件なしの本数（3,000本）が「掲載している作品の数」と誤解される（運営者の指摘。2026-10-09）。
+ * 本数は、キーワード・ジャンル・発売の状態で絞り込んだときだけ出し、条件なしは「ーー本」。NOTE は読み上げ用（画面には出さない）
+ */
+export const SEARCH_COUNT_BLANK = 'ーー';
+export const SEARCH_COUNT_BLANK_NOTE = '条件で絞り込むと、本数が出ます';
 
 // public/search.js の safeUrl・imageUrl・rowImage・smallImageUrl・statusOf と同じ
 function searchSafeUrl(url, hosts) {
