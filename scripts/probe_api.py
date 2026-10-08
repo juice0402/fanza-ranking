@@ -49,7 +49,24 @@ def headers_of(url, extra):
         return f"{type(e).__name__}: {str(e)[:120]}"
 
 
+def browser_check():
+    """GitHub の Chrome でプレビューを開いて、画像が読めているかを数える"""
+    import json as _j
+    import subprocess
+    here = os.path.dirname(os.path.abspath(__file__))
+    try:
+        subprocess.run(["npm", "i", "--no-save", "--prefix", here, "puppeteer-core@23"], check=True, capture_output=True, timeout=240)
+        r = subprocess.run(["node", os.path.join(here, "probe_browser.mjs")], capture_output=True, text=True, timeout=600, cwd=here)
+        rows = _j.loads(r.stdout.strip().splitlines()[-1]) if r.stdout.strip() else [r.stderr[-300:]]
+    except Exception as e:  # noqa: BLE001
+        rows = [f"{type(e).__name__}: {str(e)[:200]}"]
+    say("## 本物のブラウザ（Chrome）で、画像が読めているか")
+    for row in rows:
+        say("- " + row)
+
+
 def main():
+    browser_check()
     say("## ブラウザと同じ形の問い合わせ（Sec-Fetch・日本語）での答えとヘッダー")
     for name, url in IMGS.items():
         say(f"- {name}: {headers_of(url, {})}")
