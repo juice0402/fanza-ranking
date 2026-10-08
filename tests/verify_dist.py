@@ -2618,12 +2618,14 @@ for _fk in _FD.FLOORS:
         for img_ in tags(h_, "img"):
             if has_class(img_, "floor-img") and not fanza_https(img_.get("src"), DMM):
                 _bad_covers.append(os.path.relpath(p_, DIST))
-            # 同人の画像（doujin-assets）は、どのページから読んだかを送らない（ページの中で出なかったため。2026-10-09）
-            if "doujin-assets.dmm.co.jp" in str(img_.get("src", "")) and img_.get("referrerpolicy") != "no-referrer":
+            # 同人の画像は pics.dmm.co.jp から読む（doujin-assets は、運営者のiPhoneでページの中に出なかった。2026-10-09）。どのページから読んだかも送らない
+            if "doujin-assets.dmm.co.jp" in str(img_.get("src", "")):
+                _bad_covers.append(os.path.relpath(p_, DIST) + "（doujin-assets から読んでいる）")
+            if has_class(img_, "floor-img") and img_.get("referrerpolicy") != "no-referrer":
                 _bad_covers.append(os.path.relpath(p_, DIST) + "（referrerpolicy が無い）")
     check(f"{_flabel}: どのページのタイトル・見出しにも、未成年を連想させる言葉が無い", not _bad_minor, _bad_minor[:3])
     check(f"{_flabel}: FANZAへのリンクは、すべて広告の印（sponsored・nofollow）つき・新しいタブ", not _bad_links, _bad_links[:3])
-    check(f"{_flabel}: 表紙の画像は DMM の https だけ・同人の画像は、どのページから読んだかを送らない（referrerpolicy=no-referrer）", not _bad_covers, _bad_covers[:3])
+    check(f"{_flabel}: 表紙の画像は DMM の https だけ・同人の画像は pics.dmm.co.jp から読み、どのページから読んだかを送らない（referrerpolicy=no-referrer）", not _bad_covers, _bad_covers[:3])
     _hub = read(os.path.join(DIST, _fk, "index.html"))
     check(f"{_flabel}: トップに「○日の時点」と「FANZAで確かめて」の注記がある（価格・セールは変わるため）", "の時点の情報です" in _hub and "FANZAで確かめて" in _hub)
     _commented = {x["cid"] for x in _fshow if x["comment_kind"] == "claude" and x["comment"]}

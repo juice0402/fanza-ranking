@@ -29,6 +29,17 @@ export const FLOOR_MAKER_LIST = 60; // サークル・ブランドのページ�
 export const FLOOR_SAMPLES = 8; // 作品ページのサンプル画像の枚数
 
 const CID = /^[A-Za-z0-9_-]{1,40}$/;
+
+/**
+ * 同人の画像の置き場所（2026-10-09）。APIは doujin-assets.dmm.co.jp の URL を返すが、運営者のiPhoneでは、このサイトの中で表示されなかった
+ * （画像を直接開くと出る。どのページから読んだかを送らないようにしても出なかった）。同じ場所の pics.dmm.co.jp（動画・ゲームの画像と同じ置き場所）に、
+ * まったく同じ画像がある（表紙8枚・サンプル3枚で、中身が1バイトも違わないことを確かめた）ので、そちらを使う。集める道具（scripts/doujin_game.py の pics_url）も同じ
+ */
+const DOUJIN_ASSETS = 'https://doujin-assets.dmm.co.jp/';
+const PICS = 'https://pics.dmm.co.jp/';
+export const picsUrl = (u) => (typeof u === 'string' && u.startsWith(DOUJIN_ASSETS) ? PICS + u.slice(DOUJIN_ASSETS.length) : u);
+/** 同人の画像が pics.dmm.co.jp で読めなかったら、もとの doujin-assets に1回だけ戻す（それも読めなければ隠す）。属性に入れるので、< > & " を使わない形で書く */
+export const DOUJIN_IMG_ONERROR = "if(this.dataset.alt||this.src.indexOf('https://pics.dmm.co.jp/')){this.style.visibility='hidden'}else{this.dataset.alt='1';this.src='https://doujin-assets.dmm.co.jp/'+this.src.slice(23)}";
 const minor = (text) => Boolean(text) && isMinorTitle(text);
 const names = (list, limit) => (Array.isArray(list) ? list : []).map((s) => String(s ?? '').trim()).filter(Boolean).slice(0, limit);
 const yen = (v) => (Number.isInteger(v) && v > 0 && v < 10_000_000 ? v : null);
@@ -78,8 +89,8 @@ export function normalizeFloor(raw, key, today) {
       cid,
       title,
       url,
-      image_url: safeHttpsUrl(r.image_url, FANZA_HOSTS),
-      sample_images: (Array.isArray(r.sample_images) ? r.sample_images : []).map((u) => safeHttpsUrl(u, FANZA_HOSTS)).filter(Boolean),
+      image_url: safeHttpsUrl(picsUrl(r.image_url), FANZA_HOSTS),
+      sample_images: (Array.isArray(r.sample_images) ? r.sample_images : []).map((u) => safeHttpsUrl(picsUrl(u), FANZA_HOSTS)).filter(Boolean),
       date,
       dateKey: date.slice(0, 10),
       maker,

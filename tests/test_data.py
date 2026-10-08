@@ -470,6 +470,7 @@ for key in FD.FLOORS:
           [x["cid"] for x in fitems if x["comment_kind"] == "claude" and cc.text_problems(x["comment"], cc.MIN_LEN_SPARSE, cc.MAX_LEN)][:5])
     check(f"{label}: 本数が決めた数の範囲（コメントのある作品と予約の分だけ、多くてもよい）", len(fitems) <= FD.FLOORS[key]["target"] + FD.FLOORS[key]["upcoming"] + sum(1 for x in fitems if x["comment_kind"] == "claude"), len(fitems))
     check(f"{label}: APIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}|api_id=", ftext))
+    check(f"{label}: 画像は pics.dmm.co.jp から（doujin-assets はページの中で出ないことがあるため。2026-10-09）", "doujin-assets.dmm.co.jp" not in ftext)
 
 print(f"\n  （{len(items)}件の作品データ・{len(rounds)}本の週のまとめ記事・{len(months)}本の月のまとめ記事・同人{floor_counts.get('doujin', 0)}本・ゲーム{floor_counts.get('game', 0)}本を確認）")
 if problems:

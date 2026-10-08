@@ -67,6 +67,17 @@ def split_genres(names):
     return genres, formats, sales
 
 
+# 同人の画像は、APIが doujin-assets.dmm.co.jp の URL を返すが、運営者のiPhoneでは、ほかのサイトの中で表示されなかった（画像を直接開くと出る。2026-10-09）。
+# 同じ場所の pics.dmm.co.jp（動画・ゲームの画像と同じ置き場所。表示できている）に、まったく同じ画像がある（表紙8枚・サンプル3枚で、中身が1バイトも違わないことを確かめた）ので、そちらを使う
+DOUJIN_ASSETS = "https://doujin-assets.dmm.co.jp/"
+PICS = "https://pics.dmm.co.jp/"
+
+
+def pics_url(url):
+    """同人の画像の URL を、pics.dmm.co.jp の同じ場所にする（ほかの URL はそのまま）"""
+    return PICS + url[len(DOUJIN_ASSETS):] if isinstance(url, str) and url.startswith(DOUJIN_ASSETS) else url
+
+
 def sample_images(raw, limit):
     """サンプル画像。大きい版（sample_l）を先に。ゲームは小さい版（…js-N.jpg・120×90）しか返らないので、
     同じ場所の大きい版（…jp-N.jpg・640×360。2026-10-09 に本物で確かめた）にする"""
@@ -74,7 +85,7 @@ def sample_images(raw, limit):
     big = (smp.get("sample_l") or {}).get("image") or []
     if not big:
         big = [re.sub(r"js-(\d+)\.jpg$", r"jp-\1.jpg", u) for u in ((smp.get("sample_s") or {}).get("image") or []) if isinstance(u, str)]
-    return [u for u in (G.safe_https_url(x, G.IMAGE_HOSTS) for x in big) if u][:limit]
+    return [u for u in (G.safe_https_url(pics_url(x), G.IMAGE_HOSTS) for x in big) if u][:limit]
 
 
 def parse_floor_item(raw, key):
@@ -103,7 +114,7 @@ def parse_floor_item(raw, key):
         "cid": cid,
         "title": title,
         "url": url,
-        "image_url": G.safe_https_url(images.get("large") or images.get("list") or "", G.IMAGE_HOSTS),
+        "image_url": G.safe_https_url(pics_url(images.get("large") or images.get("list") or ""), G.IMAGE_HOSTS),
         "sample_images": sample_images(raw, F.FLOORS[key]["samples"]),
         "date": date[:19],
         "maker": maker,

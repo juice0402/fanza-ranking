@@ -39,6 +39,11 @@ check('値引き（%）・定価・キャンペーン・サークル（id）・�
 check('定価と同じ価格は値引きなし', fl.items.find((i) => i.cid === 'd_100002').off === 0);
 check('コメントは Claude が書いたものだけ（none のコメントは出さない）', fl.items.find((i) => i.cid === 'd_100003').comment === 'Claudeが書いたコメント' && fl.items.find((i) => i.cid === 'd_100010').comment === '');
 check('予約（発売日がきょうより先）', fl.items.find((i) => i.cid === 'd_100008').upcoming && !i1.upcoming);
+check('同人の画像（doujin-assets）は、同じ場所の pics.dmm.co.jp にする・ほかの URL はそのまま',
+  i1.image_url === 'https://pics.dmm.co.jp/digital/comic/d_100001/d_100001pl.jpg' && i1.sample_images[0] === 'https://pics.dmm.co.jp/s1.jpg'
+  && L.picsUrl('https://pics.dmm.co.jp/a.jpg') === 'https://pics.dmm.co.jp/a.jpg' && L.picsUrl('') === '', i1.image_url);
+check('pics.dmm.co.jp で読めなかったら doujin-assets に1回だけ戻す（属性に入れるので < > & " を使わない）',
+  !/[<>&"]/.test(L.DOUJIN_IMG_ONERROR) && L.DOUJIN_IMG_ONERROR.includes("'https://doujin-assets.dmm.co.jp/'+this.src.slice(" + 'https://pics.dmm.co.jp/'.length + ')') && L.DOUJIN_IMG_ONERROR.includes('dataset.alt'));
 check('壊れたデータ・空でも落ちない', L.normalizeFloor(null, 'game', today).items.length === 0 && L.normalizeFloor({ items: 'x' }, 'game', today).items.length === 0);
 
 console.log('\n■ 並べ方');

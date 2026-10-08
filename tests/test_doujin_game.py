@@ -88,6 +88,9 @@ it = D.parse_floor_item(raw(10), "doujin")
 check("同人: 品番・タイトル・アフィリエイトのURL・大きい表紙・サンプル画像は6枚まで・サークル（id つき）",
       it["cid"] == "d_100010" and it["url"].startswith("https://al.fanza.co.jp/") and it["image_url"].endswith("d_100010pl.jpg")
       and len(it["sample_images"]) == 6 and it["maker"] == "サークル3" and it["maker_id"] == 200003, it)
+check("同人: 画像は、同じ場所の pics.dmm.co.jp にする（doujin-assets は、運営者のiPhoneでページの中に出なかったため。2026-10-09）",
+      it["image_url"] == "https://pics.dmm.co.jp/digital/comic/d_100010/d_100010pl.jpg" and all(u.startswith("https://pics.dmm.co.jp/digital/comic/d_100010/") for u in it["sample_images"])
+      and D.pics_url("https://doujin-assets.dmm.co.jp/a/b.jpg") == "https://pics.dmm.co.jp/a/b.jpg" and D.pics_url("https://pics.dmm.co.jp/x.jpg") == "https://pics.dmm.co.jp/x.jpg", it["image_url"])
 check("同人: ジャンルは中身と形式に分ける（男性向け・成人向けは形式）・価格と定価",
       it["genres"] == ["巨乳"] and it["formats"] == ["男性向け", "成人向け"] and it["price"] == 1155 and it["list_price"] == 1650 and it["campaign"] is None, it)
 it_c = D.parse_floor_item(raw(11, campaign=[{"date_begin": "2026-10-01T00:00:00Z", "date_end": "", "title": "30%OFF"}]), "doujin")

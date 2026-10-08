@@ -9,7 +9,7 @@ import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorMiniShelf from '../../../components/FloorMiniShelf.astro';
 import { activeFloors, floorMakerById, floors } from '../../../lib/data.js';
 import {
-  FLOORS, FLOOR_SAMPLES, floorItemDescription, floorItemPath, floorItemTitle, floorPath, floorSaleItems, floorSalePath, popularInFloorGenre, priceNote, sameMaker, saleTagHref,
+  DOUJIN_IMG_ONERROR, FLOORS, FLOOR_SAMPLES, floorItemDescription, floorItemPath, floorItemTitle, floorPath, floorSaleItems, floorSalePath, popularInFloorGenre, priceNote, sameMaker, saleTagHref,
 } from '../../../lib/floors.js';
 import { breadcrumbLd, formatDateJp, SITE_NAME, truncate } from '../../../lib/items.js';
 import { assetUrl } from '../../../lib/assets.js';
@@ -62,6 +62,7 @@ const hasSalePage = floorSaleItems(items).length > 0;
             height={wide ? 420 : 560}
             fetchpriority="high"
             referrerpolicy="no-referrer"
+            onerror={wide ? DOUJIN_IMG_ONERROR : undefined}
           />
         )}
       </div>
@@ -140,7 +141,7 @@ const hasSalePage = floorSaleItems(items).length > 0;
           {gallery.map((g) => (
             <li>
               <a class="sample-link" href={g.src} data-label={g.label} target="_blank" rel="noopener noreferrer" aria-label={`${g.label} を拡大して見る`}>
-                <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+                <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={wide ? DOUJIN_IMG_ONERROR : undefined} />
               </a>
             </li>
           ))}
