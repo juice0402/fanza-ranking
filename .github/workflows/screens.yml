@@ -1,17 +1,20 @@
 name: Screens
 
 # 画面の写真を撮って、形のくずれを調べる（scripts/screens.mjs。運営者の「全域調査してほしい」。2026-10-09）。
-# claude/screens-… のブランチを送ると動き、写真と点検の結果を shots/<実行の番号> のブランチに置く（見終わったら消す）。
-# 作品の画像は写さない（灰色の箱）。サイトには何も書きこまない
+# claude/screens-… のブランチを送ると動き、写真と点検の結果を shots/<実行の番号> のブランチに置く。
+# 前の shots/… と、動かすのに使った claude/screens-… は、そのときに消す（いちばん新しい写真だけが残る）。
+# 手動実行（workflow_dispatch）は、写真のブランチを全部消すだけ。作品の画像は写さない（灰色の箱）。サイトには何も書きこまない
 on:
   push:
     branches: ['claude/screens-**']
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   shots:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -26,10 +29,12 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Take screenshots
         run: node scripts/screens.mjs
-      - name: Save to a branch
+      - name: Save to a branch (and remove old ones)
         env:
           RUN: ${{ github.run_number }}
+          REF: ${{ github.ref_name }}
         run: |
+          for b in $(git ls-remote --heads origin 'shots/*' | awk '{print $2}' | sed 's#refs/heads/##'); do git push -q origin --delete "$b" || true; done
           cd shots
           git init -q
           git config user.name "github-actions[bot]"
@@ -37,4 +42,16 @@ jobs:
           git add -A
           git commit -q -m "screens ${RUN}"
           git push -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "HEAD:refs/heads/shots/${RUN}"
+          cd ..
+          git push -q origin --delete "${REF}" || true
           echo "::notice title=写真::shots/${RUN}"
+
+  cleanup:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove screenshot branches
+        run: |
+          for b in $(git ls-remote --heads origin 'shots/*' 'claude/screens-*' | awk '{print $2}' | sed 's#refs/heads/##'); do git push -q origin --delete "$b" || true; done
