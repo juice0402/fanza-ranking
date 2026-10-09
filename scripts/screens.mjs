@@ -1,6 +1,6 @@
 // 画面の写真（スクリーンショット）を撮って、形のくずれを調べる道具（運営者の「改行・高さがそろっていない所を全域調査して」。2026-10-09）。
 // .github/workflows/screens.yml が、GitHub の上で動かす（Claude のクラウド環境からは pages.dev が見えないため）。
-// 設定は scripts/screens.json（base: 撮るサイト、paths: ページ、widths: 画面の幅、chunks: 1ページを何枚に分けて撮るか）。
+// 設定は scripts/screens.json（base: 撮るサイト、paths: ページ、widths: 画面の幅、chunks: 1ページを何枚に分けて撮るか、at: 見たい所のセレクター（任意。その所を上にして1枚ずつ））。
 // 作品の画像は写さない（灰色の箱にする。形だけを見るため・公開のリポジトリに作品の画像を置かないため）。
 // 結果: shots/<ページ>-<幅>-<番号>.png と shots/report.json（横にはみ出す要素・同じ行の棚でタイトルの高さがずれている所・行の数がそろわない所）
 import fs from 'node:fs';
@@ -74,6 +74,14 @@ for (const width of cfg.widths) {
         await page.evaluate((y) => window.scrollTo(0, y), i * height);
         await page.waitForTimeout(250);
         await page.screenshot({ path: `${out}/${name}-${width}-${i + 1}.png` });
+      }
+      // at: 見たい所（CSS のセレクター）の一覧。それぞれ、その要素を画面のいちばん上に出して1枚ずつ撮る（ページの下のほうを見るとき）
+      for (const [j, sel] of (cfg.at ?? []).entries()) {
+        const y = await page.evaluate((s) => { const el = document.querySelector(s); return el ? el.getBoundingClientRect().top + window.scrollY - 8 : null; }, sel);
+        if (y === null) continue;
+        await page.evaluate((v) => window.scrollTo(0, v), y);
+        await page.waitForTimeout(250);
+        await page.screenshot({ path: `${out}/${name}-${width}-at${j + 1}.png` });
       }
     } catch (e) {
       report.push({ path, width, error: String(e).slice(0, 200) });
