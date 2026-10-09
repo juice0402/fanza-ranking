@@ -17,7 +17,7 @@ import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG
 import { genreTopLists, groupByEntry, normalizeGenreTops } from './insights.js';
 import { buildItemsIndex } from './search.js';
 import { TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenState } from './ten-yen.js';
-import { FLOOR_REVIEW_MIN, normalizeReviews, topRated } from './reviews.js';
+import { FLOOR_REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, normalizeReviews, topRated } from './reviews.js';
 import { normalizeReadings } from './kana.js';
 import { FLOOR_KEYS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
@@ -66,7 +66,8 @@ export const { released, upcoming } = splitByRelease(curated, today);
 export const allReleased = splitByRelease(all, today).released;
 // 高評価ランキング（FANZAのレビューが10件以上の発売済みの作品を、ならした評価の高い順に100本。/ranking/review/。lib/reviews.js）
 export const reviewRanking = topRated(all, today);
-export const reviewRankOf = new Map(reviewRanking.map((i, n) => [i.cid, n + 1]));
+// 順位は、ランキングのページがあるとき（REVIEW_RANKING_MIN_ITEMS 本以上）だけ（作品ページの「高評価ランキング○位」のリンク先が無くならないように）
+export const reviewRankOf = new Map(reviewRanking.length >= REVIEW_RANKING_MIN_ITEMS ? reviewRanking.map((i, n) => [i.cid, n + 1]) : []);
 
 // 出演者・メーカーごとのページ（作品が ENTITY_MIN_ITEMS 本以上の人・メーカーだけ）
 export const actressGroups = groupByActress(all);
@@ -144,7 +145,7 @@ export const floorSearchIndexes = Object.fromEntries(FLOOR_KEYS.map((k) => [k, f
 export const activeFloors = FLOOR_KEYS.filter((k) => floors[k].items.length > 0);
 /** 売り場ごとの高評価ランキング（レビュー FLOOR_REVIEW_MIN 件以上。/<売り場>/ranking/review/。2026-10-10） */
 export const floorReviewRankings = Object.fromEntries(FLOOR_KEYS.map((k) => [k, topRated(floors[k].items, today, { min: FLOOR_REVIEW_MIN })]));
-export const floorReviewRankOf = Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floorReviewRankings[k].map((i, n) => [i.cid, n + 1]))]));
+export const floorReviewRankOf = Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floorReviewRankings[k].length >= REVIEW_RANKING_MIN_ITEMS ? floorReviewRankings[k].map((i, n) => [i.cid, n + 1]) : [])]));
 
 // 10円セール（動画・同人・ゲーム。scripts/ten_yen.py が毎日と、開催中は1日に数回確かめる。2026-10-09 から。まだ無ければ空。lib/ten-yen.js）
 export const tenYen = normalizeTenYen(optionalData('ten_yen'), {
