@@ -5632,6 +5632,11 @@ a.tf-name {
   margin-top: 16px;
 }
 
+/* 売り場のトップの「ジャンルから探す」: ジャンルのチップの下に、シリーズ・作家・発売月の一覧へのチップ（2026-10-09） */
+.find-more {
+  margin-top: 12px;
+}
+
 /* 作品ページの大きな表紙: 元の大きさより大きくしない（同人 560px・ゲーム 411px が元の幅） */
 .detail-cover.is-wide {
   display: block;

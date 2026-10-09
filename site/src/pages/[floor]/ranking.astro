@@ -6,9 +6,9 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
 import FloorTabs from '../../components/FloorTabs.astro';
 import { activeFloors, floors } from '../../lib/data.js';
-import { FLOORS, FLOOR_RANKING_LIMIT, floorPath, floorRanking, floorRankingPath, priceNote } from '../../lib/floors.js';
+import { FLOORS, FLOOR_RANKING_LIMIT, floorItemListLd, floorPath, floorRanking, floorRankingPath, priceNote } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
-import { SITE_NAME, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
 
 export function getStaticPaths() {
   return activeFloors.map((floor) => ({ params: { floor } }));
@@ -32,7 +32,7 @@ const noindex = list.length === 0 || !listIndexable(list);
   description={`${f.label}の${f.kind}を、その日のFANZAの人気順に${list.length}本並べたランキングです。価格・セール中の作品・${f.maker}も。毎日、日付が変わったあとに更新します。`}
   path={floorRankingPath(key)}
   noindex={noindex}
-  jsonLd={[breadcrumbLd(trail)]}
+  jsonLd={[breadcrumbLd(trail), floorItemListLd(list, SITE_URL)]}
 >
   <div class="wrap">
     <Breadcrumb trail={trail} />

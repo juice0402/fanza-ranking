@@ -1,8 +1,8 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
-import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups } from '../lib/data.js';
-import { FLOOR_HUB_SHOWN, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorUpcoming, saleTagGroups } from '../lib/floors.js';
+import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups } from '../lib/data.js';
+import { FLOOR_COLLECTION_KINDS, FLOOR_HUB_SHOWN, collectionIndexIndexable, collectionIndexable, floorCollectionIndexPath, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorUpcoming, saleTagGroups } from '../lib/floors.js';
 import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemIndexable, listIndexable } from '../lib/plan.js';
@@ -60,6 +60,12 @@ export function GET() {
     const makers = floorMakerGroups[k].filter((g) => commented(g.items.slice(0, 60)));
     if (floorMakerGroups[k].some((g) => commented(g.items))) out.push({ path: floorMakerIndexPath(k), lastmod });
     for (const g of makers) out.push({ path: g.path, lastmod: listLastmod(g.items, today) });
+    // コレクション（ジャンル・シリーズ・作家・発売月。2026-10-09）。ページの側と同じ決まり（collectionIndexable）
+    for (const kind of FLOOR_COLLECTION_KINDS) {
+      const groups = floorCollectionGroups[k][kind];
+      if (collectionIndexIndexable(groups)) out.push({ path: floorCollectionIndexPath(k, kind), lastmod });
+      for (const g of groups) if (collectionIndexable(g)) out.push({ path: g.path, lastmod: listLastmod(g.items, today) });
+    }
     for (const i of fl.items) if (i.comment) out.push({ path: floorItemPath(k, i.cid), lastmod: i.updated });
     return out;
   });

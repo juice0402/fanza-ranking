@@ -1,0 +1,61 @@
+---
+// FANZA同人・FANZAゲームのコレクションの一覧（/doujin/genre/・/doujin/series/・/game/author/・/doujin/month/。2026-10-09。lib/floors.js の floorCollections）。
+// ページのある名前を、作品の多い順（発売月は新しい月から）に並べる
+import Base from '../../../layouts/Base.astro';
+import Breadcrumb from '../../../components/Breadcrumb.astro';
+import FloorTabs from '../../../components/FloorTabs.astro';
+import { activeFloors, floorCollectionGroups, floors } from '../../../lib/data.js';
+import { FLOORS, FLOOR_COLLECTIONS, FLOOR_COLLECTION_KINDS, collectionIndexIndexable, floorCollectionIndexPath, floorPath } from '../../../lib/floors.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../../../lib/items.js';
+
+export function getStaticPaths() {
+  return activeFloors.flatMap((floor) => FLOOR_COLLECTION_KINDS.filter((kind) => floorCollectionGroups[floor][kind].length > 0).map((kind) => ({ params: { floor, kind } })));
+}
+
+const { floor: key, kind } = Astro.params;
+const f = FLOORS[key];
+const c = FLOOR_COLLECTIONS[kind];
+const groups = floorCollectionGroups[key][kind];
+const data = floors[key];
+const day = data.updated ? dateParts(data.updated) : null;
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: c.find, path: floorCollectionIndexPath(key, kind) },
+];
+const noindex = !collectionIndexIndexable(groups);
+const title = kind === 'month'
+  ? `${f.label}の発売月ごとの${f.kind}一覧（${groups.length}か月）｜${SITE_NAME}`
+  : `${f.label}の${c.label}一覧（${groups.length}件）人気作品【${day ? `${day.y}年${day.m}月` : '毎日更新'}】｜${SITE_NAME}`;
+const description = kind === 'month'
+  ? `${f.label}の${f.kind}を、発売月ごとにまとめた一覧です（${groups.length}か月・新しい月から）。それぞれの月の作品を、FANZAの人気順で見られます。毎日更新。`
+  : `${f.label}の${f.kind}を、${c.label}ごとにまとめた一覧です（${groups.length}件・作品の多い順）。${groups.slice(0, 3).map((g) => g.name).join('・')}など。それぞれの作品を、FANZAの人気順で見られます。毎日更新。`;
+const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${f.label}の${c.label}一覧`, url: SITE_URL + floorCollectionIndexPath(key, kind), ...(data.updated ? { dateModified: data.updated } : {}) };
+---
+
+<Base title={title} description={description} path={floorCollectionIndexPath(key, kind)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd]}>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{c.find}</h1>
+      <p class="hero-lead">{f.label}の{c.label}ごとの作品（{kind === 'month' ? '新しい月から' : '作品の多い順'}）。</p>
+      <FloorTabs floorKey={key} current={kind === 'genre' ? 'genre' : ''} />
+    </section>
+
+    <section class="section" aria-labelledby="fl-col-index-title">
+      <h2 id="fl-col-index-title" class="visually-hidden">{c.label}の一覧</h2>
+      <ul class="name-grid">
+        {groups.map((g) => (
+          <li>
+            <a class="name-link" href={g.path} title={g.name}>
+              <span class="name-link-name">{g.name}</span>
+              <span class="name-link-count">{g.total}本</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+    <p class="section-note">本数は、このサイトに載っている{f.label}の作品（{data.items.length}本）から数えています。</p>
+  </div>
+</Base>
