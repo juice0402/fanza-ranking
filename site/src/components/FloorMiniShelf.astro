@@ -1,0 +1,25 @@
+---
+// FANZA同人・FANZAゲームの小さな表紙の棚（作品ページの「同じサークル/ブランドの作品」「○○で人気の作品」。動画の MiniShelf と同じ形。2026-10-09）。
+// ゲームは表紙だけの軽い画像（components/Thumb.astro の tiny）。同人は横長の表紙を横長の枠にまるごと（小さい版が無いため）
+import Thumb from './Thumb.astro';
+import { DOUJIN_IMG_ONERROR, floorItemPath } from '../lib/floors.js';
+
+const { items, level = 'h3' } = Astro.props;
+const Heading = level;
+---
+
+<ul class="mini-shelf">
+  {items.map((i) => (
+    <li class="shelf-cell mini-cell">
+      <a class="mini-card" href={floorItemPath(i.floor, i.cid)}>
+        <span class:list={['mini-cover', { 'is-wide': i.floor === 'doujin' }]}>
+          {i.image_url && (i.floor === 'doujin'
+            ? <img class="floor-img" src={i.image_url} alt="" width="560" height="420" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_IMG_ONERROR} />
+            : <Thumb src={i.image_url} kind="tiny" class="item-img is-small" />)}
+        </span>
+        <Heading class="mini-title">{i.title}</Heading>
+        <span class="mini-cast">{i.maker?.name ?? ''}</span>
+      </a>
+    </li>
+  ))}
+</ul>

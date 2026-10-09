@@ -23,6 +23,9 @@ python3 tests/test_claude_roundups.py || failed=1
 step "Claudeの月のまとめ記事の道具 (Python)"
 python3 tests/test_claude_monthly.py || failed=1
 
+step "FANZA同人・FANZAゲームを集める道具 (Python)"
+python3 tests/test_doujin_game.py || failed=1
+
 step "保存データの形式"
 python3 tests/test_data.py || failed=1
 
@@ -83,6 +86,9 @@ node tests/test_plan.mjs || failed=1
 
 step "人気順（新着の人気順・全体の人気順）の部品 (Node.js)"
 node tests/test_popularity.mjs || failed=1
+
+step "FANZA同人・FANZAゲームのページの部品 (Node.js)"
+node tests/test_floors.mjs || failed=1
 
 step "セール・キャンペーンの部品 (Node.js)"
 node tests/test_sale.mjs || failed=1

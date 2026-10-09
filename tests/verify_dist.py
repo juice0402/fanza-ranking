@@ -2579,6 +2579,69 @@ no_desc = descs.get("", [])
 warn("タイトルがページごとに違う（重複があっても失敗にはしない）", not dup_titles, list(dup_titles.items())[:2])
 warn("説明文（description）がすべてのページにある", not no_desc, no_desc[:3])
 
+print("\n■ FANZA同人・FANZAゲーム（/doujin/・/game/。運営者の希望。2026-10-09）")
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import floor_data as _FD  # noqa: E402
+from claude_comments import title_block_reason as _tbr  # noqa: E402
+_floor_src = read(os.path.join(ROOT, "site", "src", "lib", "floors.js"))
+for _fk in _FD.FLOORS:
+    _flabel = _FD.FLOORS[_fk]["label"]
+    _fpath = os.path.join(ROOT, "site", "src", "data", _FD.FLOORS[_fk]["file"])
+    _fdata = _FD.load_floor(_fpath) if os.path.isfile(_fpath) else None
+    _fitems = list(_fdata["items"].values()) if _fdata else []
+    # 画面でも、未成年を連想させる名前の作品は外す（二重の備え）。ページを作る作品は、そのあと
+    _fshow = [x for x in _fitems if not any(_tbr({"title": t}) == "minor" for t in [x["title"], *x["genres"], *x["formats"], *x["sales"], x["series"], x["maker"], *x["authors"]] if t)
+              and str(x["url"]).startswith("https://")]
+    if not _fshow:
+        check(f"{_flabel}: データが無いあいだは、ページを作らない・フッターにもリンクを出さない",
+              not os.path.exists(os.path.join(DIST, _fk)) and f'href="/{_fk}/"' not in read_raw(os.path.join(DIST, "index.html")))
+        continue
+    _item_pages = glob.glob(os.path.join(DIST, _fk, "item", "*", "index.html"))
+    check(f"{_flabel}: トップ・人気ランキング・作品ページ（{len(_item_pages)}/{len(_fshow)}）がある",
+          os.path.isfile(os.path.join(DIST, _fk, "index.html")) and os.path.isfile(os.path.join(DIST, _fk, "ranking", "index.html")) and len(_item_pages) == len(_fshow),
+          (len(_item_pages), len(_fshow)))
+    _maker_count = Counter(x["maker_id"] for x in _fshow if x["maker_id"])
+    _maker_pages = glob.glob(os.path.join(DIST, _fk, "maker", "*", "index.html"))
+    check(f"{_flabel}: サークル/ブランドのページは、作品が2本以上のものだけ（{len(_maker_pages)}ページ）",
+          {os.path.basename(os.path.dirname(p_)) for p_ in _maker_pages} == {str(m_) for m_, n_ in _maker_count.items() if n_ >= 2})
+    _bad_minor, _bad_links, _bad_covers = [], [], []
+    for p_ in glob.glob(os.path.join(DIST, _fk, "**", "*.html"), recursive=True):
+        h_ = read(p_)
+        t_ = re.search(r"<title>(.*?)</title>", h_, re.S)
+        h1_ = re.search(r"<h1[^>]*>(.*?)</h1>", h_, re.S)
+        for text_ in (htmllib.unescape(t_.group(1)) if t_ else "", strip_tags(h1_.group(1)) if h1_ else ""):
+            if _tbr({"title": text_}) == "minor":
+                _bad_minor.append(os.path.relpath(p_, DIST))
+        for a_ in tags(h_, "a"):
+            if "al.fanza.co.jp" in str(a_.get("href", "")) and (not SPONSORED <= set(str(a_.get("rel", "")).split()) or a_.get("target") != "_blank"):
+                _bad_links.append(os.path.relpath(p_, DIST))
+        for img_ in tags(h_, "img"):
+            if has_class(img_, "floor-img") and not fanza_https(img_.get("src"), DMM):
+                _bad_covers.append(os.path.relpath(p_, DIST))
+            # 同人の画像は pics.dmm.co.jp から読む（doujin-assets は、運営者のiPhoneでページの中に出なかった。2026-10-09）。どのページから読んだかも送らない
+            if "doujin-assets.dmm.co.jp" in str(img_.get("src", "")):
+                _bad_covers.append(os.path.relpath(p_, DIST) + "（doujin-assets から読んでいる）")
+            if has_class(img_, "floor-img") and img_.get("referrerpolicy") != "no-referrer":
+                _bad_covers.append(os.path.relpath(p_, DIST) + "（referrerpolicy が無い）")
+    check(f"{_flabel}: どのページのタイトル・見出しにも、未成年を連想させる言葉が無い", not _bad_minor, _bad_minor[:3])
+    check(f"{_flabel}: FANZAへのリンクは、すべて広告の印（sponsored・nofollow）つき・新しいタブ", not _bad_links, _bad_links[:3])
+    check(f"{_flabel}: 表紙の画像は DMM の https だけ・同人の画像は pics.dmm.co.jp から読み、どのページから読んだかを送らない（referrerpolicy=no-referrer）", not _bad_covers, _bad_covers[:3])
+    _hub = read(os.path.join(DIST, _fk, "index.html"))
+    check(f"{_flabel}: トップに「○日の時点」と「FANZAで確かめて」の注記がある（価格・セールは変わるため）", "の時点の情報です" in _hub and "FANZAで確かめて" in _hub)
+    _commented = {x["cid"] for x in _fshow if x["comment_kind"] == "claude" and x["comment"]}
+    _sm_floor_items = {p_[len(f"/{_fk}/item/"):-1] for p_ in sm_paths if p_.startswith(f"/{_fk}/item/")}
+    check(f"{_flabel}: sitemap の作品ページ = コメントのある作品（{len(_commented)}本）・コメントの無い作品ページは noindex",
+          _sm_floor_items == _commented and all(('name="robots" content="noindex' in read_raw(os.path.join(DIST, _fk, "item", c_, "index.html"))) != (c_ in _commented) for c_ in list(_fdata["items"])[:200] if c_ in {x["cid"] for x in _fshow}),
+          (sorted(_commented - _sm_floor_items)[:3], sorted(_sm_floor_items - _commented)[:3]))
+    _sale_page = os.path.join(DIST, _fk, "sale", "index.html")
+    if os.path.isfile(_sale_page):
+        _sh = read(_sale_page)
+        check(f"{_flabel}: セールのページに「○日の時点」の注記と、FANZA動画のセールへのリンクがある", "の時点の情報です" in _sh and 'href="/sale/"' in _sh)
+check("サイトの「セール・キャンペーン」（/sale/）から、同人・ゲームのセールのページへリンクしている（ページがあるものだけ）",
+      all((f'href="/{k_}/sale/"' in read_raw(os.path.join(DIST, "sale", "index.html"))) == os.path.isfile(os.path.join(DIST, k_, "sale", "index.html")) for k_ in _FD.FLOORS))
+check("同人・ゲームの見出しに出すジャンルの一覧（floors.js）に、行為・未成年を連想させる言葉が無い",
+      not any(_tbr({"title": g_}) == "minor" for g_ in re.findall(r"'([^']+)'", re.search(r"FLOOR_GENRE_OK = \[([\s\S]*?)\];", _floor_src).group(1))))
+
 if problems:
     print("\n失敗:", problems)
     sys.exit(1)

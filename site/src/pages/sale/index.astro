@@ -9,7 +9,8 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import VrToggle from '../../components/VrToggle.astro';
 import ItemCard from '../../components/ItemCard.astro';
 import CampaignFacts from '../../components/CampaignFacts.astro';
-import { all, today, sale, contentGenres, saleCampaignBySlug } from '../../lib/data.js';
+import { all, today, sale, contentGenres, saleCampaignBySlug, activeFloors, floors } from '../../lib/data.js';
+import { FLOORS, floorSaleItems, floorSalePath } from '../../lib/floors.js';
 import { SALE_HISTORY_PATH, SALE_PATH, campaignSlug, endIso, endLabel, endSoonTag, saleAnchor, saleBadge, saleGroups, salePriceNote } from '../../lib/sale.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp, filterAttrs } from '../../lib/items.js';
@@ -52,6 +53,10 @@ import { inlineScript } from '../../lib/assets.js';
         いまセール中の作品を、終わりが近い順に。{sale.date && `${formatDateJp(sale.date)}の時点の情報です（くわしくはFANZAの作品ページで確かめてください）。`}
       </p>
       <p class="hero-links"><a class="spec-link" href={SALE_HISTORY_PATH}>FANZAのセールはいつ？これまでのセールの履歴</a></p>
+      {/* FANZA同人・FANZAゲームのセール（2026-10-09） */}
+      {activeFloors.filter((k) => floorSaleItems(floors[k].items).length > 0).map((k) => (
+        <p class="hero-links"><a class="spec-link" href={floorSalePath(k)}>{FLOORS[k].label}のセールはこちら</a></p>
+      ))}
     </section>
 
     {groups.length > 0

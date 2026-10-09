@@ -48,9 +48,12 @@
     img.src = sources[current];
     img.alt = labels[current];
     counter.textContent = current + 1 + ' / ' + sources.length;
-    // 前後の画像を先に読み込んでおく（送ったときに待たないように）
+    // 前後の画像を先に読み込んでおく（送ったときに待たないように）。拡大表示の画像と同じく、どのページから読んだかを送らないときは、それに合わせる
+    // （同人・ゲームの作品ページ。referrerpolicy="no-referrer"。2026-10-09）
     [step(current, 1, sources.length), step(current, -1, sources.length)].forEach(function (i) {
-      new Image().src = sources[i];
+      var pre = new Image();
+      if (img.referrerPolicy) pre.referrerPolicy = img.referrerPolicy;
+      pre.src = sources[i];
     });
   }
 

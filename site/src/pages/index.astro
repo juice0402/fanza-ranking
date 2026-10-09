@@ -27,7 +27,9 @@ import {
   events,
   upcomingEventList,
   saleCampaignBySlug,
+  activeFloors,
 } from '../lib/data.js';
+import { FLOORS, floorPath } from '../lib/floors.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemHref } from '../lib/plan.js';
 import { RANKING_PATH } from '../lib/popularity.js';
@@ -179,6 +181,12 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
           {latestRoundup && <a class="chip-link only-narrow" href={weeklyPath(latestRoundup.week_start)}>週のまとめ</a>}
           {monthGroups.length > 0 && <a class="chip-link only-narrow" href={MONTH_INDEX_PATH}>月のまとめ</a>}
         </nav>
+        {/* FANZA同人・FANZAゲーム（運営者の希望。2026-10-09。データがある売り場だけ。2つを横に並べる） */}
+        {activeFloors.length > 0 && (
+          <nav class="hero-jump floor-jump" aria-label="同人・ゲーム">
+            {activeFloors.map((k) => <a class="chip-link" href={floorPath(k)}>{FLOORS[k].label}</a>)}
+          </nav>
+        )}
       </section>
       {hot.length > 0 && (
         <section id="hot" class="today-hot" aria-labelledby="hot-title">

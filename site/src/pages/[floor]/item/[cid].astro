@@ -1,0 +1,189 @@
+---
+// FANZA同人・FANZAゲームの作品ページ（/doujin/item/<品番>/・/game/item/<品番>/。2026-10-09。lib/floors.js）。
+// 表紙・タイトル・ひとこと（Claude が毎日 同人4本・ゲーム1本ずつ書く）・発売日・サークル/ブランド・作家・シリーズ・ジャンル・価格とセール・FANZAへ・
+// サンプル画像（拡大表示）・同じサークル/ブランドの作品・同じジャンルで人気の作品。
+// コメントがまだ無い作品は、FANZAの情報を並べただけのページなので、検索エンジンには出さない（noindex。sitemap にも入れない）。
+// 表紙・サンプル画像・拡大表示は、どのページから読んだかを送らない（referrerpolicy="no-referrer"。同人の画像がページの中で出なかったため。2026-10-09）
+import Base from '../../../layouts/Base.astro';
+import Breadcrumb from '../../../components/Breadcrumb.astro';
+import FloorMiniShelf from '../../../components/FloorMiniShelf.astro';
+import { activeFloors, floorMakerById, floors } from '../../../lib/data.js';
+import {
+  DOUJIN_IMG_ONERROR, FLOORS, FLOOR_SAMPLES, floorItemDescription, floorItemPath, floorItemTitle, floorPath, floorSaleItems, floorSalePath, popularInFloorGenre, priceNote, sameMaker, saleTagHref,
+} from '../../../lib/floors.js';
+import { breadcrumbLd, formatDateJp, SITE_NAME, truncate } from '../../../lib/items.js';
+import { assetUrl } from '../../../lib/assets.js';
+
+export function getStaticPaths() {
+  return activeFloors.flatMap((floor) => floors[floor].items.map((item) => ({ params: { floor, cid: item.cid }, props: { item } })));
+}
+
+const { item } = Astro.props;
+const key = item.floor;
+const f = FLOORS[key];
+const items = floors[key].items;
+const makerGroup = item.maker ? floorMakerById[key].get(item.maker.id) : null;
+const same = sameMaker(item, floorMakerById[key]);
+const genrePop = popularInFloorGenre(item, items, new Set(same.map((i) => i.cid)));
+const samples = item.sample_images.slice(0, FLOOR_SAMPLES);
+const gallery = samples.map((src, i) => ({ src, label: `サンプル画像 ${i + 1}` }));
+const wide = key === 'doujin';
+const noindex = !item.comment;
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: truncate(item.title, 30), path: floorItemPath(key, item.cid) },
+];
+const price = priceNote(item);
+// セールのページがある売り場だけ、セールの札からセールのページへリンクする（リンク切れを作らない）
+const hasSalePage = floorSaleItems(items).length > 0;
+---
+
+<Base
+  title={floorItemTitle(item, SITE_NAME)}
+  description={floorItemDescription(item)}
+  path={floorItemPath(key, item.cid)}
+  image={item.image_url}
+  stickyCta={true}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <article class="detail-grid">
+      <div class="detail-media">
+        {item.image_url && (
+          <img
+            class:list={['detail-cover', { 'is-wide': wide, 'is-tall': !wide }]}
+            src={item.image_url}
+            alt={`${truncate(item.title, 60)} の表紙`}
+            width={wide ? 560 : 411}
+            height={wide ? 420 : 560}
+            fetchpriority="high"
+            referrerpolicy="no-referrer"
+            onerror={wide ? DOUJIN_IMG_ONERROR : undefined}
+          />
+        )}
+      </div>
+
+      <div class="detail-body">
+        <p class="detail-kicker"><a class="spec-link" href={floorPath(key)}>{f.label}</a>{item.upcoming && '・予約受付中'}</p>
+        <h1 class="detail-title">{item.title}</h1>
+
+        {item.comment && <p class="plain-comment">{item.comment}</p>}
+
+        <dl class="spec">
+          <dt class="spec-term">{item.upcoming ? '発売予定日' : '発売日'}</dt>
+          <dd class="spec-desc">{formatDateJp(item.dateKey)}</dd>
+          {item.maker && (
+            <>
+              <dt class="spec-term">{f.maker}</dt>
+              <dd class="spec-desc">{makerGroup ? <a class="spec-link" href={makerGroup.path}>{item.maker.name}</a> : item.maker.name}</dd>
+            </>
+          )}
+          {item.authors.length > 0 && (
+            <>
+              <dt class="spec-term">作家</dt>
+              <dd class="spec-desc">{item.authors.join('、')}</dd>
+            </>
+          )}
+          {item.series && (
+            <>
+              <dt class="spec-term">シリーズ</dt>
+              <dd class="spec-desc">{item.series.name}</dd>
+            </>
+          )}
+          {item.genres.length > 0 && (
+            <>
+              <dt class="spec-term">ジャンル</dt>
+              <dd class="spec-desc">
+                <ul class="chips">
+                  {item.genres.map((g) => <li class="chip chip-plain">{g}</li>)}
+                </ul>
+              </dd>
+            </>
+          )}
+          {price && (
+            <>
+              <dt class="spec-term">価格</dt>
+              <dd class="spec-desc">{price}{item.off > 0 && <span class="price-off">{item.off}%OFF</span>}<span class="spec-sub">（{formatDateJp(floors[key].updated || item.dateKey)}の時点）</span></dd>
+            </>
+          )}
+          {item.sales.length > 0 && (
+            <>
+              <dt class="spec-term">セール・キャンペーン</dt>
+              <dd class="spec-desc">
+                <ul class="chips">
+                  {item.sales.map((s) => (hasSalePage ? <li class="chip"><a class="chip-tag" href={saleTagHref(key, s)}>{s}</a></li> : <li class="chip chip-plain">{s}</li>))}
+                </ul>
+              </dd>
+            </>
+          )}
+          {item.off > 0 && item.campaign && item.sales.length === 0 && (
+            <>
+              <dt class="spec-term">セール</dt>
+              <dd class="spec-desc"><a class="spec-link" href={floorSalePath(key)}>{item.campaign.title}</a>{item.campaign.begin && `（${formatDateJp(item.campaign.begin)}から）`}</dd>
+            </>
+          )}
+        </dl>
+
+        <div class="detail-actions">
+          <a class="btn btn-hot btn-lg detail-cta" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>
+        </div>
+      </div>
+    </article>
+
+    {gallery.length > 0 && (
+      <section class="subsection" aria-labelledby="samples-title">
+        <h2 id="samples-title" class="subsection-title">サンプル画像</h2>
+        <ul class="samples">
+          {gallery.map((g) => (
+            <li>
+              <a class="sample-link" href={g.src} data-label={g.label} target="_blank" rel="noopener noreferrer" aria-label={`${g.label} を拡大して見る`}>
+                <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={wide ? DOUJIN_IMG_ONERROR : undefined} />
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {gallery.length > 0 && (
+      <dialog id="lightbox" class="lightbox" aria-label="画像の拡大表示" tabindex="-1">
+        <div class="lightbox-stage">
+          <div class="lightbox-view"><img class="lightbox-img" alt="" referrerpolicy="no-referrer" /></div>
+          <div class="lightbox-bar">
+            <button type="button" class="lightbox-btn lightbox-prev" data-lightbox="prev" aria-label="前の画像"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-6 7 6 7" /></svg></button>
+            <p class="lightbox-count" aria-live="polite"></p>
+            <button type="button" class="lightbox-btn lightbox-next" data-lightbox="next" aria-label="次の画像"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l6 7-6 7" /></svg></button>
+          </div>
+          <button type="button" class="lightbox-btn lightbox-close" data-lightbox="close" aria-label="閉じる"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5l14 14M19 5L5 19" /></svg></button>
+        </div>
+      </dialog>
+    )}
+
+    {same.length > 0 && (
+      <section class="subsection" aria-labelledby="same-maker-title">
+        <div class="subsection-head">
+          <h2 id="same-maker-title" class="subsection-title">同じ{f.maker}の作品</h2>
+          {makerGroup && <a class="subsection-more" href={makerGroup.path}>「{makerGroup.name}」の{makerGroup.total}本を見る</a>}
+        </div>
+        <FloorMiniShelf items={same} />
+      </section>
+    )}
+
+    {genrePop.items.length > 0 && (
+      <section class="subsection" aria-labelledby="genre-pop-title">
+        <h2 id="genre-pop-title" class="subsection-title">「{genrePop.genre}」で人気の{f.short}作品</h2>
+        <FloorMiniShelf items={genrePop.items} />
+      </section>
+    )}
+  </div>
+
+  {gallery.length > 0 && <script is:inline src={assetUrl('/lightbox.js')} defer></script>}
+
+  <div class="sticky-cta">
+    <a class="btn btn-hot btn-block" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>
+  </div>
+</Base>

@@ -1,0 +1,53 @@
+---
+// FANZA同人・FANZAゲームの人気ランキング（/doujin/ranking/・/game/ranking/。2026-10-09。lib/floors.js）。
+// 毎日の更新が取った、その日のFANZAの人気順（発売済み）の上から100本。未成年を連想させる作品は入れていないので、順位は、このサイトに載っている作品の中で1位から数え直す
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import FloorCard from '../../components/FloorCard.astro';
+import FloorTabs from '../../components/FloorTabs.astro';
+import { activeFloors, floors } from '../../lib/data.js';
+import { FLOORS, FLOOR_RANKING_LIMIT, floorPath, floorRanking, floorRankingPath, priceNote } from '../../lib/floors.js';
+import { listIndexable } from '../../lib/plan.js';
+import { SITE_NAME, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
+
+export function getStaticPaths() {
+  return activeFloors.map((floor) => ({ params: { floor } }));
+}
+
+const { floor: key } = Astro.params;
+const f = FLOORS[key];
+const data = floors[key];
+const list = floorRanking(data.items, FLOOR_RANKING_LIMIT);
+const day = data.updated ? dateParts(data.updated) : null;
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: '人気ランキング', path: floorRankingPath(key) },
+];
+const noindex = list.length === 0 || !listIndexable(list);
+---
+
+<Base
+  title={`${f.label}の人気ランキングTOP${list.length}【${day ? `${day.m}月${day.d}日` : '毎日'}更新】｜${SITE_NAME}`}
+  description={`${f.label}の${f.kind}を、その日のFANZAの人気順に${list.length}本並べたランキングです。価格・セール中の作品・${f.maker}も。毎日、日付が変わったあとに更新します。`}
+  path={floorRankingPath(key)}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{f.label}の人気ランキング</h1>
+      <p class="hero-lead">{data.updated ? `${formatDateJp(data.updated)}のFANZAの人気順です（毎日入れかわります）。` : 'FANZAの人気順です（毎日入れかわります）。'}</p>
+      <FloorTabs floorKey={key} current="ranking" />
+    </section>
+
+    <section class="section" aria-labelledby="fl-ranking-title">
+      <h2 id="fl-ranking-title" class="section-title">人気順 TOP{list.length}</h2>
+      <ul class="shelf">
+        {list.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} /></li>)}
+      </ul>
+    </section>
+  </div>
+</Base>

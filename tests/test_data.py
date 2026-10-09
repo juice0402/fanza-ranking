@@ -441,7 +441,38 @@ if mpicks_ok:
     check("ひとことが点検に通る", all(not cc.text_problems(q["note"].strip(), cm.NOTE_MIN, cm.NOTE_MAX) for r in months for q in r["picks"]))
 check("monthly.json にAPIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}", open(MONTHLY, encoding="utf-8").read()))
 
-print(f"\n  （{len(items)}件の作品データ・{len(rounds)}本の週のまとめ記事・{len(months)}本の月のまとめ記事を確認）")
+print("\n■ FANZA同人・FANZAゲーム（site/src/data/doujin.json・game.json。2026-10-09 から。まだ無ければ見ない）")
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import floor_data as FD  # noqa: E402
+floor_counts = {}
+for key in FD.FLOORS:
+    fpath = os.path.join(ROOT, "site", "src", "data", FD.FLOORS[key]["file"])
+    if not os.path.exists(fpath):
+        print(f"  （{FD.FLOORS[key]['label']}のデータはまだありません）")
+        continue
+    label = FD.FLOORS[key]["label"]
+    try:
+        fdata = FD.load_floor(fpath)
+    except ValueError as e:
+        check(f"{label}: 読める", False, e)
+        continue
+    ftext = open(fpath, encoding="utf-8").read()
+    raw_rows = json.loads(ftext)["items"]
+    floor_counts[key] = len(fdata["items"])
+    check(f"{label}: 読める・決まった項目だけ・書き方がそろっている（読んで書き直しても同じ）", len(raw_rows) == len(fdata["items"]) and FD.dump_floor(fdata) == ftext)
+    fitems = list(fdata["items"].values())
+    check(f"{label}: URL はアフィリエイトの FANZA の https・画像は DMM の https", all(
+        re.match(r"^https://al\.fanza\.co\.jp/", x["url"]) and (not x["image_url"] or re.match(r"^https://[a-z0-9.-]+\.dmm\.co\.jp/", x["image_url"])) for x in fitems))
+    check(f"{label}: 未成年を連想させる作品が入っていない（タイトル・ジャンル・シリーズ・サークル/ブランド・作家）", not any(
+        cc.title_block_reason({"title": t}) == "minor" for x in fitems for t in [x["title"], *x["genres"], *x["formats"], *x["sales"], x["series"], x["maker"], *x["authors"]] if t),
+        [x["cid"] for x in fitems if cc.title_block_reason(x) == "minor"][:5])
+    check(f"{label}: Claude のコメントは点検に通る", all(not cc.text_problems(x["comment"], cc.MIN_LEN_SPARSE, cc.MAX_LEN) for x in fitems if x["comment_kind"] == "claude"),
+          [x["cid"] for x in fitems if x["comment_kind"] == "claude" and cc.text_problems(x["comment"], cc.MIN_LEN_SPARSE, cc.MAX_LEN)][:5])
+    check(f"{label}: 本数が決めた数の範囲（コメントのある作品と予約の分だけ、多くてもよい）", len(fitems) <= FD.FLOORS[key]["target"] + FD.FLOORS[key]["upcoming"] + sum(1 for x in fitems if x["comment_kind"] == "claude"), len(fitems))
+    check(f"{label}: APIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}|api_id=", ftext))
+    check(f"{label}: 画像は pics.dmm.co.jp から（doujin-assets はページの中で出ないことがあるため。2026-10-09）", "doujin-assets.dmm.co.jp" not in ftext)
+
+print(f"\n  （{len(items)}件の作品データ・{len(rounds)}本の週のまとめ記事・{len(months)}本の月のまとめ記事・同人{floor_counts.get('doujin', 0)}本・ゲーム{floor_counts.get('game', 0)}本を確認）")
 if problems:
     print("失敗:", problems)
     sys.exit(1)

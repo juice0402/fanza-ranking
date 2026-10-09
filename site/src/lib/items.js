@@ -379,7 +379,7 @@ export const MAKER_INDEX_PATH = '/maker/';
 export const DMM_CREDIT_HTML = 'Powered by <a href="https://affiliate.dmm.com/api/">FANZA Webサービス</a>';
 
 export const ABOUT_PATH = '/about/'; // このサイトについて（運営者の希望「SEOの対策として。フッターのいちばん下に小さくリンク」。2026-10-06）
-export const ABOUT_UPDATED = '2026-10-06'; // 「このサイトについて」の中身を最後に変えた日（sitemap の lastmod。中身を変えたら、この日付も変える）
+export const ABOUT_UPDATED = '2026-10-09'; // 「このサイトについて」の中身を最後に変えた日（sitemap の lastmod。中身を変えたら、この日付も変える）
 
 const byNewest = (a, b) => b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid);
 

@@ -1,0 +1,121 @@
+---
+// FANZA同人（/doujin/）・FANZAゲーム（/game/）の売り場のトップ（運営者の希望「同人・ゲームのページも」。2026-10-09。lib/floors.js）。
+// 人気ランキングの上のほう → セール中 → 新作で人気 → 予約（ゲーム）→ サークル/ブランドから探す。
+// データは毎日の更新が集める doujin.json・game.json（人気順の上から 同人1,000本・ゲーム500本。未成年を連想させる作品は入れていない）
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import FloorCard from '../../components/FloorCard.astro';
+import FloorTabs from '../../components/FloorTabs.astro';
+import { activeFloors, floorMakerGroups, floors, today } from '../../lib/data.js';
+import {
+  FLOORS, FLOOR_HUB_SHOWN, floorMakerIndexPath, floorMaxOff, floorNewPopular, floorPath, floorRanking, floorRankingPath,
+  floorSaleItems, floorSalePath, floorUpcoming, priceNote, saleBadgeOf,
+} from '../../lib/floors.js';
+import { listIndexable } from '../../lib/plan.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
+
+export function getStaticPaths() {
+  return activeFloors.map((floor) => ({ params: { floor } }));
+}
+
+const { floor: key } = Astro.params;
+const f = FLOORS[key];
+const data = floors[key];
+const items = data.items;
+const ranking = floorRanking(items, FLOOR_HUB_SHOWN);
+const sale = floorSaleItems(items);
+const saleShown = sale.slice(0, FLOOR_HUB_SHOWN);
+const newPop = floorNewPopular(items, today);
+const upcomingList = floorUpcoming(items);
+const makers = floorMakerGroups[key].slice(0, 24);
+const maxOff = floorMaxOff(sale);
+const day = data.updated ? dateParts(data.updated) : null;
+const dayLabel = day ? `${day.m}月${day.d}日` : '毎日';
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+];
+// コメントのある作品が1本も無いあいだは、検索エンジンに出さない（FANZAの情報を並べただけのページにしない）
+const noindex = !listIndexable([...ranking, ...saleShown, ...newPop, ...upcomingList]) || items.every((i) => !i.comment);
+const title = `${f.label}の人気作品・セール情報【${dayLabel}更新】${maxOff ? `最大${maxOff}%OFF` : ''}｜${SITE_NAME}`;
+const description = `${f.label}の人気作品${items.length}本を、毎日のFANZAの人気順でまとめています。セール中の作品${sale.length}本${maxOff ? `（最大${maxOff}%OFF）` : ''}・新作で人気の作品${upcomingList.length ? '・予約受付中の作品' : ''}・${f.maker}ごとの一覧も。毎日、日付が変わったあとに更新します。`;
+const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${f.label}の人気作品・セール情報`, url: SITE_URL + floorPath(key), ...(data.updated ? { dateModified: data.updated } : {}) };
+---
+
+<Base title={title} description={description} path={floorPath(key)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd]}>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{f.label}の人気作品</h1>
+      <p class="hero-lead">FANZAの人気順の{f.kind}を、毎日入れかえて。{data.updated && `${formatDateJp(data.updated)}の時点の情報です（価格・セールは変わることがあるので、FANZAで確かめてください）。`}</p>
+      <FloorTabs floorKey={key} current="hub" />
+    </section>
+
+    {ranking.length > 0 && (
+      <section class="section" aria-labelledby="fl-rank-title">
+        <div class="section-head">
+          <h2 id="fl-rank-title" class="section-title">人気ランキング</h2>
+          <a class="subsection-more" href={floorRankingPath(key)}>TOP100を見る</a>
+        </div>
+        <ul class="shelf">
+          {ranking.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} /></li>)}
+        </ul>
+      </section>
+    )}
+
+    {saleShown.length > 0 && (
+      <section class="section" aria-labelledby="fl-sale-title">
+        <div class="section-head">
+          <h2 id="fl-sale-title" class="section-title">セール中の人気作品</h2>
+          <a class="subsection-more" href={floorSalePath(key)}>セール中の{sale.length}本を見る</a>
+        </div>
+        <ul class="shelf">
+          {saleShown.map((item) => <li class="shelf-cell"><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} /></li>)}
+        </ul>
+      </section>
+    )}
+
+    {newPop.length > 0 && (
+      <section class="section" aria-labelledby="fl-new-title">
+        <div class="section-head">
+          <h2 id="fl-new-title" class="section-title">新作で人気（最近30日の発売）</h2>
+        </div>
+        <ul class="shelf">
+          {newPop.map((item) => <li class="shelf-cell"><FloorCard item={item} note={`${formatDateJp(item.dateKey)}発売`} /></li>)}
+        </ul>
+      </section>
+    )}
+
+    {upcomingList.length > 0 && (
+      <section class="section" aria-labelledby="fl-up-title">
+        <div class="section-head">
+          <h2 id="fl-up-title" class="section-title">予約受付中</h2>
+          <p class="section-note">発売日の近い順</p>
+        </div>
+        <ul class="shelf">
+          {upcomingList.map((item) => <li class="shelf-cell"><FloorCard item={item} note={`${formatDateJp(item.dateKey)}発売予定`} /></li>)}
+        </ul>
+      </section>
+    )}
+
+    {makers.length > 0 && (
+      <section class="section" aria-labelledby="fl-maker-title">
+        <div class="section-head">
+          <h2 id="fl-maker-title" class="section-title">{f.maker}から探す</h2>
+          <a class="subsection-more" href={floorMakerIndexPath(key)}>{f.maker}の一覧</a>
+        </div>
+        <ul class="name-grid">
+          {makers.map((g) => (
+            <li>
+              <a class="name-link" href={g.path} title={g.name}>
+                <span class="name-link-name">{g.name}</span>
+                <span class="name-link-count">{g.total}本</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </div>
+</Base>

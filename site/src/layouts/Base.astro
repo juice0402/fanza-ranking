@@ -2,7 +2,8 @@
 import '../styles/site.css';
 import { SITE_NAME, SITE_URL, jsonLdScript, ABOUT_PATH, ACTRESS_INDEX_PATH, MAKER_INDEX_PATH, DMM_CREDIT_HTML } from '../lib/items.js';
 import { GOOGLE_SITE_VERIFICATION } from '../config.js';
-import { roundups, monthGroups, tagGroups, upcoming, upcomingEventList, seriesGroups, labelGroups } from '../lib/data.js';
+import { roundups, monthGroups, tagGroups, upcoming, upcomingEventList, seriesGroups, labelGroups, activeFloors, floors } from '../lib/data.js';
+import { FLOORS, floorPath, floorSaleItems, floorSalePath } from '../lib/floors.js';
 import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
 import { FAVORITES_PATH } from '../lib/favorites.js';
 import { CALENDAR_PATH } from '../lib/calendar.js';
@@ -182,6 +183,13 @@ import { assetUrl } from '../lib/assets.js';
           {hasUpcoming && <a class="foot-link" href="/#upcoming">予約</a>}
           <a class="foot-link" href={RANKING_PATH}>新着の人気ランキング</a>
           <a class="foot-link" href={SALE_PATH}>セール・キャンペーン</a>
+          {/* FANZA同人・FANZAゲーム（2026-10-09。データがある売り場だけ） */}
+          {activeFloors.map((k) => (
+            <>
+              <a class="foot-link" href={floorPath(k)}>{FLOORS[k].label}</a>
+              {floorSaleItems(floors[k].items).length > 0 && <a class="foot-link" href={floorSalePath(k)}>{FLOORS[k].label}のセール</a>}
+            </>
+          ))}
           {upcomingEventList.length > 0 && <a class="foot-link" href={EVENT_PATH}>女優のイベント情報</a>}
           <a class="foot-link" href="/archive/1/">過去の作品</a>
           <a class="foot-link" href={SEARCH_PATH}>作品を探す</a>

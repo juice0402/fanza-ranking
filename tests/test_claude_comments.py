@@ -547,6 +547,75 @@ check("過去作品のファイルが壊れていたら、止める（書き戻�
 shutil.rmtree(CAT_DIR)
 os.remove(os.path.join(tmp, "catalog_state.json"))
 
+print("\n■ FANZA同人・FANZAゲーム（doujin.json・game.json。1日40件のうち同人4件・ゲーム1件。2026-10-09）")
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import floor_data as FD  # noqa: E402
+fresh_data()
+base_items = read_data()
+
+
+def floor_item(cid, n, kind="none", comment="", date="2026-09-01 00:00:00", **extra):
+    return FD.clean_item({"cid": cid, "title": f"魔法の森で暮らすふたりの物語 第{n}巻", "url": "https://al.fanza.co.jp/?lurl=x", "image_url": "https://doujin-assets.dmm.co.jp/a.jpg",
+                          "sample_images": ["https://doujin-assets.dmm.co.jp/s1.jpg"], "date": date, "maker": f"作ったサークル{n}", "maker_id": 300 + n,
+                          "genres": ["ファンタジー", "巨乳", "中出し", "恋愛"], "formats": ["男性向け"], "price": 990, "list_price": 1100,
+                          "comment": comment, "comment_kind": kind, "updated": "2026-10-01", **extra})
+
+
+dj = {"updated": "2026-11-03", "scanned": 100, "skipped": 10, "ranks": {}, "items": {}}
+for i in range(7):
+    it = floor_item(f"d_90{i:04d}", i)
+    dj["items"][it["cid"]] = it
+    dj["ranks"][it["cid"]] = [5, 1, 9, 3, 7, 2, 8][i]
+dj["items"]["d_900006"] = floor_item("d_900006", 6, kind="claude", comment="書き終えた同人のコメントです。" * 8)
+gm = {"updated": "2026-11-03", "scanned": 100, "skipped": 70, "ranks": {"brand_0001": 4, "brand_0002": 1}, "items": {}}
+for i, cid in enumerate(["brand_0001", "brand_0002", "brand_0003"]):
+    gm["items"][cid] = floor_item(cid, 10 + i, date=("2026-12-01 00:00:00" if cid == "brand_0003" else "2026-08-01 00:00:00"), authors=["作った原画家"])
+FD.save_floor(os.path.join(tmp, "doujin.json"), dj)
+FD.save_floor(os.path.join(tmp, "game.json"), gm)
+dj_before = open(os.path.join(tmp, "doujin.json"), encoding="utf-8").read()
+lst = json.loads(run("list", "--today", "2026-11-03", "--limit", "40").stdout)
+fl_rows = [r for r in lst["items"] if r.get("floor")]
+vid_rows = [r for r in lst["items"] if not r.get("floor")]
+check("list: 同人4件・ゲーム1件を、動画のあとに出す（動画は残りの枠）",
+      [r["floor"] for r in fl_rows] == ["doujin"] * 4 + ["game"] and lst["items"][-5:] == fl_rows and len(vid_rows) == len(pending), ([r["floor"] for r in fl_rows], len(vid_rows)))
+check("list: 同人は人気順の順位が上の作品から（コメントのある作品は出さない）・ゲームは順位の上の作品",
+      [r["cid"] for r in fl_rows[:4]] == ["d_900001", "d_900005", "d_900003", "d_900000"] and fl_rows[4]["cid"] == "brand_0002", [r["cid"] for r in fl_rows])
+row_d = fl_rows[0]
+check("list: 同人の行（reason 同人・サークル・タイトル・おだやかなジャンルだけ・文字数の下限100。価格・順位は出さない）",
+      row_d["reason"] == "同人" and row_d["circle"] == "作ったサークル1" and row_d["title"].startswith("魔法の森") and row_d["genres"] == ["ファンタジー", "巨乳", "恋愛"]
+      and row_d["min_len"] == 100 and not any(k in row_d for k in ("price", "rank", "list_price", "url")), row_d)
+check("list: ゲームの行（reason ゲーム・ブランド・作家）", fl_rows[4]["reason"] == "ゲーム" and fl_rows[4]["brand"] == "作ったサークル11" and fl_rows[4]["authors"] == ["作った原画家"], fl_rows[4])
+check("list: 残りの数（同人6本・ゲーム3本）が total_pending にも入る", lst["doujin_pending"] == 6 and lst["game_pending"] == 3 and lst["total_pending"] == len(pending) + 9, (lst["doujin_pending"], lst["game_pending"], lst["total_pending"]))
+lst10 = json.loads(run("list", "--today", "2026-11-03", "--limit", "10").stdout)
+check("list: --limit が40でないときは、同じ割合（10件なら同人1件・ゲーム0件・動画9件）",
+      [r.get("floor") for r in lst10["items"]].count("doujin") == 1 and not any(r.get("floor") == "game" for r in lst10["items"]) and len(lst10["items"]) == 10, [r.get("floor") for r in lst10["items"]])
+payload_f = {"d_900001": "魔法の森を舞台に、作ったサークル1が描くふたりの暮らしの物語です。ファンタジーの世界で少しずつ近づいていく関係を、恋愛を軸にしたおだやかな展開で追いかけていきます。シリーズの1冊として、読みやすい一作です。",
+             "brand_0002": "作ったサークル11が手がけるゲームで、原画は作った原画家が担当しています。森の奥で暮らすふたりを描く物語で、ファンタジーの世界を舞台に、恋愛の行方を選びながら進めていく作りです。8月1日に発売されました。"}
+r = run("apply", write_comments("floor.json", payload_f), "--today", "2026-11-03")
+check("apply: 同人・ゲームの作品に書き込める", r.returncode == 0 and "同人 1件" in r.stdout and "ゲーム 1件" in r.stdout and "同人: 5本・ゲーム: 2本" in r.stdout, r.stdout + r.stderr)
+dj_after = FD.load_floor(os.path.join(tmp, "doujin.json"))
+check("apply: comment_kind claude・更新日・コメントが入る", dj_after["items"]["d_900001"]["comment_kind"] == "claude" and dj_after["items"]["d_900001"]["updated"] == "2026-11-03"
+      and FD.load_floor(os.path.join(tmp, "game.json"))["items"]["brand_0002"]["comment"] == payload_f["brand_0002"])
+check("apply: 書いた作品の行のほかは、1文字も変わらない（集める道具と同じ書き方）",
+      [l for l in open(os.path.join(tmp, "doujin.json"), encoding="utf-8").read().split("\n") if '"d_900001"' not in l] == [l for l in dj_before.split("\n") if '"d_900001"' not in l])
+r = run("apply", write_comments("floor2.json", {"d_900005": "魔法の森の物語を、作ったサークル5が中出しまで描いた一作です。" * 3}), "--today", "2026-11-03")
+check("apply: 同人・ゲームも、点検は同じ（行為の言葉は断る）", r.returncode == 1 and "使えない言葉" in r.stdout, r.stdout)
+r = run("apply", write_comments("floor3.json", {"d_900001": payload_f["d_900001"] + "（書き直し）"}), "--today", "2026-11-03")
+check("apply: Claude が書いた同人・ゲームのコメントは上書きしない", r.returncode == 1 and "上書きしません" in r.stdout, r.stdout)
+envq = dict(os.environ, DATA_PATH=DATA, PYTHONPATH=os.path.join(ROOT, "scripts"))
+code_q = ("import claude_comments as c, sys; sys.argv=['x','apply',sys.argv[1],'--today','2026-11-03','--dry-run']; c.DAILY_LIMIT=2; c.main()")
+r = subprocess.run([sys.executable, "-c", code_q, write_comments("floor4.json", {"d_900005": payload_f["d_900001"].replace("サークル1", "サークル5")})],
+                   capture_output=True, text=True, env=envq, encoding="utf-8")
+check("apply: 1日の上限には、同人・ゲームに書いた分も数える", r.returncode == 1 and "もう 2 件を仕上げています" in r.stdout, r.stdout)
+open(os.path.join(tmp, "game.json"), "w", encoding="utf-8").write("{broken")
+r = run("list")
+check("同人・ゲームのファイルが壊れていたら、止める（書き戻して壊さないように）", r.returncode != 0 and "ゲーム" in (r.stdout + r.stderr), r.stdout + r.stderr)
+os.remove(os.path.join(tmp, "game.json"))
+os.remove(os.path.join(tmp, "doujin.json"))
+check("同人・ゲームに回す数は、40件のうち同人4件・ゲーム1件（運営者の希望）", cc_mod.FLOOR_QUOTA == {"doujin": 4, "game": 1} and cc_mod.floor_quota(40) == {"doujin": 4, "game": 1} and cc_mod.floor_quota(30) == {"doujin": 3, "game": 1})
+check("同人・ゲームのコメントの手がかりのジャンルに、行為・未成年を連想させる言葉が入っていない",
+      not any(w.lower() in g.lower() for g in cc_mod.FLOOR_COMMENT_GENRES for w in cc_mod.EXPLICIT_WORDS + cc_mod.TITLE_BLOCK))
+
 print("\n■ シリーズ・レーベル（2026-10-07 から。あるときだけ list に出す）")
 fresh_data()
 rows_sl = read_data()

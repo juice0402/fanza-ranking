@@ -16,7 +16,7 @@ GitHub Actions から毎日自動で実行されます。
 保存先（出演者）: site/src/data/actresses.json … 出演者ごとの顔写真・体型・年齢の元データ・FANZAの全作品リンク（FANZA公式のデータ）
 保存先（売れ筋）: site/src/data/ranking.json … FANZAの人気順（売れ筋）の上位6本（画面に出すのは先頭の3本。「VR作品を隠す」ときは、VRを除いて、次の順位から差し替える）
 保存先（女優検索の名簿）: site/src/data/actress_directory.json … FANZA公式の出演者検索の一覧（体型・身長・生年月日が載っている人）
-保存先（過去作品）: site/src/data/catalog/YYYY-MM.json … FANZAの人気順の上位（CATALOG_LIMIT 本まで）の、発売済みの作品。
+保存先（過去作品）: site/src/data/catalog/YYYY-MM.json … FANZAの人気順の上位（CATALOG_LIMIT 本まで。2026-10-09 から1万本）の、発売済みの作品。
   毎日、その日の上位1,000本を取り直し、その下を続きから3,000本ずつ。順位は catalog_rank.json、続きの場所は catalog_state.json。
 保存先（人気順）: site/src/data/popularity.json … 新着の人気順（最近30日の発売の、その日の上位500本）と、毎日の更新の作品の全体の人気順の順位
 保存先（きょうの数字）: site/src/data/today.json … FANZA動画の日ごとの発売本数（7日分）・予約受付中の本数・予約の人気順の上位30本
@@ -84,12 +84,14 @@ CATALOG_DIR = os.environ.get("CATALOG_DIR", os.path.join(os.path.dirname(DATA_PA
 CATALOG_STATE_PATH = os.environ.get("CATALOG_STATE_PATH", os.path.join(os.path.dirname(DATA_PATH), "catalog_state.json"))  # 続きの場所
 CATALOG_RANK_PATH = os.environ.get("CATALOG_RANK_PATH", os.path.join(os.path.dirname(DATA_PATH), "catalog_rank.json"))  # 作品ごとの人気順位（作品ページ・コメントの優先順に使う）
 CATALOG_TOP_CALLS = int(os.environ.get("CATALOG_TOP_CALLS", "10"))  # 毎日、その日の人気順の上位を取り直す回数（10回＝上位1,000本。毎日の順位で入れ替える）
-CATALOG_CALLS_PER_RUN = int(os.environ.get("CATALOG_CALLS", "30"))  # 上位より下を、続きから取る回数（1回100本。30回で3,000本 → 上位3万本は10日ほどで一回り）
+CATALOG_CALLS_PER_RUN = int(os.environ.get("CATALOG_CALLS", "30"))  # 上位より下を、続きから取る回数（1回100本。30回で3,000本 → 上位1万本は3日ほどで一回り）
 CATALOG_PAGE = 100          # 一覧の1回の本数（APIの上限）
 CATALOG_MAX_OFFSET = 50000  # 一覧の offset の上限（APIの決まり。人気順の上位5万本まで。2026-10-04 に本物のAPIで確認）
 # 集める深さ（人気順の上位何本までを過去作品にするか）。運営者の希望で、質の高い作品だけを、ほぼ全部に作品ページを付けて持つ（2026-10-04 夜）:
-# 5万本だと作品ページは2割・3万本だと4割だが、1.5万本なら、無料プランの2万ファイルの中で、ほぼ全部（99%）に作品ページを作れる
-CATALOG_LIMIT = min(CATALOG_MAX_OFFSET, int(os.environ.get("CATALOG_LIMIT", "15000")))
+# 5万本だと作品ページは2割・3万本だと4割だが、1.5万本なら、無料プランの2万ファイルの中で、ほぼ全部（99%）に作品ページを作れる。
+# 2026-10-09 に、運営者の判断で1万本にした（FANZA同人 1,000本・FANZAゲーム 500本のページの分を空けるため。scripts/doujin_game.py）。
+# 上位1万本より下の作品は、2回続けて一回りで見かけなかったところで外れる（prune_catalog）
+CATALOG_LIMIT = min(CATALOG_MAX_OFFSET, int(os.environ.get("CATALOG_LIMIT", "10000")))
 # 新着の人気順（最近 NEW_RANK_DAYS 日に発売された作品の、その日の人気順の上位 NEW_RANK_CALLS×100本）。「新着の人気順」のランキングに使う
 NEW_RANK_CALLS = int(os.environ.get("NEW_RANK_CALLS", "5"))
 NEW_RANK_DAYS = 7  # 運営者の希望で1週間（毎日たくさん発売されるので、30日では新着らしさが薄い。2026-10-04 夜）
@@ -1479,8 +1481,11 @@ def prune_catalog(state):
     done = state["cycle"]  # 終わった一回りの番号
     gone = [cid for cid, item in state["items"].items()
             if state["ranks"].get(cid, [0, done])[1] < done - 1 and item.get("comment_kind") != "claude"]
-    # 一度に外れるのは、ふつうは少し（順位の入れ替わりで、上位から外れた分だけ）。多すぎるときは、APIの答えがおかしかったものとして、外さない
-    if len(gone) > len(state["items"]) * CATALOG_PRUNE_MAX_SHARE:
+    # 一度に外れるのは、ふつうは少し（順位の入れ替わりで、上位から外れた分だけ）。多すぎるときは、APIの答えがおかしかったものとして、外さない。
+    # ただし、最後に見かけた順位が、いまの深さ（CATALOG_LIMIT）より下の作品は、深さを浅くしたこと（2026-10-09 に1.5万本→1万本）で
+    # 見かけなくなっただけなので、この数には入れない（入れると、深さを変えたあと、いつまでも外れない）
+    beyond = sum(1 for cid in gone if state["ranks"].get(cid, [CATALOG_MAX_OFFSET])[0] > CATALOG_LIMIT)
+    if len(gone) - beyond > len(state["items"]) * CATALOG_PRUNE_MAX_SHARE:
         print(f"  ⚠️ 人気の上位から外れた作品が多すぎます（{len(gone)}本 / {len(state['items'])}本）。念のため、今回は外しません")
         print(f"::warning title=過去作品を外すのをやめました::人気の上位から外れた作品が多すぎます（{len(gone)}本）。APIの答えがおかしかった可能性があるので、今回は外していません")
         return 0

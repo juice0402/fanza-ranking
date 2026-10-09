@@ -1,7 +1,8 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
-import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups } from '../lib/data.js';
+import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups } from '../lib/data.js';
+import { FLOOR_HUB_SHOWN, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorUpcoming, saleTagGroups } from '../lib/floors.js';
 import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemIndexable, listIndexable } from '../lib/plan.js';
@@ -45,6 +46,23 @@ export function GET() {
   // 女優のイベント情報（1件も無いあいだは、ページが noindex なので入れない）
   if (upcomingEventList.length > 0) rankingPages.push({ path: EVENT_PATH, lastmod: events.updated || today });
   const groupPages = (groups) => groups.filter((g) => listIndexable(g.items)).map((g) => ({ path: g.path, lastmod: listLastmod(g.items, today) }));
+  // FANZA同人・FANZAゲーム（2026-10-09）。どのページも、コメントのある作品が1本も無いあいだは noindex なので入れない（ページの側と同じ決まり）
+  const commented = (list) => list.length > 0 && list.some((i) => i.comment);
+  const floorPages = activeFloors.flatMap((k) => {
+    const fl = floors[k];
+    const out = [];
+    const lastmod = fl.updated || today;
+    const hub = [...floorRanking(fl.items, FLOOR_HUB_SHOWN), ...floorSaleItems(fl.items, FLOOR_HUB_SHOWN), ...floorNewPopular(fl.items, today), ...floorUpcoming(fl.items)];
+    if (commented(hub)) out.push({ path: floorPath(k), lastmod });
+    if (commented(floorRanking(fl.items, FLOOR_RANKING_LIMIT))) out.push({ path: floorRankingPath(k), lastmod });
+    const saleShown = k === 'game' ? saleTagGroups(fl.items).flatMap((g) => g.items) : floorSaleItems(fl.items, FLOOR_SALE_LIMIT);
+    if (commented(saleShown)) out.push({ path: floorSalePath(k), lastmod });
+    const makers = floorMakerGroups[k].filter((g) => commented(g.items.slice(0, 60)));
+    if (floorMakerGroups[k].some((g) => commented(g.items))) out.push({ path: floorMakerIndexPath(k), lastmod });
+    for (const g of makers) out.push({ path: g.path, lastmod: listLastmod(g.items, today) });
+    for (const i of fl.items) if (i.comment) out.push({ path: floorItemPath(k, i.cid), lastmod: i.updated });
+    return out;
+  });
   const entries = [
     { path: '/', lastmod: listLastmod(home, today) },
     ...rankingPages,
@@ -67,6 +85,7 @@ export function GET() {
       : []),
     ...(tagGroups.length > 0 ? [{ path: TAG_INDEX_PATH, lastmod: listLastmod(tagGroups.flatMap((g) => g.items), today) }, ...groupPages(tagGroups)] : []),
     ...all.filter((item) => itemIndexable(item, paged)).map((item) => ({ path: itemPath(item.cid), lastmod: item.updated })),
+    ...floorPages,
     // このサイトについて（lastmod は、中身を最後に変えた日）
     { path: ABOUT_PATH, lastmod: ABOUT_UPDATED },
     // 週のまとめ記事（1本も無いあいだは、一覧ページも地図に入れない）

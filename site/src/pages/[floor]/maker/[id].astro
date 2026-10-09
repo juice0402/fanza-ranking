@@ -1,0 +1,66 @@
+---
+// FANZA同人のサークルのページ（/doujin/maker/<id>/）・FANZAゲームのブランドのページ（/game/maker/<id>/）。2026-10-09。lib/floors.js。
+// 作品（人気の高い順）・セール中の作品・多いジャンル。作品が2本以上のサークル/ブランドだけ
+import Base from '../../../layouts/Base.astro';
+import Breadcrumb from '../../../components/Breadcrumb.astro';
+import FloorCard from '../../../components/FloorCard.astro';
+import FloorTabs from '../../../components/FloorTabs.astro';
+import { activeFloors, floorMakerGroups, floors, today } from '../../../lib/data.js';
+import { FLOORS, FLOOR_MAKER_LIST, floorMakerIndexPath, floorMaxOff, floorPath, onSale, priceNote, saleBadgeOf, topGenres } from '../../../lib/floors.js';
+import { listIndexable } from '../../../lib/plan.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, listLastmod } from '../../../lib/items.js';
+
+export function getStaticPaths() {
+  return activeFloors.flatMap((floor) => floorMakerGroups[floor].map((group) => ({ params: { floor, id: String(group.id) }, props: { group, floor } })));
+}
+
+const { group, floor: key } = Astro.props;
+const f = FLOORS[key];
+const shown = group.items.slice(0, FLOOR_MAKER_LIST);
+const saleCount = group.items.filter((i) => !i.upcoming && onSale(i)).length;
+const maxOff = floorMaxOff(group.items);
+const genres = topGenres(group.items, 8);
+const ym = `${+today.slice(0, 4)}年${+today.slice(5, 7)}月`;
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: `${f.maker}一覧`, path: floorMakerIndexPath(key) },
+  { name: group.name, path: group.path },
+];
+const noindex = !listIndexable(shown) || shown.every((i) => !i.comment);
+const updated = listLastmod(group.items, today);
+const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${group.name}の${f.kind}一覧`, url: SITE_URL + group.path, about: { '@type': 'Organization', name: group.name }, ...(updated ? { dateModified: updated } : {}) };
+---
+
+<Base
+  title={`${group.name}（${f.maker}）の${f.kind}一覧【${ym}】（${group.total}本）｜${SITE_NAME}`}
+  description={`${f.label}の${f.maker}「${group.name}」の人気作品${group.total}本を、人気の高い順にまとめています。${saleCount ? `いまセール中の作品が${saleCount}本${maxOff ? `（最大${maxOff}%OFF）` : ''}。` : ''}${genres.length ? `多いジャンルは${genres.slice(0, 3).map((g) => g.name).join('・')}。` : ''}毎日更新。`}
+  path={group.path}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail), pageLd]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{group.name} <span class="hero-kind">{f.label}の{f.maker}</span></h1>
+      <p class="hero-lead">{group.total}本{saleCount > 0 && `・セール中${saleCount}本`}（このサイトに載っている作品から）</p>
+      {genres.length > 0 && (
+        <ul class="chips entity-genres">
+          {genres.map((g) => <li class="chip chip-plain">{g.name} {g.count}本</li>)}
+        </ul>
+      )}
+      <FloorTabs floorKey={key} current="" />
+    </section>
+
+    <section class="section" aria-labelledby="fl-maker-works-title">
+      <div class="section-head">
+        <h2 id="fl-maker-works-title" class="section-title">人気の作品</h2>
+        <p class="section-note">人気の高い順{group.total > shown.length && `（上位${shown.length}本）`}</p>
+      </div>
+      <ul class="shelf">
+        {shown.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} eager={i < 4} /></li>)}
+      </ul>
+    </section>
+  </div>
+</Base>

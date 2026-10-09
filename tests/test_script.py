@@ -1059,9 +1059,9 @@ check("今日の「データ更新」があれば、済んでいる（0）", gua
 check("前の日の更新・取り直し・似た件名だけなら、まだ（1）",
       guard_in_temp_repo(["データ更新: 2026-10-03", "データの取り直し: 2026-10-04", "データ更新: 2026-10-04（テスト）"], "2026-10-04") == 1)
 check("記録を読めないとき（無い名前）は、まだとして扱う（1）", guard_in_temp_repo(["データ更新: 2026-10-04"], "2026-10-04", ref="no-such-ref") == 1)
-check("update.yml: 定時実行のときだけ調べ、済んでいたら更新と保存をしない（Python の準備・更新・所属事務所・イベント・保存の5つ）",
+check("update.yml: 定時実行のときだけ調べ、済んでいたら更新と保存をしない（Python の準備・更新・所属事務所・イベント・同人とゲーム・保存の6つ）",
       "if: github.event_name == 'schedule'" in yml_update and "already_updated.sh FETCH_HEAD" in yml_update
-      and yml_update.count("if: steps.guard.outputs.skip != '1'") == 5 and 'git commit -m "データ更新: $(TZ=Asia/Tokyo date +%Y-%m-%d)"' in yml_update)
+      and yml_update.count("if: steps.guard.outputs.skip != '1'") == 6 and 'git commit -m "データ更新: $(TZ=Asia/Tokyo date +%Y-%m-%d)"' in yml_update)
 check("update.yml: 所属事務所は、週1回（--update は7日ごと）・失敗しても更新を止めない・保存の前",
       "python scripts/agency_links.py --update" in yml_update and "--force" not in yml_update and "continue-on-error: true" in yml_update
       and yml_update.index("agency_links.py") < yml_update.index("git add -A -- site/src/data"))
@@ -1202,9 +1202,9 @@ rk = json.load(open(cat_rank, encoding="utf-8"))
 check("順位（catalog_rank.json）: 作品ごとに [人気順の順位, 見かけた一回りの番号]。1作品1行・cid の順",
       len(rk) == 199 and rk["cat00010"] == [10, 1] and rk["cat00150"] == [150, 1] and list(rk) == sorted(rk) and open(cat_rank, encoding="utf-8").read().count("\n") == 201, (len(rk), rk.get("cat00010")))
 st_c = json.load(open(cat_state, encoding="utf-8"))
-check("続きの場所（catalog_state.json）: 次は201本目から・一回り目・まだ一回りしていない・集める深さ・本数", st_c == {"cursor": 201, "cycle": 1, "cycle_done": "", "limit": 15000, "items": 199}, st_c)
+check("続きの場所（catalog_state.json）: 次は201本目から・一回り目・まだ一回りしていない・集める深さ・本数", st_c == {"cursor": 201, "cycle": 1, "cycle_done": "", "limit": 10000, "items": 199}, st_c)
 check("毎日の更新のデータ（new_releases.json）には、過去作品を入れない", all(not d["cid"].startswith("cat") for d in json.load(open(c_path, encoding="utf-8"))))
-check("画面に結果が出る", "過去作品: 一覧を2回取得" in out_c and "うち新しく199本" in out_c and "上位15000本まで" in out_c, out_c[-300:])
+check("画面に結果が出る", "過去作品: 一覧を2回取得" in out_c and "うち新しく199本" in out_c and "上位10000本まで" in out_c, out_c[-300:])
 pop1 = json.load(open(os.path.join(c_dir, "popularity.json"), encoding="utf-8"))
 check("毎日の更新の作品が全体の人気順に出てきたら、その順位を popularity.json の all に（5本目）", pop1["all"] == {"bibivr00176": 5} and pop1["new"] == {}, pop1)
 
@@ -1254,6 +1254,25 @@ buf_m = io.StringIO()
 with contextlib.redirect_stdout(buf_m):
     n_mass = m_c2.prune_catalog(st_mass)
 check("一度に外れる作品が多すぎる（2割をこえる）ときは、APIの答えがおかしかったものとして、外さない", n_mass == 0 and len(st_mass["items"]) == 30 and "多すぎます" in buf_m.getvalue(), (n_mass, buf_m.getvalue()[-120:]))
+# 集める深さを浅くしたあと（2026-10-09 に1.5万本→1万本）: 最後に見かけた順位が深さより下の作品は、多くても外す（深さを変えたせいで見かけなくなっただけ）
+saved_limit = m_c2.CATALOG_LIMIT
+m_c2.CATALOG_LIMIT = 100
+st_shrink = {"items": {c: dict(crow2[c][1]) for c in list(crow2)[:30]}, "ranks": {}, "cursor": 51, "cycle": 3, "cycle_done": ""}
+for i, c in enumerate(st_shrink["items"]):
+    st_shrink["items"][c]["comment_kind"] = "none"
+    st_shrink["ranks"][c] = [10 + i, 3] if i < 18 else [150 + i, 1]  # 18本はいまの深さの中・12本は深さより下（前の一回りで見かけたきり）
+buf_s = io.StringIO()
+with contextlib.redirect_stdout(buf_s):
+    n_shrink = m_c2.prune_catalog(st_shrink)
+check("深さを浅くしたあとは、深さより下の作品を、2割をこえても外す（深さの中の作品は残す）", n_shrink == 12 and len(st_shrink["items"]) == 18 and "多すぎます" not in buf_s.getvalue(), (n_shrink, buf_s.getvalue()[-120:]))
+st_shrink2 = {"items": {c: dict(crow2[c][1]) for c in list(crow2)[:30]}, "ranks": {}, "cursor": 51, "cycle": 3, "cycle_done": ""}
+for i, c in enumerate(st_shrink2["items"]):
+    st_shrink2["items"][c]["comment_kind"] = "none"
+    st_shrink2["ranks"][c] = [10 + i, 3] if i < 18 else [20 + i, 1]  # 深さの中なのに12本を見かけなかった（APIの答えがおかしい）
+with contextlib.redirect_stdout(io.StringIO()):
+    n_shrink2 = m_c2.prune_catalog(st_shrink2)
+check("深さの中の作品がたくさん見えなくなったときは、これまでどおり外さない", n_shrink2 == 0 and len(st_shrink2["items"]) == 30, n_shrink2)
+m_c2.CATALOG_LIMIT = saved_limit
 
 # 失敗のとき
 broken_name = sorted(os.listdir(cat_dir))[0]
@@ -1309,7 +1328,7 @@ m_c6.urllib.request.urlopen = env_c7.urlopen
 m_c6.CATALOG_LIMIT = 50000
 m_c6.update_catalog(st_max, {}, TODAY, top_calls=0, calls=2)
 check("人気順の5万本目まで行ったら（offset は50000まで）、一回りして1本目へ", cat_offsets(env_c7) == ["49901", "1"] and st_max["cursor"] == 101 and st_max["cycle_done"] == TODAY_STR, (cat_offsets(env_c7), st_max["cursor"]))
-check("集める深さの既定は1.5万本（質の高い作品だけを、ほぼ全部に作品ページを付けて持つ）・APIの上限をこえない", m_c4.CATALOG_LIMIT == 15000 and m_c4.CATALOG_MAX_OFFSET == 50000)
+check("集める深さの既定は1万本（2026-10-09 に1.5万本から。同人・ゲームのページの分を空ける）・APIの上限をこえない", m_c4.CATALOG_LIMIT == 10000 and m_c4.CATALOG_MAX_OFFSET == 50000)
 
 print("\n■ セール・キャンペーン（FANZA公式のAPIの campaign・prices。その日に見かけたものだけ）")
 s_dir = scenario_dir("sale")
