@@ -71,14 +71,27 @@ def notice(title, rows):
     print(f"::notice title={title}::{msg}")
 
 
-for kind, it in [("video", v) for v in video] + [("doujin", d) for d in dj[:1]] + [("game", g) for g in game]:
+def head(url):
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Referer": "https://fanza-ranking.pages.dev/"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return f"cache-control={r.headers.get('Cache-Control')} age={r.headers.get('Age')} via={r.headers.get('Via') or r.headers.get('Server')} x-cache={r.headers.get('X-Cache')}"
+    except Exception as e:  # noqa: BLE001
+        return f"ERR {e}"
+
+
+for kind, it in [("video", v) for v in video] + [("doujin", d) for d in dj] + [("game", g) for g in game]:
     pl = it["image_url"]
     base = pl[:-len("pl.jpg")]
     aws = base.replace("https://pics.dmm.co.jp/", "https://awsimgsrc.dmm.co.jp/pics_dig/")
     rows = []
-    for suf in ["ps", "pt"]:
-        for q in ["", "?w=300", "?w=450"]:
-            rows.append(f"aws {suf}{q}: {get(aws + suf + '.jpg' + q)}")
-    for q in ["?w=480", "?w=600", "?w=720", "?w=300&h=400&fit=crop", "?w=300&h=400&crop=1", "?w=480&q=70", "?w=480&quality=70"]:
-        rows.append(f"aws pl{q}: {get(aws + 'pl.jpg' + q)}")
+    if kind == "video":
+        for q in ["?w=300&q=75", "?w=320&q=75", "?w=360&q=75", "?w=300&q=80", "?w=200&q=75", "?w=240&q=75"]:
+            rows.append(f"aws ps{q}: {get(aws + 'ps.jpg' + q)}")
+        rows.append("headers ps?w=300&q=75: " + head(aws + "ps.jpg?w=300&q=75"))
+    else:
+        for q in ["?w=240&q=75", "?w=300&q=75", "?w=360&q=75", "?w=360&q=80"]:
+            rows.append(f"aws pl{q}: {get(aws + 'pl.jpg' + q)}")
+        rows.append("headers pl?w=360&q=75: " + head(aws + "pl.jpg?w=360&q=75"))
+    rows.append("headers pics pl: " + head(pl))
     notice(f"{kind} {it['cid']}", rows)
