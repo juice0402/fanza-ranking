@@ -16,10 +16,10 @@ vm.runInNewContext(source, sandbox); // document が無い環境（node）では
 const F = sandbox.module.exports;
 const plain = (v) => JSON.parse(JSON.stringify(v));
 
-console.log('■ 作品の行のサムネ（表紙だけの軽い画像。スマホは、いちばん小さい版）');
+console.log('■ 作品の行のサムネ（表紙だけの軽い画像。スマホは、縮めて返す版の幅200）');
 const urls = ['https://pics.dmm.co.jp/digital/video/a/apl.jpg', 'https://pics.dmm.co.jp/digital/video/a/aps.jpg', 'https://example.net/apl.jpg', ''];
 check('サイト側の smallImage・tinyImage・THUMB_MEDIA と同じ', F.THUMB_MEDIA === THUMB_MEDIA && urls.every((u) => F.smallImageUrl(u) === smallImage(u) && F.tinyImageUrl(u) === tinyImage(u)));
-check('読めなければ pt → ps → pl の順に戻し、それも読めなければ隠す・印 is-small（まん中で切る）', source.includes("img.src = img.src.replace(/pt\\.jpg$/, 'ps.jpg');") && source.includes("img.src = img.src.replace(/ps\\.jpg$/, 'pl.jpg');") && source.includes("img.classList.add('is-small')") && source.includes('window.matchMedia(THUMB_MEDIA).matches ? tinyImageUrl(small) : small'));
+check('読めなければ 縮めた版 → ps → pl の順に戻し、それも読めなければ隠す・印 is-small（まん中で切る）', source.includes("img.src = unresizedUrl(img.src);") && F.unresizedUrl(tinyImage(urls[0])) === urls[1] && source.includes("img.src = img.src.replace(/ps\\.jpg$/, 'pl.jpg');") && source.includes("img.classList.add('is-small')") && source.includes('window.matchMedia(THUMB_MEDIA).matches ? tinyImageUrl(small) : small'));
  // vm の中で作られたオブジェクトを、普通のオブジェクトにする
 
 const work = { t: 'タイトル', i: 'https://pics.example/x.jpg', d: '2026-10-17', a: ['花子'], m: 'メーカーA' };

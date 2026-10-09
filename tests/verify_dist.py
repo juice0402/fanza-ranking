@@ -1694,6 +1694,17 @@ check(f"CSS: スマホ（{THUMB_MEDIA}）のときだけ、作品カード・TOP
       and _media_rule(".genre-img.has-small", r"object-fit\s*:\s*cover") and _media_rule(".genre-img.has-small", r"(?<![-\w])height\s*:\s*100%")
       and css_has(".pic", r"display\s*:\s*contents"))
 _PIC = re.compile(r'<picture class="pic"><source media="([^"]*)" srcset="([^"]*)"><img ([^>]*)></picture>')
+# スマホの版（2026-10-09 から。運営者の「少し粗すぎた。もう少しだけきれいに。同じしくみを同人とゲームにも」）:
+# FANZA の「縮めて返す版」（awsimgsrc.dmm.co.jp/pics_dig/＋pics.dmm.co.jp と同じ道すじ＋?w=幅&q=75。lib/items.js の resizedImage）
+_PICS_HOST, _AWS_HOST = "https://pics.dmm.co.jp/", "https://awsimgsrc.dmm.co.jp/pics_dig/"
+def _resized(u, w):
+    return _AWS_HOST + u[len(_PICS_HOST):] + f"?w={w}&q=75" if u.startswith(_PICS_HOST) else u
+def _is_video_img(u):
+    return re.match(r"^https://pics\.dmm\.co\.jp/digital/video/[^?#]+p[ls]\.jpg$", u) is not None
+def _is_game_img(u):
+    return re.match(r"^https://pics\.dmm\.co\.jp/digital/pcgame/[^?#]+pl\.jpg$", u) is not None
+def _as_ps(u):
+    return re.sub(r"p[ls]\.jpg$", "ps.jpg", u)
 bad_pic, bad_bare, n_pic, pic_kinds = [], [], 0, Counter()
 for pth in all_html:
     h_ = read_raw(pth)
@@ -1708,35 +1719,43 @@ for pth in all_html:
         cls_ = a_.get("class", "").split()
         src_ = a_.get("src", "")
         small_ = htmllib.unescape(small_)
-        if "is-small" in cls_:
-            kind_, want_ = "tiny", (src_.endswith("ps.jpg") and small_ == src_[:-6] + "pt.jpg")
+        if "floor-img" in cls_:
+            kind_, want_ = "doujin", (src_.startswith(_PICS_HOST) and src_.endswith("pl.jpg") and small_ in (_resized(src_, 300), _resized(src_, 240))
+                                      and a_.get("referrerpolicy") == "no-referrer")
+        elif "is-small" in cls_:
+            kind_, want_ = "tiny", (src_.endswith("ps.jpg") and _is_video_img(src_) and small_ == _resized(src_, 200))
         elif "genre-img" in cls_:
-            kind_, want_ = "genre", (src_.endswith("pl.jpg") and small_ == src_[:-6] + "pt.jpg" and "has-small" in cls_)
+            kind_, want_ = "genre", (src_.endswith("pl.jpg") and _is_video_img(src_) and small_ == _resized(_as_ps(src_), 200) and "has-small" in cls_)
+        elif "item-img" in cls_ and _is_game_img(src_):
+            kind_, want_ = "game-card", (small_ == _resized(src_, 300) and "has-small" not in cls_)
         elif "item-img" in cls_:
-            kind_, want_ = "card", (src_.endswith("pl.jpg") and small_ == src_[:-6] + "ps.jpg" and "has-small" in cls_)
+            kind_, want_ = "card", (src_.endswith("pl.jpg") and _is_video_img(src_) and small_ == _resized(_as_ps(src_), 300) and "has-small" in cls_)
         else:
             kind_, want_ = "?", False
         pic_kinds[kind_] += 1
         onerr_ = a_.get("onerror", "")
         # alt="" は、Astro が値の無い「alt」だけで書く（どちらも空の代替テキスト）
         has_alt_ = a_.get("alt") is not None or re.search(r'(?:^|\s)alt(?=\s|/?$)', re.sub(r'"[^"]*"', '""', img_)) is not None
-        if media_ != THUMB_MEDIA or not want_ or not fanza_https(src_, DMM) or not fanza_https(small_, DMM) or "previousElementSibling" not in onerr_ or "matchMedia(s.media)" not in onerr_ or "pl.jpg" not in onerr_ or not has_alt_:
+        back_ = "doujin-assets.dmm.co.jp" in onerr_ if kind_ == "doujin" else "pl.jpg" in onerr_  # 元の画像も読めなければ、の戻し先
+        if media_ != THUMB_MEDIA or not want_ or not fanza_https(src_, DMM) or not fanza_https(small_, DMM) or "previousElementSibling" not in onerr_ or "matchMedia(s.media)" not in onerr_ or not back_ or not has_alt_:
             bad_pic.append((rel_, kind_, src_[-20:], small_[-20:]))
     # 一覧のサムネ（item-img・genre-img）で、パッケージ画像（pl.jpg）を <picture> の外で読んでいるもの（スマホで重いまま）
     for t in tags(re.sub(r"<picture class=\"pic\">.*?</picture>", "", h_), "img"):
-        if (has_class(t, "item-img") or has_class(t, "genre-img")) and str(t.get("src", "")).endswith("pl.jpg"):
+        if (has_class(t, "item-img") or has_class(t, "genre-img") or has_class(t, "floor-img")) and str(t.get("src", "")).endswith("pl.jpg"):
             bad_bare.append((rel_, t.get("src", "")[-24:]))
     # 作品ページの大きな表紙・パッケージ写真・サンプル画像は、元の画像のまま（<picture> に入れない）
     for cls_name in ("detail-cover", "package-img", "sample-img"):
         if re.search(r'<picture class="pic"><source [^>]*><img class="%s' % cls_name, h_):
             bad_pic.append((rel_, cls_name + " が小さい版になっている"))
-check(f"スマホのサムネ（{n_pic}枚 {dict(pic_kinds)}）: 作品カード・TOP3はスマホで表紙（ps）・小さな表紙はスマホで pt・人気のジャンルはスマホで pt。幅は {THUMB_MEDIA}・読めなければ元の画像に戻す",
-      n_pic > 0 and pic_kinds["card"] > 0 and not bad_pic, bad_pic[:4])
-check("スマホのサムネ: 一覧のパッケージ画像（pl.jpg）は、すべて <picture> の中（スマホは小さい版を読む）・作品ページの表紙・パッケージ写真・サンプル画像は元のまま", not bad_bare, bad_bare[:4])
+_has_doujin = os.path.isdir(os.path.join(DIST, "doujin"))
+check(f"スマホのサムネ（{n_pic}枚 {dict(pic_kinds)}）: 縮めて返す版で、動画のカード・TOP3は表紙の幅300・小さな表紙と人気のジャンルは表紙の幅200・"
+      f"ゲームのカードはパッケージの幅300・同人は幅300/240（どのページから読んだかを送らない）。幅は {THUMB_MEDIA}・読めなければ元の画像に戻す",
+      n_pic > 0 and pic_kinds["card"] > 0 and (pic_kinds["doujin"] > 0 or not _has_doujin) and not bad_pic, bad_pic[:4])
+check("スマホのサムネ: 一覧のパッケージ画像（pl.jpg。同人の表紙も）は、すべて <picture> の中（スマホは小さい版を読む）・作品ページの表紙・パッケージ写真・サンプル画像は元のまま", not bad_bare, bad_bare[:4])
 _home_raw = read_raw(os.path.join(DIST, "index.html"))
 _top3 = re.search(r'<ol class="medals rank-podium".*?</ol>', _home_raw, re.S)
 _top3_imgs = re.findall(r'<img ([^>]*)>', _top3.group(0)) if _top3 else []
-check("トップのTOP3: スマホは表紙（ps）を <picture> で読み、1本目はすぐに・優先して読む（fetchpriority=high）",
+check("トップのTOP3: スマホは表紙（幅300に縮めた版）を <picture> で読み、1本目はすぐに・優先して読む（fetchpriority=high）",
       bool(_top3_imgs) and _top3.group(0).count('<picture class="pic">') == len(_top3_imgs) and 'fetchpriority="high"' in _top3_imgs[0] and 'loading="eager"' in _top3_imgs[0], _top3_imgs[:1])
 
 # 「VR作品を隠す」の見た目の決まり

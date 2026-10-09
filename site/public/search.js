@@ -84,15 +84,19 @@
     return /^https:\/\/pics\.dmm\.co\.jp\/.+pl\.jpg$/.test(String(url || '')) ? String(url).replace(/pl\.jpg$/, 'ps.jpg') : String(url || '');
   }
 
-  // スマホ（画面の幅が THUMB_MEDIA）のときだけ読む、表紙のいちばん小さい版（…pt.jpg。90×122）
+  // スマホ（画面の幅が THUMB_MEDIA）のときだけ読む、表紙の小さい版
   // （運営者の希望「スマホのサムネは画素数を落として最高速化」。2026-10-07。site/src/lib/items.js の THUMB_MEDIA・tinyImage と同じ）
   var THUMB_MEDIA = '(max-width: 480px)';
+  // 2026-10-09 から、動画の表紙は FANZA の「縮めて返す版」の幅200（運営者の「少し粗すぎた」。前は …pt.jpg 90×122）。
+  // ゲームなど、ほかの FANZA の画像は表紙（…ps.jpg）。site/src/lib/items.js の tinyImage と同じ
+  var AWS_IMG = 'https://awsimgsrc.dmm.co.jp/pics_dig/';
   function tinyImageUrl(url) {
     var s = String(url || '');
-    return /^https:\/\/pics\.dmm\.co\.jp\//.test(s) && /p[ls]\.jpg$/.test(s) ? s.replace(/p[ls]\.jpg$/, 'pt.jpg') : s;
+    if (/^https:\/\/pics\.dmm\.co\.jp\/digital\/video\/[^?#]+p[ls]\.jpg$/.test(s)) return AWS_IMG + s.slice(23).replace(/p[ls]\.jpg$/, 'ps.jpg') + '?w=200&q=75';
+    return /^https:\/\/pics\.dmm\.co\.jp\/[^?#]+pl\.jpg$/.test(s) ? s.replace(/pl\.jpg$/, 'ps.jpg') : s;
   }
 
-  // 小さな表紙（site/src/components/Thumb.astro の kind="tiny" と同じ形）: スマホは <picture> の <source> で …pt.jpg、ほかは …ps.jpg。
+  // 小さな表紙（site/src/components/Thumb.astro の kind="tiny" と同じ形）: スマホは <picture> の <source> で縮めた版（tinyImageUrl）、ほかは …ps.jpg。
   // 読めなければ、<source> を外して ps に、ps も読めなければパッケージ画像（…pl.jpg）に戻し、それも読めなければ隠す（items.js の THUMB_ONERROR と同じ）
   function thumbImage(src) {
     var img = document.createElement('img');
@@ -393,7 +397,7 @@
     cover.href = href;
     cover.tabIndex = -1;
     cover.setAttribute('aria-hidden', 'true');
-    // 結果のサムネは小さいので、表紙だけの軽い画像（…ps.jpg。スマホは …pt.jpg）
+    // 結果のサムネは小さいので、表紙だけの軽い画像（…ps.jpg。スマホは縮めた版）
     var src = smallImageUrl(rowImage(row));
     if (src) cover.appendChild(thumbImage(src));
     var status = statusOf(row.d, today, newDays);

@@ -118,6 +118,13 @@ export const SMALL_IMG_ONERROR = "if(/ps\\.jpg$/.test(this.src)){this.src=this.s
  * スマホのサムネを軽くする（運営者の希望「スマホの低速な回線だと画像が重い。サムネだけ画素数を落として最高速化。開いたときは元のまま」。2026-10-07）。
  * 画面の幅が THUMB_MEDIA（スマホの縦向き）のときだけ、<picture> の <source> で小さい版を読む。パソコン・タブレットは今までどおり
  * （components/Thumb.astro。ブラウザで作るサムネも同じ幅で切りかえる。CSS の @media も同じ幅）。
+ * 2026-10-09: 運営者の「さすがに少し粗すぎた。もう少しだけ画質を上げて。同じしくみを同人とゲームにも」で、小さい版を、FANZA の画像の置き場所の
+ * 「縮めて返す版」（awsimgsrc.dmm.co.jp/pics_dig/…?w=幅&q=75。pics.dmm.co.jp と同じ画像を、指定した幅に縮めて返す）にした。
+ * 動画の表紙（…ps.jpg）は、そこでは大きい元（1032×1467 前後）があるので、きれいに縮む（2026-10-09 に本物で確かめた）:
+ *   カード・TOP3 … 幅300（300×426・約25KB。前は ps 147×200・約11KB）／ 小さな表紙・ジャンルの四角 … 幅200（200×284・約13KB。前は pt 90×122・約5KB）
+ *   （スマホのカードは画面の幅の半分＝170px ほど。前は画面の点の数より画像の点が少なく、粗く見えた）
+ * ゲームは表紙だけの版（ps 125×200）が小さいので、カードはパッケージ（pl。表紙だけか見開き）を幅300に縮める（切り出しはパソコンと同じ）。
+ * 同人は floors.js の floorThumb。どれも、読めなければ <source> を外して、ふだんの画像に戻す（THUMB_ONERROR）
  * FANZAの画像の大きさと重さ（2026-10-07 に本物の約300本で調べた。どれも、小さい版が無い作品は無かった）:
  *   パッケージ …pl.jpg 800×538 前後・平均 約165KB ／ 表紙 …ps.jpg 147×200・約14KB ／ 表紙の小 …pt.jpg 90×122・約6KB
  * 作品ページのサンプル画像の並びは、スマホでも大きい版（…jp-N.jpg）のまま。小さい版（…-N.jpg。120×90・約5KB）は、
@@ -125,22 +132,45 @@ export const SMALL_IMG_ONERROR = "if(/ps\\.jpg$/.test(this.src)){this.src=this.s
  * 縦長が2割ほど）ので、暗い背景の並びでは白い帯が目立つ。どの写真が縦長かは、読み込むまで分からない
  */
 export const THUMB_MEDIA = '(max-width: 480px)';
-const DMM_IMG = /^https:\/\/pics\.dmm\.co\.jp\//;
-/** 表紙のいちばん小さい版（…pl.jpg・…ps.jpg → …pt.jpg。90×122）。形が違うURLはそのまま */
+const PICS = 'https://pics.dmm.co.jp/';
+/** FANZA の画像を、指定した幅に縮めて返す置き場所（pics.dmm.co.jp の画像と同じ道すじ） */
+export const AWS_IMG = 'https://awsimgsrc.dmm.co.jp/pics_dig/';
+/** スマホのサムネの幅（点の数）と画質。カード・TOP3 と、小さな表紙・ジャンルの四角 */
+export const THUMB_CARD_W = 300;
+export const THUMB_TINY_W = 200;
+export const THUMB_Q = 75;
+const DMM_IMG = /^https:\/\/pics\.dmm\.co\.jp\/[^?#]+\.jpg$/;
+const VIDEO_IMG = /^https:\/\/pics\.dmm\.co\.jp\/digital\/video\/[^?#]+p[ls]\.jpg$/;
+const GAME_IMG = /^https:\/\/pics\.dmm\.co\.jp\/digital\/pcgame\/[^?#]+pl\.jpg$/;
+/** pics.dmm.co.jp の画像を、幅 w に縮めた版の URL に（FANZA の画像でなければ、そのまま） */
+export const resizedImage = (url, w) => {
+  const s = String(url ?? '');
+  return DMM_IMG.test(s) ? `${AWS_IMG}${s.slice(PICS.length)}?w=${w}&q=${THUMB_Q}` : s;
+};
+/** 表紙の小さい版（スマホの小さな表紙・ジャンルの四角）。動画は表紙（ps）を幅200に、ゲームは表紙（ps 125×200）。形が違うURLはそのまま */
 export const tinyImage = (url) => {
   const s = String(url ?? '');
-  return DMM_IMG.test(s) && /p[ls]\.jpg$/.test(s) ? s.replace(/p[ls]\.jpg$/, 'pt.jpg') : s;
+  if (VIDEO_IMG.test(s)) return resizedImage(s.replace(/p[ls]\.jpg$/, 'ps.jpg'), THUMB_TINY_W);
+  return DMM_IMG.test(s) && /pl\.jpg$/.test(s) ? smallImage(s) : s;
+};
+/** スマホの作品カード・TOP3 の画像。動画は表紙（ps）を幅300に、ゲームはパッケージ（pl）を幅300に。ほかは表紙（ps） */
+export const cardImage = (url) => {
+  const s = String(url ?? '');
+  if (VIDEO_IMG.test(s)) return resizedImage(s.replace(/p[ls]\.jpg$/, 'ps.jpg'), THUMB_CARD_W);
+  if (GAME_IMG.test(s)) return resizedImage(s, THUMB_CARD_W);
+  return smallImage(s);
 };
 /**
- * サムネの画像のURL: src＝パソコン・タブレット（今までどおり）、small＝スマホ（src と同じなら、切りかえない）。
- * kind: 'card'＝作品カード・TOP3（スマホは表紙 ps）／'tiny'＝小さな表紙（話題・セールの特集・今週のデビュー作・小さな棚・行の一覧。ふだん ps・スマホは pt）／
- *       'genre'＝人気のジャンルの四角（スマホは pt。運営者の「ジャンル・セールの画像は特に荒くても良い」）
+ * サムネの画像のURL: src＝パソコン・タブレット（今までどおり）、small＝スマホ（src と同じなら、切りかえない）、
+ * cover＝スマホの画像が表紙だけか（表紙だけなら、CSS の印 has-small で、まん中で切る。パッケージなら、パソコンと同じ切り出し）。
+ * kind: 'card'＝作品カード・TOP3／'tiny'＝小さな表紙（話題・セールの特集・今週のデビュー作・小さな棚・行の一覧。ふだん ps）／
+ *       'genre'＝人気のジャンルの四角
  */
 export function thumbSources(url, kind = 'card') {
   const s = String(url ?? '');
-  if (kind === 'tiny') return { src: smallImage(s), small: tinyImage(s) };
-  if (kind === 'genre') return { src: s, small: tinyImage(s) };
-  return { src: s, small: smallImage(s) };
+  if (kind === 'tiny') return { src: smallImage(s), small: tinyImage(s), cover: true };
+  if (kind === 'genre') return { src: s, small: tinyImage(s), cover: true };
+  return { src: s, small: cardImage(s), cover: !GAME_IMG.test(s) };
 }
 /**
  * <picture> の中の img の onerror: スマホで小さい版が読めなかったら、<source> を外して、ふだんの画像に戻す
