@@ -5,9 +5,10 @@ on:
     - cron: '5 15 * * *' # 毎日 日本時間の午前0時5分（UTC 15:05）。日付が変わった直後に更新して、その日発売の作品を朝から「発売中」にする。ちょうど0時にしないのは、GitHubの定時実行が正時に混み合って遅れやすいため。そのあと 0:20 に Claude がコメントを書き上げる（定時実行が遅れていたら、Claude が手動実行で動かす）
   workflow_dispatch: # GitHubの Actions 画面から「Run workflow」で手動実行もできる
 
-# 更新したデータをリポジトリに保存（commit）するために必要な権限
+# 更新したデータをリポジトリに保存（commit）するため・保存したあと公開（deploy.yml）を動かすために必要な権限
 permissions:
   contents: write
+  actions: write
 
 # 手動実行と自動実行が重なっても、順番に1つずつ動かす（データが混ざらないように）
 concurrency:
@@ -79,6 +80,8 @@ jobs:
 
       - name: Commit and push if changed
         if: steps.guard.outputs.skip != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # 保存するのはデータの置き場所（site/src/data）だけ（他のファイルが紛れ込まないように）。
           # 出演者データ・ランキングは最初の実行で新しくできる（まだ無いファイルを名前で指定すると git add が失敗するので、フォルダで指定する）
@@ -93,3 +96,7 @@ jobs:
           # 更新中に誰かが main を更新していても、取り込んでから保存する
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
+          # 公開を頼む（ビルド・点検・Cloudflare Pages への直接アップロード。deploy.yml）。
+          # ワークフローが保存したコミットでは、ほかのワークフローが自動では動かないため（GitHub の決まり）
+          gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}"
+          echo "### 🚀 公開を頼みました（Deploy）" >> "$GITHUB_STEP_SUMMARY"
