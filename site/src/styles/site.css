@@ -5615,7 +5615,7 @@ a.tf-name {
 }
 
 .item-cover.is-wide .floor-img {
-  border-radius: inherit;
+  border-radius: var(--r-media);
 }
 
 .item-cover.is-wide .rank-badge {
