@@ -2477,8 +2477,10 @@ if os.path.isfile(sp):
     radios_ = [t for t in tags(stext_, "input") if t.get("type") == "radio"]
     sel_values = [[t.get("value") for t in radios_ if t.get("name") == n] for n in ("status", "sort")]
     checked_ = [(t.get("name"), t.get("value")) for t in radios_ if "checked" in t]
-    check("選択肢の値が、スクリプトの読める形（''・released・upcoming / new・popnew・pop・old）だけ・はじめは「すべて」「新しい順」",
-          sel_values == [["", "released", "upcoming"], ["new", "popnew", "pop", "old"]] and sorted(checked_) == [("sort", "new"), ("status", "")], (sel_values, checked_))
+    # 「評価が高い順」（review）は、FANZAのレビューの評価（2026-10-10）
+    check("選択肢の値が、スクリプトの読める形（''・released・upcoming / new・popnew・pop・review・old）だけ・はじめは「すべて」「新しい順」",
+          sel_values == [["", "released", "upcoming"], ["new", "popnew", "pop", "review", "old"]] and sorted(checked_) == [("sort", "new"), ("status", "")]
+          and "review:" in read(os.path.join(ROOT, "site", "public", "search.js")), (sel_values, checked_))
     check("作品検索の検索バー（紙の色のバー・探すボタン）がある", 'class="search-bar"' in stext_ and 'class="search-bar-btn"' in stext_)
     fb = next((t for t in tags(stext_, "section") if t.get("id") == "ws-fallback"), None)
     check("JavaScriptが使えないとき用の案内（#ws-fallback）に、過去の作品・出演者・メーカーへのリンクがある", fb is not None and all(f'href="{h}"' in stext_ for h in ("/archive/1/", "/actress/", "/maker/")))
