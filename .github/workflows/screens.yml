@@ -1,0 +1,40 @@
+name: Screens
+
+# 画面の写真を撮って、形のくずれを調べる（scripts/screens.mjs。運営者の「全域調査してほしい」。2026-10-09）。
+# claude/screens-… のブランチを送ると動き、写真と点検の結果を shots/<実行の番号> のブランチに置く（見終わったら消す）。
+# 作品の画像は写さない（灰色の箱）。サイトには何も書きこまない
+on:
+  push:
+    branches: ['claude/screens-**']
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y > /dev/null
+          npm i --no-save --no-audit --no-fund playwright@1.48.2
+          npx playwright install --with-deps chromium
+      - name: Take screenshots
+        run: node scripts/screens.mjs
+      - name: Save to a branch
+        env:
+          RUN: ${{ github.run_number }}
+        run: |
+          cd shots
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "screens ${RUN}"
+          git push -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "HEAD:refs/heads/shots/${RUN}"
+          echo "::notice title=写真::shots/${RUN}"

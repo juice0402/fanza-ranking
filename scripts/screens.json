@@ -1,0 +1,12 @@
+{
+  "base": "https://fanza-ranking.pages.dev",
+  "widths": [390, 1280],
+  "chunks": 4,
+  "paths": [
+    "/doujin/", "/game/", "/doujin/ranking/", "/doujin/ranking/maker/", "/game/ranking/author/",
+    "/doujin/type/voice/", "/doujin/theme/", "/doujin/theme/comiket108/", "/doujin/genre/",
+    "/doujin/sale/", "/game/sale/", "/game/sale/25d511f418/", "/doujin/sale/history/", "/doujin/search/",
+    "/doujin/item/d_822811/", "/game/item/illgames_00b3j7pxxa/", "/doujin/maker/201438/", "/game/theme/trial/",
+    "/", "/ranking/"
+  ]
+}
