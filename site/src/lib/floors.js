@@ -354,7 +354,7 @@ export function floorCollections(items, key, today = '') {
     if (key === 'doujin') {
       for (const f of new Set(i.formats)) {
         const c = comiketTheme(f);
-        if (c) add('theme', c.slug, c.name, i, { heading: c.heading, order: -c.no });
+        if (c) add('theme', c.slug, c.name, i, { heading: c.heading, order: 1000 - c.no, comiket: true });
       }
     }
     themes.forEach((t, n) => {
@@ -366,7 +366,7 @@ export function floorCollections(items, key, today = '') {
     const groups = [...maps[kind].values()]
       .filter((g) => g.items.length >= FLOOR_COLLECTIONS[kind].min)
       .map((g) => ({ ...g, path: floorCollectionPath(key, kind, g.slug), total: g.items.length, items: [...g.items].sort(byRank) }));
-    // 発売月は新しい月から・形式は決めた順・特集はコミケ（新しい回から）→ 決めた順・ほかは作品の多い順
+    // 発売月は新しい月から・形式は決めた順・特集は決めた順 → コミケ（新しい回から）・ほかは作品の多い順
     const typeOrder = (g) => DOUJIN_TYPES.findIndex((t) => t.slug === g.slug);
     groups.sort(kind === 'month' ? (a, b) => (a.slug < b.slug ? 1 : -1)
       : kind === 'type' ? (a, b) => typeOrder(a) - typeOrder(b)
@@ -381,6 +381,9 @@ export function floorCollections(items, key, today = '') {
 export const collectionIndexable = (group) => group.items.slice(0, FLOOR_COLLECTION_LIST).some((i) => i.comment);
 /** コレクションの一覧のページ: 検索エンジンに出すページが1つでもあるとき */
 export const collectionIndexIndexable = (groups) => groups.some(collectionIndexable);
+
+/** 売り場のトップに出す特集（いちばん新しいコミケ → 決めた順。limit 個） */
+export const hubThemes = (themes, limit = 6) => [...themes.filter((g) => g.comiket).slice(0, 1), ...themes.filter((g) => !g.comiket)].slice(0, limit);
 
 /** コレクションの数字（見出しの下・説明文に使う）: セール中の本数・最大の割引・新作（発売から30日）・予約の本数 */
 export function collectionFacts(items, today) {

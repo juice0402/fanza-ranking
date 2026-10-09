@@ -13,7 +13,7 @@ const f = FLOORS[key];
 
 <ul class="camps">
   {pages.map((p) => {
-    const makers = topMakersIn(p.items, 2);
+    const makers = topMakersIn(p.items, 2).filter((m) => m.count >= 2);
     return (
       <li class="camp">
         <a class="camp-link" href={p.path}>

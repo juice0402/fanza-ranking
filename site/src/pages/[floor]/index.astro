@@ -16,7 +16,7 @@ import GachaCorner from '../../components/GachaCorner.astro';
 import { activeFloors, floorCollectionGroups, floorEntityRankings, floorGachaPools, floorMakerGroups, floorRankHistory, floorSaleHistory, floorSalePageGroups, floors } from '../../lib/data.js';
 import {
   DOUJIN_TYPES, FLOORS, FLOOR_HUB_SHOWN, floorCollectionIndexPath, floorEntityLabel, floorEntityRankingPath, floorItemListLd, floorMakerIndexPath, floorMaxOff, floorNewPopular,
-  floorPath, floorRankNote, floorRanking, floorRankingPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, floorSearchPath, floorTopics, floorUpcoming, priceNote,
+  floorPath, floorRankNote, floorRanking, floorRankingPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, floorSearchPath, floorTopics, floorUpcoming, hubThemes, priceNote,
 } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../../lib/items.js';
@@ -46,7 +46,7 @@ const newPop = data.updated ? floorNewPopular(items, data.updated) : [];
 const upcomingList = floorUpcoming(items);
 const cols = floorCollectionGroups[key];
 const types = cols.type;
-const themes = cols.theme.slice(0, 6);
+const themes = hubThemes(cols.theme);
 const hot = ['maker', 'author'].filter((by) => floorEntityRankings[key][by]?.length >= 3).map((by) => ({ by, label: floorEntityLabel(f, by), path: floorEntityRankingPath(key, by), rows: floorEntityRankings[key][by].slice(0, 3) }));
 const other = activeFloors.find((k) => k !== key);
 const gacha = floorGachaPools[key];

@@ -268,8 +268,9 @@ const tfl = L.normalizeFloor({
 check('同人の形式は、表紙の置き場所（/digital/<形式>/）で分かる・分からなければ空', tfl.items.map((i) => i.type).join() === 'voice,voice,voice,comic,comic,comic,cg,', tfl.items.map((i) => i.type));
 const tcols = L.floorCollections(tfl.items, 'doujin', today);
 check('形式のページ: 3本以上の形式だけ・決めた順（コミック・CG集・音声・ゲーム）・名前', tcols.type.map((g) => `${g.slug}:${g.name}:${g.total}`).join() === 'comic:同人コミック:3,voice:同人音声・ASMR:3' && tcols.type[0].path === '/doujin/type/comic/', tcols.type.map((g) => [g.slug, g.total]));
-check('特集: コミケ（新しい回から）→ 決めた順・3本以上・ロングセラーは発売から1年以上（きょうの1年前の日まで）',
-  tcols.theme.map((g) => `${g.slug}:${g.total}`).join() === 'comiket108:3,senbai:3,ku100:3,coin:3,longseller:2'.replace(',longseller:2', '') && tcols.theme.find((g) => g.slug === 'comiket108').heading === 'コミケ108（2026夏）の同人作品', tcols.theme.map((g) => [g.slug, g.total]));
+check('特集: 決めた順 → コミケ（新しい回から）・3本以上',
+  tcols.theme.map((g) => `${g.slug}:${g.total}`).join() === 'senbai:3,ku100:3,coin:3,comiket108:3' && tcols.theme.find((g) => g.slug === 'comiket108').heading === 'コミケ108（2026夏）の同人作品', tcols.theme.map((g) => [g.slug, g.total]));
+check('売り場のトップの特集: いちばん新しいコミケ → 決めた順（6つまで）', L.hubThemes(tcols.theme).map((g) => g.slug).join() === 'comiket108,senbai,ku100,coin' && L.hubThemes([...tcols.theme, ...tcols.theme], 2).length === 2);
 const lcols = L.floorCollections([...tfl.items, ...L.normalizeFloor({ items: [trow(9, { image_url: img('comic', 9), date: '2020-01-01 00:00:00' })] }, 'doujin', today).items], 'doujin', today);
 check('ロングセラー: 発売から365日以上前の作品（2025-10-09 は入り、2025-10-10 は入らない）', lcols.theme.find((g) => g.slug === 'longseller')?.items.map((i) => i.cid).sort().join() === 'd_500004,d_500005,d_500009');
 check('特集の条件は、きょうの日付が無いと日付の特集を作らない', !L.floorCollections(tfl.items, 'doujin').theme.some((g) => g.slug === 'longseller'));
@@ -279,9 +280,9 @@ check('ゲームの特集の決まり（体験版・ブラウザ・Win11・独�
 check('特集・形式の名前に、未成年を連想させる言葉が無い', [...L.FLOOR_THEMES.doujin, ...L.FLOOR_THEMES.game, ...L.DOUJIN_TYPES].every((t) => !isMinorTitle(t.name) && !isMinorTitle(t.heading ?? '')));
 check('タイトル: 形式「FANZA同人 同人音声・ASMRの人気ランキング【2026年10月】（3本）」・特集「FANZA専売の同人作品【FANZA同人・2026年10月】人気順（3本）」',
   L.collectionTitle(L.FLOORS.doujin, tcols.type[1], '2026年10月', 'サイト') === 'FANZA同人 同人音声・ASMRの人気ランキング【2026年10月】（3本）｜サイト'
-  && L.collectionTitle(L.FLOORS.doujin, tcols.theme[1], '2026年10月', 'サイト') === 'FANZA専売の同人作品【FANZA同人・2026年10月】人気順（3本）｜サイト');
+  && L.collectionTitle(L.FLOORS.doujin, tcols.theme[0], '2026年10月', 'サイト') === 'FANZA専売の同人作品【FANZA同人・2026年10月】人気順（3本）｜サイト');
 const tl = L.collectionLinksFor(tfl.items[0], tcols);
-check('作品ページから: 形式のページ・入っている特集のページへ', tl.type.slug === 'voice' && tl.themes.map((g) => g.slug).join() === 'comiket108,senbai,ku100,coin');
+check('作品ページから: 形式のページ・入っている特集のページへ', tl.type.slug === 'voice' && tl.themes.map((g) => g.slug).join() === 'senbai,ku100,coin,comiket108');
 
 console.log('\n■ 人気サークル・ブランド・作家ランキング');
 const eg = L.normalizeFloor({ ranks: { g_1: 1, g_2: 2, g_3: 3, g_4: 4 }, items: [
@@ -307,7 +308,7 @@ check('public/gacha.js: 候補の場所（h）が /doujin/item/…/・/game/item
   gacha.includes("/^\\/(doujin|game)\\/item\\/[A-Za-z0-9_-]+\\/$/.test(row.h)") && gacha.includes("hasAttribute('data-nofilter')") && G.eligible([{ c: 'a' }, { c: 'b', o: 1 }], false, false).length === 2);
 const SI = L.floorSearchIndex(tfl.items, 'doujin', tcols);
 check('検索の索引: 決まった形の表紙は省く・形式・特集・順位・セール・ジャンルはおだやかなものだけ',
-  SI.items.length === 8 && !('i' in SI.items[0]) && SI.items.some((r) => r.c === 'd_500008' && !r.i) && SI.items[0].y === 'voice' && SI.items[0].r === 1 && SI.items[0].h.length === 4 && SI.themes[0].s === 'comiket108'
+  SI.items.length === 8 && !('i' in SI.items[0]) && SI.items.some((r) => r.c === 'd_500008' && !r.i) && SI.items[0].y === 'voice' && SI.items[0].r === 1 && SI.items[0].h.length === 4 && SI.themes[3].s === 'comiket108'
   && SI.genres.every((x) => L.FLOOR_GENRE_OK.includes(x)) && SI.types.map((t) => t.s).join() === 'comic,cg,voice' && L.floorSearchIndexPath('game') === '/data/game-index.json', SI.items[0]);
 check('検索の行: ページを作るときの形（lib）とブラウザの形（public/floor-search.js）が同じ', SI.items.every((r) => JSON.stringify(Object.entries(L.floorSearchRow(r, 'doujin')).filter(([k]) => k !== 'rank')) === JSON.stringify(Object.entries(FS.rowView(r, 'doujin')))),
   [L.floorSearchRow(SI.items[0], 'doujin'), FS.rowView(SI.items[0], 'doujin')]);
