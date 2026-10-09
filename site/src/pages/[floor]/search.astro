@@ -1,0 +1,145 @@
+---
+// FANZA同人・FANZAゲームの作品検索（/doujin/search/・/game/search/。運営者の希望「検索とかもあってもいいかもしれない」。2026-10-09）。
+// 動画の作品検索（/search/）と同じ見た目: 紙の色の検索バー → 並び順・絞り込み・（同人）形式の丸いボタン → ジャンル・特集のボタン → 結果の行。
+// 索引は /data/<売り場>-index.json（lib/floors.js の floorSearchIndex）。端末の中で絞り込み、条件を URL にも書く（public/floor-search.js）。
+// 条件なし（人気順）のときの、はじめの一覧・ボタンは、索引を待たずにページを開いたときから見える（ページを作るときに入れておく）。
+// 検索画面は、条件の組み合わせごとに内容が変わるので、検索エンジンには載せない（noindex）
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import FloorRow from '../../components/FloorRow.astro';
+import FloorTabs from '../../components/FloorTabs.astro';
+import { activeFloors, floorCollectionGroups, floorMakerGroups, floorSearchIndexes, floors } from '../../lib/data.js';
+import { FLOORS, FLOOR_SEARCH_PAGE, floorCollectionIndexPath, floorMakerIndexPath, floorPath, floorRankingPath, floorSearchIndexPath, floorSearchPath, floorSearchRow } from '../../lib/floors.js';
+import { SITE_NAME, breadcrumbLd } from '../../lib/items.js';
+import { assetUrl } from '../../lib/assets.js';
+
+export function getStaticPaths() {
+  return activeFloors.map((floor) => ({ params: { floor } }));
+}
+
+const { floor: key } = Astro.params;
+const f = FLOORS[key];
+const index = floorSearchIndexes[key];
+// はじめの一覧（人気順。public/floor-search.js の並べ方と同じ: 順位のある作品を順位の順、そのあと発売日の新しい順）
+const byPop = [...index.items].sort((a, b) => (a.r ?? Infinity) - (b.r ?? Infinity) || b.d.localeCompare(a.d) || (a.c < b.c ? -1 : 1));
+const first = byPop.slice(0, FLOOR_SEARCH_PAGE).map((r) => floorSearchRow(r, key));
+const genreCount = index.genres.map((_, n) => index.items.filter((r) => r.g?.includes(n)).length);
+const themeCount = index.themes.map((_, n) => index.items.filter((r) => r.h?.includes(n)).length);
+const GENRES_SHOWN = 12;
+const placeholder = key === 'game' ? 'タイトル・ブランド・作家' : 'タイトル・サークル';
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: '作品を探す', path: floorSearchPath(key) },
+];
+---
+
+<Base
+  title={`${f.label}の作品を探す｜${SITE_NAME}`}
+  description={`${f.label}の人気作品${index.items.length}本を、タイトル・${f.maker}・ジャンル・特集・セールで絞り込んで探せます。`}
+  path={floorSearchPath(key)}
+  noindex={true}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero search-hero">
+      <h1 class="hero-title">{f.label}の作品を探す</h1>
+      <FloorTabs floorKey={key} current="search" />
+    </section>
+
+    <section id="floor-search" class="work-search section search-layout" data-index={floorSearchIndexPath(key)} data-floor={key} aria-labelledby="fs-title">
+      <div class="search-side">
+        <h2 id="fs-title" class="visually-hidden">条件で探す</h2>
+        <form class="ws-form" role="search" autocomplete="off">
+          <div class="search-bar">
+            <svg class="search-bar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5 20 20" /></svg>
+            <label class="visually-hidden" for="fs-q">キーワード（{placeholder}・ジャンル）</label>
+            <input id="fs-q" class="search-bar-input" type="search" name="q" placeholder={placeholder} enterkeyhint="search" />
+            <button type="submit" class="search-bar-btn">探す</button>
+          </div>
+
+          <fieldset class="seg">
+            <legend class="seg-label">並び順</legend>
+            <div class="seg-row seg-scroll">
+              <label class="seg-opt"><input type="radio" name="sort" value="pop" checked /><span>人気順</span></label>
+              <label class="seg-opt"><input type="radio" name="sort" value="new" /><span>新しい順</span></label>
+              <label class="seg-opt"><input type="radio" name="sort" value="cheap" /><span>安い順</span></label>
+              <label class="seg-opt"><input type="radio" name="sort" value="off" /><span>割引の大きい順</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="seg">
+            <legend class="seg-label">絞り込み</legend>
+            <div class="seg-row">
+              <label class="seg-opt"><input type="radio" name="st" value="" checked /><span>すべて</span></label>
+              <label class="seg-opt"><input type="radio" name="st" value="sale" /><span>セール中</span></label>
+              {index.items.some((r) => r.u) && <label class="seg-opt"><input type="radio" name="st" value="upcoming" /><span>予約</span></label>}
+            </div>
+          </fieldset>
+
+          {index.types.length > 0 && (
+            <fieldset class="seg">
+              <legend class="seg-label">形式</legend>
+              <div class="seg-row seg-scroll">
+                <label class="seg-opt"><input type="radio" name="type" value="" checked /><span>すべて</span></label>
+                {index.types.map((t) => <label class="seg-opt"><input type="radio" name="type" value={t.s} /><span>{t.n}</span></label>)}
+              </div>
+            </fieldset>
+          )}
+
+          {index.themes.length > 0 && (
+            <fieldset class="seg ws-tags">
+              <legend class="seg-label">特集</legend>
+              <ul class="ws-tag-list fs-theme-list">
+                {index.themes.map((t, n) => (
+                  <li><button type="button" class="tag-btn" aria-pressed="false" data-kind="h" data-n={n} disabled={themeCount[n] === 0}><span class="tag-name">{t.n}</span><span class="tag-count">{themeCount[n]}</span></button></li>
+                ))}
+              </ul>
+            </fieldset>
+          )}
+
+          {index.genres.length > 0 && (
+            <fieldset class="seg ws-tags">
+              <legend class="seg-label">ジャンル<span class="seg-sub">（選んだものを全部含む作品）</span></legend>
+              <ul id="fs-tag-list" class="ws-tag-list">
+                {index.genres.map((g, n) => (
+                  <li hidden={n >= GENRES_SHOWN} data-was-hidden={n >= GENRES_SHOWN ? '' : undefined}><button type="button" class="tag-btn" aria-pressed="false" data-kind="g" data-n={n} disabled={genreCount[n] === 0}><span class="tag-name">{g}</span><span class="tag-count">{genreCount[n]}</span></button></li>
+                ))}
+              </ul>
+              <button id="fs-tag-more" type="button" class="tag-more" aria-expanded="false" hidden={index.genres.length <= GENRES_SHOWN}>すべてのジャンル</button>
+            </fieldset>
+          )}
+
+          <div class="as-actions">
+            <button type="reset" class="clear-link">条件をクリア</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="search-main">
+        <h2 class="visually-hidden">検索結果</h2>
+        <p id="fs-count" class="as-count ws-count" aria-live="polite"><strong class="ws-num">{String(index.items.length).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</strong>本</p>
+        <ul id="fs-list" class="ws-list" data-first="1">
+          {first.map((row) => <FloorRow row={row} />)}
+        </ul>
+        <p class="more"><button id="fs-more" type="button" class="btn btn-quiet more-btn" hidden={index.items.length <= first.length}>もっと見る</button></p>
+        <p class="as-coverage">このサイトに載っている{f.label}の人気作品（{index.items.length}本）から探します。価格は{floors[key].updated ? `${+floors[key].updated.slice(5, 7)}月${+floors[key].updated.slice(8, 10)}日` : '毎日の更新'}の時点です。</p>
+      </div>
+    </section>
+
+    {/* JavaScript が使えないとき（と、索引を読めなかったとき）の案内（CSS の html.js で、はじめは隠す。読めなかったら is-fallback で出す） */}
+    <section id="ws-fallback" class="section ws-fallback" aria-labelledby="fs-fallback-title">
+      <h2 id="fs-fallback-title" class="section-title">ほかの探し方</h2>
+      <noscript><p class="empty">検索を使うには、ブラウザのJavaScriptを有効にしてください。</p></noscript>
+      <ul class="ws-links">
+        <li><a class="spec-link" href={floorRankingPath(key)}>人気ランキングを見る</a></li>
+        {floorCollectionGroups[key].genre.length > 0 && <li><a class="spec-link" href={floorCollectionIndexPath(key, 'genre')}>ジャンルから探す</a></li>}
+        {floorMakerGroups[key].length > 0 && <li><a class="spec-link" href={floorMakerIndexPath(key)}>{f.maker}から探す</a></li>}
+      </ul>
+    </section>
+  </div>
+
+  <script is:inline src={assetUrl('/floor-search.js')} defer></script>
+</Base>

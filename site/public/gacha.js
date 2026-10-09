@@ -67,6 +67,8 @@
   var data = document.getElementById('gacha-data');
   var src = section.getAttribute('data-src');
   var exclude = section.getAttribute('data-exclude') || '';
+  // 同人・ゲームの運命の作品（data-nofilter）は、「VR作品を隠す」「単体作品のみ」を使わない（動画だけの絞り込みのため。2026-10-09）
+  var nofilter = section.hasAttribute('data-nofilter');
   if (data) {
     try {
       start(JSON.parse(data.textContent || '[]'));
@@ -146,7 +148,8 @@
   function land(reel, row) {
     reel.textContent = '';
     var card = el('a', 'reel-card is-landed');
-    card.href = '/item/' + row.c + '/';
+    // 同人・ゲームの作品は、候補に作品ページの場所（h）が入っている（/doujin/item/…/・/game/item/…/）
+    card.href = typeof row.h === 'string' && /^\/(doujin|game)\/item\/[A-Za-z0-9_-]+\/$/.test(row.h) ? row.h : '/item/' + row.c + '/';
     card.appendChild(windowWith(row.i));
     card.appendChild(el('span', 'reel-title ph-js', row.t));
     if (row.a) card.appendChild(el('span', 'reel-cast', row.a));
@@ -155,7 +158,7 @@
 
   button.addEventListener('click', function () {
     if (busy) return;
-    var list = eligible(pool, root.classList.contains('hide-vr'), root.classList.contains('only-solo'));
+    var list = eligible(pool, !nofilter && root.classList.contains('hide-vr'), !nofilter && root.classList.contains('only-solo'));
     var picks = pickMany(list, recent, Math.random, REELS);
     if (picks.length < REELS) return;
     picks.forEach(function (n) {

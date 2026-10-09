@@ -2,9 +2,10 @@
 // 運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも」→「同人 1,000本・ゲーム 500本」（2026-10-09）。
 // データは毎日の更新が集める site/src/data/doujin.json・game.json（scripts/doujin_game.py。形は scripts/floor_data.py）。
 // 未成年を連想させる作品は、集めるときに入れていない。ここでも、タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前を調べて、念のため外す（二重の備え）。
-import { FANZA_HOSTS, FANZA_LINK_HOSTS, addDays, daysBetween, entitySlug, isDay, resizedImage, safeHttpsUrl } from './items.js';
+import { FANZA_HOSTS, FANZA_LINK_HOSTS, addDays, daysBetween, entitySlug, isDay, resizedImage, safeHttpsUrl, smallImage } from './items.js';
 import { isMinorTitle } from './gacha.js';
 import { bestOf } from './popularity.js';
+import { phraseZwsp } from './phrase.js';
 
 /** 売り場の設定。label: 正式な名前・short: 短い名前・maker: サークル/ブランドの呼び方・kind: 作品の呼び方 */
 export const FLOORS = {
@@ -66,7 +67,7 @@ export const offOf = (price, listPrice) => (price && listPrice && price < listPr
 /**
  * doujin.json・game.json → { key, updated, items }。items は人気の高い順（順位の無い作品はそのあと、発売日の新しい順）。
  * 作品: { floor, cid, title, url, image_url, sample_images, date, dateKey, maker:{id,name}|null, authors, series:{id,name}|null,
- *         genres, formats, sales, price, listPrice, off, campaign:{title,begin}|null, comment, updated, rank, upcoming }
+ *         genres, formats, sales, price, listPrice, off, campaign:{title,begin}|null, comment, updated, rank, upcoming, type（同人の形式。comic・cg・voice・game） }
  */
 export function normalizeFloor(raw, key, today) {
   const data = raw && typeof raw === 'object' ? raw : {};
@@ -118,6 +119,8 @@ export function normalizeFloor(raw, key, today) {
       updated: isDay(r.updated) ? r.updated : '',
       rank,
       upcoming: date.slice(0, 10) > today,
+      // 同人の作品の形式（コミック・CG集・音声・ゲーム）。表紙の置き場所（pics.dmm.co.jp/digital/<形式>/…）で分かる（2026-10-09 に本物で確かめた）
+      type: key === 'doujin' ? (/^https:\/\/pics\.dmm\.co\.jp\/digital\/(comic|cg|voice|game)\//.exec(picsUrl(r.image_url) ?? '')?.[1] ?? '') : '',
     });
   }
   items.sort(byRank);
@@ -278,7 +281,56 @@ export const FLOOR_COLLECTIONS = {
   series: { label: 'シリーズ', find: 'シリーズから探す', min: 3 },
   author: { label: '作家', find: '作家から探す', min: 2 },
   month: { label: '発売月', find: '発売月から探す', min: 5 },
+  type: { label: '形式', find: '形式から探す', min: 3 },
+  theme: { label: '特集', find: '特集から探す', min: 3 },
 };
+
+/**
+ * 同人の作品の形式（運営者の希望「同人ならでは・ゲームならではのコレクションを」。2026-10-09）。表紙の置き場所で分かる（normalizeFloor の type）。
+ * 形式ごとのページは、その形式の人気ランキング（/doujin/type/voice/ など）
+ */
+export const DOUJIN_TYPES = [
+  { slug: 'comic', name: '同人コミック', short: 'コミック' },
+  { slug: 'cg', name: 'CG・イラスト集', short: 'CG集' },
+  { slug: 'voice', name: '同人音声・ASMR', short: '音声・ASMR' },
+  { slug: 'game', name: '同人ゲーム', short: 'ゲーム' },
+];
+export const doujinTypeName = (slug) => DOUJIN_TYPES.find((t) => t.slug === slug)?.name ?? '';
+
+/**
+ * 同人ならでは・ゲームならではの特集（運営者の希望。2026-10-09）。決まった条件で作品を集める（作品が3本以上のときだけページを作る）。
+ * slug: ページの場所・name: 短い名前（チップ）・heading: 見出し。test(item, today)。tests/verify_dist.py が、同じ条件で数えて突き合わせる。
+ * 同人のコミケの作品は、FANZAの「コミケ108（2026夏）」のような札ごとに、別に作る（comiketTheme）
+ */
+const hasFormat = (name) => (i) => i.formats.includes(name);
+const hasGenre = (name) => (i) => i.genres.includes(name);
+export const FLOOR_THEMES = {
+  doujin: [
+    { slug: 'senbai', name: 'FANZA専売', heading: 'FANZA専売の同人作品', test: hasFormat('専売') },
+    { slug: 'anime', name: 'アニメーション', heading: '動く同人作品（アニメーション）', test: hasGenre('動画・アニメーション') },
+    { slug: 'ku100', name: 'KU100', heading: 'KU100で録った同人音声', test: hasGenre('KU100') },
+    { slug: 'trial', name: '体験版あり', heading: '体験版のある同人作品', test: hasFormat('デモ・体験版あり') },
+    { slug: 'coin', name: '500円以下', heading: '500円以下で買える同人作品', test: (i) => Boolean(i.price) && i.price <= 500 },
+    { slug: 'longseller', name: 'ロングセラー', heading: '発売から1年以上たっても人気の同人作品', test: (i, today) => isDay(today) && !i.upcoming && i.dateKey <= addDays(today, -365) },
+  ],
+  game: [
+    { slug: 'trial', name: '体験版あり', heading: '体験版のあるPCゲーム', test: hasFormat('デモ・体験版あり') },
+    { slug: 'browser', name: 'ブラウザで遊べる', heading: 'ブラウザで遊べるPCゲーム', test: hasFormat('ブラウザ対応') },
+    { slug: 'win11', name: 'Windows11対応', heading: 'Windows11対応のPCゲーム', test: hasFormat('Windows11対応作品') },
+    { slug: 'dlonly', name: 'DL版独占販売', heading: 'FANZAのDL版独占販売のPCゲーム', test: hasFormat('DL版独占販売') },
+    { slug: 'set', name: 'セット商品', heading: 'まとめて買えるセット商品', test: hasFormat('セット商品') },
+    { slug: 'bestprice', name: 'BEST PRICE版', heading: 'BEST PRICE版（廉価版）のPCゲーム', test: hasGenre('BEST PRICE版') },
+    { slug: 'budget', name: '2,000円以下', heading: '2,000円以下で買えるPCゲーム', test: (i) => Boolean(i.price) && i.price <= 2000 },
+    { slug: 'anime', name: 'アニメーション', heading: 'アニメーションで動くPCゲーム', test: hasGenre('アニメーション') },
+    { slug: 'longseller', name: '名作・ロングセラー', heading: '発売から5年以上たっても人気のPCゲーム', test: (i, today) => isDay(today) && !i.upcoming && i.dateKey <= addDays(today, -365 * 5) },
+  ],
+};
+const COMIKET = /^コミケ(\d{2,3})（(\d{4})(夏|冬)）$/;
+/** 「コミケ108（2026夏）」の札 → { slug: 'comiket108', name, heading, no }。ちがえば null */
+export function comiketTheme(format) {
+  const m = COMIKET.exec(format);
+  return m ? { slug: `comiket${m[1]}`, name: format, heading: `${format}の同人作品`, no: Number(m[1]) } : null;
+}
 export const FLOOR_COLLECTION_KINDS = Object.keys(FLOOR_COLLECTIONS);
 export const FLOOR_COLLECTION_LIST = 60; // 1ページに並べる本数（人気の高い順）
 export const floorCollectionIndexPath = (key, kind) => `/${key}/${kind}/`;
@@ -290,29 +342,43 @@ export const monthName = (ym) => `${Number(ym.slice(0, 4))}年${Number(ym.slice(
  * 売り場の作品 → { genre: [グループ], series: […], author: […], month: […] }。
  * グループ: { kind, slug, name, path, items（人気の高い順）, total }。ジャンル・シリーズ・作家は作品の多い順（同じなら名前の順）、発売月は新しい月から
  */
-export function floorCollections(items, key) {
+export function floorCollections(items, key, today = '') {
   const maps = Object.fromEntries(FLOOR_COLLECTION_KINDS.map((k) => [k, new Map()]));
-  const add = (kind, slug, name, item) => {
+  const add = (kind, slug, name, item, extra = {}) => {
     const m = maps[kind];
-    if (!m.has(slug)) m.set(slug, { kind, slug, name, items: [] });
+    if (!m.has(slug)) m.set(slug, { kind, slug, name, items: [], ...extra });
     const g = m.get(slug);
     // シリーズは FANZA の id ごと（名前は、人気のいちばん高い作品のもの）。ジャンル・作家は、別の名前が同じ印になったとき（ほぼ起きない）は、はじめの名前だけ
     if (kind === 'series' || g.name === name) g.items.push(item);
   };
+  const themes = FLOOR_THEMES[key] ?? [];
   for (const i of items) {
     for (const g of new Set(i.genres)) if (GENRE_OK.has(g)) add('genre', entitySlug(g), g, i);
     if (i.series) add('series', String(i.series.id), i.series.name, i);
     for (const a of new Set(i.authors)) add('author', entitySlug(a), a, i);
     add('month', i.dateKey.slice(0, 7), monthName(i.dateKey.slice(0, 7)), i);
+    if (i.type) add('type', i.type, doujinTypeName(i.type), i);
+    if (key === 'doujin') {
+      for (const f of new Set(i.formats)) {
+        const c = comiketTheme(f);
+        if (c) add('theme', c.slug, c.name, i, { heading: c.heading, order: -c.no });
+      }
+    }
+    themes.forEach((t, n) => {
+      if (t.test(i, today)) add('theme', t.slug, t.name, i, { heading: t.heading, order: n });
+    });
   }
   const out = {};
   for (const kind of FLOOR_COLLECTION_KINDS) {
     const groups = [...maps[kind].values()]
       .filter((g) => g.items.length >= FLOOR_COLLECTIONS[kind].min)
       .map((g) => ({ ...g, path: floorCollectionPath(key, kind, g.slug), total: g.items.length, items: [...g.items].sort(byRank) }));
-    groups.sort(kind === 'month'
-      ? (a, b) => (a.slug < b.slug ? 1 : -1)
-      : (a, b) => b.total - a.total || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    // 発売月は新しい月から・形式は決めた順・特集はコミケ（新しい回から）→ 決めた順・ほかは作品の多い順
+    const typeOrder = (g) => DOUJIN_TYPES.findIndex((t) => t.slug === g.slug);
+    groups.sort(kind === 'month' ? (a, b) => (a.slug < b.slug ? 1 : -1)
+      : kind === 'type' ? (a, b) => typeOrder(a) - typeOrder(b)
+        : kind === 'theme' ? (a, b) => a.order - b.order
+          : (a, b) => b.total - a.total || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     out[kind] = groups;
   }
   return out;
@@ -348,6 +414,8 @@ export const relatedFloorGenres = (items, self, limit = 8) => topGenres(items, l
 
 /** コレクションのページのタイトル（検索に出る名前）。updatedYm: 「2026年10月」 */
 export function collectionTitle(f, group, updatedYm, siteName) {
+  if (group.kind === 'type') return `${f.label} ${group.name}の人気ランキング【${updatedYm}】（${group.total}本）｜${siteName}`;
+  if (group.kind === 'theme') return `${group.heading}【${f.label}・${updatedYm}】人気順（${group.total}本）｜${siteName}`;
   if (group.kind === 'genre') return `${f.label}「${group.name}」の人気作品一覧【${updatedYm}】（${group.total}本）｜${siteName}`;
   if (group.kind === 'series') return `${group.name}｜${f.label}のシリーズ作品一覧【${updatedYm}】（${group.total}本）｜${siteName}`;
   if (group.kind === 'author') return `${group.name}の${f.kind}一覧（${f.label}）【${updatedYm}】（${group.total}本）｜${siteName}`;
@@ -356,6 +424,8 @@ export function collectionTitle(f, group, updatedYm, siteName) {
 
 /** コレクションのページの見出し */
 export function collectionHeading(f, group) {
+  if (group.kind === 'type') return `${group.name}の人気ランキング`;
+  if (group.kind === 'theme') return group.heading;
   if (group.kind === 'genre') return `${f.label}の「${group.name}」作品`;
   if (group.kind === 'series') return `${group.name}（シリーズ）`;
   if (group.kind === 'author') return `${group.name}の${f.kind}`;
@@ -364,7 +434,8 @@ export function collectionHeading(f, group) {
 
 /** コレクションのページの説明文（数えた事実だけ） */
 export function collectionDescription(f, group, facts) {
-  const what = group.kind === 'genre' ? `「${group.name}」のジャンルの${f.kind}`
+  const what = group.kind === 'type' ? `${group.name}` : group.kind === 'theme' ? `「${group.name}」の${f.kind}`
+    : group.kind === 'genre' ? `「${group.name}」のジャンルの${f.kind}`
     : group.kind === 'series' ? `シリーズ「${group.name}」の${f.kind}`
       : group.kind === 'author' ? `作家「${group.name}」の${f.kind}`
         : `${group.name}発売の${f.kind}`;
@@ -385,6 +456,8 @@ export function collectionLinksFor(item, groups) {
     series: item.series ? bySlug('series').get(String(item.series.id)) ?? null : null,
     authors: new Map(item.authors.map((a) => [a, author.get(entitySlug(a))?.path]).filter(([, p]) => p)),
     month: bySlug('month').get(item.dateKey.slice(0, 7)) ?? null,
+    type: item.type ? bySlug('type').get(item.type) ?? null : null,
+    themes: (groups.theme ?? []).filter((g) => g.items.some((i) => i.cid === item.cid)),
   };
 }
 
@@ -624,7 +697,146 @@ export function offBands(items) {
   return bands.map(([lo, hi, name]) => ({ name, count: sale.filter((i) => i.off >= lo && i.off <= hi).length })).filter((b) => b.count > 0);
 }
 
+// ---------- 人気サークル・ブランド・作家ランキング（運営者の希望「同人とかゲームも、人気の作家さんとか独自のランキングを」。2026-10-09） ----------
+// 人気ランキングの上位300本の順位から点数（1位＝300点・300位＝1点）を付けて、サークル/ブランド・作家ごとに足した順。
+// 前の日の点数は、人気の動きの記録（floor_rank_history.json）の前の日の順位から同じように数えて、順位の動きを出す
+
+export const FLOOR_ENTITY_TOP = 300; // 点数を数える深さ（人気ランキングの上位300本）
+export const FLOOR_ENTITY_LIMIT = 50; // ランキングのページに並べる数
+export const floorEntityRankingPath = (key, by) => `${floorRankingPath(key)}${by}/`;
+/** ランキングの呼び方: 「人気サークルランキング」「人気ブランドランキング」「人気作家ランキング」 */
+export const floorEntityLabel = (f, by) => (by === 'maker' ? f.maker : '作家');
+
+const entityKeys = (item, by) => (by === 'maker' ? (item.maker ? [[String(item.maker.id), item.maker.name]] : []) : [...new Set(item.authors)].map((a) => [a, a]));
+
+/**
+ * items: 売り場の作品、by: 'maker'（サークル/ブランド）か 'author'（作家）。opts: { hist（人気の動きの記録 Map）, day（データの日）, pathOf(キー) → ページの場所 }。
+ * → [{ key, name, path, score, count（上位300本の本数）, best（いちばん上の順位）, items（上位の作品3本）, rank, move（前日からの動き。数・'new'（初登場）・null（分からない）） }]
+ */
+export function floorEntityRanking(items, by, { hist = null, day = '', pathOf = () => '' } = {}, limit = FLOOR_ENTITY_LIMIT) {
+  const top = floorRanking(items, FLOOR_ENTITY_TOP);
+  const rows = new Map();
+  top.forEach((item, n) => {
+    for (const [k, name] of entityKeys(item, by)) {
+      if (!rows.has(k)) rows.set(k, { key: k, name, score: 0, count: 0, best: n + 1, items: [] });
+      const r = rows.get(k);
+      r.score += FLOOR_ENTITY_TOP - n;
+      r.count += 1;
+      if (r.items.length < 3) r.items.push(item);
+    }
+  });
+  const order = (a, b) => b.score - a.score || a.best - b.best || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  const list = [...rows.values()].sort(order);
+  // 前の日の順位（記録があるときだけ）
+  const prevRank = new Map();
+  if (hist && isDay(day)) {
+    const y = addDays(day, -1);
+    const prev = new Map();
+    for (const item of items) {
+      const p = floorRankOn(hist.get(item.cid), y);
+      if (!(p > 0 && p <= FLOOR_ENTITY_TOP)) continue;
+      for (const [k, name] of entityKeys(item, by)) {
+        if (!prev.has(k)) prev.set(k, { key: k, name, score: 0, best: p });
+        const r = prev.get(k);
+        r.score += FLOOR_ENTITY_TOP + 1 - p;
+        r.best = Math.min(r.best, p);
+      }
+    }
+    [...prev.values()].sort(order).forEach((r, n) => prevRank.set(r.key, n + 1));
+  }
+  return list.slice(0, limit).map((r, n) => {
+    const was = prevRank.get(r.key);
+    return { ...r, path: pathOf(r.key) || '', rank: n + 1, move: prevRank.size === 0 ? null : was ? was - (n + 1) : 'new' };
+  });
+}
+
+/** ランキングのページを検索エンジンに出してよいか: 並べた作品（それぞれの上位3本）に、コメントのある作品があるとき（sitemap も同じ） */
+export const floorEntityIndexable = (list) => list.some((r) => r.items.some((i) => i.comment));
+
+/** ランキングの動きの文字: 「▲2」「▼1」「→」「初登場」（分からなければ ''） */
+export const moveLabel = (move) => (move === null || move === undefined ? '' : move === 'new' ? '初登場' : move > 0 ? `▲${move}` : move < 0 ? `▼${-move}` : '→');
+
+// ---------- 運命の作品（スロットで3本。動画と同じ部品 components/GachaCorner.astro・public/gacha.js。2026-10-09） ----------
+export const FLOOR_GACHA_POOL = 80;
+/**
+ * 運命の作品の候補（人気ランキングの上から、表紙のある作品を limit 本）: [{ c, h（作品ページの場所）, t, i（小さな表紙）, a（サークル/ブランドの1行）}]。
+ * 未成年を連想させる作品は、もともと売り場に入れていない（normalizeFloor）
+ */
+export function floorGachaPool(items, limit = FLOOR_GACHA_POOL) {
+  return floorRanking(items, Infinity).filter((i) => i.image_url).slice(0, limit).map((i) => ({
+    c: i.cid,
+    h: floorItemPath(i.floor, i.cid),
+    t: phraseZwsp(i.title),
+    i: i.floor === 'doujin' ? doujinThumb(i.image_url, 'tiny').small : smallImage(i.image_url),
+    a: makerLine(i),
+  }));
+}
+
+// ---------- 作品検索（/doujin/search/・/game/search/。public/floor-search.js。2026-10-09） ----------
+export const floorSearchPath = (key) => `/${key}/search/`;
+export const floorSearchIndexPath = (key) => `/data/${key}-index.json`;
+export const FLOOR_SEARCH_PAGE = 30; // 1回に出す本数（はじめの一覧も同じ）
+/** 表紙の決まった置き場所（同人 /digital/<形式>/<品番>/<品番>pl.jpg・ゲーム /digital/pcgame/…）。この形なら、索引から画像の項目を省く（索引を軽くするため） */
+export const floorImageOf = (key, cid, type) => `https://pics.dmm.co.jp/digital/${key === 'game' ? 'pcgame' : type}/${cid}/${cid}pl.jpg`;
+
+/**
+ * 作品検索の索引: { key, genres: [名前]（おだやかなジャンルだけ）, themes: [{ s, n }]（特集）, types: [{ s, n }]（同人の形式）,
+ *   items: [{ c, t（文節の区切り入り）, m（サークル/ブランド）, a（作家）, g:[ジャンルの番号], h:[特集の番号], y（形式）, p（価格）, o（割引%）, r（人気の順位）, d（発売日）, u（予約なら1）, s（セール中なら1）, i（画像。決まった形なら省く） }] }。人気の高い順
+ */
+export function floorSearchIndex(items, key, groups) {
+  const genres = topGenres(items, FLOOR_GENRE_OK.length).map((g) => g.name);
+  const gIndex = new Map(genres.map((g, n) => [g, n]));
+  const themes = (groups.theme ?? []).map((g) => ({ s: g.slug, n: g.name }));
+  const themeOf = new Map();
+  (groups.theme ?? []).forEach((g, n) => g.items.forEach((i) => themeOf.set(i.cid, [...(themeOf.get(i.cid) ?? []), n])));
+  const pos = new Map(floorRanking(items, Infinity).map((i, n) => [i.cid, n + 1]));
+  return {
+    key,
+    genres,
+    themes,
+    types: key === 'doujin' ? DOUJIN_TYPES.filter((t) => items.some((i) => i.type === t.slug)).map((t) => ({ s: t.slug, n: t.short })) : [],
+    items: items.map((i) => {
+      const g = [...new Set(i.genres)].filter((x) => gIndex.has(x)).map((x) => gIndex.get(x));
+      const h = themeOf.get(i.cid) ?? [];
+      return {
+        c: i.cid,
+        t: phraseZwsp(i.title),
+        ...(i.maker ? { m: i.maker.name } : {}),
+        ...(i.authors.length ? { a: i.authors.join('、') } : {}),
+        ...(g.length ? { g } : {}),
+        ...(h.length ? { h } : {}),
+        ...(i.type ? { y: i.type } : {}),
+        ...(i.price ? { p: i.price } : {}),
+        ...(i.off ? { o: i.off } : {}),
+        ...(pos.has(i.cid) ? { r: pos.get(i.cid) } : {}),
+        d: i.dateKey,
+        ...(i.upcoming ? { u: 1 } : {}),
+        ...(onSale(i) && !i.upcoming ? { s: 1 } : {}),
+        ...(i.image_url && i.image_url !== floorImageOf(key, i.cid, i.type) ? { i: i.image_url } : {}),
+      };
+    }),
+  };
+}
+
+/** 作品検索の1行の中身（ページを作るときの「はじめの一覧」と public/floor-search.js の rowView が同じ形を作る）: { href, title, img, wide, line, meta } */
+export function floorSearchRow(row, key) {
+  const img = row.i || (key === 'doujin' && !row.y ? '' : floorImageOf(key, row.c, row.y));
+  const yen = row.p ? `${comma(row.p)}円${row.o ? `（${row.o}%OFF）` : ''}` : '';
+  return {
+    c: row.c,
+    href: floorItemPath(key, row.c),
+    title: row.t,
+    img,
+    wide: key === 'doujin',
+    line: [row.m, row.a].filter(Boolean).join('｜'),
+    meta: [row.u ? `${+row.d.slice(5, 7)}月${+row.d.slice(8, 10)}日発売予定` : `${row.d.slice(0, 4)}年${+row.d.slice(5, 7)}月${+row.d.slice(8, 10)}日発売`, yen].filter(Boolean).join('・'),
+    rank: row.r ?? 0,
+    upcoming: Boolean(row.u),
+  };
+}
+
 /** 売り場ごとのファイルの数（作品ページ・サークル/ブランドのページ・一覧・トップ・ランキング・セール・セールの記録・コレクションのページとその一覧・セールのページ）。サイト全体の計画（lib/plan.js）に足す */
 export const floorFileCount = (floor, makers, collections = {}, salePages = []) => (floor.items.length > 0
   ? floor.items.length + makers.length + 5 + salePages.length + FLOOR_COLLECTION_KINDS.reduce((n, k) => n + (collections[k]?.length ? collections[k].length + 1 : 0), 0)
+    + 2 + 3 // 人気サークル/ブランド・作家ランキング（2）＋作品検索のページ・索引・運命の作品の候補（3）
   : 0);

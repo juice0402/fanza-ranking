@@ -8,6 +8,7 @@ import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorMiniShelf from '../../../components/FloorMiniShelf.astro';
 import RankTrend from '../../../components/RankTrend.astro';
+import GachaCorner from '../../../components/GachaCorner.astro';
 import { activeFloors, floorCollectionGroups, floorMakerById, floorRankHistory, floorSalePageBySlug, floorSalePageGroups, floors } from '../../../lib/data.js';
 import {
   DOUJIN_IMG_ONERROR, FLOORS, FLOOR_SAMPLES, FLOOR_TREND_TRACK, collectionLinksFor, floorTrendCaption, floorTrendLines, saleTagLink, floorItemDescription, floorItemPath, floorItemTitle, floorPath, floorSaleItems, floorSalePath, popularInFloorGenre, priceNote, sameMaker,
@@ -38,6 +39,8 @@ const trail = [
 const price = priceNote(item);
 // ジャンル・シリーズ・作家・発売月のページへのリンク（ページのあるものだけ。2026-10-09）
 const links = collectionLinksFor(item, floorCollectionGroups[key]);
+// 形式（同人）の人気ランキングでの順位（順位のある作品だけ）
+const typePos = links.type && item.rank ? links.type.items.findIndex((i) => i.cid === item.cid) + 1 : 0;
 // セールのページがある売り場だけ、セールの札からセールのページへリンクする（リンク切れを作らない）
 const hasSalePage = floorSaleItems(items).length > 0;
 // セールごと（ゲーム）・割引ごと（同人）のページ（2026-10-09）。同人は、その作品の割引が入るいちばん上の割引のページ
@@ -100,6 +103,22 @@ const trendLines = floorTrendLines(hist, f);
             <>
               <dt class="spec-term">シリーズ</dt>
               <dd class="spec-desc">{links.series ? <a class="spec-link" href={links.series.path}>{item.series.name}</a> : item.series.name}</dd>
+            </>
+          )}
+          {links.type && (
+            <>
+              <dt class="spec-term">形式</dt>
+              <dd class="spec-desc"><a class="spec-link" href={links.type.path}>{links.type.name}</a><span class="spec-sub">（{links.type.name}の人気ランキング{typePos > 0 && `で${typePos}位`}）</span></dd>
+            </>
+          )}
+          {links.themes.length > 0 && (
+            <>
+              <dt class="spec-term">特集</dt>
+              <dd class="spec-desc">
+                <ul class="chips">
+                  {links.themes.map((g) => <li class="chip"><a class="chip-tag" href={g.path}>{g.name}</a></li>)}
+                </ul>
+              </dd>
             </>
           )}
           {item.genres.length > 0 && (
@@ -189,9 +208,13 @@ const trendLines = floorTrendLines(hist, f);
         <FloorMiniShelf items={genrePop.items} />
       </section>
     )}
+
+    {/* 運命の作品（動画の作品ページと同じ。候補は /data/<売り場>-gacha.json。2026-10-09） */}
+    <GachaCorner src={`/data/${key}-gacha.json`} exclude={item.cid} floor={key} level="h2" />
   </div>
 
   {gallery.length > 0 && <script is:inline src={assetUrl('/lightbox.js')} defer></script>}
+  <script is:inline src={assetUrl('/gacha.js')} defer></script>
 
   <div class="sticky-cta">
     <a class="btn btn-hot btn-block" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>

@@ -7,6 +7,7 @@ import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorCard from '../../../components/FloorCard.astro';
 import FloorTabs from '../../../components/FloorTabs.astro';
+import RankingNav from '../../../components/FloorRankingNav.astro';
 import { activeFloors, floorCollectionGroups, floorMakerById, floors, today } from '../../../lib/data.js';
 import {
   FLOORS, FLOOR_COLLECTIONS, FLOOR_COLLECTION_KINDS, FLOOR_COLLECTION_LIST, collectionDescription, collectionFacts, collectionHeading, collectionIndexable, collectionTitle,
@@ -76,16 +77,18 @@ const pageLd = {
             : <li class="chip chip-plain">{g.name} {g.count}本</li>))}
         </ul>
       )}
-      <FloorTabs floorKey={key} current={group.kind === 'genre' ? 'genre' : ''} />
+      <FloorTabs floorKey={key} current={group.kind === 'genre' ? 'genre' : group.kind === 'type' ? 'ranking' : ''} />
     </section>
+
+    {group.kind === 'type' && <RankingNav floorKey={key} current={group.slug} />}
 
     <section class="section" aria-labelledby="fl-col-works-title">
       <div class="section-head">
-        <h2 id="fl-col-works-title" class="section-title">人気の作品</h2>
+        <h2 id="fl-col-works-title" class="section-title">{group.kind === 'type' ? `人気順 TOP${shown.filter((i) => i.rank).length}` : '人気の作品'}</h2>
         <p class="section-note">人気の高い順{group.total > shown.length && `（上位${shown.length}本）`}</p>
       </div>
       <ul class="shelf">
-        {shown.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} eager={i < 4} /></li>)}
+        {shown.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={group.kind === 'type' && item.rank ? `${i + 1}位` : saleBadgeOf(item)} note={priceNote(item)} eager={i < 4} /></li>)}
       </ul>
     </section>
 

@@ -7,12 +7,14 @@
 import { gachaJson } from '../lib/gacha.js';
 
 // gacha: 運命の作品の候補（gachaPool。トップはページの中に入れる）／ src: 候補を読むファイル（作品ページ。/data/gacha.json）／ exclude: 候補から外す作品（作品ページの、その作品）
-const { gacha = null, src = '', exclude = '' } = Astro.props;
+// floor: 同人・ゲームの運命の作品（2026-10-09。候補は lib/floors.js の floorGachaPool。VR・単体の絞り込みを使わない。同人は横長の窓）
+const { gacha = null, src = '', exclude = '', floor = '', level = 'h3' } = Astro.props;
+const Heading = level;
 ---
 
-<section id="gacha" class="corner-block gacha gacha-solo" aria-labelledby="gacha-title" {...(src ? { 'data-src': src } : {})} {...(exclude ? { 'data-exclude': exclude } : {})}>
+<section id="gacha" class:list={['corner-block', 'gacha', 'gacha-solo', { 'is-wide': floor === 'doujin' }]} aria-labelledby="gacha-title" {...(src ? { 'data-src': src } : {})} {...(exclude ? { 'data-exclude': exclude } : {})} {...(floor ? { 'data-nofilter': '' } : {})}>
   <div class="corner-head">
-    <h3 id="gacha-title" class="corner-title">運命の作品</h3>
+    <Heading id="gacha-title" class="corner-title">運命の作品</Heading>
     <p class="section-note">まだ決まらない人へ。人気の作品から3本えらびます</p>
   </div>
   <div class="slot">

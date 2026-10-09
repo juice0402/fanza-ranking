@@ -5,6 +5,7 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
 import FloorTabs from '../../components/FloorTabs.astro';
+import RankingNav from '../../components/FloorRankingNav.astro';
 import { activeFloors, floorRankHistory, floors } from '../../lib/data.js';
 import { FLOORS, FLOOR_RANKING_LIMIT, floorItemListLd, floorPath, floorRankNote, floorRanking, floorRankingPath, priceNote } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
@@ -46,6 +47,8 @@ const hasNotes = notes.some(Boolean);
       <p class="hero-lead">{data.updated ? `${formatDateJp(data.updated)}の` : ''}FANZAの人気順です（毎日入れかわります{hasNotes && '・前日からの動きと最近30日の最高順位つき'}）。</p>
       <FloorTabs floorKey={key} current="ranking" />
     </section>
+
+    <RankingNav floorKey={key} current="works" />
 
     <section class="section" aria-labelledby="fl-ranking-title">
       <h2 id="fl-ranking-title" class="section-title">人気順 TOP{list.length}</h2>

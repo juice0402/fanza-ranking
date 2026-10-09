@@ -1,7 +1,7 @@
 ---
-// FANZA同人・FANZAゲームのページの上の案内（トップ・人気ランキング・セール・ジャンル・サークル/ブランド、もう一つの売り場へ。2026-10-09）。
+// FANZA同人・FANZAゲームのページの上の案内（トップ・検索・人気ランキング・セール・ジャンル・サークル/ブランド、もう一つの売り場へ。2026-10-09）。
 // いまのページは aria-current。行き先が無いもの（セール中の作品が無い・サークル/ブランドのページが無い）は出さない
-import { FLOORS, floorCollectionIndexPath, floorMakerIndexPath, floorPath, floorRankingPath, floorSalePath } from '../lib/floors.js';
+import { FLOORS, floorCollectionIndexPath, floorMakerIndexPath, floorPath, floorRankingPath, floorSalePath, floorSearchPath } from '../lib/floors.js';
 import { activeFloors, floorCollectionGroups, floorMakerGroups, floors } from '../lib/data.js';
 import { floorSaleItems } from '../lib/floors.js';
 
@@ -13,6 +13,7 @@ const hasGenres = floorCollectionGroups[floorKey].genre.length > 0;
 const other = activeFloors.find((k) => k !== floorKey);
 const tabs = [
   { key: 'hub', name: `${f.short}トップ`, href: floorPath(floorKey) },
+  { key: 'search', name: '検索', href: floorSearchPath(floorKey) },
   { key: 'ranking', name: '人気ランキング', href: floorRankingPath(floorKey) },
   ...(hasSale ? [{ key: 'sale', name: 'セール中', href: floorSalePath(floorKey) }] : []),
   ...(hasGenres ? [{ key: 'genre', name: 'ジャンルから探す', href: floorCollectionIndexPath(floorKey, 'genre') }] : []),

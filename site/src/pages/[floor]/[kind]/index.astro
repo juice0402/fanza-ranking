@@ -26,9 +26,14 @@ const trail = [
 const noindex = !collectionIndexIndexable(groups);
 const title = kind === 'month'
   ? `${f.label}の発売月ごとの${f.kind}一覧（${groups.length}か月）｜${SITE_NAME}`
+  : kind === 'type'
+  ? `${f.label}の形式別ランキング（${groups.map((g) => g.name).join('・')}）【${day ? `${day.y}年${day.m}月` : '毎日更新'}】｜${SITE_NAME}`
   : `${f.label}の${c.label}一覧（${groups.length}件）人気作品【${day ? `${day.y}年${day.m}月` : '毎日更新'}】｜${SITE_NAME}`;
+const ordered = kind === 'type' || kind === 'theme'; // 形式・特集は決めた順（作品の多い順ではない）
 const description = kind === 'month'
   ? `${f.label}の${f.kind}を、発売月ごとにまとめた一覧です（${groups.length}か月・新しい月から）。それぞれの月の作品を、FANZAの人気順で見られます。毎日更新。`
+  : ordered
+  ? `${f.label}の${f.kind}を、${c.label}ごとにまとめた一覧です（${groups.map((g) => g.name).slice(0, 4).join('・')}など${groups.length}件）。それぞれの作品を、FANZAの人気順で見られます。毎日更新。`
   : `${f.label}の${f.kind}を、${c.label}ごとにまとめた一覧です（${groups.length}件・作品の多い順）。${groups.slice(0, 3).map((g) => g.name).join('・')}など。それぞれの作品を、FANZAの人気順で見られます。毎日更新。`;
 const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${f.label}の${c.label}一覧`, url: SITE_URL + floorCollectionIndexPath(key, kind), ...(data.updated ? { dateModified: data.updated } : {}) };
 ---
@@ -39,8 +44,8 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 
     <section class="hero">
       <h1 class="hero-title">{c.find}</h1>
-      <p class="hero-lead">{f.label}の{c.label}ごとの作品（{kind === 'month' ? '新しい月から' : '作品の多い順'}）。</p>
-      <FloorTabs floorKey={key} current={kind === 'genre' ? 'genre' : ''} />
+      <p class="hero-lead">{f.label}の{c.label}ごとの作品{kind === 'month' ? '（新しい月から）' : ordered ? '' : '（作品の多い順）'}。</p>
+      <FloorTabs floorKey={key} current={kind === 'genre' ? 'genre' : kind === 'type' ? 'ranking' : ''} />
     </section>
 
     <section class="section" aria-labelledby="fl-col-index-title">
