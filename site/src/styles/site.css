@@ -5607,6 +5607,31 @@ a.tf-name {
   object-position: 50% 50%;
 }
 
+/* 同人の札（順位・割引・セール中）: 横長の表紙は、人物の顔が上〜まん中にあることが多いので、札は表紙の左下のふちに半分かけて、
+   少し小さくする（運営者の指摘「値札が、だいたいのパッケージのキャラクターの顔面にもろ被り。作品が伝わりにくい」。2026-10-09。
+   トップのTOP3のメダルと同じ考え方）。札が枠の外にはみ出せるよう、枠では切らず、角の丸みは画像に付ける。札のある棚だけ、タイトルを少し下げる */
+.item-cover.is-wide {
+  overflow: visible;
+}
+
+.item-cover.is-wide .floor-img {
+  border-radius: var(--r-media);
+}
+
+.item-cover.is-wide .rank-badge {
+  top: auto;
+  bottom: -10px;
+  left: 6px;
+  min-width: 0;
+  padding: 2px 7px 1px;
+  font-size: 12px;
+  transform: rotate(-3deg);
+}
+
+.item-cover.is-wide:has(.rank-badge) + .item-title {
+  margin-top: 16px;
+}
+
 /* 作品ページの大きな表紙: 元の大きさより大きくしない（同人 560px・ゲーム 411px が元の幅） */
 .detail-cover.is-wide {
   display: block;
