@@ -144,6 +144,62 @@ def main():
         ex = got[0]
         say(f"- 1本目: 品番 {ex.get('content_id')} / volume {ex.get('volume')} / 発売日 {ex.get('date')} / iteminfo {json.dumps({k: [g.get('name') for g in v][:3] for k, v in (ex.get('iteminfo') or {}).items() if isinstance(v, list)}, ensure_ascii=False)[:300]}")
 
+    # 新しい売り場の画像（表紙の大きさ・ほかのサイトの中で読めるか・pics.dmm.co.jp にも同じ画像があるか）
+    def jpeg_size(data):
+        i = 2
+        while i < len(data) - 9:
+            if data[i] != 0xFF:
+                i += 1
+                continue
+            m = data[i + 1]
+            if m in (0xC0, 0xC1, 0xC2):
+                return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
+            i += 2 + int.from_bytes(data[i + 2:i + 4], "big")
+        return None
+
+    def fetch_img(url, referer=None):
+        try:
+            h = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1"}
+            if referer:
+                h["Referer"] = referer
+            with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=20) as r:
+                body = r.read()
+                return r.status, len(body), jpeg_size(body), body
+        except Exception as e:  # noqa: BLE001
+            return type(e).__name__ + str(getattr(e, "code", "")), 0, None, b""
+
+    for n_, (label, svc, flr) in enumerate((("素人", "digital", "videoc"), ("ブックス・コミック", "ebook", "comic"), ("ブックス・写真集", "ebook", "photo"), ("成人映画", "digital", "nikkatsu")), start=1):
+        say(f"## 12-{n_}) 画像: {label}")
+        res, err = call("ItemList", {"site": "FANZA", "service": svc, "floor": flr, "sort": "rank", "hits": 2})
+        if err:
+            say(f"- ❌ {err}")
+            continue
+        for x in res.get("items") or []:
+            cid = str(x.get("content_id") or "")
+            imgs = x.get("imageURL") or {}
+            say(f"- {cid}: imageURL {json.dumps({k: masked(v, cid) for k, v in imgs.items()}, ensure_ascii=False)}")
+            for k in ("large", "small", "list"):
+                u = imgs.get(k)
+                if not u:
+                    continue
+                st, ln, sz, body = fetch_img(u)
+                st2, ln2, _, _ = fetch_img(u, "https://fanza-ranking.pages.dev/")
+                line = f"  - {k}: 状態 {st} {ln}バイト {sz} / ほかのサイトから {st2} {ln2}バイト"
+                if "ebook-assets.dmm.co.jp/" in u:
+                    alt = u.replace("https://ebook-assets.dmm.co.jp/", "https://pics.dmm.co.jp/")
+                    st3, ln3, sz3, body3 = fetch_img(alt)
+                    line += f" / pics.dmm.co.jp: {st3} {ln3}バイト {sz3} 同じ中身={body3 == body and bool(body)}"
+                    small = re.sub(r"pl\.jpg$", "ps.jpg", u)
+                    if small != u:
+                        st4, ln4, sz4, _ = fetch_img(small)
+                        line += f" / ps.jpg: {st4} {ln4}バイト {sz4}"
+                say(line)
+            if not imgs.get("large") and svc == "digital":
+                for guess in (f"https://pics.dmm.co.jp/digital/amateur/{cid}/{cid}jp.jpg", f"https://pics.dmm.co.jp/digital/amateur/{cid}/{cid}jm.jpg", f"https://pics.dmm.co.jp/digital/video/{cid}/{cid}pl.jpg"):
+                    st, ln, sz, _ = fetch_img(guess)
+                    say(f"  - 推測 {masked(guess, cid)}: {st} {ln}バイト {sz}")
+            break
+
     say("\n## 8) まだ使っていないAPI・項目（レビュー・評価順・フロア・ジャンル・メーカー・シリーズ・作者の検索）")
     res, err = call("ItemList", dict(base, sort="rank", hits=5))
     if err:
@@ -381,7 +437,7 @@ def main():
                 sections.append([text])
             else:
                 sections[-1].append(text)
-        for block in sections[:24]:
+        for block in sections[:30]:
             title = block[0].strip().lstrip("# ").strip()[:100]
             body = "\n".join(block[1:]).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
             print(f"::notice title={title}::{body}")
