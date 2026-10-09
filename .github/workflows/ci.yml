@@ -43,7 +43,7 @@ jobs:
 
       # コード・デザインを変えるPRだけ、できあがったサイトを Cloudflare Pages のプレビューに直接アップロードする
       # （<ブランチ名>.fanza-ranking.pages.dev。本番は変わらない。Cloudflare のビルドの回数は使わない。2026-10-09 から）。
-      # データだけのPR（毎日のコメント・まとめ記事）には作らない。URL は、注釈と実行結果の要約に出る。
+      # サイトの作り（site/ の中。データは除く）が変わらないPR（毎日のコメント・まとめ記事・手順書だけ）には作らない。URL は、注釈と実行結果の要約に出る。
       # プレビューを作れなくても、このチェック（テスト・ビルド・点検）の結果は変えない
       - name: Preview on Cloudflare Pages
         if: success() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository

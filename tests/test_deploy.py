@@ -146,6 +146,12 @@ w6, log6 = make_wrangler()
 code, out, _ = run(repo_mix, ["preview", "claude/mix", "HEAD^1"], w6)
 check("データとコードの両方が変わっていれば、プレビューを作る", code == 0 and os.path.exists(log6), out)
 
+repo_docs = make_repo(["README.md", "docs/notes.md", "tests/test_x.py"])
+w_docs, log_docs = make_wrangler()
+code, out, summary = run(repo_docs, ["preview", "claude/docs", "HEAD^1"], w_docs)
+check("サイトの作り（site/）が変わらない変更（手順書・テストだけ）には、プレビューを作らない",
+      code == 0 and not os.path.exists(log_docs) and "site/）が変わっていない" in summary, out + summary)
+
 w7, log7 = make_wrangler()
 code, out, summary = run(repo, ["preview", "claude/test", "HEAD^1"], w7, secrets=False)
 check("鍵が無ければ、プレビューは作らずに成功で終わる（ほかの人のPRなど）", code == 0 and not os.path.exists(log7) and "鍵が無い" in summary, out)
