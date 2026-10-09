@@ -71,13 +71,14 @@ def notice(title, rows):
     print(f"::notice title={title}::{msg}")
 
 
-for kind, it in [("video", v) for v in video] + [("doujin", d) for d in dj] + [("game", g) for g in game]:
+for kind, it in [("video", v) for v in video] + [("doujin", d) for d in dj[:1]] + [("game", g) for g in game]:
     pl = it["image_url"]
     base = pl[:-len("pl.jpg")]
-    rows = [f"{suf}: {get(base + suf + '.jpg')}" for suf in ["pl", "ps", "pt", "pm", "pb", "pr", "js", "jm"]]
-    aws = pl.replace("https://pics.dmm.co.jp/", "https://awsimgsrc.dmm.co.jp/pics_dig/")
-    for q in ["", "?w=240", "?w=360", "?w=360&h=490", "?f=webp", "?w=360&f=webp", "?width=360"]:
-        rows.append(f"aws pl{q}: {get(aws + q)}")
-    rows.append(f"aws pl?w=360 (jpegだけ): {get(aws + '?w=360', accept='image/jpeg')}")
-    rows.append(f"pics pl?w=360: {get(pl + '?w=360')}")
+    aws = base.replace("https://pics.dmm.co.jp/", "https://awsimgsrc.dmm.co.jp/pics_dig/")
+    rows = []
+    for suf in ["ps", "pt"]:
+        for q in ["", "?w=300", "?w=450"]:
+            rows.append(f"aws {suf}{q}: {get(aws + suf + '.jpg' + q)}")
+    for q in ["?w=480", "?w=600", "?w=720", "?w=300&h=400&fit=crop", "?w=300&h=400&crop=1", "?w=480&q=70", "?w=480&quality=70"]:
+        rows.append(f"aws pl{q}: {get(aws + 'pl.jpg' + q)}")
     notice(f"{kind} {it['cid']}", rows)
