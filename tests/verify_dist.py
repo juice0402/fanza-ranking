@@ -2651,7 +2651,7 @@ for _fk in _FD.FLOORS:
         check("同人: 札（順位・割引・セール中）は、表紙の上ではなく左下のふちに半分かける（枠で切らず、画像の角を丸める）・札のある棚は、どのカードもタイトルを同じだけ下げる（高さをそろえる）",
               css_has(".item-cover.is-wide .rank-badge", r"(?<![-\w])top\s*:\s*auto") and css_has(".item-cover.is-wide .rank-badge", r"bottom\s*:\s*-\d+px")
               and css_has(".item-cover.is-wide", r"overflow\s*:\s*visible") and css_has(".item-cover.is-wide .floor-img", r"border-radius\s*:\s*var\(--r-media\)")
-              and (css_has("item-cover.is-wide+.item-title", r"margin-top\s*:\s*1\dpx") or css_has("item-cover.is-wide + .item-title", r"margin-top\s*:\s*1\dpx"))
+              and any(any(re.search(r"^\.shelf:has\(\.item-cover\.is-wide \.rank-badge\) \.item-cover\.is-wide ?\+ ?\.item-title$", x_) for x_ in sels_) and re.search(r"margin-top\s*:\s*1\dpx", body_) for sels_, body_ in css_rules)
               and 'rank-badge' in _hub)
     check(f"{_flabel}: トップに「○日の時点」と「FANZAで確かめて」の注記がある（価格・セールは変わるため）", "の時点の情報です" in _hub and "FANZAで確かめて" in _hub)
     _commented = {x["cid"] for x in _fshow if x["comment_kind"] == "claude" and x["comment"]}
