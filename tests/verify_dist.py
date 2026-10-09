@@ -1204,7 +1204,7 @@ if _shown_m and _up_m:
 
 # パソコンの右の欄（運営者の希望「右のカラム（きょうの話題）の下に全て並べる」「作品を探すも右のカラムの上に」「週のまとめは概要だけ」「月のまとめはバックナンバー」。2026-10-05）:
 # 作品を探す・いま人気の女優・人気のジャンル・きょうの話題・週のまとめ・月のまとめは .home-side の中。おすすめのコーナーは、HTMLではスマホの場所（発売中の中）にあり、パソコンのときだけ小さなスクリプトで右の欄へ移す
-home_m = re.search(r'<div class="home has-side" style="--side-span: (\d+)">', home_html)
+home_m = re.search(r'<div class="home has-side" style="--side-span: (\d+)(?:; --side-start: 3)?">', home_html)  # 10円セールの開催中は、大きな案内の下の行から（--side-start）
 side_start = home_html.find('<div class="home-side">')
 side_end = min([p for p in (home_html.find('<section id="sale"'), home_html.find('<section id="released"')) if p >= 0] or [-1])
 side_html = home_html[side_start:side_end] if 0 <= side_start < side_end else ""
@@ -2235,7 +2235,7 @@ if want_camps and os.path.isfile(sale_page):
     st_ = re.search(r"<title>(.*?)</title>", read_raw(sale_page), re.S)
     st_ = htmllib.unescape(st_.group(1)) if st_ else ""
     check("セールのページのタイトルに「開催中」「○月○日更新」・特集の数、はじめに「セールはいつ？」へのリンク",
-          st_.startswith("FANZAセール開催中の作品一覧【") and "更新】" in st_ and f"特集{len(want_camps)}件" in st_ and 'href="/sale/history/"' in read_raw(sale_page), st_)
+          re.sub(r"^FANZA 10円セール開催中・", "", st_).startswith("FANZAセール開催中の作品一覧【") and "更新】" in st_ and f"特集{len(want_camps)}件" in st_ and 'href="/sale/history/"' in read_raw(sale_page), st_)
 
 # 出演者のページ（運営者の希望「SEOを上位に」→ ②女優のページを強く。2026-10-06）: タイトルに年月・次の新作・セール中の作品・更新日・ProfilePage
 _ym = f"【{int(JST_TODAY[:4])}年{int(JST_TODAY[5:7])}月】"
@@ -2778,6 +2778,7 @@ for _fk in _FD.FLOORS:
         _sp_want = {f"off{m_}" for m_ in (90, 70, 50) if sum(1 for o_ in _offs if o_ >= m_) >= 3}
     _sp_pages = {os.path.basename(os.path.dirname(p_)): p_ for p_ in glob.glob(os.path.join(DIST, _fk, "sale", "*", "index.html"))}
     _sp_pages.pop("history", None)
+    _sp_pages.pop("10yen", None)  # 10円セールのページ（下の「10円セール」で調べる）
     check(f"{_flabel}: セールのページ（{'セールの札ごと' if _fk == 'game' else '割引ごと'}・{len(_sp_pages)}ページ）は、対象が3本以上のものだけ", set(_sp_pages) == _sp_want, (sorted(_sp_want - set(_sp_pages))[:3], sorted(set(_sp_pages) - _sp_want)[:3]))
     _sp_bad = []
     for s_, p_ in _sp_pages.items():
@@ -2868,7 +2869,7 @@ for _k in ("doujin", "game"):
             _ty_floor_bad.append((_k, "noindex・sitemap"))
 check("同人・ゲームの10円セールのページ: 売り場のページがある売り場だけ・開催中か開催を見かけたことがあるときだけ検索エンジンに出す（sitemap も同じ）", not _ty_floor_bad, _ty_floor_bad)
 # 10円セールの特集（キャンペーンの名前に「10円」）の特集ごとのページは、検索エンジンに出さない（同じ検索で2つ並ばないように）
-_ten_camp_bad = [p_ for p_ in glob.glob(os.path.join(DIST, "sale", "*", "index.html")) if re.search(r"<h1[^>]*>[^<]*(?<![0-9,])10円", read(p_))
+_ten_camp_bad = [p_ for p_ in glob.glob(os.path.join(DIST, "sale", "*", "index.html")) if os.path.basename(os.path.dirname(p_)) != "10yen" and re.search(r"<h1[^>]*>[^<]*(?<![0-9,])10円", read(p_))
                  and ('name="robots" content="noindex' not in read_raw(p_) or 'href="/sale/10yen/"' not in read_raw(p_).split("<footer")[0])]
 check("名前に「10円」のある特集のページは noindex で、10円セールのページへ案内する", not _ten_camp_bad, _ten_camp_bad[:3])
 # 帯の「終わったら隠す」スクリプトは、決まった形の時刻だけ（そのままスクリプトに入れるため）

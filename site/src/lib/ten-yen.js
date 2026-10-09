@@ -105,8 +105,8 @@ export function tenYenState(ty, keys = TEN_YEN_KEYS) {
   };
 }
 
-/** 「動画12本・同人30本」 */
-export const countsText = (state) => state.live.map((k) => `${TEN_YEN_SHORT[k]}${state.counts[k]}本`).join('・');
+/** 「動画12本・同人30本」（order: 並べる順。売り場のトップでは、その売り場を先に） */
+export const countsText = (state, order = state.live) => order.filter((k) => state.counts[k] > 0).map((k) => `${TEN_YEN_SHORT[k]}${state.counts[k]}本`).join('・');
 
 /** 終わりの「○月○日 9:59まで」（全部の作品が同じ終わりのときだけ。分からなければ ''） */
 export const untilText = (state) => (state.sameEnd ? `${endLabel(state.sameEnd)}まで` : '');

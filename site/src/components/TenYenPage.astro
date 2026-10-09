@@ -22,7 +22,6 @@ import {
   TEN_YEN_SHORT,
   TEN_YEN_SINCE,
   checkedLabel,
-  countsText,
   faqLd,
   hideAt,
   latestRun,
@@ -119,7 +118,7 @@ const hasEnds = listed.some((i) => i.tenYen.end);
         ? (
           <p class="ten-status" data-sale-end={end || undefined}>
             <span class="ten-pill">開催中</span>
-            いま10円の作品 <strong>{s.total}本</strong>{hub && s.live.length > 1 && `（${countsText(s)}）`}{until && <>・<strong>{until}</strong></>}
+            いま10円の作品 <strong>{s.total}本</strong>{until && <>・<strong>{until}</strong></>}
           </p>
         )
         : (

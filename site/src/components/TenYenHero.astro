@@ -27,7 +27,7 @@ const end = hideAt(s);
       <span class="ten-coin ten-coin-lg" aria-hidden="true"><span class="ten-coin-num">10</span><span class="ten-coin-yen">円</span></span>
       <div class="ten-hero-copy">
         <h2 id={id} class="ten-hero-title">10円セール開催中</h2>
-        <p class="ten-hero-meta"><strong>{countsText(s)}</strong>{until && <>｜<strong>{until}</strong></>}</p>
+        <p class="ten-hero-meta"><strong>{countsText(s, keys)}</strong>{until && <>｜<strong>{until}</strong></>}</p>
       </div>
     </div>
     {covers.length > 0 && (
@@ -42,7 +42,7 @@ const end = hideAt(s);
                     ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(item.image_url, 'tiny').small} /><img class="floor-img" src={item.image_url} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
                     : item.floor === 'game'
                       ? <img class="floor-img is-small" src={smallImage(item.image_url)} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={SMALL_IMG_ONERROR} />
-                      : <Thumb src={item.image_url} kind="tiny" class="ten-tile-img" />}
+                      : <Thumb src={item.image_url} kind="tiny" class="item-img is-small" />}
                 </span>
                 <span class="ten-tag" aria-hidden="true">10円</span>
                 <span class="visually-hidden">10円：{item.title}</span>
