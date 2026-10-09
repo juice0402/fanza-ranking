@@ -6,7 +6,8 @@
 #       本番（main）へ。https://fanza-ranking.pages.dev/ が新しくなる
 #   bash scripts/deploy_pages.sh preview <ブランチ名> [比べる元]
 #       プレビューへ（<ブランチ名>.fanza-ranking.pages.dev。本番は変わらない）。
-#       比べる元（例 HEAD^1）を渡すと、変わったのがデータ（site/src/data/）だけのときは作らない（毎日のコメント・まとめ記事のPR）
+#       比べる元（例 HEAD^1）を渡すと、サイトの作り（site/ の中。データ site/src/data/ は除く）が変わっていないときは作らない
+#       （毎日のコメント・まとめ記事のPR・手順書やテストだけのPR。本番と同じ見た目になるため）
 #
 # 鍵は GitHub の Secrets（CLOUDFLARE_API_TOKEN・CLOUDFLARE_ACCOUNT_ID）から環境変数で受け取る。ログには出さない。
 # 鍵は「Cloudflare Pages の編集」だけの権限（運営者が作った。docs/design-notes.md）。
@@ -40,14 +41,18 @@ case "$mode" in
   *) echo "使い方: bash scripts/deploy_pages.sh production | preview <ブランチ名> [比べる元]"; exit 2 ;;
 esac
 
-# データだけのPR（毎日のコメント・まとめ記事）には、プレビューを作らない（見た目が変わらないため）
+# サイトの作り（site/ の中。データは除く）が変わっていないPRには、プレビューを作らない（本番と同じ見た目になるため）
 if [ "$mode" = "preview" ] && [ -n "$base" ]; then
   if ! changed="$(git diff --name-only "$base" HEAD 2>/dev/null)"; then
     echo "::warning title=プレビュー::変わったファイルを調べられなかったので、プレビューを作ります（比べる元: $base）"
-    changed="(unknown)"
+    changed="site/(unknown)"
   fi
-  if [ -n "$changed" ] && ! printf '%s\n' "$changed" | grep -qv '^site/src/data/'; then
-    say "### ⏭ データだけの変更なので、プレビューは作りません"
+  if ! printf '%s\n' "$changed" | grep '^site/' | grep -qv '^site/src/data/'; then
+    if [ -n "$changed" ] && ! printf '%s\n' "$changed" | grep -qv '^site/src/data/'; then
+      say "### ⏭ データだけの変更なので、プレビューは作りません"
+    else
+      say "### ⏭ サイトの作り（site/）が変わっていないので、プレビューは作りません"
+    fi
     exit 0
   fi
 fi
