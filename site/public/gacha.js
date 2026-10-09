@@ -38,16 +38,25 @@
     return out;
   }
 
-  // スマホ（画面の幅が THUMB_MEDIA）のときは、表紙のいちばん小さい版（…pt.jpg。90×122）を読む
+  // スマホ（画面の幅が THUMB_MEDIA）のときは、表紙の小さい版を読む
   // （運営者の希望「スマホのサムネは画素数を落として最高速化」。2026-10-07。site/src/lib/items.js の THUMB_MEDIA・tinyImage と同じ）
   var THUMB_MEDIA = '(max-width: 480px)';
+  // 2026-10-09 から、動画の表紙は FANZA の「縮めて返す版」の幅200（運営者の「少し粗すぎた」。前は …pt.jpg 90×122）。
+  // ゲームなど、ほかの FANZA の画像は表紙（…ps.jpg）。site/src/lib/items.js の tinyImage と同じ
+  var AWS_IMG = 'https://awsimgsrc.dmm.co.jp/pics_dig/';
   function tinyImageUrl(url) {
     var s = String(url || '');
-    return /^https:\/\/pics\.dmm\.co\.jp\//.test(s) && /p[ls]\.jpg$/.test(s) ? s.replace(/p[ls]\.jpg$/, 'pt.jpg') : s;
+    if (/^https:\/\/pics\.dmm\.co\.jp\/digital\/video\/[^?#]+p[ls]\.jpg$/.test(s)) return AWS_IMG + s.slice(23).replace(/p[ls]\.jpg$/, 'ps.jpg') + '?w=200&q=75';
+    return /^https:\/\/pics\.dmm\.co\.jp\/[^?#]+pl\.jpg$/.test(s) ? s.replace(/pl\.jpg$/, 'ps.jpg') : s;
+  }
+  // 縮めた版が読めなければ、もとの置き場所の同じ画像（…ps.jpg）に戻す
+  function unresizedUrl(url) {
+    var s = String(url || '');
+    return s.indexOf(AWS_IMG) === 0 ? 'https://pics.dmm.co.jp/' + s.slice(AWS_IMG.length).replace(/\?.*$/, '') : s;
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { pickMany: pickMany, eligible: eligible, REELS: REELS, RECENT: RECENT, THUMB_MEDIA: THUMB_MEDIA, tinyImageUrl: tinyImageUrl }; // tests/test_gacha.mjs 用
+    module.exports = { pickMany: pickMany, eligible: eligible, REELS: REELS, RECENT: RECENT, THUMB_MEDIA: THUMB_MEDIA, tinyImageUrl: tinyImageUrl, unresizedUrl: unresizedUrl }; // tests/test_gacha.mjs 用
     return;
   }
   if (typeof document === 'undefined') return;
@@ -110,10 +119,10 @@
     var img = el('img', 'item-img is-small');
     img.alt = '';
     img.decoding = 'async';
-    // 小さい版（…pt.jpg）が読めなければ表紙（…ps.jpg）に、それも読めなければパッケージ画像（…pl.jpg）に戻す。それも読めなければ隠す
+    // 縮めた版が読めなければ、もとの置き場所の表紙（…ps.jpg）に、それも読めなければパッケージ画像（…pl.jpg）に戻す。それも読めなければ隠す
     img.addEventListener('error', function () {
-      if (/pt\.jpg$/.test(img.src)) {
-        img.src = img.src.replace(/pt\.jpg$/, 'ps.jpg');
+      if (img.src.indexOf(AWS_IMG) === 0) {
+        img.src = unresizedUrl(img.src);
       } else if (/ps\.jpg$/.test(img.src)) {
         img.src = img.src.replace(/ps\.jpg$/, 'pl.jpg');
         img.classList.remove('is-small');

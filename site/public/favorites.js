@@ -173,14 +173,23 @@
     var s = String(url || '');
     return /^https:\/\/pics\.dmm\.co\.jp\/.+pl\.jpg$/.test(s) ? s.replace(/pl\.jpg$/, 'ps.jpg') : s;
   }
+  // 2026-10-09 から、動画の表紙は FANZA の「縮めて返す版」の幅200（運営者の「少し粗すぎた」。前は …pt.jpg 90×122）。
+  // ゲームなど、ほかの FANZA の画像は表紙（…ps.jpg）。site/src/lib/items.js の tinyImage と同じ
+  var AWS_IMG = 'https://awsimgsrc.dmm.co.jp/pics_dig/';
   function tinyImageUrl(url) {
     var s = String(url || '');
-    return /^https:\/\/pics\.dmm\.co\.jp\//.test(s) && /p[ls]\.jpg$/.test(s) ? s.replace(/p[ls]\.jpg$/, 'pt.jpg') : s;
+    if (/^https:\/\/pics\.dmm\.co\.jp\/digital\/video\/[^?#]+p[ls]\.jpg$/.test(s)) return AWS_IMG + s.slice(23).replace(/p[ls]\.jpg$/, 'ps.jpg') + '?w=200&q=75';
+    return /^https:\/\/pics\.dmm\.co\.jp\/[^?#]+pl\.jpg$/.test(s) ? s.replace(/pl\.jpg$/, 'ps.jpg') : s;
+  }
+  // 縮めた版が読めなければ、もとの置き場所の同じ画像（…ps.jpg）に戻す
+  function unresizedUrl(url) {
+    var s = String(url || '');
+    return s.indexOf(AWS_IMG) === 0 ? 'https://pics.dmm.co.jp/' + s.slice(AWS_IMG.length).replace(/\?.*$/, '') : s;
   }
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-      castShown: castShown, CAST_LIMIT: CAST_LIMIT, THUMB_MEDIA: THUMB_MEDIA, smallImageUrl: smallImageUrl, tinyImageUrl: tinyImageUrl,
+      castShown: castShown, CAST_LIMIT: CAST_LIMIT, THUMB_MEDIA: THUMB_MEDIA, smallImageUrl: smallImageUrl, tinyImageUrl: tinyImageUrl, unresizedUrl: unresizedUrl,
       emptyStore: emptyStore, parseStore: parseStore, isOn: isOn, toggle: toggle, remove: remove,
       hasPeople: hasPeople, matches: matches, pickNew: pickNew, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT,
     };
@@ -337,7 +346,7 @@
     var link = el('a', 'fav-row-link');
     link.href = '/item/' + item.c + '/';
     if (item.i && item.i.indexOf('https://') === 0) {
-      // サムネは小さいので、表紙だけの軽い画像（…ps.jpg。スマホは、いちばん小さい …pt.jpg）。
+      // サムネは小さいので、表紙だけの軽い画像（…ps.jpg。スマホは縮めた版）。
       // 読めなければ、ps → パッケージ画像（…pl.jpg）の順に戻し、それも読めなければ隠す（運営者の希望「スマホのサムネは最高速化」。2026-10-07）
       var img = el('img', 'fav-thumb');
       var small = smallImageUrl(item.i);
@@ -348,8 +357,8 @@
       img.width = 60;
       img.height = 84;
       img.addEventListener('error', function () {
-        if (/pt\.jpg$/.test(img.src)) {
-          img.src = img.src.replace(/pt\.jpg$/, 'ps.jpg');
+        if (img.src.indexOf(AWS_IMG) === 0) {
+          img.src = unresizedUrl(img.src);
         } else if (/ps\.jpg$/.test(img.src)) {
           img.src = img.src.replace(/ps\.jpg$/, 'pl.jpg');
           img.classList.remove('is-small');

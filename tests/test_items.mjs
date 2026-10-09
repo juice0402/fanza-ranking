@@ -259,17 +259,30 @@ check('シリーズ・レーベルは { id, name }（名前の空白をそろえ
   && withSeries[1].series === null && withSeries[1].label === null && withSeries[2].series === null && withSeries[2].label === null);
 check('entryOf: id が数字でない・0以下・名前が空なら null', L.entryOf('x', 'a') === null && L.entryOf(-1, 'a') === null && L.entryOf(3, ' ') === null && JSON.stringify(L.entryOf('12', 'a')) === '{"id":12,"name":"a"}');
 
-console.log('\n■ スマホのサムネ（軽い画像。components/Thumb.astro。2026-10-07）');
+console.log('\n■ スマホのサムネ（軽い画像。components/Thumb.astro。2026-10-07。2026-10-09 に「少し粗すぎた」で、縮めて返す版の幅300・幅200に）');
 const PL = 'https://pics.dmm.co.jp/digital/video/abc00001/abc00001pl.jpg';
 const PS = PL.replace('pl.jpg', 'ps.jpg');
 const PT = PL.replace('pl.jpg', 'pt.jpg');
+const AWS = 'https://awsimgsrc.dmm.co.jp/pics_dig/';
+const PS300 = AWS + 'digital/video/abc00001/abc00001ps.jpg?w=300&q=75';
+const PS200 = AWS + 'digital/video/abc00001/abc00001ps.jpg?w=200&q=75';
+const GL = 'https://pics.dmm.co.jp/digital/pcgame/brand_0001/brand_0001pl.jpg';
+const GS = GL.replace('pl.jpg', 'ps.jpg');
+const DL = 'https://pics.dmm.co.jp/digital/comic/d_000001/d_000001pl.jpg';
 const SL = 'https://pics.dmm.co.jp/digital/video/abc00001/abc00001jp-3.jpg'; // サンプル画像（切りかえない）
 check('スマホの幅は1つ（THUMB_MEDIA。スマホの縦向き）', L.THUMB_MEDIA === '(max-width: 480px)');
-check('tinyImage: DMMの …pl.jpg・…ps.jpg は、いちばん小さい …pt.jpg に。DMM以外・形の違うもの・空はそのまま', L.tinyImage(PL) === PT && L.tinyImage(PS) === PT && L.tinyImage('https://example.net/apl.jpg') === 'https://example.net/apl.jpg' && L.tinyImage(SL) === SL && L.tinyImage('') === '' && L.tinyImage(undefined) === '');
+check('resizedImage: pics.dmm.co.jp の画像を、同じ道すじの縮めて返す版（幅・画質75）に。DMM以外・空はそのまま',
+  L.resizedImage(PL, 300) === AWS + 'digital/video/abc00001/abc00001pl.jpg?w=300&q=75' && L.resizedImage(DL, 240) === AWS + 'digital/comic/d_000001/d_000001pl.jpg?w=240&q=75'
+  && L.resizedImage('https://example.net/apl.jpg', 300) === 'https://example.net/apl.jpg' && L.resizedImage('', 300) === '' && L.resizedImage(PL + '?x=1', 300) === PL + '?x=1');
+check('tinyImage: 動画の …pl.jpg・…ps.jpg は、表紙を幅200に縮めた版。ゲームは表紙 ps。DMM以外・サンプル画像・空はそのまま',
+  L.tinyImage(PL) === PS200 && L.tinyImage(PS) === PS200 && L.tinyImage(GL) === GS && L.tinyImage(GS) === GS && L.tinyImage(PT) === PT
+  && L.tinyImage('https://example.net/apl.jpg') === 'https://example.net/apl.jpg' && L.tinyImage(SL) === SL && L.tinyImage('') === '' && L.tinyImage(undefined) === '');
+check('cardImage: 動画は表紙を幅300に・ゲームはパッケージを幅300に（表紙だけの版が小さいため）', L.cardImage(PL) === PS300 && L.cardImage(GL) === AWS + 'digital/pcgame/brand_0001/brand_0001pl.jpg?w=300&q=75');
 const ts = (u, k) => JSON.stringify(L.thumbSources(u, k));
-check('thumbSources: 作品カード・TOP3（card）＝ふだんパッケージ・スマホは表紙 ps', ts(PL, 'card') === JSON.stringify({ src: PL, small: PS }) && ts(PL) === ts(PL, 'card'));
-check('thumbSources: 小さな表紙（tiny）＝ふだん ps・スマホは pt（索引の ps から作っても同じ）', ts(PL, 'tiny') === JSON.stringify({ src: PS, small: PT }) && ts(PS, 'tiny') === JSON.stringify({ src: PS, small: PT }));
-check('thumbSources: 人気のジャンル（genre）＝ふだんパッケージ・スマホは pt', ts(PL, 'genre') === JSON.stringify({ src: PL, small: PT }));
+check('thumbSources: 作品カード・TOP3（card）＝ふだんパッケージ・スマホは表紙の幅300（表紙だけ）', ts(PL, 'card') === JSON.stringify({ src: PL, small: PS300, cover: true }) && ts(PL) === ts(PL, 'card'));
+check('thumbSources: ゲームのカード＝スマホはパッケージの幅300（表紙だけではないので、切り出しはパソコンと同じ）', ts(GL, 'card') === JSON.stringify({ src: GL, small: AWS + 'digital/pcgame/brand_0001/brand_0001pl.jpg?w=300&q=75', cover: false }));
+check('thumbSources: 小さな表紙（tiny）＝ふだん ps・スマホは幅200（索引の ps から作っても同じ）。ゲームは切りかえない（ps のまま）', ts(PL, 'tiny') === JSON.stringify({ src: PS, small: PS200, cover: true }) && ts(PS, 'tiny') === JSON.stringify({ src: PS, small: PS200, cover: true }) && L.thumbSources(GL, 'tiny').small === GS && L.thumbSources(GL, 'tiny').src === GS);
+check('thumbSources: 人気のジャンル（genre）＝ふだんパッケージ・スマホは幅200', ts(PL, 'genre') === JSON.stringify({ src: PL, small: PS200, cover: true }));
 check('thumbSources: FANZA以外の画像・サンプル画像は、切りかえない（src と small が同じ）', ['card', 'tiny', 'genre'].every((k) => { const t = L.thumbSources('https://example.net/a.jpg', k); const u = L.thumbSources(SL, k); return t.src === t.small && u.src === u.small; }));
 // onerror を、ブラウザの代わりの小さな見本で動かす
 const runErr = ({ src, prev, matches }) => {
@@ -294,7 +307,7 @@ const thumbMedias = [...css.matchAll(/@media \(max-width: (\d+)px\) \{\s*\.(?:it
 check('CSS: スマホの切り出し（印 has-small）の @media が、THUMB_MEDIA と同じ幅（作品カード・ジャンル）', thumbMedias.length === 2 && thumbMedias.every((m) => m === L.THUMB_MEDIA), thumbMedias.join(' '));
 check('CSS: <picture> は箱を作らない（.pic { display: contents }）', /\.pic \{\s*display: contents;/.test(css));
 const thumbAstro = fs.readFileSync(new URL('../site/src/components/Thumb.astro', import.meta.url), 'utf-8');
-check('Thumb.astro: <source> は THUMB_MEDIA・img は THUMB_ONERROR（小さい版が無ければ戻す）', thumbAstro.includes('<source media={THUMB_MEDIA} srcset={small} />') && (thumbAstro.match(/onerror=\{THUMB_ONERROR\}/g) || []).length === 2);
+check('Thumb.astro: <source> は THUMB_MEDIA・img は THUMB_ONERROR（小さい版が無ければ戻す）・印 has-small は表紙だけの版のときだけ', thumbAstro.includes('<source media={THUMB_MEDIA} srcset={small} />') && (thumbAstro.match(/onerror=\{THUMB_ONERROR\}/g) || []).length === 2 && thumbAstro.includes("swap && cover && kind !== 'tiny' ? ' has-small' : ''"));
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'asset-'));
 fs.writeFileSync(path.join(tmp, 'x.js'), 'console.log(1)');

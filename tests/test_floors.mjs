@@ -44,6 +44,29 @@ check('同人の画像（doujin-assets）は、同じ場所の pics.dmm.co.jp �
   && L.picsUrl('https://pics.dmm.co.jp/a.jpg') === 'https://pics.dmm.co.jp/a.jpg' && L.picsUrl('') === '', i1.image_url);
 check('pics.dmm.co.jp で読めなかったら doujin-assets に1回だけ戻す（属性に入れるので < > & " を使わない）',
   !/[<>&"]/.test(L.DOUJIN_IMG_ONERROR) && L.DOUJIN_IMG_ONERROR.includes("'https://doujin-assets.dmm.co.jp/'+this.src.slice(" + 'https://pics.dmm.co.jp/'.length + ')') && L.DOUJIN_IMG_ONERROR.includes('dataset.alt'));
+// 同人のスマホ版（運営者の「スマホのサムネを少しきれいに。同じしくみを同人にも」。2026-10-09）
+const dThumb = L.doujinThumb(i1.image_url);
+check('同人のスマホ版: カードは幅300・小さな棚は幅240の縮めて返す版（画質75）・パソコンは元の画像',
+  dThumb.src === i1.image_url && dThumb.small === 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/comic/d_100001/d_100001pl.jpg?w=300&q=75'
+  && L.doujinThumb(i1.image_url, 'tiny').small.endsWith('d_100001pl.jpg?w=240&q=75') && L.DOUJIN_CARD_W === 300 && L.DOUJIN_TINY_W === 240);
+const runDoujinErr = ({ src, prev, matches, alt }) => {
+  const log = [];
+  const img = { src, dataset: alt ? { alt: '1' } : {}, style: {}, previousElementSibling: prev ? { tagName: prev, media: '(max-width: 480px)', remove: () => log.push('remove-source') } : null };
+  new Function('matchMedia', L.DOUJIN_THUMB_ONERROR).call(img, () => ({ matches }));
+  if (img.src !== src) log.push('src=' + img.src.slice(0, 31));
+  if (img.style.visibility) log.push('hidden');
+  return log.join(',');
+};
+check('同人のスマホ版が読めない → <source> を外す（元の画像に戻る）。元の画像が読めない → doujin-assets に1回だけ・それもだめなら隠す（< > & " を使わない）',
+  !/[<>&"]/.test(L.DOUJIN_THUMB_ONERROR)
+  && runDoujinErr({ src: i1.image_url, prev: 'SOURCE', matches: true }) === 'remove-source'
+  && runDoujinErr({ src: i1.image_url, prev: 'SOURCE', matches: false }) === 'src=https://doujin-assets.dmm.co.jp'
+  && runDoujinErr({ src: i1.image_url, prev: null, matches: false, alt: true }) === 'hidden');
+for (const f of ['FloorCard', 'FloorMiniShelf']) {
+  const src = fs.readFileSync(new URL(`../site/src/components/${f}.astro`, import.meta.url), 'utf-8');
+  check(`${f}.astro: 同人は <picture>（スマホは縮めた版）・img は DOUJIN_THUMB_ONERROR・どのページから読んだかを送らない`,
+    /<picture class="pic"><source media=\{THUMB_MEDIA\} srcset=\{doujinThumb\([^)]*\)\.small\} \/><img class="floor-img"[^>]*referrerpolicy="no-referrer" onerror=\{DOUJIN_THUMB_ONERROR\} \/><\/picture>/.test(src));
+}
 check('壊れたデータ・空でも落ちない', L.normalizeFloor(null, 'game', today).items.length === 0 && L.normalizeFloor({ items: 'x' }, 'game', today).items.length === 0);
 
 console.log('\n■ 並べ方');

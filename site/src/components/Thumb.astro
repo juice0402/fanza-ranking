@@ -1,16 +1,18 @@
 ---
 // サムネの画像（運営者の希望「スマホの低速な回線だと画像が重い。サムネだけ画素数を落として最高速化。開いたときは元のまま」。2026-10-07）。
 // スマホ（画面の幅が lib/items.js の THUMB_MEDIA）のときだけ、<picture> の <source> で小さい版を読む。パソコン・タブレットは今までどおり。
-// kind: 'card'＝作品カード・TOP3 ／ 'tiny'＝小さな表紙 ／ 'genre'＝人気のジャンルの四角（lib/items.js の thumbSources）。
+// kind: 'card'＝作品カード・TOP3 ／ 'tiny'＝小さな表紙 ／ 'genre'＝人気のジャンルの四角（lib/items.js の thumbSources。
+// 2026-10-09 から、スマホの版は FANZA の「縮めて返す版」の幅300・幅200。運営者の「少し粗すぎた」）。
 // 作品ページの大きな表紙・パッケージ写真・サンプル画像・拡大表示は、スマホでも元の画像のまま（使わない）
 // 小さい版が読めなければ、<source> を外して、ふだんの画像に戻す（THUMB_ONERROR）。
-// 印 has-small は「スマホでは小さい版」の目印（CSS が、スマホのときだけ切り出しの位置を変える。戻したら外す）
+// 印 has-small は「スマホでは表紙だけの画像」の目印（CSS が、スマホのときだけ切り出しの位置を変える。戻したら外す）。
+// ゲームのカードは、スマホでもパッケージを縮めたものなので、印を付けない（パソコンと同じ切り出し）
 import { THUMB_MEDIA, THUMB_ONERROR, thumbSources } from '../lib/items.js';
 
 const { src: url, kind = 'card', class: cls = 'item-img', alt = '', loading = 'lazy', fetchpriority, onload, width, height } = Astro.props;
-const { src, small } = thumbSources(url, kind);
+const { src, small, cover } = thumbSources(url, kind);
 const swap = small !== src;
-const imgClass = `${cls}${swap && kind !== 'tiny' ? ' has-small' : ''}`;
+const imgClass = `${cls}${swap && cover && kind !== 'tiny' ? ' has-small' : ''}`;
 ---
 
 {swap

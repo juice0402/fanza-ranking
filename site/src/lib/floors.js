@@ -2,7 +2,7 @@
 // 運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも」→「同人 1,000本・ゲーム 500本」（2026-10-09）。
 // データは毎日の更新が集める site/src/data/doujin.json・game.json（scripts/doujin_game.py。形は scripts/floor_data.py）。
 // 未成年を連想させる作品は、集めるときに入れていない。ここでも、タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前を調べて、念のため外す（二重の備え）。
-import { FANZA_HOSTS, FANZA_LINK_HOSTS, isDay, safeHttpsUrl } from './items.js';
+import { FANZA_HOSTS, FANZA_LINK_HOSTS, isDay, resizedImage, safeHttpsUrl } from './items.js';
 import { isMinorTitle } from './gacha.js';
 
 /** 売り場の設定。label: 正式な名前・short: 短い名前・maker: サークル/ブランドの呼び方・kind: 作品の呼び方 */
@@ -40,6 +40,16 @@ const PICS = 'https://pics.dmm.co.jp/';
 export const picsUrl = (u) => (typeof u === 'string' && u.startsWith(DOUJIN_ASSETS) ? PICS + u.slice(DOUJIN_ASSETS.length) : u);
 /** 同人の画像が pics.dmm.co.jp で読めなかったら、もとの doujin-assets に1回だけ戻す（それも読めなければ隠す）。属性に入れるので、< > & " を使わない形で書く */
 export const DOUJIN_IMG_ONERROR = "if(this.dataset.alt||this.src.indexOf('https://pics.dmm.co.jp/')){this.style.visibility='hidden'}else{this.dataset.alt='1';this.src='https://doujin-assets.dmm.co.jp/'+this.src.slice(23)}";
+/**
+ * 同人の表紙のスマホ版（運営者の「スマホのサムネは少し粗すぎた。もう少しきれいに。同じしくみを同人とゲームにも」。2026-10-09）。
+ * 同人には、カードに使える小さい版が無い（90×90・100×100 の四角だけ）ので、FANZA の「縮めて返す版」（items.js の resizedImage）で、
+ * 横長の表紙（560×420）を、カードは幅300（300×225・約20KB。元は 50〜120KB）、小さな棚は幅240（約15KB）にする（2026-10-09 に本物で確かめた）
+ */
+export const DOUJIN_CARD_W = 300;
+export const DOUJIN_TINY_W = 240;
+export const doujinThumb = (url, kind = 'card') => ({ src: url, small: resizedImage(url, kind === 'tiny' ? DOUJIN_TINY_W : DOUJIN_CARD_W) });
+/** <picture> の中の同人の img の onerror: スマホで縮めた版が読めなければ <source> を外して元の画像に。元の画像も読めなければ DOUJIN_IMG_ONERROR */
+export const DOUJIN_THUMB_ONERROR = `var s=this.previousElementSibling,m=s?s.tagName=='SOURCE'?matchMedia(s.media).matches:0:0;if(m){s.remove()}else{${DOUJIN_IMG_ONERROR}}`;
 const minor = (text) => Boolean(text) && isMinorTitle(text);
 const names = (list, limit) => (Array.isArray(list) ? list : []).map((s) => String(s ?? '').trim()).filter(Boolean).slice(0, limit);
 const yen = (v) => (Number.isInteger(v) && v > 0 && v < 10_000_000 ? v : null);
