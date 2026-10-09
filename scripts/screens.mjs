@@ -71,16 +71,25 @@ for (const width of cfg.widths) {
       const total = await page.evaluate(() => document.documentElement.scrollHeight);
       const chunks = Math.min(cfg.chunks ?? 5, Math.ceil(total / height));
       for (let i = 0; i < chunks; i++) {
-        await page.evaluate((y) => window.scrollTo(0, y), i * height);
+        await page.evaluate((y) => window.scrollTo({ top: y, behavior: 'instant' }), i * height); // サイトは scroll-behavior: smooth なので、すぐ動かす（動いている途中を撮らない）
         await page.waitForTimeout(250);
         await page.screenshot({ path: `${out}/${name}-${width}-${i + 1}.png` });
       }
       // at: 見たい所（CSS のセレクター）の一覧。それぞれ、その要素を画面のいちばん上に出して1枚ずつ撮る（ページの下のほうを見るとき）
       for (const [j, sel] of (cfg.at ?? []).entries()) {
-        const y = await page.evaluate((s) => { const el = document.querySelector(s); return el ? el.getBoundingClientRect().top + window.scrollY - 8 : null; }, sel);
-        if (y === null) continue;
-        await page.evaluate((v) => window.scrollTo(0, v), y);
-        await page.waitForTimeout(250);
+        // 2回合わせる（1回目のあとで、画面の外の部分が描かれて位置がずれることがあるため）
+        let found = false;
+        for (let k = 0; k < 2; k++) {
+          found = await page.evaluate((s) => {
+            const el = document.querySelector(s);
+            if (!el) return false;
+            window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 8, behavior: 'instant' });
+            return true;
+          }, sel);
+          if (!found) break;
+          await page.waitForTimeout(300);
+        }
+        if (!found) continue;
         await page.screenshot({ path: `${out}/${name}-${width}-at${j + 1}.png` });
       }
     } catch (e) {
