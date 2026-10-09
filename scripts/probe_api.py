@@ -84,7 +84,53 @@ def main():
         archive = []
     base = {"site": "FANZA", "service": "digital", "floor": "videoa"}
 
-    say("## 7) 安い順（sort=-price）で、10円の作品を見つけられるか（動画・同人・ゲーム）")
+    say("## 8) まだ使っていないAPI・項目（レビュー・評価順・フロア・ジャンル・メーカー・シリーズ・作者の検索）")
+    res, err = call("ItemList", dict(base, sort="rank", hits=5))
+    if err:
+        say(f"- 人気順の review: ❌ {err}")
+    else:
+        say("- 人気順の上位5本の review: " + " / ".join(f"{x.get('content_id')}={json.dumps(x.get('review'), ensure_ascii=False)}" for x in res.get("items") or []))
+        it = (res.get("items") or [{}])[0]
+        say("- iteminfo のキー: " + ", ".join(sorted((it.get("iteminfo") or {}).keys())) + " / 項目のキー: " + ", ".join(sorted(it.keys())))
+    res, err = call("ItemList", dict(base, sort="review", hits=5))
+    say("- sort=review（評価順）の上位5本: " + (f"❌ {err}" if err else " / ".join(f"{x.get('content_id')}（{str(x.get('date'))[:10]}）={json.dumps(x.get('review'), ensure_ascii=False)}" for x in res.get("items") or [])))
+    for label, fl in (("同人", {"site": "FANZA", "service": "doujin", "floor": "digital_doujin"}), ("ゲーム", {"site": "FANZA", "service": "pcgame", "floor": "digital_pcgame"})):
+        res, err = call("ItemList", dict(fl, sort="rank", hits=3))
+        say(f"- {label}の人気順の review・iteminfo のキー: " + (f"❌ {err}" if err else " / ".join(f"{x.get('content_id')}={json.dumps(x.get('review'), ensure_ascii=False)}" for x in res.get("items") or [])
+            + " / " + ", ".join(sorted(((res.get("items") or [{}])[0].get("iteminfo") or {}).keys()))))
+    res, err = call("FloorList", {})
+    floor_ids = {}
+    if err:
+        say(f"- FloorList: ❌ {err}")
+    else:
+        for site_ in res.get("site") or []:
+            if site_.get("code") != "FANZA":
+                continue
+            for sv in site_.get("service") or []:
+                fls = [f"{f.get('name')}({f.get('code')}/{f.get('id')})" for f in sv.get("floor") or []]
+                for f in sv.get("floor") or []:
+                    floor_ids[(sv.get("code"), f.get("code"))] = f.get("id")
+                say(f"- FANZA の {sv.get('name')}（{sv.get('code')}）: " + "、".join(fls))
+    for label, key in (("動画", ("digital", "videoa")), ("同人", ("doujin", "digital_doujin")), ("ゲーム", ("pcgame", "digital_pcgame"))):
+        fid = floor_ids.get(key)
+        if not fid:
+            say(f"- {label}: フロアの id が分からない")
+            continue
+        for api, extra in (("GenreSearch", {}), ("MakerSearch", {}), ("SeriesSearch", {}), ("AuthorSearch", {})):
+            res, err = call(api, dict(floor_id=fid, hits=3, **extra))
+            if err:
+                say(f"- {label} {api}: ❌ {err}")
+                continue
+            rows = next((v for k, v in res.items() if isinstance(v, list)), [])
+            say(f"- {label} {api}: 全体 {res.get('total_count')}件 / 1件目の形 {shape(rows[0]) if rows else '-'} / 例 {json.dumps([{k: r.get(k) for k in ('name', 'ruby', 'genre_id', 'maker_id', 'series_id', 'author_id', 'another_name')} for r in rows[:3]], ensure_ascii=False)[:400]}")
+    res, err = call("GenreSearch", dict(floor_id=floor_ids.get(("digital", "videoa")) or 43, hits=100))
+    if not err:
+        g = next((r for r in res.get("genre") or [] if r.get("name") in ("巨乳", "人妻・主婦", "単体作品")), None)
+        if g:
+            r2, e2 = call("ItemList", dict(base, article="genre", article_id=g.get("genre_id"), sort="rank", hits=3))
+            say(f"- ItemList article=genre（{g.get('name')}）: " + (f"❌ {e2}" if e2 else f"全体 {r2.get('total_count')}件 / 上位 {[x.get('content_id') for x in r2.get('items') or []]}"))
+
+    say("\n## 7) 安い順（sort=-price）で、10円の作品を見つけられるか（動画・同人・ゲーム）")
     floors = (("動画", base), ("同人", {"site": "FANZA", "service": "doujin", "floor": "digital_doujin"}),
               ("ゲーム", {"site": "FANZA", "service": "pcgame", "floor": "digital_pcgame"}))
 
@@ -259,7 +305,7 @@ def main():
                 sections.append([text])
             else:
                 sections[-1].append(text)
-        for block in sections[:10]:
+        for block in sections[:12]:
             title = block[0].strip().lstrip("# ").strip()[:100]
             body = "\n".join(block[1:]).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
             print(f"::notice title={title}::{body}")
