@@ -84,7 +84,67 @@ def main():
         archive = []
     base = {"site": "FANZA", "service": "digital", "floor": "videoa"}
 
-    say("## 8) まだ使っていないAPI・項目（レビュー・評価順・フロア・ジャンル・メーカー・シリーズ・作者の検索）")
+    # 新しい売り場の下調べ（運営者の希望「アニメ動画・素人・成人映画・FANZAブックス（コミック・写真集）・VR見放題も」。2026-10-10）
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
+    try:
+        from claude_comments import title_block_reason as tbr
+    except Exception:  # noqa: BLE001
+        tbr = lambda x: ""  # noqa: E731
+    from collections import Counter
+
+    def masked(u, cid):
+        u = str(u or "")
+        if cid:
+            u = u.replace(cid, "{cid}")
+        return re.sub(r"[0-9]", "#", u)[:110]
+
+    for n_, (label, svc, flr) in enumerate((("アニメ動画", "digital", "anime"), ("素人", "digital", "videoc"), ("成人映画", "digital", "nikkatsu"),
+                                             ("ブックス・コミック", "ebook", "comic"), ("ブックス・写真集", "ebook", "photo"), ("VR見放題", "monthly", "vr")), start=1):
+        say(f"## 11-{n_}) 新しい売り場: {label}（{svc}/{flr}）")
+        got, total = [], None
+        for off in (1, 101, 201):
+            res, err = call("ItemList", {"site": "FANZA", "service": svc, "floor": flr, "sort": "rank", "hits": 100, "offset": off})
+            if err:
+                say(f"- offset={off}: ❌ {err}")
+                break
+            total = res.get("total_count")
+            got += res.get("items") or []
+        if not got:
+            continue
+        keys, info_keys, img_forms, smp_forms, aff_forms, price_forms = Counter(), Counter(), Counter(), Counter(), Counter(), Counter()
+        blocked = cid_bad = with_review = with_actress = with_author = with_maker = with_movie = future = 0
+        today_s = today.strftime("%Y-%m-%d")
+        for x in got:
+            cid = str(x.get("content_id") or "")
+            keys.update(x.keys())
+            info = x.get("iteminfo") or {}
+            info_keys.update(info.keys())
+            img_forms[masked((x.get("imageURL") or {}).get("large"), cid)] += 1
+            smp = x.get("sampleImageURL") or {}
+            smp_forms[",".join(sorted(smp.keys())) + " " + masked(((smp.get("sample_l") or smp.get("sample_s") or {}).get("image") or [""])[0], cid)] += 1
+            aff_forms[mask_url(x.get("affiliateURL"))] += 1
+            pr = x.get("prices") or {}
+            price_forms[re.sub(r"[0-9]", "#", f"{pr.get('price')}|{pr.get('list_price')}")] += 1
+            texts = [x.get("title")] + [g.get("name") for k in ("genre", "series", "maker", "author", "label") for g in info.get(k) or [] if isinstance(g, dict)]
+            if any(t and tbr({"title": str(t)}) == "minor" for t in texts):
+                blocked += 1
+            if not re.match(r"^[A-Za-z0-9_\-]{1,40}$", cid):
+                cid_bad += 1
+            with_review += bool(x.get("review"))
+            with_actress += bool(info.get("actress"))
+            with_author += bool(info.get("author"))
+            with_maker += bool(info.get("maker"))
+            with_movie += bool(x.get("sampleMovieURL"))
+            future += str(x.get("date") or "")[:10] > today_s
+        say(f"- 取得 {len(got)}本 / 全体 {total} / 未成年を連想させる {blocked}本 / 品番の形が違う {cid_bad}本 / 予約 {future}本 / レビューあり {with_review} / 出演者あり {with_actress} / 作者あり {with_author} / メーカーあり {with_maker} / サンプル動画あり {with_movie}")
+        say(f"- 項目: {', '.join(sorted(keys))} / iteminfo: {dict(info_keys.most_common(12))}")
+        say(f"- 表紙の形: {img_forms.most_common(3)}")
+        say(f"- サンプル画像の形: {smp_forms.most_common(2)}")
+        say(f"- リンクの形: {aff_forms.most_common(2)} / 価格の形: {price_forms.most_common(4)}")
+        ex = got[0]
+        say(f"- 1本目: 品番 {ex.get('content_id')} / volume {ex.get('volume')} / 発売日 {ex.get('date')} / iteminfo {json.dumps({k: [g.get('name') for g in v][:3] for k, v in (ex.get('iteminfo') or {}).items() if isinstance(v, list)}, ensure_ascii=False)[:300]}")
+
+    say("\n## 8) まだ使っていないAPI・項目（レビュー・評価順・フロア・ジャンル・メーカー・シリーズ・作者の検索）")
     res, err = call("ItemList", dict(base, sort="rank", hits=5))
     if err:
         say(f"- 人気順の review: ❌ {err}")
@@ -321,7 +381,7 @@ def main():
                 sections.append([text])
             else:
                 sections[-1].append(text)
-        for block in sections[:14]:
+        for block in sections[:24]:
             title = block[0].strip().lstrip("# ").strip()[:100]
             body = "\n".join(block[1:]).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
             print(f"::notice title={title}::{body}")
