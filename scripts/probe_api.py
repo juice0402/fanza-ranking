@@ -84,7 +84,38 @@ def main():
         archive = []
     base = {"site": "FANZA", "service": "digital", "floor": "videoa"}
 
-    say("## 0) 過去作品の集め方（人気順・発売済みだけ・offset で続きから）")
+    say("## 7) 安い順（sort=-price）で、10円の作品を見つけられるか（動画・同人・ゲーム）")
+    floors = (("動画", base), ("同人", {"site": "FANZA", "service": "doujin", "floor": "digital_doujin"}),
+              ("ゲーム", {"site": "FANZA", "service": "pcgame", "floor": "digital_pcgame"}))
+
+    def yen(v):
+        m = re.match(r"^\s*([0-9][0-9,]*)", str(v or ""))
+        return int(m.group(1).replace(",", "")) if m else None
+
+    for label, fl in floors:
+        for sort in ("-price", "price"):
+            for off in ((1, 101, 501) if sort == "-price" else (1,)):
+                res, err = call("ItemList", dict(fl, sort=sort, hits=100, offset=off))
+                if err:
+                    say(f"- {label} sort={sort} offset={off}: ❌ {err}")
+                    continue
+                got = res.get("items") or []
+                pr = [(yen((x.get("prices") or {}).get("price")), yen((x.get("prices") or {}).get("list_price"))) for x in got]
+                now = [p for p, _ in pr if p is not None]
+                mono = all(a <= b for a, b in zip(now, now[1:])) if sort == "-price" else all(a >= b for a, b in zip(now, now[1:]))
+                disc = sum(1 for p, l in pr if p is not None and l is not None and p < l)
+                raw_forms = sorted({re.sub(r"[0-9]", "#", str((x.get("prices") or {}).get("price"))) for x in got})[:5]
+                camps = sorted({str(c.get("title"))[:24] for x in got for c in (x.get("campaign") or []) if isinstance(c, dict)})[:8]
+                say(f"- {label} sort={sort} offset={off}: {len(got)}件 / 全体 {res.get('total_count')} / 価格 {now[:12]}… 最後 {now[-3:]} / 価格の順に並ぶ={mono} / 値引き中 {disc}件 / 0円 {sum(1 for p in now if p == 0)}件 / 10円 {sum(1 for p in now if p == 10)}件 / 10円以下 {sum(1 for p in now if p <= 10)}件 / 価格の書き方 {raw_forms} / キャンペーン名 {camps}")
+                if sort == "-price" and off == 1:
+                    ten = [x for x in got if yen((x.get("prices") or {}).get("price")) == 10][:3]
+                    for x in ten:
+                        say(f"  - 10円の例: {x.get('content_id')} 定価 {(x.get('prices') or {}).get('list_price')} / deliveries {json.dumps((x.get('prices') or {}).get('deliveries'), ensure_ascii=False)[:300]} / campaign {json.dumps(x.get('campaign'), ensure_ascii=False)[:200]} / 発売日 {str(x.get('date'))[:10]}")
+                    cheap = [x for x in got if (yen((x.get("prices") or {}).get("price")) or 0) > 0][:2]
+                    for x in cheap:
+                        say(f"  - 0円より上の最初の例: {x.get('content_id')} 価格 {(x.get('prices') or {}).get('price')} 定価 {(x.get('prices') or {}).get('list_price')} / campaign {json.dumps(x.get('campaign'), ensure_ascii=False)[:160]}")
+
+    say("\n## 0) 過去作品の集め方（人気順・発売済みだけ・offset で続きから）")
     lte = today.replace(hour=23, minute=59, second=59).strftime(fmt)
     for off in (1, 101, 25001, 49901, 50001):
         res, err = call("ItemList", dict(base, sort="rank", hits=100, offset=off, lte_date=lte))
