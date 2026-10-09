@@ -111,6 +111,7 @@ def main():
                 for f in sv.get("floor") or []:
                     floor_ids[(sv.get("code"), f.get("code"))] = f.get("id")
                 say(f"- FANZA の {sv.get('name')}（{sv.get('code')}）: " + "、".join(fls))
+    say("\n## 9) ジャンル・メーカー・シリーズ・作者の検索API（売り場ごと）")
     for label, key in (("動画", ("digital", "videoa")), ("同人", ("doujin", "digital_doujin")), ("ゲーム", ("pcgame", "digital_pcgame"))):
         fid = floor_ids.get(key)
         if not fid:
@@ -122,13 +123,28 @@ def main():
                 say(f"- {label} {api}: ❌ {err}")
                 continue
             rows = next((v for k, v in res.items() if isinstance(v, list)), [])
-            say(f"- {label} {api}: 全体 {res.get('total_count')}件 / 1件目の形 {shape(rows[0]) if rows else '-'} / 例 {json.dumps([{k: r.get(k) for k in ('name', 'ruby', 'genre_id', 'maker_id', 'series_id', 'author_id', 'another_name')} for r in rows[:3]], ensure_ascii=False)[:400]}")
+            say(f"- {label} {api}: 全体 {res.get('total_count')}件 / キー {sorted(rows[0].keys()) if rows else '-'} / 例 {[(r.get('name'), r.get('ruby')) for r in rows[:2]]}")
+    say("\n## 10) ジャンルを指定した人気順・評価順")
     res, err = call("GenreSearch", dict(floor_id=floor_ids.get(("digital", "videoa")) or 43, hits=100))
     if not err:
         g = next((r for r in res.get("genre") or [] if r.get("name") in ("巨乳", "人妻・主婦", "単体作品")), None)
         if g:
             r2, e2 = call("ItemList", dict(base, article="genre", article_id=g.get("genre_id"), sort="rank", hits=3))
             say(f"- ItemList article=genre（{g.get('name')}）: " + (f"❌ {e2}" if e2 else f"全体 {r2.get('total_count')}件 / 上位 {[x.get('content_id') for x in r2.get('items') or []]}"))
+            r3, e3 = call("ItemList", dict(base, article="genre", article_id=g.get("genre_id"), sort="review", hits=3))
+            say(f"- 同じジャンルの評価順: " + (f"❌ {e3}" if e3 else str([(x.get('content_id'), (x.get('review') or {}).get('count'), (x.get('review') or {}).get('average')) for x in r3.get('items') or []])))
+    for label, fl in (("同人", {"site": "FANZA", "service": "doujin", "floor": "digital_doujin"}), ("ゲーム", {"site": "FANZA", "service": "pcgame", "floor": "digital_pcgame"})):
+        r4, e4 = call("ItemList", dict(fl, sort="review", hits=5))
+        say(f"- {label}の評価順: " + (f"❌ {e4}" if e4 else str([(x.get('content_id'), (x.get('review') or {}).get('count'), (x.get('review') or {}).get('average')) for x in r4.get('items') or []])))
+    with_review = 0
+    total = 0
+    for off in (1, 101, 1001):
+        r5, e5 = call("ItemList", dict(base, sort="rank", hits=100, offset=off))
+        if not e5:
+            got = r5.get("items") or []
+            total += len(got)
+            with_review += sum(1 for x in got if x.get("review"))
+    say(f"- 動画の人気順（1〜100・101〜200・1001〜1100本目）で、レビューのある作品: {with_review}/{total}本")
 
     say("\n## 7) 安い順（sort=-price）で、10円の作品を見つけられるか（動画・同人・ゲーム）")
     floors = (("動画", base), ("同人", {"site": "FANZA", "service": "doujin", "floor": "digital_doujin"}),
@@ -305,7 +321,7 @@ def main():
                 sections.append([text])
             else:
                 sections[-1].append(text)
-        for block in sections[:12]:
+        for block in sections[:14]:
             title = block[0].strip().lstrip("# ").strip()[:100]
             body = "\n".join(block[1:]).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
             print(f"::notice title={title}::{body}")
