@@ -2401,6 +2401,33 @@ check("50音で探す: 行へのボタンの飛び先がページにある・名
 print(f"     （50音で探すのあるページ: {len(_kana_pages)}）")
 check("見出しの下の読みがな（.hero-ruby）は、ひらがなの読み（漢字・カタカナが無い・空でない）", not _ruby_bad, _ruby_bad[:3])
 
+# ジャンルの「FANZA全体で人気の作品 TOP20」（scripts/genre_tops.py。2026-10-10）: データのあるジャンルのページに、順位つきの棚・
+# このサイトの作品は作品ページへ（実在する）・ほかはFANZAへ（広告のリンクの属性）・未成年を連想させるタイトルは無い・タイトルに「人気ランキング」
+_gt_path = os.path.join(ROOT, "site", "src", "data", "genre_tops.json")
+_gt = load_json(_gt_path) if os.path.isfile(_gt_path) else None
+_gt_bad, _gt_seen = [], 0
+if isinstance(_gt, dict) and isinstance(_gt.get("genres"), dict):
+    for name_, g_ in _gt["genres"].items():
+        tp_ = page_file(f"/tag/{entity_slug(name_)}/")
+        if not os.path.isfile(tp_):
+            continue
+        h_ = read(tp_)
+        sec_ = re.search(r'<section class="section" aria-labelledby="fanza-top-title"[^>]*>(.*?)</section>', h_, re.S)
+        if not sec_:
+            _gt_bad.append(f"{name_}: 棚が無い")
+            continue
+        _gt_seen += 1
+        links_ = tags(sec_.group(1), "a")
+        titles_ = [strip_tags(t) for t in re.findall(r'<h3 class="mini-title">(.*?)</h3>', sec_.group(1), re.S)]
+        ranks_ = re.findall(r'<span class="mini-rank">(\d+)</span>', sec_.group(1))
+        title_ = htmllib.unescape(re.search(r"<title>(.*?)</title>", h_, re.S).group(1))
+        if not links_ or len(links_) > 20 or ranks_ != [str(n + 1) for n in range(len(links_))] or "人気ランキング" not in title_ \
+                or any((not os.path.isfile(page_file(a["href"]))) if a.get("href", "").startswith("/") else not (fanza_https(a.get("href"), ("dmm.co.jp", "fanza.co.jp")) and "sponsored" in a.get("rel", "")) for a in links_) \
+                or any(is_minor_title(re.sub(r"^\d+", "", t)) for t in titles_):
+            _gt_bad.append(name_)
+check("ジャンルのページの「FANZA全体で人気の作品」: 順位つきの棚・リンク先（作品ページは実在・FANZAは広告の属性）・未成年を連想させるタイトルが無い・タイトルに「人気ランキング」", not _gt_bad, _gt_bad[:3])
+print(f"     （FANZA全体で人気の作品の棚のあるジャンルのページ: {_gt_seen}）")
+
 # 検索ページ
 sp = os.path.join(DIST, "search", "index.html")
 check("検索ページ（/search/）がある", os.path.isfile(sp))

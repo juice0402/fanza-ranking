@@ -550,6 +550,27 @@ else:
               and all(isinstance(rd[k], dict) and set(rd[k]) == _kinds and all(isinstance(m, dict) and all(isinstance(a, str) and isinstance(b, str) and 0 < len(b) <= 60 for a, b in m.items()) for m in rd[k].values()) for k in _floors)
               and rdtext.count("\n") >= sum(len(m) for k in _floors for m in rd[k].values()))
 
+# ---- ジャンルの「FANZA全体で人気の作品」（genre_tops.json。scripts/genre_tops.py が毎日。2026-10-10 から） ----
+print("\n■ ジャンルの「FANZA全体で人気の作品」（genre_tops.json）")
+GENRE_TOPS = os.path.join(ROOT, "site", "src", "data", "genre_tops.json")
+if not os.path.exists(GENRE_TOPS):
+    print("  （genre_tops.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        gttext = open(GENRE_TOPS, encoding="utf-8").read()
+        gt = json.loads(gttext)
+    except (OSError, ValueError) as e:
+        gt = None
+        check("genre_tops.json を読める", False, str(e))
+    if gt is not None:
+        _gt_rows = [r for g in gt.get("genres", {}).values() for r in g.get("items", [])] if isinstance(gt, dict) and isinstance(gt.get("genres"), dict) else None
+        check("genre_tops.json: ジャンルごとに id・集めた日・作品（20本まで・c t d a m i u）だけ（1作品1行）",
+              _gt_rows is not None and set(gt) == {"updated", "genres"}
+              and all(set(g) == {"id", "date", "items"} and isinstance(g["id"], int) and re.match(r"^\d{4}-\d{2}-\d{2}$", g["date"]) and len(g["items"]) <= 20 for g in gt["genres"].values())
+              and all({"c", "t", "d", "a", "m", "i", "u"} <= set(r) and set(r) <= {"c", "t", "d", "a", "m", "i", "u", "v"} for r in _gt_rows)
+              and (not _gt_rows or gttext.count("\n") == len(_gt_rows) + 2 + 2 * len(gt["genres"])))
+        check("genre_tops.json: 未成年を連想させるタイトルの作品は無い", _gt_rows is not None and not [r["t"] for r in _gt_rows if cc.title_block_reason({"title": r["t"]}) == "minor"])
+
 # ---- 10円セール（ten_yen.json。scripts/ten_yen.py が毎日と、開催中は1日に数回。2026-10-09 から） ----
 print("\n■ 10円セール（ten_yen.json）")
 import ten_yen as TY  # noqa: E402

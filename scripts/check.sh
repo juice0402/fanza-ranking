@@ -35,6 +35,9 @@ python3 tests/test_reviews.py || failed=1
 step "読みがな（ジャンル・メーカー・シリーズ・作家）を集める道具 (Python)"
 python3 tests/test_readings.py || failed=1
 
+step "ジャンルの「FANZA全体で人気の作品」を集める道具 (Python)"
+python3 tests/test_genre_tops.py || failed=1
+
 step "公開のしくみ（Cloudflare Pages への直接アップロード）"
 python3 tests/test_deploy.py || failed=1
 

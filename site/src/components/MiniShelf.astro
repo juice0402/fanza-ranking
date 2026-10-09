@@ -8,19 +8,20 @@ import { castLine, filterAttrs } from '../lib/items.js';
 import Thumb from './Thumb.astro';
 
 // rate: 出演者の代わりに、FANZAのレビューの評価（★4.71（31件））を出す（「評価の高い作品」の棚。2026-10-10）
-const { items, level = 'h3', rate = false } = Astro.props;
+// rank: タイトルの前に順位（1から。ジャンルの「FANZA全体で人気の作品」。2026-10-10）
+const { items, level = 'h3', rate = false, rank = false } = Astro.props;
 const Heading = level;
 ---
 
 <ul class="mini-shelf">
-  {items.map((i) => {
+  {items.map((i, n) => {
     const link = itemHref(i, paged);
     const outbound = link.external ? OUTBOUND_ATTRS : {};
     return (
       <li class="shelf-cell mini-cell" {...filterAttrs(i)}>
         <a class="mini-card" href={link.href} {...outbound}>
           <span class="mini-cover">{i.image_url && <Thumb src={i.image_url} kind="tiny" class="item-img is-small" />}</span>
-          <Heading class="mini-title">{i.title}</Heading>
+          <Heading class="mini-title">{rank && <span class="mini-rank">{n + 1}</span>}{i.title}</Heading>
           {rate && i.review
             ? <span class="mini-cast mini-rate"><span class="rate-star">★{i.review.avg.toFixed(2)}</span>（{i.review.count.toLocaleString('ja-JP')}件）</span>
             : <span class="mini-cast">{castLine(i.actress, 1, '')}</span>}

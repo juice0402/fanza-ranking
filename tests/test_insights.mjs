@@ -79,5 +79,18 @@ const rus = [{ week_start: '2026-09-28', week_end: '2026-10-04', picks: [{ cid: 
 check('その作品の発売週の週のまとめ・注目の作品として紹介したか', I.roundupFor(pop[0], rus).pick === true && I.roundupFor(pop[0], rus).roundup.week_start === '2026-09-28' && I.roundupFor({ dateKey: '2026-10-20' }, rus) === null);
 check('月のページの、その月の週のまとめ（月曜日がその月）', I.roundupsInMonth(rus, '2026-10').map((r) => r.week_start).join() === '2026-10-05' && I.roundupsInMonth(rus, '2026-09').length === 1);
 
+console.log('\n■ ジャンルの「FANZA全体で人気の作品」（genre_tops.json）');
+const own = { cid: 'own1', title: 'このサイトの作品', dateKey: '2026-09-01', actress: [], maker: 'M', genres: ['巨乳'], url: 'https://al.fanza.co.jp/x', image_url: 'https://pics.dmm.co.jp/x.jpg' };
+const gtRow = (c, extra = {}) => ({ c, t: `作品${c}`, d: '2026-09-02', a: ['女優A', '', 3], m: 'メーカー', i: `https://pics.dmm.co.jp/digital/video/${c}/${c}pl.jpg`, u: `https://al.fanza.co.jp/?id=${c}`, ...extra });
+const gt = I.normalizeGenreTops({ genres: {
+  巨乳: { id: 2001, date: '2026-10-10', items: [gtRow('own1'), gtRow('f1', { v: 1 }), gtRow('f1'), gtRow('bad', { u: 'https://example.com/' }), gtRow('minor', { t: '女子校生の作品' }), gtRow('noimg', { i: '' }), 'x'] },
+  空: { id: 1, date: '2026-10-10', items: [gtRow('x', { u: '' })] },
+  日付なし: { id: 2, items: [gtRow('y')] },
+} }, new Map([['own1', own]]));
+const kyo = gt.get('巨乳');
+check('このサイトの作品はそのまま・ほかは保存した形から（作品ページが無いのでFANZAへ）・人気の順', kyo.date === '2026-10-10' && kyo.items.map((i) => i.cid).join() === 'own1,f1'
+  && kyo.items[0] === own && kyo.items[1].fanzaOnly && kyo.items[1].vr === true && kyo.items[1].actress.join() === '女優A' && kyo.items[1].genres.join() === '巨乳', kyo.items.map((i) => i.cid).join());
+check('FANZA以外のURL・画像の無い行・未成年を連想させるタイトル・同じ作品・日付の無いジャンル・作品の無いジャンルは捨てる', !gt.has('空') && !gt.has('日付なし') && [null, 'x', { genres: [] }].every((v) => I.normalizeGenreTops(v).size === 0));
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

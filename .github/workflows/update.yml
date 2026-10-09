@@ -90,6 +90,17 @@ jobs:
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
         run: python scripts/readings.py --update
 
+      # ジャンルのページの「FANZA全体で人気の作品 TOP20」（FANZAのAPIだけ。Gemini は使わない。2026-10-10 から）。
+      # 毎日（ジャンルごとに1回）。失敗しても、ほかの更新は止めない（前のデータを残す。scripts/genre_tops.py）
+      - name: Update genre tops (daily)
+        if: steps.guard.outputs.skip != '1'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python scripts/genre_tops.py --update
+
       # 10円セール（動画・同人・ゲーム。FANZAのAPIだけ。Gemini は使わない。運営者の希望「10円セールは大イベント。開催中はものすごく訴求したい」。2026-10-09 から）。
       # 開催中の日中の入れかわりは ten-yen.yml が確かめる。失敗しても、ほかの更新は止めない（前のデータを残す。scripts/ten_yen.py）
       - name: Update 10-yen sale (daily)

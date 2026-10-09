@@ -14,7 +14,7 @@ import { normalizeAgencies, withAgencies } from './agencies.js';
 import { eventsByName, normalizeEvents, upcomingEvents } from './events.js';
 import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
 import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG_PAGE_GENRES } from '../config.js';
-import { genreTopLists, groupByEntry } from './insights.js';
+import { genreTopLists, groupByEntry, normalizeGenreTops } from './insights.js';
 import { buildItemsIndex } from './search.js';
 import { TEN_YEN_PATH, normalizeTenYen, tenYenState } from './ten-yen.js';
 import { FLOOR_REVIEW_MIN, normalizeReviews, topRated } from './reviews.js';
@@ -23,7 +23,7 @@ import { FLOOR_KEYS, floorCollections, floorEntityRanking, floorFileCount, floor
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews,readings}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews,readings,genre_tops}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -98,6 +98,8 @@ export const seriesById = new Map(seriesGroups.map((g) => [g.id, g]));
 export const labelById = new Map(labelGroups.map((g) => [g.id, g]));
 // ジャンルごとの人気の作品（作品ページの「○○で人気の作品」。中身のジャンルだけ。1回だけ数える）
 export const genreTops = genreTopLists(all, contentGenres, today);
+// ジャンルの「FANZA全体で人気の作品 TOP20」（scripts/genre_tops.py が毎日。2026-10-10）。ジャンルの名前 → { date, items }
+export const fanzaGenreTops = normalizeGenreTops(optionalData('genre_tops'), new Map(all.map((i) => [i.cid, i])));
 
 // 週のまとめ記事（Claudeが毎週月曜に書く。まだ1本も無いときは空）
 export const roundups = normalizeRoundups(rawRoundups, curated);

@@ -13,6 +13,7 @@ name: Refresh FANZA Data
 #   ・FANZA同人（1,000本）・FANZAゲーム（500本）の人気作品を集め直す（scripts/doujin_game.py。2026-10-09 から）。
 #     「同人・ゲームだけ」を 1 にすると、ほかのデータには触らずに、同人・ゲームだけを集める（新しい機能のブランチで、本物のデータを入れて確かめるとき）
 #   ・読みがな（ジャンル・メーカー・シリーズ・作家。scripts/readings.py。2026-10-10 から）。ふだんは7日に1回。「読みがな」を 1 にすると、いますぐ集め直す
+#   ・ジャンルのページの「FANZA全体で人気の作品 TOP20」（scripts/genre_tops.py。2026-10-10 から）
 # 新しい機能のブランチで、本物のAPIを使った確認をするときにも使う（Run workflow で、ブランチを選んで実行）。
 # 結果のデータは、実行したブランチに commit する。
 on:
@@ -110,6 +111,15 @@ jobs:
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
           FORCE: ${{ inputs.readings == '1' && '--force' || '' }}
         run: python scripts/readings.py --update $FORCE
+
+      # ジャンルの「FANZA全体で人気の作品」（Gemini は使わない。失敗しても、ほかの取り直しは残す）
+      - name: Refresh genre tops
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python scripts/genre_tops.py --update
 
       # 10円セール（Gemini は使わない。失敗しても、ほかの取り直しは残す）
       - name: Refresh 10-yen sale
