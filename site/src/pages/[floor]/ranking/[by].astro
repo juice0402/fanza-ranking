@@ -1,0 +1,85 @@
+---
+// 人気サークル/ブランド・作家ランキング（/doujin/ranking/maker/・/game/ranking/maker/・/game/ranking/author/。
+// 運営者の希望「同人とかゲームも、人気の作家さんとか独自のランキングを」。2026-10-09。lib/floors.js の floorEntityRanking）。
+// 人気ランキングの上位300本の順位から点数（1位＝300点）を付けて、サークル/ブランド・作家ごとに足した順。前の日からの動きは、人気の動きの記録から。
+// 数えた事実だけを書く。並べた作品にコメントのある作品が無いあいだは、検索エンジンに出さない
+import Base from '../../../layouts/Base.astro';
+import Breadcrumb from '../../../components/Breadcrumb.astro';
+import FloorRow from '../../../components/FloorRow.astro';
+import FloorTabs from '../../../components/FloorTabs.astro';
+import RankingNav from '../../../components/FloorRankingNav.astro';
+import { activeFloors, floorEntityRankings, floors } from '../../../lib/data.js';
+import { FLOORS, FLOOR_ENTITY_TOP, floorEntityIndexable, floorEntityLabel, floorEntityRankingPath, floorPath, floorRankingPath, moveLabel } from '../../../lib/floors.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../../lib/items.js';
+
+export function getStaticPaths() {
+  return activeFloors.flatMap((floor) => Object.keys(floorEntityRankings[floor]).filter((by) => floorEntityRankings[floor][by].length > 0).map((by) => ({ params: { floor, by } })));
+}
+
+const { floor: key, by } = Astro.params;
+const f = FLOORS[key];
+const data = floors[key];
+const list = floorEntityRankings[key][by];
+const label = floorEntityLabel(f, by);
+const day = data.updated ? dateParts(data.updated) : null;
+const dayLabel = day ? `${day.m}月${day.d}日` : '毎日';
+const hasMove = list.some((r) => r.move !== null);
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: '人気ランキング', path: floorRankingPath(key) },
+  { name: `人気${label}ランキング`, path: floorEntityRankingPath(key, by) },
+];
+const noindex = !floorEntityIndexable(list);
+const rows = list.map((r) => {
+  const top = r.items[0];
+  return {
+    r,
+    row: {
+      c: r.key,
+      href: r.path || `/${key}/item/${top.cid}/`,
+      title: r.name,
+      img: top.image_url,
+      wide: key === 'doujin',
+      line: `上位${FLOOR_ENTITY_TOP}本に${r.count}本・最高${r.best}位`,
+      meta: `いちばん人気: ${top.title.length > 28 ? `${top.title.slice(0, 28)}…` : top.title}`,
+      upcoming: false,
+    },
+  };
+});
+const listLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: `${f.label}の人気${label}ランキング`,
+  numberOfItems: Math.min(rows.length, 20),
+  itemListElement: rows.slice(0, 20).map(({ r, row }, n) => ({ '@type': 'ListItem', position: n + 1, name: r.name, url: SITE_URL + row.href })),
+};
+---
+
+<Base
+  title={`${f.label}の人気${label}ランキング【${dayLabel}更新】TOP${list.length}｜${SITE_NAME}`}
+  description={`${f.label}の${label}を、その日のFANZAの人気ランキング（上位${FLOOR_ENTITY_TOP}本）の順位から点数を付けて並べたランキングです。1位は「${list[0].name}」（上位${FLOOR_ENTITY_TOP}本に${list[0].count}本）。${hasMove ? '前日からの動きも。' : ''}毎日、日付が変わったあとに更新します。`}
+  path={floorEntityRankingPath(key, by)}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail), listLd]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{f.label}の人気{label}ランキング</h1>
+      <p class="hero-lead">人気ランキングの上位{FLOOR_ENTITY_TOP}本の順位から点数（1位＝{FLOOR_ENTITY_TOP}点）を付けて、{label}ごとに足した順です{data.updated && `（${formatDateJp(data.updated)}の時点）`}。</p>
+      <FloorTabs floorKey={key} current="ranking" />
+    </section>
+
+    <RankingNav floorKey={key} current={by} />
+
+    <section class="section" aria-labelledby="fl-erank-title">
+      <h2 id="fl-erank-title" class="section-title">人気{label} TOP{list.length}</h2>
+      <ol class="ws-list erank-list">
+        {rows.map(({ r, row }) => <FloorRow row={row} no={r.rank} move={moveLabel(r.move)} titleJs={false} />)}
+      </ol>
+    </section>
+    <p class="section-note">点数は、このサイトに載っている{f.label}の作品（{data.items.length}本）のうち、人気ランキングの上位{FLOOR_ENTITY_TOP}本から数えています。{by === 'author' && '作家は、FANZAの作品ページの「作家」の欄（原画・シナリオなど）です。'}</p>
+  </div>
+</Base>

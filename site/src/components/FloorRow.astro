@@ -1,0 +1,27 @@
+---
+// FANZA同人・FANZAゲームの小さな表紙の行（作品検索の結果・人気サークル/ブランド・作家ランキング・売り場のトップの右の欄。2026-10-09）。
+// 動画の作品検索の行（.ws-row）と同じ形。同人は横長の表紙を横長の枠に（スマホは幅240に縮めた版）、ゲームは表紙だけの軽い画像。
+// row: { c（作品ID・行の印）, href, title, img, wide, line（サークル/ブランドなど）, meta（発売日・価格など）, upcoming }／ no: 行の頭の順位 ／ move: 順位の動き（「▲2」「初登場」）
+// titleJs: タイトルに文節の区切り（U+200B）が入っているとき（作品のタイトル。public/floor-search.js と同じ .ph-js）
+import Thumb from './Thumb.astro';
+import { THUMB_MEDIA } from '../lib/items.js';
+import { DOUJIN_THUMB_ONERROR, doujinThumb } from '../lib/floors.js';
+
+const { row, no = 0, move = '', titleJs = true, level = 'h3' } = Astro.props;
+const Heading = level;
+const moveCls = move === '初登場' ? 'move-new' : move.startsWith('▲') ? 'move-up' : '';
+---
+
+<li class="ws-row" data-c={row.c}>
+  <article class="item">
+    <a class:list={['item-cover', { 'is-wide': row.wide }]} href={row.href} tabindex="-1" aria-hidden="true">
+      {row.img && (row.wide
+        ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(row.img, 'tiny').small} /><img class="floor-img" src={row.img} alt="" width="560" height="420" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
+        : <Thumb src={row.img} kind="tiny" class="item-img is-small" />)}
+      {row.upcoming && <span class="pop pop-wait">予約</span>}
+    </a>
+    <Heading class="item-title">{no > 0 && <span class="erank-no">{no}<span class="visually-hidden">位</span></span>}<a class:list={['item-title-link', { 'ph-js': titleJs }]} href={row.href}>{row.title}</a></Heading>
+    {row.line && <p class="item-cast">{row.line}</p>}
+    {(row.meta || move) && <p class="item-meta">{row.meta}{move && <span class:list={['erank-move', moveCls]}>{move === '初登場' ? move : <><span class="visually-hidden">前日から</span>{move}</>}</span>}</p>}
+  </article>
+</li>

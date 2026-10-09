@@ -4,6 +4,16 @@ import fs from 'node:fs';
 import * as L from '../site/src/lib/floors.js';
 import { nonItemFileCount } from '../site/src/lib/plan.js';
 import { trendChart } from '../site/src/lib/insights.js';
+import { isMinorTitle } from '../site/src/lib/gacha.js';
+import vm from 'node:vm';
+// ブラウザで動くスクリプト（site/public/）の部品を、node の中で読む（module.exports に出している）
+const loadPublic = (name) => {
+  const sandbox = { module: { exports: {} } };
+  vm.runInNewContext(fs.readFileSync(new URL(`../site/public/${name}`, import.meta.url), 'utf-8'), sandbox);
+  return sandbox.module.exports;
+};
+const FS = loadPublic('floor-search.js');
+const G = loadPublic('gacha.js');
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -110,7 +120,7 @@ check('場所: /doujin/・/doujin/ranking/・/doujin/sale/・/doujin/item/<品�
   && L.floorItemPath('doujin', 'd_1') === '/doujin/item/d_1/' && L.floorMakerPath('game', 5) === '/game/maker/5/' && L.floorMakerIndexPath('game') === '/game/maker/');
 check('作品ページのタイトル: 「タイトル｜FANZA同人（サークル）｜サイト名」', L.floorItemTitle(i1, 'サイト') === '作った作品その1｜FANZA同人（サークル1）｜サイト');
 check('作品ページの説明文: コメントがあれば先に・発売日・サークル', L.floorItemDescription(fl.items.find((i) => i.cid === 'd_100003')).startsWith('Claudeが書いたコメント FANZA同人の同人作品「作った作品その3」（サークル：サークル0）。2026年9月20日発売。'));
-check('ファイルの数: 作品ページ＋サークル/ブランドのページ＋5（トップ・ランキング・セール・セールの記録・一覧）。作品が無い売り場は0', L.floorFileCount(fl, makers) === fl.items.length + 2 + 5 && L.floorFileCount({ items: [] }, []) === 0);
+check('ファイルの数: 作品ページ＋サークル/ブランドのページ＋10（トップ・ランキング・セール・セールの記録・一覧・サークル/作家ランキング・検索・索引・運命の作品の候補）。作品が無い売り場は0', L.floorFileCount(fl, makers) === fl.items.length + 2 + 10 && L.floorFileCount({ items: [] }, []) === 0);
 check('サイト全体の計画に、同人・ゲームのページの数を足せる（動画の作品ページより先に枠を取る）', nonItemFileCount({ floors: 100 }, 0, 30) - nonItemFileCount({}, 0, 30) === 100);
 check('本数の決まり: 同人の作品ページは、そのまま全部（動画の作品ページの枠から先に引く）', L.FLOOR_RANKING_LIMIT === 100 && L.FLOOR_SAMPLES === 8);
 
@@ -137,7 +147,7 @@ check('ジャンルのページの場所は、名前から決まる印（動画�
 check('シリーズ: FANZAの id ごと・3本以上（未成年を連想させる名前のシリーズは、作品ごと出さない）', colNames('series') === 'さくぶんシリーズ:123' && cols.series[0].path === '/doujin/series/7/' && !cfl.items.some((i) => i.cid === 'd_300008'), colNames('series'));
 check('作家: 2本以上・作品の多い順（同じなら名前の順）', colNames('author') === '作家A:12,作家B:26', colNames('author'));
 check('発売月: 5本以上の月だけ・新しい月から・名前は「2026年9月」', colNames('month') === '2026年9月:12357' && cols.month[0].path === '/doujin/month/2026-09/' && L.monthName('2026-10') === '2026年10月', colNames('month'));
-check('一覧の場所: /doujin/genre/・/game/author/', L.floorCollectionIndexPath('doujin', 'genre') === '/doujin/genre/' && L.floorCollectionIndexPath('game', 'author') === '/game/author/' && L.FLOOR_COLLECTION_KINDS.join() === 'genre,series,author,month');
+check('一覧の場所: /doujin/genre/・/game/author/', L.floorCollectionIndexPath('doujin', 'genre') === '/doujin/genre/' && L.floorCollectionIndexPath('game', 'author') === '/game/author/' && L.FLOOR_COLLECTION_KINDS.join() === 'genre,series,author,month,type,theme');
 const big = cols.genre[1];
 const facts = L.collectionFacts(big.items, today);
 check('数字: 本数・セール中・最大の割引・新作（30日）・予約', JSON.stringify(facts) === JSON.stringify({ total: 3, sale: 1, maxOff: 50, fresh: 2, upcoming: 0 }), facts);
@@ -163,7 +173,7 @@ check('ページの無いジャンル（行為のジャンル）・月にはリ�
 const ld = L.floorItemListLd(big.items, 'https://example.pages.dev', 2);
 check('一覧の構造化データ（ItemList）: 作品ページへのリンクを並びの順に', ld['@type'] === 'ItemList' && ld.numberOfItems === 2 && ld.itemListElement[1].position === 2 && ld.itemListElement[1].url === 'https://example.pages.dev/doujin/item/d_300002/', ld);
 check('ファイルの数: コレクションのページ＋種類ごとの一覧（ページが無い種類は一覧も無し）',
-  L.floorFileCount(cfl, [], cols) === cfl.items.length + 5 + (2 + 1) + (1 + 1) + (2 + 1) + (1 + 1) && L.floorFileCount(cfl, [], { genre: [], series: [], author: [], month: [] }) === cfl.items.length + 5);
+  L.floorFileCount(cfl, [], cols) === cfl.items.length + 10 + (2 + 1) + (1 + 1) + (2 + 1) + (1 + 1) + (1 + 1) && L.floorFileCount(cfl, [], { genre: [], series: [], author: [], month: [] }) === cfl.items.length + 10);
 
 // 運営者の希望「人気の動き」「セールの充実」（2026-10-09）
 console.log('\n■ 人気の動き（毎日の順位の記録。data/floor_rank_history.json）');
@@ -238,6 +248,74 @@ check('記録が7日に満たないあいだは、検索エンジンに出さな
 const dc = L.floorSaleDayChart(sf.list);
 check('毎日の本数のグラフ: 1日1本・高さは本数に比べて・2日に満たなければ出さない',
   dc.bars.length === 3 && dc.bars[0].bh === 0 && dc.bars[2].bh > dc.bars[1].bh * 0.99 && dc.grid.at(-1).v >= 264 && dc.ticks[0].label === '10/7' && L.floorSaleDayChart([{ d: '2026-10-09', n: 1, max: 0 }]) === null, dc);
+
+// 運営者の希望「同人ならでは・ゲームならではのコレクション」「人気の作家さんとか独自のランキング」「ルーレット」「検索」（2026-10-09）
+console.log('\n■ 同人の形式・特集（同人ならでは・ゲームならでは）');
+const trow = (n, extra) => row(n, { cid: `d_${500000 + n}`, price: 1100, list_price: 1100, campaign: null, genres: [], formats: ['男性向け'], ...extra });
+const img = (type, n) => `https://doujin-assets.dmm.co.jp/digital/${type}/d_${500000 + n}/d_${500000 + n}pl.jpg`;
+const tfl = L.normalizeFloor({
+  ranks: { d_500001: 1, d_500002: 2, d_500003: 3, d_500004: 4, d_500005: 5, d_500006: 6 },
+  items: [
+    trow(1, { image_url: img('voice', 1), genres: ['KU100', 'ASMR'], formats: ['男性向け', '専売', 'コミケ108（2026夏）'], price: 440 }),
+    trow(2, { image_url: img('voice', 2), genres: ['KU100'], formats: ['男性向け', '専売', 'コミケ108（2026夏）'], price: 500 }),
+    trow(3, { image_url: img('voice', 3), genres: ['KU100'], formats: ['男性向け', '専売', 'コミケ108（2026夏）', 'デモ・体験版あり'], price: 330 }),
+    trow(4, { image_url: img('comic', 4), formats: ['男性向け', 'コミケ107（2025冬）'], date: '2024-05-01 00:00:00' }),
+    trow(5, { image_url: img('comic', 5), date: '2025-10-09 00:00:00' }),
+    trow(6, { image_url: img('comic', 6), date: '2025-10-10 00:00:00' }),
+    trow(7, { image_url: img('cg', 7) }),
+    trow(8, { image_url: 'https://evil.example/x.jpg' }),
+  ],
+}, 'doujin', today);
+check('同人の形式は、表紙の置き場所（/digital/<形式>/）で分かる・分からなければ空', tfl.items.map((i) => i.type).join() === 'voice,voice,voice,comic,comic,comic,cg,', tfl.items.map((i) => i.type));
+const tcols = L.floorCollections(tfl.items, 'doujin', today);
+check('形式のページ: 3本以上の形式だけ・決めた順（コミック・CG集・音声・ゲーム）・名前', tcols.type.map((g) => `${g.slug}:${g.name}:${g.total}`).join() === 'comic:同人コミック:3,voice:同人音声・ASMR:3' && tcols.type[0].path === '/doujin/type/comic/', tcols.type.map((g) => [g.slug, g.total]));
+check('特集: コミケ（新しい回から）→ 決めた順・3本以上・ロングセラーは発売から1年以上（きょうの1年前の日まで）',
+  tcols.theme.map((g) => `${g.slug}:${g.total}`).join() === 'comiket108:3,senbai:3,ku100:3,coin:3,longseller:2'.replace(',longseller:2', '') && tcols.theme.find((g) => g.slug === 'comiket108').heading === 'コミケ108（2026夏）の同人作品', tcols.theme.map((g) => [g.slug, g.total]));
+const lcols = L.floorCollections([...tfl.items, ...L.normalizeFloor({ items: [trow(9, { image_url: img('comic', 9), date: '2020-01-01 00:00:00' })] }, 'doujin', today).items], 'doujin', today);
+check('ロングセラー: 発売から365日以上前の作品（2025-10-09 は入り、2025-10-10 は入らない）', lcols.theme.find((g) => g.slug === 'longseller')?.items.map((i) => i.cid).sort().join() === 'd_500004,d_500005,d_500009');
+check('特集の条件は、きょうの日付が無いと日付の特集を作らない', !L.floorCollections(tfl.items, 'doujin').theme.some((g) => g.slug === 'longseller'));
+check('コミケの札の読み取り', JSON.stringify(L.comiketTheme('コミケ108（2026夏）')) === JSON.stringify({ slug: 'comiket108', name: 'コミケ108（2026夏）', heading: 'コミケ108（2026夏）の同人作品', no: 108 }) && L.comiketTheme('コミケ（夏）') === null);
+check('ゲームの特集の決まり（体験版・ブラウザ・Win11・独占・セット・BEST PRICE・2,000円以下・アニメーション・名作）',
+  L.FLOOR_THEMES.game.map((t) => t.slug).join() === 'trial,browser,win11,dlonly,set,bestprice,budget,anime,longseller' && L.FLOOR_THEMES.doujin.map((t) => t.slug).join() === 'senbai,anime,ku100,trial,coin,longseller');
+check('特集・形式の名前に、未成年を連想させる言葉が無い', [...L.FLOOR_THEMES.doujin, ...L.FLOOR_THEMES.game, ...L.DOUJIN_TYPES].every((t) => !isMinorTitle(t.name) && !isMinorTitle(t.heading ?? '')));
+check('タイトル: 形式「FANZA同人 同人音声・ASMRの人気ランキング【2026年10月】（3本）」・特集「FANZA専売の同人作品【FANZA同人・2026年10月】人気順（3本）」',
+  L.collectionTitle(L.FLOORS.doujin, tcols.type[1], '2026年10月', 'サイト') === 'FANZA同人 同人音声・ASMRの人気ランキング【2026年10月】（3本）｜サイト'
+  && L.collectionTitle(L.FLOORS.doujin, tcols.theme[1], '2026年10月', 'サイト') === 'FANZA専売の同人作品【FANZA同人・2026年10月】人気順（3本）｜サイト');
+const tl = L.collectionLinksFor(tfl.items[0], tcols);
+check('作品ページから: 形式のページ・入っている特集のページへ', tl.type.slug === 'voice' && tl.themes.map((g) => g.slug).join() === 'comiket108,senbai,ku100,coin');
+
+console.log('\n■ 人気サークル・ブランド・作家ランキング');
+const eg = L.normalizeFloor({ ranks: { g_1: 1, g_2: 2, g_3: 3, g_4: 4 }, items: [
+  row(1, { cid: 'g_1', maker: 'ブランドA', maker_id: 1, authors: ['作家X'] }),
+  row(2, { cid: 'g_2', maker: 'ブランドB', maker_id: 2, authors: ['作家X', '作家Y'] }),
+  row(3, { cid: 'g_3', maker: 'ブランドB', maker_id: 2, authors: ['作家Y'] }),
+  row(4, { cid: 'g_4', maker: 'ブランドC', maker_id: 3, authors: [] }),
+] }, 'game', today);
+const EH = L.normalizeFloorRankHistory({ game: { g_1: { d: '2026-10-08', r: [5, 1] }, g_2: { d: '2026-10-08', r: [1, 2] }, g_3: { d: '2026-10-08', r: [2, 3] } } });
+const er = L.floorEntityRanking(eg.items, 'maker', { hist: EH.game, day: '2026-10-09', pathOf: (id) => (id === '2' ? '/game/maker/2/' : '') });
+check('点数: 上位300本の順位から（1位＝300点）。サークル/ブランドごとに足した順', er.map((r) => `${r.name}:${r.score}:${r.count}:${r.best}`).join() === 'ブランドB:597:2:2,ブランドA:300:1:1,ブランドC:297:1:4', er.map((r) => [r.name, r.score]));
+check('前日からの動き: 前の日の順位（記録から）とくらべる・前の日にいなければ初登場', er.map((r) => L.moveLabel(r.move)).join() === '→,→,初登場' && er[0].path === '/game/maker/2/' && er[1].path === '', er.map((r) => r.move));
+const ea = L.floorEntityRanking(eg.items, 'author');
+check('作家: 作品の作家ごと（1作品に2人なら、それぞれに点）・記録が無ければ動きは出さない', ea.map((r) => `${r.name}:${r.score}`).join() === '作家X:599,作家Y:597' && ea.every((r) => r.move === null && L.moveLabel(r.move) === ''));
+check('動きの文字', L.moveLabel(2) === '▲2' && L.moveLabel(-1) === '▼1' && L.moveLabel(0) === '→' && L.moveLabel('new') === '初登場' && L.floorEntityRankingPath('doujin', 'maker') === '/doujin/ranking/maker/');
+
+console.log('\n■ 運命の作品・作品検索');
+const gp2 = L.floorGachaPool(tfl.items);
+check('運命の作品の候補: 人気の順・作品ページの場所・同人は縮めた表紙（幅240）', gp2.length === 6 && gp2[0].h === '/doujin/item/d_500001/' && gp2[0].i === 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/voice/d_500001/d_500001pl.jpg?w=240&q=75' && /^https:\/\/[^/]*dmm\.co\.jp\//.test(gp2[0].i), gp2[0]);
+check('ゲームの候補は表紙（…ps.jpg）', L.floorGachaPool(g.items)[0].i.endsWith('ps.jpg'));
+const gacha = fs.readFileSync(new URL('../site/public/gacha.js', import.meta.url), 'utf-8');
+check('public/gacha.js: 候補の場所（h）が /doujin/item/…/・/game/item/…/ のときだけ使う・同人/ゲームは VR・単体の絞り込みを使わない（data-nofilter）',
+  gacha.includes("/^\\/(doujin|game)\\/item\\/[A-Za-z0-9_-]+\\/$/.test(row.h)") && gacha.includes("hasAttribute('data-nofilter')") && G.eligible([{ c: 'a' }, { c: 'b', o: 1 }], false, false).length === 2);
+const SI = L.floorSearchIndex(tfl.items, 'doujin', tcols);
+check('検索の索引: 決まった形の表紙は省く・形式・特集・順位・セール・ジャンルはおだやかなものだけ',
+  SI.items.length === 8 && !('i' in SI.items[0]) && SI.items.some((r) => r.c === 'd_500008' && !r.i) && SI.items[0].y === 'voice' && SI.items[0].r === 1 && SI.items[0].h.length === 4 && SI.themes[0].s === 'comiket108'
+  && SI.genres.every((x) => L.FLOOR_GENRE_OK.includes(x)) && SI.types.map((t) => t.s).join() === 'comic,cg,voice' && L.floorSearchIndexPath('game') === '/data/game-index.json', SI.items[0]);
+check('検索の行: ページを作るときの形（lib）とブラウザの形（public/floor-search.js）が同じ', SI.items.every((r) => JSON.stringify(Object.entries(L.floorSearchRow(r, 'doujin')).filter(([k]) => k !== 'rank')) === JSON.stringify(Object.entries(FS.rowView(r, 'doujin')))),
+  [L.floorSearchRow(SI.items[0], 'doujin'), FS.rowView(SI.items[0], 'doujin')]);
+const idx = { genres: SI.genres, themes: SI.themes, items: SI.items.map((r) => ({ ...r, $k: FS.norm([r.t, r.m, r.a].join(' ')) })) };
+const pick = (st) => FS.filterRows(idx, { q: '', sort: 'pop', st: '', type: '', g: [], h: [], ...st }).sort(FS.SORTS[st.sort || 'pop']).map((r) => r.c.slice(-1)).join('');
+check('検索の絞り込み: 形式・特集（複数は全部）・キーワード（全角・半角をそろえる）・並び順', pick({ type: 'voice' }) === '123' && pick({ h: [0, 3] }) === '123' && pick({ g: [0], h: [0] }) === '1' && pick({ q: 'ＳＡＫＵ' }) === '' && pick({ q: 'その1' }) === '1' && pick({ sort: 'cheap' }).startsWith('312'), [pick({ type: 'voice' }), pick({ h: [0, 3] }), pick({ sort: 'cheap' })]);
+check('検索のスマホの表紙: 同人は縮めた版（幅240）・ゲームは表紙（…ps.jpg）', FS.thumbUrl('doujin', 'https://pics.dmm.co.jp/digital/voice/x/xpl.jpg', true) === 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/voice/x/xpl.jpg?w=240&q=75' && FS.thumbUrl('doujin', 'https://pics.dmm.co.jp/digital/voice/x/xpl.jpg', false).startsWith('https://pics.') && FS.thumbUrl('game', 'https://pics.dmm.co.jp/digital/pcgame/x/xpl.jpg', true).endsWith('xps.jpg') && FS.PAGE === L.FLOOR_SEARCH_PAGE);
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

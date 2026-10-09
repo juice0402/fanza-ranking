@@ -2664,7 +2664,33 @@ for _fk in _FD.FLOORS:
     _ok_genres = set(re.findall(r"'([^']+)'", re.search(r"FLOOR_GENRE_OK = \[([\s\S]*?)\];", _floor_src).group(1)))
     _cslug = lambda s_: _hl.sha1(_ud.normalize("NFC", s_).encode("utf-8")).hexdigest()[:10]  # noqa: E731  items.js の entitySlug と同じ
     _cnames = lambda v_, n_: [t_ for t_ in (str(u_).strip() for u_ in (v_ or [])) if t_][:n_]  # noqa: E731  floors.js の names と同じ
-    _cwant = {"genre": {}, "series": {}, "author": {}, "month": {}}
+    _cwant = {"genre": {}, "series": {}, "author": {}, "month": {}, "type": {}, "theme": {}}
+    # 同人の形式（表紙の置き場所）・特集（floors.js の FLOOR_THEMES・comiketTheme と同じ条件。2026-10-09）
+    _jst = datetime.date.fromisoformat(JST_TODAY)
+    _ago = lambda n_: (_jst - datetime.timedelta(days=n_)).isoformat()  # noqa: E731
+    _fmt = lambda name_: (lambda x: name_ in _cnames(x["formats"], 12))  # noqa: E731
+    _gen = lambda name_: (lambda x: name_ in _cnames(x["genres"], 30))  # noqa: E731
+    _rel = lambda x: str(x["date"])[:10] <= JST_TODAY  # noqa: E731
+    _yen = lambda x: x["price"] if isinstance(x["price"], int) and 0 < x["price"] < 10_000_000 else 0  # noqa: E731
+    _themes = {
+        "doujin": [("senbai", _fmt("専売")), ("anime", _gen("動画・アニメーション")), ("ku100", _gen("KU100")), ("trial", _fmt("デモ・体験版あり")),
+                   ("coin", lambda x: 0 < _yen(x) <= 500), ("longseller", lambda x: _rel(x) and str(x["date"])[:10] <= _ago(365))],
+        "game": [("trial", _fmt("デモ・体験版あり")), ("browser", _fmt("ブラウザ対応")), ("win11", _fmt("Windows11対応作品")), ("dlonly", _fmt("DL版独占販売")),
+                 ("set", _fmt("セット商品")), ("bestprice", _gen("BEST PRICE版")), ("budget", lambda x: 0 < _yen(x) <= 2000), ("anime", _gen("アニメーション")),
+                 ("longseller", lambda x: _rel(x) and str(x["date"])[:10] <= _ago(365 * 5))],
+    }[_fk]
+    for x in _fshow:
+        _m = re.match(r"^https://(?:pics|doujin-assets)\.dmm\.co\.jp/digital/(comic|cg|voice|game)/", str(x["image_url"] or "")) if _fk == "doujin" else None
+        if _m:
+            _cwant["type"].setdefault(_m.group(1), []).append(x)
+        if _fk == "doujin":
+            for f_ in set(_cnames(x["formats"], 12)):
+                _cm = re.match(r"^コミケ(\d{2,3})（(\d{4})(夏|冬)）$", f_)
+                if _cm:
+                    _cwant["theme"].setdefault(f"comiket{_cm.group(1)}", []).append(x)
+        for s_, t_ in _themes:
+            if t_(x):
+                _cwant["theme"].setdefault(s_, []).append(x)
     for x in _fshow:
         for g_ in set(_cnames(x["genres"], 30)) & _ok_genres:
             _cwant["genre"].setdefault(_cslug(g_), []).append(x)
@@ -2673,7 +2699,7 @@ for _fk in _FD.FLOORS:
         for a_ in set(_cnames(x["authors"], 4)):
             _cwant["author"].setdefault(_cslug(a_), []).append(x)
         _cwant["month"].setdefault(str(x["date"])[:7], []).append(x)
-    _cmin = {"genre": 3, "series": 3, "author": 2, "month": 5}
+    _cmin = {"genre": 3, "series": 3, "author": 2, "month": 5, "type": 3, "theme": 3}
     _col_bad, _col_sm, _col_noidx, _col_n = [], [], [], {}
     for kind_, groups_ in _cwant.items():
         want_ = {s_ for s_, xs_ in groups_.items() if len(xs_) >= _cmin[kind_]}
@@ -2693,12 +2719,46 @@ for _fk in _FD.FLOORS:
         idx_ = os.path.join(DIST, _fk, kind_, "index.html")
         if os.path.isfile(idx_) and ('name="robots" content="noindex' in read_raw(idx_)) == (f"/{_fk}/{kind_}/" in sm_paths):
             _col_sm.append(f"/{_fk}/{kind_}/")
-    check(f"{_flabel}: コレクションのページは、決まった本数以上の名前だけ（ジャンル{_col_n['genre']}・シリーズ{_col_n['series']}・作家{_col_n['author']}・発売月{_col_n['month']}）・ページがあれば一覧もある",
+    check(f"{_flabel}: コレクションのページは、決まった本数以上の名前だけ（ジャンル{_col_n['genre']}・シリーズ{_col_n['series']}・作家{_col_n['author']}・発売月{_col_n['month']}・形式{_col_n['type']}・特集{_col_n['theme']}）・ページがあれば一覧もある",
           not _col_bad, _col_bad[:3])
     check(f"{_flabel}: コレクションのページ・一覧: sitemap に入っている ⇔ noindex でない・コメントのある作品が1本も無いページは noindex",
           not _col_sm and not _col_noidx, (_col_sm[:3], _col_noidx[:3]))
     if _col_n["genre"]:
         check(f"{_flabel}: 売り場のトップと、案内のタブから「ジャンルから探す」へリンクしている", f'href="/{_fk}/genre/"' in read_raw(os.path.join(DIST, _fk, "index.html")) and f'href="/{_fk}/genre/"' in read_raw(os.path.join(DIST, _fk, "ranking", "index.html")))
+    # 人気サークル/ブランド・作家ランキング・作品検索・運命の作品・パソコン用の2列（運営者の希望。2026-10-09）
+    _released = [x for x in _fshow if str(x["date"])[:10] <= JST_TODAY]
+    _show_cids = {x["cid"] for x in _fshow}
+    _er_bad = []
+    for by_ in ("maker", "author"):
+        p_ = os.path.join(DIST, _fk, "ranking", by_, "index.html")
+        if not os.path.isfile(p_):
+            continue
+        h_ = read_raw(p_)
+        if len(re.findall(r'<span class="erank-no">', h_)) < 1 or "の時点" not in read(p_):
+            _er_bad.append((by_, "行・注記"))
+        if ('name="robots" content="noindex' in h_) == (f"/{_fk}/ranking/{by_}/" in sm_paths):
+            _er_bad.append((by_, "sitemap"))
+    _want_maker_rank = any(x["maker_id"] for x in _released if x["cid"] in _fdata["ranks"])
+    check(f"{_flabel}: 人気{'サークル' if _fk == 'doujin' else 'ブランド'}ランキングがある・行に順位・「○日の時点」・sitemap に入っている ⇔ noindex でない",
+          not _er_bad and os.path.isfile(os.path.join(DIST, _fk, "ranking", "maker", "index.html")) == _want_maker_rank, _er_bad)
+    _sp = os.path.join(DIST, _fk, "search", "index.html")
+    _six = os.path.join(DIST, "data", f"{_fk}-index.json")
+    _six_ok = False
+    if os.path.isfile(_six):
+        _sj = json.load(open(_six, encoding="utf-8"))
+        _six_ok = len(_sj.get("items", [])) == len(_fshow) and all(re.match(r"^[A-Za-z0-9_-]+$", r_["c"]) for r_ in _sj["items"]) and set(_sj.get("genres", [])) <= _ok_genres
+    check(f"{_flabel}: 作品検索のページ（noindex・sitemap なし）と索引（全作品・おだやかなジャンルだけ）がある",
+          os.path.isfile(_sp) and 'name="robots" content="noindex' in read_raw(_sp) and f"/{_fk}/search/" not in sm_paths and _six_ok and 'id="fs-list"' in read_raw(_sp))
+    _gj = os.path.join(DIST, "data", f"{_fk}-gacha.json")
+    _gpool = json.load(open(_gj, encoding="utf-8")) if os.path.isfile(_gj) else []
+    _hub_raw = read_raw(os.path.join(DIST, _fk, "index.html"))
+    check(f"{_flabel}: 運命の作品の候補（{len(_gpool)}本）は、この売り場の作品ページへ・トップと作品ページに運命の作品の欄（VR・単体の絞り込みを使わない）",
+          len(_gpool) >= 3 and all(re.match(rf"^/{_fk}/item/[A-Za-z0-9_-]+/$", r_["h"]) and r_["c"] in _show_cids for r_ in _gpool)
+          and 'id="gacha-data"' in _hub_raw and "data-nofilter" in _hub_raw
+          and all(f'data-src="/data/{_fk}-gacha.json"' in read_raw(p_) for p_ in _item_pages[:20]))
+    check(f"{_flabel}: トップは、パソコンで2列（左に作品の棚・右の欄に 作品を探す・ランキング・特集）",
+          'class="fhome"' in _hub_raw and 'class="fhome-side"' in _hub_raw and f'action="/{_fk}/search/"' in _hub_raw
+          and css_has(".fhome", r"grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s*clamp"))
     # セールごと（ゲーム）・割引ごと（同人）のページ（運営者の希望「セールの充実」。2026-10-09）: 対象が3本以上のものだけ
     _released = [x for x in _fshow if str(x["date"])[:10] <= JST_TODAY]
     if _fk == "game":

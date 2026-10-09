@@ -1,16 +1,23 @@
 ---
 // FANZA同人（/doujin/）・FANZAゲーム（/game/）の売り場のトップ（運営者の希望「同人・ゲームのページも」。2026-10-09。lib/floors.js）。
-// 人気ランキングの上のほう → セール中 → 新作で人気 → 予約（ゲーム）→ サークル/ブランドから探す。
-// データは毎日の更新が集める doujin.json・game.json（人気順の上から 同人1,000本・ゲーム500本。未成年を連想させる作品は入れていない）
+// データは毎日の更新が集める doujin.json・game.json（人気順の上から 同人1,000本・ゲーム500本。未成年を連想させる作品は入れていない）。
+// 並び（運営者の希望「コレクションが増えてきたら、パソコンはパソコン版用のレイアウトに」。2026-10-09。動画のトップと同じ考え方）:
+//   パソコン（960px〜）: 左に 人気ランキング → きのうから上がった作品 → 形式別の人気（同人）→ セール中 → 新作で人気 → 予約 → サークル/ブランド、
+//                       右の欄に 作品を探す → 人気サークル/ブランド・作家ランキング → 特集 → ジャンル → 運命の作品
+//   スマホ: 1列。左右の欄の中身を、CSS の order で並べかえる（.fhome-main・.fhome-side は display: contents）
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
 import FloorTabs from '../../components/FloorTabs.astro';
-import { activeFloors, floorCollectionGroups, floorMakerGroups, floorRankHistory, floorSalePageGroups, floors, today } from '../../lib/data.js';
+import FloorMiniShelf from '../../components/FloorMiniShelf.astro';
+import FloorRow from '../../components/FloorRow.astro';
+import GachaCorner from '../../components/GachaCorner.astro';
+import { activeFloors, floorCollectionGroups, floorEntityRankings, floorGachaPools, floorMakerGroups, floorRankHistory, floorSalePageGroups, floors, today } from '../../lib/data.js';
 import {
   FLOORS, FLOOR_COLLECTIONS, FLOOR_HUB_SHOWN, floorCollectionIndexPath, floorItemListLd, floorRankNote, floorRisers, floorSaleHistoryPath, floorMakerIndexPath, floorMaxOff, floorNewPopular, floorPath, floorRanking, floorRankingPath,
-  floorSaleItems, floorSalePath, floorUpcoming, priceNote, saleBadgeOf,
+  floorSaleItems, floorSalePath, floorUpcoming, priceNote, saleBadgeOf, FLOOR_ENTITY_TOP, floorEntityLabel, floorEntityRankingPath, floorSearchPath, moveLabel,
 } from '../../lib/floors.js';
+import { assetUrl } from '../../lib/assets.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
 
@@ -32,6 +39,22 @@ const makers = floorMakerGroups[key].slice(0, 24);
 const cols = floorCollectionGroups[key];
 const genreChips = cols.genre.slice(0, 16);
 const findLinks = ['series', 'author', 'month'].filter((k) => cols[k].length > 0).map((k) => ({ name: FLOOR_COLLECTIONS[k].find, href: floorCollectionIndexPath(key, k), count: cols[k].length, unit: k === 'month' ? 'か月' : '件' }));
+// 同人ならでは・ゲームならではの特集と、同人の形式別の人気（2026-10-09）
+const themes = cols.theme;
+const types = cols.type;
+// 人気サークル/ブランド・作家ランキング（上から5つ）
+const entityLists = ['maker', 'author'].filter((by) => floorEntityRankings[key][by]?.length > 0).map((by) => ({
+  by,
+  label: floorEntityLabel(f, by),
+  path: floorEntityRankingPath(key, by),
+  rows: floorEntityRankings[key][by].slice(0, 5).map((r) => ({
+    r,
+    row: { c: r.key, href: r.path || `/${key}/item/${r.items[0].cid}/`, title: r.name, img: r.items[0].image_url, wide: key === 'doujin', line: `上位${FLOOR_ENTITY_TOP}本に${r.count}本・最高${r.best}位`, meta: '', upcoming: false },
+  })),
+}));
+// 運命の作品（人気の作品から3本。候補はページの中に入れる）
+const gacha = floorGachaPools[key];
+const hasGacha = gacha.length >= 3;
 // 人気の動き（毎日の順位の記録。2026-10-09）: ランキングのカードの「前日から▲3」と、きのうから人気が上がった作品
 const hist = floorRankHistory[key];
 const rankNotes = ranking.map((item) => (data.updated ? floorRankNote(hist.get(item.cid), data.updated, floorRankHistory.since[key]) : ''));
@@ -62,105 +85,171 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
       <FloorTabs floorKey={key} current="hub" />
     </section>
 
-    {ranking.length > 0 && (
-      <section class="section" aria-labelledby="fl-rank-title">
-        <div class="section-head">
-          <h2 id="fl-rank-title" class="section-title">人気ランキング</h2>
-          <a class="subsection-more" href={floorRankingPath(key)}>TOP100を見る</a>
-        </div>
-        <ul class="shelf">
-          {ranking.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} rankNote={rankNotes[i]} /></li>)}
-        </ul>
-      </section>
-    )}
-
-    {risers.length >= 3 && (
-      <section class="section" aria-labelledby="fl-rise-title">
-        <div class="section-head">
-          <h2 id="fl-rise-title" class="section-title">きのうから人気が上がった作品</h2>
-          <p class="section-note">人気ランキングの順位の動き</p>
-        </div>
-        <ul class="shelf">
-          {risers.map((r) => <li class="shelf-cell"><FloorCard item={r.item} badge={`${r.cur}位`} rankNote={`前日から▲${r.rise}`} note={priceNote(r.item)} /></li>)}
-        </ul>
-      </section>
-    )}
-
-    {saleShown.length > 0 && (
-      <section class="section" aria-labelledby="fl-sale-title">
-        <div class="section-head">
-          <h2 id="fl-sale-title" class="section-title">セール中の人気作品</h2>
-          <a class="subsection-more" href={floorSalePath(key)}>セール中の{sale.length}本を見る</a>
-        </div>
-        <ul class="shelf">
-          {saleShown.map((item) => <li class="shelf-cell"><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} /></li>)}
-        </ul>
-        <ul class="chips find-more">
-          {salePages.map((p) => <li class="chip"><a class="chip-tag" href={p.path}>{p.name}（{p.total}本）</a></li>)}
-          <li class="chip"><a class="chip-tag" href={floorSaleHistoryPath(key)}>{f.label}のセールはいつ？</a></li>
-        </ul>
-      </section>
-    )}
-
-    {newPop.length > 0 && (
-      <section class="section" aria-labelledby="fl-new-title">
-        <div class="section-head">
-          <h2 id="fl-new-title" class="section-title">新作で人気（最近30日の発売）</h2>
-        </div>
-        <ul class="shelf">
-          {newPop.map((item) => <li class="shelf-cell"><FloorCard item={item} note={`${formatDateJp(item.dateKey)}発売`} /></li>)}
-        </ul>
-      </section>
-    )}
-
-    {upcomingList.length > 0 && (
-      <section class="section" aria-labelledby="fl-up-title">
-        <div class="section-head">
-          <h2 id="fl-up-title" class="section-title">予約受付中</h2>
-          <p class="section-note">発売日の近い順</p>
-        </div>
-        <ul class="shelf">
-          {upcomingList.map((item) => <li class="shelf-cell"><FloorCard item={item} note={`${formatDateJp(item.dateKey)}発売予定`} /></li>)}
-        </ul>
-      </section>
-    )}
-
-    {(genreChips.length > 0 || findLinks.length > 0) && (
-      <section class="section" aria-labelledby="fl-find-title">
-        <div class="section-head">
-          <h2 id="fl-find-title" class="section-title">{genreChips.length > 0 ? 'ジャンルから探す' : 'ほかの探し方'}</h2>
-          {cols.genre.length > 0 && <a class="subsection-more" href={floorCollectionIndexPath(key, 'genre')}>ジャンルの一覧（{cols.genre.length}件）</a>}
-        </div>
-        {genreChips.length > 0 && (
-          <ul class="chips">
-            {genreChips.map((g) => <li class="chip"><a class="chip-tag" href={g.path}>{g.name} {g.total}本</a></li>)}
-          </ul>
+    <div class="fhome">
+      <div class="fhome-main">
+        {ranking.length > 0 && (
+          <section class="section" style="order: 2" aria-labelledby="fl-rank-title">
+            <div class="section-head">
+              <h2 id="fl-rank-title" class="section-title">人気ランキング</h2>
+              <a class="subsection-more" href={floorRankingPath(key)}>TOP100を見る</a>
+            </div>
+            <ul class="shelf">
+              {ranking.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} rankNote={rankNotes[i]} /></li>)}
+            </ul>
+          </section>
         )}
-        {findLinks.length > 0 && (
-          <ul class="chips find-more">
-            {findLinks.map((l) => <li class="chip"><a class="chip-tag" href={l.href}>{l.name}（{l.count}{l.unit}）</a></li>)}
-          </ul>
-        )}
-      </section>
-    )}
 
-    {makers.length > 0 && (
-      <section class="section" aria-labelledby="fl-maker-title">
-        <div class="section-head">
-          <h2 id="fl-maker-title" class="section-title">{f.maker}から探す</h2>
-          <a class="subsection-more" href={floorMakerIndexPath(key)}>{f.maker}の一覧</a>
-        </div>
-        <ul class="name-grid">
-          {makers.map((g) => (
-            <li>
-              <a class="name-link" href={g.path} title={g.name}>
-                <span class="name-link-name">{g.name}</span>
-                <span class="name-link-count">{g.total}本</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    )}
+        {risers.length >= 3 && (
+          <section class="section" style="order: 3" aria-labelledby="fl-rise-title">
+            <div class="section-head">
+              <h2 id="fl-rise-title" class="section-title">きのうから人気が上がった作品</h2>
+              <p class="section-note">人気ランキングの順位の動き</p>
+            </div>
+            <ul class="shelf">
+              {risers.map((r) => <li class="shelf-cell"><FloorCard item={r.item} badge={`${r.cur}位`} rankNote={`前日から▲${r.rise}`} note={priceNote(r.item)} /></li>)}
+            </ul>
+          </section>
+        )}
+
+        {types.length > 0 && (
+          <section class="section" style="order: 5" aria-labelledby="fl-type-title">
+            <div class="section-head">
+              <h2 id="fl-type-title" class="section-title">形式別の人気</h2>
+              <p class="section-note">コミック・CG集・音声・ゲームのそれぞれの人気順</p>
+            </div>
+            {types.map((g) => (
+              <div class="type-block">
+                <div class="subsection-head">
+                  <h3 class="subsection-title">{g.name}</h3>
+                  <a class="subsection-more" href={g.path}>ランキングを見る（{g.total}本）</a>
+                </div>
+                <FloorMiniShelf items={g.items.slice(0, 6)} level="h4" />
+              </div>
+            ))}
+          </section>
+        )}
+
+        {saleShown.length > 0 && (
+          <section class="section" style="order: 6" aria-labelledby="fl-sale-title">
+            <div class="section-head">
+              <h2 id="fl-sale-title" class="section-title">セール中の人気作品</h2>
+              <a class="subsection-more" href={floorSalePath(key)}>セール中の{sale.length}本を見る</a>
+            </div>
+            <ul class="shelf">
+              {saleShown.map((item) => <li class="shelf-cell"><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} /></li>)}
+            </ul>
+            <ul class="chips find-more">
+              {salePages.map((p) => <li class="chip"><a class="chip-tag" href={p.path}>{p.name}（{p.total}本）</a></li>)}
+              <li class="chip"><a class="chip-tag" href={floorSaleHistoryPath(key)}>{f.label}のセールはいつ？</a></li>
+            </ul>
+          </section>
+        )}
+
+        {newPop.length > 0 && (
+          <section class="section" style="order: 8" aria-labelledby="fl-new-title">
+            <div class="section-head">
+              <h2 id="fl-new-title" class="section-title">新作で人気（最近30日の発売）</h2>
+            </div>
+            <ul class="shelf">
+              {newPop.map((item) => <li class="shelf-cell"><FloorCard item={item} note={`${formatDateJp(item.dateKey)}発売`} /></li>)}
+            </ul>
+          </section>
+        )}
+
+        {upcomingList.length > 0 && (
+          <section class="section" style="order: 10" aria-labelledby="fl-up-title">
+            <div class="section-head">
+              <h2 id="fl-up-title" class="section-title">予約受付中</h2>
+              <p class="section-note">発売日の近い順</p>
+            </div>
+            <ul class="shelf">
+              {upcomingList.map((item) => <li class="shelf-cell"><FloorCard item={item} note={`${formatDateJp(item.dateKey)}発売予定`} /></li>)}
+            </ul>
+          </section>
+        )}
+
+        {makers.length > 0 && (
+          <section class="section" style="order: 12" aria-labelledby="fl-maker-title">
+            <div class="section-head">
+              <h2 id="fl-maker-title" class="section-title">{f.maker}から探す</h2>
+              <a class="subsection-more" href={floorMakerIndexPath(key)}>{f.maker}の一覧</a>
+            </div>
+            <ul class="name-grid">
+              {makers.map((g) => (
+                <li>
+                  <a class="name-link" href={g.path} title={g.name}>
+                    <span class="name-link-name">{g.name}</span>
+                    <span class="name-link-count">{g.total}本</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+
+      <div class="fhome-side">
+        <section class="section find" style="order: 1" aria-labelledby="fl-search-title">
+          <h2 id="fl-search-title" class="section-title">作品を探す</h2>
+          <form class="hero-search search-bar" action={floorSearchPath(key)} method="get" role="search">
+            <svg class="search-bar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5 20 20" /></svg>
+            <label class="visually-hidden" for="fl-q">{f.label}の作品を探す（タイトル・{f.maker}{key === 'game' ? '・作家' : ''}）</label>
+            <input id="fl-q" class="search-bar-input" type="search" name="q" placeholder={key === 'game' ? 'タイトル・ブランド・作家' : 'タイトル・サークル'} enterkeyhint="search" autocomplete="off" />
+            <button class="search-bar-btn" type="submit">探す</button>
+          </form>
+        </section>
+
+        {entityLists.map((l) => (
+          <section class="section" style="order: 4" aria-labelledby={`fl-erank-${l.by}`}>
+            <div class="section-head">
+              <h2 id={`fl-erank-${l.by}`} class="section-title">人気{l.label}ランキング</h2>
+              <a class="subsection-more" href={l.path}>TOP50を見る</a>
+            </div>
+            <ol class="ws-list erank-list">
+              {l.rows.map(({ r, row }) => <FloorRow row={row} no={r.rank} move={moveLabel(r.move)} titleJs={false} />)}
+            </ol>
+          </section>
+        ))}
+
+        {themes.length > 0 && (
+          <section class="section" style="order: 7" aria-labelledby="fl-theme-title">
+            <div class="section-head">
+              <h2 id="fl-theme-title" class="section-title">{key === 'doujin' ? '同人ならではの特集' : 'ゲームならではの特集'}</h2>
+              <a class="subsection-more" href={floorCollectionIndexPath(key, 'theme')}>特集の一覧</a>
+            </div>
+            <ul class="chips">
+              {themes.map((g) => <li class="chip"><a class="chip-tag" href={g.path}>{g.name} {g.total}本</a></li>)}
+            </ul>
+          </section>
+        )}
+
+        {(genreChips.length > 0 || findLinks.length > 0) && (
+          <section class="section" style="order: 11" aria-labelledby="fl-find-title">
+            <div class="section-head">
+              <h2 id="fl-find-title" class="section-title">{genreChips.length > 0 ? 'ジャンルから探す' : 'ほかの探し方'}</h2>
+              {cols.genre.length > 0 && <a class="subsection-more" href={floorCollectionIndexPath(key, 'genre')}>ジャンルの一覧（{cols.genre.length}件）</a>}
+            </div>
+            {genreChips.length > 0 && (
+              <ul class="chips">
+                {genreChips.map((g) => <li class="chip"><a class="chip-tag" href={g.path}>{g.name} {g.total}本</a></li>)}
+              </ul>
+            )}
+            {findLinks.length > 0 && (
+              <ul class="chips find-more">
+                {findLinks.map((l) => <li class="chip"><a class="chip-tag" href={l.href}>{l.name}（{l.count}{l.unit}）</a></li>)}
+              </ul>
+            )}
+          </section>
+        )}
+
+        {hasGacha && (
+          <div class="fhome-gacha" style="order: 9">
+            <GachaCorner gacha={gacha} floor={key} level="h2" />
+          </div>
+        )}
+      </div>
+    </div>
   </div>
+
+  {hasGacha && <script is:inline src={assetUrl('/gacha.js')} defer></script>}
 </Base>

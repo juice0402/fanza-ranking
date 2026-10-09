@@ -16,7 +16,7 @@ import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
 import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG_PAGE_GENRES } from '../config.js';
 import { genreTopLists, groupByEntry } from './insights.js';
 import { buildItemsIndex } from './search.js';
-import { FLOOR_KEYS, floorCollections, floorFileCount, floorMakers, floorSalePages, normalizeFloor, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
+import { FLOOR_KEYS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
@@ -98,7 +98,7 @@ export const floors = Object.fromEntries(FLOOR_KEYS.map((k) => [k, normalizeFloo
 export const floorMakerGroups = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorMakers(floors[k].items, k)]));
 export const floorMakerById = Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floorMakerGroups[k].map((g) => [g.id, g]))]));
 /** 売り場ごとのコレクション（ジャンル・シリーズ・作家・発売月。lib/floors.js の floorCollections。2026-10-09） */
-export const floorCollectionGroups = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorCollections(floors[k].items, k)]));
+export const floorCollectionGroups = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorCollections(floors[k].items, k, today)]));
 /** 売り場ごとのセールのページ（ゲームはセールの札ごと・同人は割引ごと。lib/floors.js の floorSalePages。2026-10-09） */
 export const floorSalePageGroups = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorSalePages(floors[k].items, k)]));
 export const floorSalePageBySlug = Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floorSalePageGroups[k].map((p) => [p.slug, p]))]));
@@ -106,6 +106,24 @@ export const floorSalePageBySlug = Object.fromEntries(FLOOR_KEYS.map((k) => [k, 
 const floorHistShards = import.meta.glob('../data/floor_{rank,sale}_history.json', { eager: true, import: 'default' });
 export const floorRankHistory = normalizeFloorRankHistory(floorHistShards['../data/floor_rank_history.json'] ?? null);
 export const floorSaleHistory = normalizeFloorSaleHistory(floorHistShards['../data/floor_sale_history.json'] ?? null);
+/** 人気サークル/ブランド・作家ランキング（lib/floors.js の floorEntityRanking。2026-10-09）: { doujin: { maker: […] }, game: { maker: […], author: […] } }。作家のいない売り場（同人）は作家のランキングを作らない */
+export const floorEntityRankings = Object.fromEntries(FLOOR_KEYS.map((k) => {
+  const opts = (by) => ({
+    hist: floorRankHistory[k],
+    day: floors[k].updated,
+    pathOf: by === 'maker'
+      ? (id) => floorMakerById[k].get(Number(id))?.path ?? ''
+      : (name) => floorCollectionGroups[k].author.find((g) => g.name === name)?.path ?? '',
+  });
+  const out = { maker: floorEntityRanking(floors[k].items, 'maker', opts('maker')) };
+  const author = floorEntityRanking(floors[k].items, 'author', opts('author'));
+  if (author.length >= 10) out.author = author;
+  return [k, out];
+}));
+/** 運命の作品の候補（売り場ごと。トップはページの中に、作品ページは /data/<売り場>-gacha.json を読む） */
+export const floorGachaPools = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorGachaPool(floors[k].items)]));
+/** 作品検索の索引（/data/<売り場>-index.json と、検索のページの「はじめの一覧」） */
+export const floorSearchIndexes = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorSearchIndex(floors[k].items, k, floorCollectionGroups[k])]));
 /** ページのある売り場（作品が1本以上） */
 export const activeFloors = FLOOR_KEYS.filter((k) => floors[k].items.length > 0);
 

@@ -3424,6 +3424,11 @@ html.lightbox-open {
   font: 400 40px/1 var(--font-display);
 }
 
+/* 同人の運命の作品は、横長の表紙がまるごと入る横長の窓（2026-10-09） */
+.gacha.is-wide .reel-window {
+  aspect-ratio: 4 / 3;
+}
+
 /* 回っているあいだは、表紙を少しぼかして、回っている感じを出す */
 .reel-card.is-spinning .reel-window img {
   filter: blur(1.5px) saturate(0.8);
@@ -5702,6 +5707,140 @@ a.tf-name {
 .floor-tabs .chip-link[aria-current='page'] {
   border-color: var(--pop);
   color: var(--pop);
+}
+
+/* ---------- 同人・ゲームの売り場のトップ（.fhome。運営者の希望「コレクションが増えてきたら、パソコンはパソコン版用のレイアウトに」。2026-10-09） ----------
+   スマホ: 1列。左右の欄（.fhome-main・.fhome-side）は箱を作らず、中の欄を、ページが付けた order の順に並べる
+   パソコン（960px〜）: 動画のトップと同じ2列（左に作品の棚、右の欄に 作品を探す・ランキング・特集・ジャンル・運命の作品。欄と欄の間は細い線） */
+.fhome {
+  display: flex;
+  flex-direction: column;
+}
+
+.fhome-main,
+.fhome-side {
+  display: contents;
+}
+
+.fhome .find {
+  margin-top: 28px;
+}
+
+/* 運命の作品が出ないとき（JavaScript が使えない・候補を読めない）は、包みごと隠す（パソコンの右の欄の仕切り線を残さない） */
+html:not(.js) .fhome-gacha,
+.fhome-gacha:has(> [hidden]) {
+  display: none;
+}
+
+.type-block + .type-block {
+  margin-top: 22px;
+}
+
+.type-block .mini-shelf {
+  margin-top: 8px;
+}
+
+@media (min-width: 960px) {
+  .fhome {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(300px, 30%, 380px);
+    column-gap: 48px;
+    align-items: start;
+  }
+
+  .fhome-main,
+  .fhome-side {
+    display: block;
+    min-width: 0;
+  }
+
+  .fhome-side > section,
+  .fhome-side > .fhome-gacha {
+    margin-top: 28px;
+    padding-top: 26px;
+    border-top: 1px solid var(--line);
+  }
+
+  .fhome-side > section:first-child {
+    margin-top: 44px;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .fhome-side .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fhome-side .hero-search {
+    max-width: none;
+  }
+
+  .fhome-side .gacha-solo {
+    margin-top: 0;
+  }
+
+  .fhome-side .corner-title {
+    color: var(--paper);
+    font-size: 22px;
+  }
+
+  .fhome-side .slot-reels {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    max-width: none;
+    margin-top: 14px;
+  }
+
+  .fhome-side .slot {
+    margin-top: 0;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+}
+
+/* ランキングの切りかえ（作品・サークル/ブランド・作家・同人の形式ごと。2026-10-09） */
+.floor-tabs.rank-nav {
+  margin: 0 0 4px;
+}
+
+/* 人気サークル/ブランド・作家ランキングの行（.ws-row）: 行の頭の順位と、前日からの動き */
+.erank-no {
+  display: inline-block;
+  min-width: 1.6em;
+  margin-right: 6px;
+  color: var(--pop);
+  font: 400 17px/1 var(--font-display);
+  vertical-align: -1px;
+}
+
+.erank-move {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 7px;
+  border-radius: var(--r-pill);
+  box-shadow: 0 0 0 1px var(--line);
+  color: var(--paper-dim);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.erank-move.move-up {
+  color: var(--pop);
+}
+
+.erank-move.move-new {
+  background: var(--pop);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+/* 同人の横長の表紙の行は、表紙の列を少し広く */
+.ws-row:has(.item-cover.is-wide) .item {
+  grid-template-columns: 88px minmax(0, 1fr);
 }
 
 /* トップの「作品を探す」の、同人・ゲームの2つ（横に2つ並べる） */
