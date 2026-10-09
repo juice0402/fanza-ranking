@@ -8,10 +8,11 @@ import MiniShelf from '../../components/MiniShelf.astro';
 import WorkRows from '../../components/WorkRows.astro';
 import GachaCorner from '../../components/GachaCorner.astro';
 import RankTrend from '../../components/RankTrend.astro';
-import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, saleCampaignBySlug, today, rankHistory, seriesById, labelById, roundups, genreTops, contentGenres } from '../../lib/data.js';
+import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, today, rankHistory, seriesById, labelById, roundups, genreTops, contentGenres, tenYenInfo, campaignHrefOf } from '../../lib/data.js';
+import { TEN_YEN_PATH } from '../../lib/ten-yen.js';
 import { popularInGenre, roundupFor, sameSeries } from '../../lib/insights.js';
 import { weekRangeShort, weeklyPath } from '../../lib/roundups.js';
-import { campaignSlug, endIso, endLabel, offPercent, onSaleItems, saleHref } from '../../lib/sale.js';
+import { endIso, endLabel, offPercent, onSaleItems } from '../../lib/sale.js';
 import { nextWorksOf, relatedForPage } from '../../lib/stay.js';
 import {
   breadcrumbLd,
@@ -54,10 +55,12 @@ const hist = rankHistory.get(item.cid) ?? null;
 const weekly = roundupFor(item, roundups);
 const next = nextWorksOf(item, actressByName, today);
 const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
-const saleNow = onSaleItems([item], sale, today)[0]?.sale ?? null;
+// 10円セールの対象なら、ふつうのセールの札の代わりに、10円セールの札（2026-10-09）
+const tenNow = tenYenInfo('video', item.cid);
+const saleNow = tenNow ? null : onSaleItems([item], sale, today)[0]?.sale ?? null;
 const saleOff = saleNow ? offPercent(saleNow.price, saleNow.listPrice) : null;
 const yen = (n) => n.toLocaleString('ja-JP');
-const saleCampHref = saleNow ? saleCampaignBySlug.get(campaignSlug(saleNow.title))?.path ?? saleHref(saleNow.k) : '';
+const saleCampHref = saleNow ? campaignHrefOf(saleNow) : '';
 const samples = item.sample_images.slice(0, 8);
 // サンプル動画がある作品は、動画を表紙の場所に出し、パッケージ写真は、サンプル画像の下に別の欄で大きく出す
 // （サンプル画像の並びに混ぜると、枚数が増えて並びが崩れやすいため）。
@@ -100,7 +103,7 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
   jsonLd={[breadcrumbLd(trail)]}
 >
   {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
-  {saleNow && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
+  {(saleNow || tenNow?.end) && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
@@ -207,6 +210,15 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
           )}
         </dl>
 
+        {/* 10円セールの対象なら、10円の札・通常の価格・いつまで・10円セールのページへ（終わりの時刻をすぎたら、ブラウザで隠す。/sale.js） */}
+        {tenNow && (
+          <p class="sale-strip ten-strip" data-sale-end={tenNow.end ? endIso(tenNow.end) : undefined}>
+            <span class="sale-strip-off">10円</span>
+            {tenNow.listPrice && <span class="sale-strip-price"><s>通常{yen(tenNow.listPrice)}円〜</s></span>}
+            {tenNow.end && <span class="sale-strip-end">{endLabel(tenNow.end)}まで</span>}
+            <a class="sale-strip-link" href={TEN_YEN_PATH}>10円セール中の作品をすべて見る</a>
+          </p>
+        )}
         {/* セール中なら、札と価格といつまで（終わりの時刻をすぎたら、ブラウザで隠す。/sale.js）。特集のページへ */}
         {saleNow && (
           <p class="sale-strip" data-sale-end={endIso(saleNow.end)}>

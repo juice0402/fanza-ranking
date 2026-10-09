@@ -27,6 +27,18 @@ jobs:
           npm init -y > /dev/null
           npm i --no-save --no-audit --no-fund playwright@1.48.2
           npx playwright install --with-deps chromium
+      # まだ本番に無い状態（10円セールの開催中など）の見た目を見るとき: screens.json に "local": "ten_yen" などを書くと、
+      # 見本のデータ（scripts/screens_sample.py）で、ここでサイトをビルドして写す（保存も公開もしない）。点検（verify_dist.py）の結果も一緒に置く
+      - name: Build here with sample data (when screens.json has "local")
+        run: |
+          SAMPLE=$(node -p "require('./scripts/screens.json').local || ''")
+          if [ -z "$SAMPLE" ]; then exit 0; fi
+          python3 scripts/screens_sample.py "$SAMPLE"
+          (cd site && npm ci --no-audit --no-fund && npm run build)
+          mkdir -p shots
+          python3 tests/verify_dist.py > shots/verify.txt 2>&1 || echo "::warning title=点検::見本のデータでの点検に失敗があります（shots/verify.txt）"
+          nohup python3 -m http.server 4321 --directory site/dist > /dev/null 2>&1 &
+          sleep 2
       - name: Take screenshots
         run: node scripts/screens.mjs
       - name: Save to a branch (and remove old ones)

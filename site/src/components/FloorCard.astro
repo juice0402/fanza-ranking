@@ -8,25 +8,28 @@
 import Thumb from './Thumb.astro';
 import { THUMB_MEDIA } from '../lib/items.js';
 import { DOUJIN_THUMB_ONERROR, doujinThumb, floorItemPath, makerLine } from '../lib/floors.js';
+import { OUTBOUND_ATTRS } from '../lib/plan.js';
 
 // level: 見出しの階層 / eager: 最初の画面に入る作品だけ、画像をすぐ読む / badge: 表紙の左上の札（順位・割引）/ note: 価格などの1行
 // rankNote: 人気ランキングの1行（「前日から▲3｜最高2位」。ふつうの文字の色。動画の ItemCard の noteKind="rank" と同じ見た目。2026-10-09）
-const { item, level = 'h3', eager = false, badge = '', note = '', rankNote = '' } = Astro.props;
+// external: このサイトに作品ページが無い作品（10円セールの作品で、人気の上位に入っていないもの）。表紙・タイトルからFANZAの作品ページへ直接
+const { item, level = 'h3', eager = false, badge = '', note = '', rankNote = '', external = false } = Astro.props;
 const Heading = level;
-const href = floorItemPath(item.floor, item.cid);
+const href = external ? item.url : floorItemPath(item.floor, item.cid);
+const outbound = external ? OUTBOUND_ATTRS : {};
 const wide = item.floor === 'doujin';
 const line = makerLine(item);
 ---
 
 <article class="item">
-  <a class:list={['item-cover', { 'is-wide': wide }]} href={href} tabindex="-1" aria-hidden="true">
+  <a class:list={['item-cover', { 'is-wide': wide }]} href={href} tabindex="-1" aria-hidden="true" {...outbound}>
     {item.image_url && (wide
       ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(item.image_url, 'card').small} /><img class="floor-img" src={item.image_url} alt="" width="560" height="420" loading={eager ? 'eager' : 'lazy'} decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
       : <Thumb src={item.image_url} kind="card" loading={eager ? 'eager' : 'lazy'} />)}
     {badge && <span class="rank-badge">{badge}</span>}
     {item.upcoming && <span class="pop pop-wait">予約</span>}
   </a>
-  <Heading class="item-title">{badge && <span class="visually-hidden">{badge}：</span>}{item.upcoming && <span class="visually-hidden">予約：</span>}<a class="item-title-link" href={href}>{item.title}</a></Heading>
+  <Heading class="item-title">{badge && <span class="visually-hidden">{badge}：</span>}{item.upcoming && <span class="visually-hidden">予約：</span>}<a class="item-title-link" href={href} {...outbound}>{item.title}</a></Heading>
   {line && <p class="item-cast">{line}</p>}
   {rankNote && <p class="item-note is-rank">{rankNote}</p>}
   {note && <p class="item-note">{note}</p>}

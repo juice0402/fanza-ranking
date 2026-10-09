@@ -12,14 +12,15 @@ import FloorTopics from '../../components/FloorTopics.astro';
 import FloorHotSquares from '../../components/FloorHotSquares.astro';
 import FloorSaleCards from '../../components/FloorSaleCards.astro';
 import GachaCorner from '../../components/GachaCorner.astro';
-import { activeFloors, floorCollectionGroups, floorEntityRankings, floorGachaPools, floorMakerGroups, floorRankHistory, floorSaleHistory, floorSalePageGroups, floors } from '../../lib/data.js';
+import TenYenHero from '../../components/TenYenHero.astro';
+import { activeFloors, floorCollectionGroups, floorEntityRankings, floorGachaPools, floorMakerGroups, floorRankHistory, floorSaleHistory, floorSalePageGroups, floors, tenYenNow } from '../../lib/data.js';
 import {
   DOUJIN_TYPES, FLOORS, FLOOR_HUB_SHOWN, floorCollectionIndexPath, floorEntityLabel, floorEntityRankingPath, floorItemListLd, floorMakerIndexPath, floorMaxOff, floorNewPopular,
   floorPath, floorRankNote, floorRanking, floorRankingPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, floorSearchPath, floorTopics, floorUpcoming, hubThemes, priceNote,
 } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../../lib/items.js';
-import { assetUrl } from '../../lib/assets.js';
+import { assetUrl, inlineScript } from '../../lib/assets.js';
 
 export function getStaticPaths() {
   return activeFloors.map((floor) => ({ params: { floor } }));
@@ -62,20 +63,25 @@ const trail = [
 ];
 // コメントのある作品が1本も無いあいだは、検索エンジンに出さない（FANZAの情報を並べただけのページにしない）
 const noindex = !listIndexable([...ranking, ...sale.slice(0, 12), ...newPop, ...upcomingList]) || items.every((i) => !i.comment);
-const title = `${f.label}の人気作品・セール情報【${dayLabel}更新】${maxOff ? `最大${maxOff}%OFF` : ''}｜${SITE_NAME}`;
+// この売り場の10円セールの開催中は、タイトルにも出す（検索結果で目に入るように。2026-10-09）
+const tenLive = tenYenNow.counts[key] > 0;
+const title = `${f.label}の人気作品・セール情報【${tenLive ? '10円セール開催中' : `${dayLabel}更新`}】${maxOff && !tenLive ? `最大${maxOff}%OFF` : ''}｜${SITE_NAME}`;
 const description = `${f.label}の人気作品${items.length}本を、毎日のFANZAの人気順でまとめています。人気TOP3・${f.maker}ランキング・セール中の作品${sale.length}本${maxOff ? `（最大${maxOff}%OFF）` : ''}${upcomingList.length ? '・予約受付中の作品' : ''}も。毎日、日付が変わったあとに更新します。`;
 const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${f.label}の人気作品・セール情報`, url: SITE_URL + floorPath(key), ...(data.updated ? { dateModified: data.updated } : {}) };
 ---
 
-<Base title={title} description={description} path={floorPath(key)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd, floorItemListLd(ranking, SITE_URL, 15)]}>
+<Base title={title} description={description} path={floorPath(key)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd, floorItemListLd(ranking, SITE_URL, 15)]} tenYenBar={false}>
+  {tenYenNow.total > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
-    <div class="home has-side" style={`--side-span: ${mainCount}`}>
+    <div class="home has-side" style={`--side-span: ${mainCount}${tenYenNow.total > 0 ? '; --side-start: 3' : ''}`}>
       <header class="today-head">
         {day && <p class="today-date"><time datetime={data.updated}>{day.m}月{day.d}日（{day.wd}）</time>の更新</p>}
         <h1 class="today-title">{f.label}の人気作品</h1>
       </header>
+
+      <TenYenHero first={key} />
 
       {top3.length > 0 && (
         <section class="today-top" aria-labelledby="fl-top-title">

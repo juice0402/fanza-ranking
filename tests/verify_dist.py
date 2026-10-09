@@ -2813,6 +2813,68 @@ check("サイトの「セール・キャンペーン」（/sale/）から、同�
 check("同人・ゲームの見出しに出すジャンルの一覧（floors.js）に、行為・未成年を連想させる言葉が無い",
       not any(_tbr({"title": g_}) == "minor" for g_ in re.findall(r"'([^']+)'", re.search(r"FLOOR_GENRE_OK = \[([\s\S]*?)\];", _floor_src).group(1))))
 
+# ---- 10円セール（運営者の希望「10円セールは大イベント。開催中はものすごく訴求したいし、SEOもかなり上位に」。2026-10-09） ----
+print("\n■ 10円セール（/sale/10yen/）")
+_ty_path = os.path.join(ROOT, "site", "src", "data", "ten_yen.json")
+_ty = json.load(open(_ty_path, encoding="utf-8")) if os.path.isfile(_ty_path) else {}
+_ty_checked = str(_ty.get("checked") or "")
+_ty_floor_texts = lambda x: [x.get("title") or "", *(x.get("genres") or []), *(x.get("formats") or []), *(x.get("sales") or []), *(x.get("authors") or []), x.get("maker") or "", x.get("series") or ""]  # noqa: E731
+_ty_want = {}
+for _k in ("video", "doujin", "game"):
+    _ty_want[_k] = [x["cid"] for x in (_ty.get(_k) or []) if isinstance(x, dict) and x.get("price") == 10
+                    and not (re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$", str(x.get("sale_end") or "")) and _ty_checked and x["sale_end"] < _ty_checked)
+                    and str(x.get("date") or "")[:10] <= JST_TODAY and str(x.get("url") or "").startswith("https://")
+                    and not any(_tbr({"title": t_}) == "minor" for t_ in ([x.get("title") or ""] if _k == "video" else _ty_floor_texts(x)) if t_)]
+_ty_total = sum(len(v) for v in _ty_want.values())
+_ty_file = page_file("/sale/10yen/")
+_ty_html = read(_ty_file) if os.path.isfile(_ty_file) else ""
+_ty_raw = read_raw(_ty_file) if _ty_html else ""
+check("10円セールのページ（/sale/10yen/）がある・いつも検索エンジンに出す（sitemap にも）・見出し・FAQPage の構造化データ・タイトルは「FANZA 10円セール」から",
+      bool(_ty_html) and 'name="robots" content="noindex' not in _ty_raw and "/sale/10yen/" in sm_paths
+      and re.search(r"<h1[^>]*>FANZA 10円セール</h1>", _ty_html) and '"@type":"FAQPage"' in _ty_raw.replace(" ", "")
+      and re.search(r"<title>FANZA 10円セール", _ty_raw))
+check("10円セールのページ: 予想は書かない・「よくある質問」と、FANZAで確かめての注記（開催中）／開催が始まったら並ぶ注記（開催していない）",
+      bool(_ty_html) and not re.search(r"予想されます|見込みです|はずです|開催される予定", _ty_html) and "よくある質問" in _ty_html
+      and ("FANZAの作品ページで確かめてください" in _ty_html if _ty_total else "開催が始まると、このページに10円の作品が並びます" in _ty_html))
+_no_foot_ty = [os.path.relpath(p_, DIST) for p_ in pages if 'href="/sale/10yen/"' not in read_raw(p_)[read_raw(p_).find("<footer"):]]
+check(f"全ページのフッターに、10円セールのページへのリンク（開催していないあいだも。どのページからもリンクする）", not _no_foot_ty, _no_foot_ty[:3])
+_bar_pages = [os.path.relpath(p_, DIST) for p_ in pages if 'id="ten-bar"' in read_raw(p_)]
+_hero_pages = [os.path.relpath(p_, DIST) for p_ in pages if 'class="ten-hero"' in read_raw(p_)]
+if _ty_total:
+    _home_raw = read_raw(page_file("/"))
+    _rk = page_file("/ranking/")
+    check(f"開催中（{_ty_total}本）: ヘッダーの下の帯がほかのページにあり、トップ・セールのページ・10円セールのページには帯の代わりに大きな案内（トップ）",
+          'class="ten-hero"' in _home_raw and 'id="ten-bar"' not in _home_raw and 'id="ten-bar"' not in _ty_raw and 'id="ten-bar"' not in read_raw(page_file("/sale/"))
+          and (not os.path.isfile(_rk) or 'id="ten-bar"' in read_raw(_rk)) and len(_bar_pages) > len(pages) // 2, (len(_bar_pages), len(pages)))
+    _ty_got = {k_: re.findall(r'<li class="shelf-cell"[^>]*>\s*<article class="item">.*?href="([^"]+)"', re.search(rf'<section class="section" id="ten-{k_}".*?</section>', _ty_raw, re.S).group(0), re.S) if re.search(rf'id="ten-{k_}"', _ty_raw) else [] for k_ in _ty_want}
+    check("開催中: 10円セールのページに、売り場ごとの10円の作品が全部ある（終わった作品・予約・未成年を連想させる作品は無い）・タイトルに「開催中」",
+          all(len(_ty_got[k_]) == len(v_) for k_, v_ in _ty_want.items()) and "10円セール開催中" in _ty_raw.split("</title>")[0],
+          {k_: (len(_ty_got[k_]), len(v_)) for k_, v_ in _ty_want.items()})
+else:
+    check("開催していないあいだ: 帯も大きな案内も出さない・10円セールのページは「いまは開催していません」・タイトルは「はいつ？」",
+          not _bar_pages and not _hero_pages and "いまは開催していません" in _ty_html and "10円セールはいつ？" in _ty_raw.split("</title>")[0], (_bar_pages[:2], _hero_pages[:2]))
+# 同人・ゲームの10円セールのページ: 売り場のページがある売り場だけ・開催中か開催を見かけたことがあるときだけ検索エンジンに出す
+_ty_runs = {r_.get("floor") for r_ in (_ty.get("runs") or []) if isinstance(r_, dict)}
+_ty_floor_bad = []
+for _k in ("doujin", "game"):
+    _f = page_file(f"/{_k}/sale/10yen/")
+    _exists = os.path.isfile(_f)
+    if _exists != os.path.isfile(page_file(f"/{_k}/")):
+        _ty_floor_bad.append((_k, "ページの有無"))
+        continue
+    if _exists:
+        _idx = bool(_ty_want[_k]) or _k in _ty_runs
+        if ('name="robots" content="noindex' in read_raw(_f)) == _idx or (f"/{_k}/sale/10yen/" in sm_paths) != _idx:
+            _ty_floor_bad.append((_k, "noindex・sitemap"))
+check("同人・ゲームの10円セールのページ: 売り場のページがある売り場だけ・開催中か開催を見かけたことがあるときだけ検索エンジンに出す（sitemap も同じ）", not _ty_floor_bad, _ty_floor_bad)
+# 10円セールの特集（キャンペーンの名前に「10円」）の特集ごとのページは、検索エンジンに出さない（同じ検索で2つ並ばないように）
+_ten_camp_bad = [p_ for p_ in glob.glob(os.path.join(DIST, "sale", "*", "index.html")) if re.search(r"<h1[^>]*>[^<]*(?<![0-9,])10円", read(p_))
+                 and ('name="robots" content="noindex' not in read_raw(p_) or 'href="/sale/10yen/"' not in read_raw(p_).split("<footer")[0])]
+check("名前に「10円」のある特集のページは noindex で、10円セールのページへ案内する", not _ten_camp_bad, _ten_camp_bad[:3])
+# 帯の「終わったら隠す」スクリプトは、決まった形の時刻だけ（そのままスクリプトに入れるため）
+_bar_js_bad = [p_ for p_ in _bar_pages[:200] if re.search(r"Date\.parse\('(?!\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:59\+09:00')", read_raw(os.path.join(DIST, p_)))]
+check("帯を隠すスクリプトには、決まった形の時刻だけが入っている", not _bar_js_bad, _bar_js_bad[:3])
+
 if problems:
     print("\n失敗:", problems)
     sys.exit(1)

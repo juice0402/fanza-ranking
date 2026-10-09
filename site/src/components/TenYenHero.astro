@@ -1,0 +1,60 @@
+---
+// 10円セールの大きな案内（トップ・同人/ゲームの売り場のトップ・セールのページのいちばん上。開催中だけ。2026-10-09）。
+// 10円玉の印・「10円セール開催中」・本数と終わり・10円の作品の表紙（人気の高い順に、売り場から1本ずつ順番に6枚）・10円の作品をすべて見るボタン。
+// 表紙は四角く切り出す（動画は表紙だけの画像、同人は横長の表紙、ゲームは表紙だけの画像）。タップで、その作品のページ（無ければFANZAの作品ページ）。
+// 全部の作品の終わりが分かるときは、終わったらブラウザで隠す（data-sale-end。ページの先頭の public/sale.js）
+import Thumb from './Thumb.astro';
+import { SMALL_IMG_ONERROR, THUMB_MEDIA, smallImage } from '../lib/items.js';
+import { DOUJIN_THUMB_ONERROR, doujinThumb } from '../lib/floors.js';
+import { OUTBOUND_ATTRS } from '../lib/plan.js';
+import { endIso } from '../lib/sale.js';
+import { paged, tenYen, tenYenNow } from '../lib/data.js';
+import { TEN_YEN_KEYS, TEN_YEN_PATH, checkedLabel, countsText, heroCovers, hideAt, tenYenHref, tenYenPath, untilText } from '../lib/ten-yen.js';
+
+// first: 先に並べる売り場（同人の売り場のトップなら同人の作品を先に。その売り場が開催中なら、ボタンも売り場のページへ）。id: 見出しの id
+const { first = 'video', id = 'ten-hero-title' } = Astro.props;
+const s = tenYenNow;
+const keys = [first, ...TEN_YEN_KEYS.filter((k) => k !== first)].filter((k) => s.counts[k] > 0);
+const href = s.counts[first] > 0 && first !== 'video' ? tenYenPath(first) : TEN_YEN_PATH;
+const covers = heroCovers(tenYen, keys);
+const until = untilText(s);
+const end = hideAt(s);
+---
+
+{s.total > 0 && tenYen.checked && (
+  <section class="ten-hero" aria-labelledby={id} data-sale-end={end || undefined}>
+    <div class="ten-hero-head">
+      <span class="ten-coin ten-coin-lg" aria-hidden="true"><span class="ten-coin-num">10</span><span class="ten-coin-yen">円</span></span>
+      <div class="ten-hero-copy">
+        <h2 id={id} class="ten-hero-title">10円セール開催中</h2>
+        <p class="ten-hero-meta"><strong>{countsText(s)}</strong>{until && <>｜<strong>{until}</strong></>}</p>
+      </div>
+    </div>
+    {covers.length > 0 && (
+      <ul class="ten-tiles">
+        {covers.map((item) => {
+          const link = tenYenHref(item, paged);
+          return (
+            <li class="ten-tile-cell" data-sale-end={item.tenYen.end ? endIso(item.tenYen.end) : undefined}>
+              <a class="ten-tile" href={link.href} {...(link.external ? OUTBOUND_ATTRS : {})}>
+                <span class="ten-tile-pic">
+                  {item.floor === 'doujin'
+                    ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(item.image_url, 'tiny').small} /><img class="floor-img" src={item.image_url} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
+                    : item.floor === 'game'
+                      ? <img class="floor-img is-small" src={smallImage(item.image_url)} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={SMALL_IMG_ONERROR} />
+                      : <Thumb src={item.image_url} kind="tiny" class="ten-tile-img" />}
+                </span>
+                <span class="ten-tag" aria-hidden="true">10円</span>
+                <span class="visually-hidden">10円：{item.title}</span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    )}
+    <p class="ten-hero-foot">
+      <a class="btn ten-hero-cta" href={href}>10円の作品をすべて見る</a>
+      <span class="ten-hero-at">{checkedLabel(tenYen.checked)}の時点</span>
+    </p>
+  </section>
+)}

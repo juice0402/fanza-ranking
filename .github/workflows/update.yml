@@ -78,6 +78,17 @@ jobs:
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
         run: python scripts/doujin_game.py --update
 
+      # 10円セール（動画・同人・ゲーム。FANZAのAPIだけ。Gemini は使わない。運営者の希望「10円セールは大イベント。開催中はものすごく訴求したい」。2026-10-09 から）。
+      # 開催中の日中の入れかわりは ten-yen.yml が確かめる。失敗しても、ほかの更新は止めない（前のデータを残す。scripts/ten_yen.py）
+      - name: Update 10-yen sale (daily)
+        if: steps.guard.outputs.skip != '1'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python scripts/ten_yen.py --update
+
       - name: Commit and push if changed
         if: steps.guard.outputs.skip != '1'
         env:

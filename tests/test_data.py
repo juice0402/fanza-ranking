@@ -512,6 +512,33 @@ for key in FD.FLOORS:
     check(f"{label}: APIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}|api_id=", ftext))
     check(f"{label}: 画像は pics.dmm.co.jp から（doujin-assets はページの中で出ないことがあるため。2026-10-09）", "doujin-assets.dmm.co.jp" not in ftext)
 
+# ---- 10円セール（ten_yen.json。scripts/ten_yen.py が毎日と、開催中は1日に数回。2026-10-09 から） ----
+print("\n■ 10円セール（ten_yen.json）")
+import ten_yen as TY  # noqa: E402
+TEN = os.path.join(ROOT, "site", "src", "data", "ten_yen.json")
+if not os.path.exists(TEN):
+    print("  （ten_yen.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        ten = TY.load(TEN)
+        ten_text = open(TEN, encoding="utf-8").read()
+    except ValueError as e:
+        ten = None
+        check("ten_yen.json を読める", False, str(e))
+    if ten is not None:
+        raw_ten = json.loads(ten_text)
+        check("ten_yen.json: 確かめた日時・売り場ごとの10円の作品・開催の記録だけ（書き直しても1文字も変わらない）",
+              set(raw_ten) == {"checked", *TY.FLOOR_KEYS, "runs"} and (raw_ten["checked"] == "" or re.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}", raw_ten["checked"]))
+              and TY.dump(ten) == ten_text and len(ten["runs"]) == len(raw_ten["runs"]))
+        ten_items = [(k, x) for k in TY.FLOOR_KEYS for x in raw_ten[k]]
+        check("ten_yen.json: どの作品も10円・FANZAのURL・決まった項目（動画は作品データと同じ名前・同人とゲームは doujin.json と同じ名前）",
+              all(x.get("price") == TY.PRICE and re.match(r"^https://al\.fanza\.co\.jp/", str(x.get("url") or ""))
+                  and set(x) == ({*TY.VIDEO_KEYS, "price", "list_price", "sale_title", "sale_end"} if k == "video" else {*TY.FLOOR_ITEM_KEYS, "price", "list_price", "sale_title", "sale_end", "rank"})
+                  for k, x in ten_items), [x.get("cid") for _, x in ten_items][:5])
+        check("ten_yen.json: 未成年を連想させる作品が入っていない", not any(
+            cc.title_block_reason({"title": t}) == "minor" for _, x in ten_items for t in [x["title"], *x.get("genres", []), x.get("series") or "", x.get("maker") or "", *x.get("authors", [])] if t))
+        check("ten_yen.json: APIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}|api_id=", ten_text))
+
 print(f"\n  （{len(items)}件の作品データ・{len(rounds)}本の週のまとめ記事・{len(months)}本の月のまとめ記事・同人{floor_counts.get('doujin', 0)}本・ゲーム{floor_counts.get('game', 0)}本を確認）")
 if problems:
     print("失敗:", problems)

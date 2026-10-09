@@ -9,7 +9,10 @@ import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorMiniShelf from '../../../components/FloorMiniShelf.astro';
 import RankTrend from '../../../components/RankTrend.astro';
 import GachaCorner from '../../../components/GachaCorner.astro';
-import { activeFloors, floorCollectionGroups, floorMakerById, floorRankHistory, floorSalePageBySlug, floorSalePageGroups, floors } from '../../../lib/data.js';
+import { activeFloors, floorCollectionGroups, floorMakerById, floorRankHistory, floorSalePageBySlug, floorSalePageGroups, floors, tenYenInfo } from '../../../lib/data.js';
+import { tenYenPath } from '../../../lib/ten-yen.js';
+import { endIso, endLabel } from '../../../lib/sale.js';
+import { inlineScript } from '../../../lib/assets.js';
 import {
   DOUJIN_IMG_ONERROR, FLOORS, FLOOR_SAMPLES, FLOOR_TREND_TRACK, collectionLinksFor, floorTrendCaption, floorTrendLines, saleTagLink, floorItemDescription, floorItemPath, floorItemTitle, floorPath, floorSaleItems, floorSalePath, popularInFloorGenre, priceNote, sameMaker,
 } from '../../../lib/floors.js';
@@ -48,6 +51,8 @@ const bandPage = key === 'doujin' && item.off > 0 ? floorSalePageGroups[key].fin
 // 人気の動き（毎日の順位の記録。上位300本に入ったことのある作品だけ。2026-10-09）
 const hist = floorRankHistory[key].get(item.cid);
 const trendLines = floorTrendLines(hist, f);
+// 10円セールの対象なら、10円の札と、10円セールのページへのリンク（2026-10-09）
+const tenNow = tenYenInfo(key, item.cid);
 ---
 
 <Base
@@ -59,6 +64,7 @@ const trendLines = floorTrendLines(hist, f);
   noindex={noindex}
   jsonLd={[breadcrumbLd(trail)]}
 >
+  {tenNow?.end && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
@@ -154,6 +160,15 @@ const trendLines = floorTrendLines(hist, f);
             </>
           )}
         </dl>
+
+        {tenNow && (
+          <p class="sale-strip ten-strip" data-sale-end={tenNow.end ? endIso(tenNow.end) : undefined}>
+            <span class="sale-strip-off">10円</span>
+            {tenNow.listPrice && <span class="sale-strip-price"><s>通常{tenNow.listPrice.toLocaleString('ja-JP')}円</s></span>}
+            {tenNow.end && <span class="sale-strip-end">{endLabel(tenNow.end)}まで</span>}
+            <a class="sale-strip-link" href={tenYenPath(key)}>10円セール中の作品をすべて見る</a>
+          </p>
+        )}
 
         <div class="detail-actions">
           <a class="btn btn-hot btn-lg detail-cta" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>

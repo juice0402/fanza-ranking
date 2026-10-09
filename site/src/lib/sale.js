@@ -147,6 +147,8 @@ export const SALE_HISTORY_START = '2026-10-05'; // 記録を始めた日
 /** 特集の名前 → ページの印（名前ごとに1ページ。同じ名前の特集が、また開かれたら、同じページ）。全角・半角と空白の違いは同じあつかい */
 export const campaignSlug = (title) => entitySlug(String(title ?? '').normalize('NFKC').replace(/\s+/g, ''));
 export const campaignPath = (title) => `${SALE_PATH}${campaignSlug(title)}/`;
+/** 10円セールの特集か（名前に「10円」。全角の数字も）。そのページは検索エンジンに出さず、10円セールのページ（/sale/10yen/）へ案内する（同じ検索で2つのページが並ばないように。2026-10-09） */
+export const isTenYenCampaign = (title) => /(?<![0-9,])10円/.test(String(title ?? '').normalize('NFKC')); // 「110円」「1,010円」は入れない（scripts/ten_yen.py の has_ten_yen と同じ）
 
 const DT = /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/;
 

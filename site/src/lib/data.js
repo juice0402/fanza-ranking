@@ -9,18 +9,19 @@ import { buildFactsContext } from './facts.js';
 import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay, ACTRESS_IMAGE_BASE, faceUrl } from './profiles.js';
 import { hasCalendar, planPages } from './plan.js';
 import { bestRank, catalogAllRank, normalizePopularity, normalizeRankHistory } from './popularity.js';
-import { campaignPages, normalizeSale, normalizeSaleHistory } from './sale.js';
+import { campaignPages, campaignSlug, isTenYenCampaign, normalizeSale, normalizeSaleHistory, saleHref } from './sale.js';
 import { normalizeAgencies, withAgencies } from './agencies.js';
 import { eventsByName, normalizeEvents, upcomingEvents } from './events.js';
 import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
 import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG_PAGE_GENRES } from '../config.js';
 import { genreTopLists, groupByEntry } from './insights.js';
 import { buildItemsIndex } from './search.js';
+import { TEN_YEN_PATH, normalizeTenYen, tenYenState } from './ten-yen.js';
 import { FLOOR_KEYS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -77,6 +78,8 @@ export const contentGenres = new Set(TAG_PAGE_GENRES.filter((g) => !HOT_GENRE_SK
 // 特集（キャンペーンの名前）ごとのページ（/sale/<印>/。開催中のものと、最後に見かけてから90日のあいだのもの。lib/sale.js）
 export const saleCampaignPages = campaignPages(all, sale, saleHistory, today, { genres: contentGenres });
 export const saleCampaignBySlug = new Map(saleCampaignPages.map((p) => [p.slug, p]));
+/** 特集（キャンペーン）へのリンク先: 10円セールの特集は10円セールのページ、ほかは特集ごとのページ（無ければ /sale/ のその特集の見出し）。c: { title, k } */
+export const campaignHrefOf = (c) => (isTenYenCampaign(c.title) ? TEN_YEN_PATH : saleCampaignBySlug.get(campaignSlug(c.title))?.path ?? saleHref(c.k));
 export const factsContext = buildFactsContext(all);
 // シリーズ・レーベルのページ（2026-10-07。作品が3本以上のもの。名前が未成年を連想させるもの・メーカーと同じ名前のレーベルは作らない。lib/insights.js）
 export const seriesGroups = groupByEntry(all, 'series', { minItems: SERIES_MIN_ITEMS, max: SERIES_PAGE_MAX });
@@ -127,6 +130,20 @@ export const floorSearchIndexes = Object.fromEntries(FLOOR_KEYS.map((k) => [k, f
 /** ページのある売り場（作品が1本以上） */
 export const activeFloors = FLOOR_KEYS.filter((k) => floors[k].items.length > 0);
 
+// 10円セール（動画・同人・ゲーム。scripts/ten_yen.py が毎日と、開催中は1日に数回確かめる。2026-10-09 から。まだ無ければ空。lib/ten-yen.js）
+export const tenYen = normalizeTenYen(optionalData('ten_yen'), {
+  today,
+  videoByCid: new Map(all.map((i) => [i.cid, i])),
+  floorByCid: Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floors[k].items.map((i) => [i.cid, i]))])),
+});
+/** いまの様子（開催中の売り場・本数・終わり。全部の売り場） */
+export const tenYenNow = tenYenState(tenYen);
+const tenYenInfoMap = new Map(Object.entries(tenYen.items).flatMap(([k, list]) => list.map((i) => [`${k}:${i.cid}`, i.tenYen])));
+/** その作品が、いま10円セールの対象なら { price, listPrice, off, title, end }（作品ページの札。key: 'video'・'doujin'・'game'） */
+export const tenYenInfo = (key, cid) => tenYenInfoMap.get(`${key}:${cid}`) ?? null;
+/** 10円セールのページのある売り場（まとめのページ /sale/10yen/ はいつも。同人・ゲームは、その売り場のページがあるときだけ） */
+export const tenYenFloors = activeFloors;
+
 // 作品ページを作る作品（サイト全体を2万ファイル以内に収める。lib/plan.js）
 export const pagePlan = planPages(all, {
   actress: actressGroups.length,
@@ -136,7 +153,7 @@ export const pagePlan = planPages(all, {
   month: monthGroups.length,
   tag: tagGroups.length,
   weekly: roundups.length,
-  sale: saleCampaignPages.length + 1, // 特集ごとのページと「セールはいつ？」のページ
+  sale: saleCampaignPages.length + 1 + 1 + FLOOR_KEYS.length, // 特集ごとのページと「セールはいつ？」のページ・10円セールのページ（まとめ＋売り場ごと）
   ics: calendarActressGroups.length + calendarMakerGroups.length,
   archiveItems: allReleased.length,
   floors: FLOOR_KEYS.reduce((n, k) => n + floorFileCount(floors[k], floorMakerGroups[k], floorCollectionGroups[k], floorSalePageGroups[k]), 0),

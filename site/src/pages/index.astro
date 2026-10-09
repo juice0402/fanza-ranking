@@ -7,33 +7,13 @@ import HotActresses from '../components/HotActresses.astro';
 import HotGenres from '../components/HotGenres.astro';
 import VrToggle from '../components/VrToggle.astro';
 import SaleCampaigns from '../components/SaleCampaigns.astro';
-import {
-  all,
-  sale,
-  today,
-  released,
-  upcoming,
-  roundups,
-  ranking,
-  monthGroups,
-  tagGroups,
-  paged,
-  popularity,
-  todayData,
-  faceOfName,
-  birthOfName,
-  coverOfName,
-  contentGenres,
-  events,
-  upcomingEventList,
-  saleCampaignBySlug,
-  activeFloors,
-} from '../lib/data.js';
+import TenYenHero from '../components/TenYenHero.astro';
+import { all, sale, today, released, upcoming, roundups, ranking, monthGroups, tagGroups, paged, popularity, todayData, faceOfName, birthOfName, coverOfName, contentGenres, events, upcomingEventList, activeFloors, tenYenNow, campaignHrefOf } from '../lib/data.js';
 import { FLOORS, floorPath } from '../lib/floors.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemHref } from '../lib/plan.js';
 import { RANKING_PATH } from '../lib/popularity.js';
-import { SALE_PATH, campaignSlug, saleGroups, saleHref } from '../lib/sale.js';
+import { SALE_PATH, saleGroups } from '../lib/sale.js';
 import { TOP_SHOWN, birthdaySoon, buildTopics, hotActresses, hotGenres, topEntries, weekDebuts } from '../lib/topics.js';
 import { gachaPool } from '../lib/gacha.js';
 import PickCorner from '../components/PickCorner.astro';
@@ -87,7 +67,7 @@ const topics = buildTopics({
   linkOf: (item) => itemHref(item, paged),
   faceOf: (name) => faceOfName(name),
   coverOf: coverOfName,
-  campaignHref: (g) => saleCampaignBySlug.get(campaignSlug(g.title))?.path ?? saleHref(g.k),
+  campaignHref: campaignHrefOf,
   skip: new Set([...top.slice(0, TOP_SHOWN).map((i) => i.cid), ...topVrOff]),
   skipVrOff: new Set(topVrOff),
 });
@@ -126,13 +106,14 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
 ---
 
 <Base
+  tenYenBar={false}
   title={`${SITE_NAME}｜毎日更新のFANZA新作・予約作品まとめ`}
   description="FANZAの新作・新着と予約中の作品を、発売日ごとにまとめて毎日更新。きょうの新着人気TOP3と話題も、毎日入れかわります。"
   path="/"
   jsonLd={[websiteLd()]}
 >
   {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
-  {saleCamps.length > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
+  {(saleCamps.length > 0 || tenYenNow.total > 0) && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     {/* お気に入りの出演者・メーカーがある人だけに出る（html.has-favs。はじめから場所を取り、新作・予約があれば本数に書きかわる。favorites.js） */}
     <a id="fav-banner" class="fav-banner" href="/favorites/" hidden>★ お気に入りの新作・予約を見る</a>
@@ -140,7 +121,8 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
     {/* スマホ: 見出し → TOP3 → 作品を探す → いま人気の女優 → 人気のジャンル → きょうの話題 → セール → 発売中（いちばん新しい日付の下におすすめのコーナー）→ 予約 の1列
         （右の欄の中の並びは site.css の order。週のまとめ・月のまとめの欄は、パソコンだけ。スマホは「作品を探す」のリンクから）。
         パソコン: 見出しを横いっぱいに、左に TOP3 → セール → 発売中 → 予約、右の欄（.home-side）に 作品を探す → きょうの話題 → いま人気の女優 → 人気のジャンル → 週のまとめ → おすすめのコーナー → 月のまとめ */}
-    <div class="home has-side" style={`--side-span: ${mainCount}`}>
+    {/* 10円セールの開催中は、見出しのすぐ下（パソコンは横いっぱい）に大きな案内（運営者の希望「ものすごく訴求したい」。2026-10-09）。右の欄は、その下の行から */}
+    <div class="home has-side" style={`--side-span: ${mainCount}${tenYenNow.total > 0 ? '; --side-start: 3' : ''}`}>
       <header class="today-head">
         <p class="today-date"><time datetime={today}>{day.m}月{day.d}日（{day.wd}）</time>の更新</p>
         <h1 class="today-title">きょうのFANZA新作</h1>
@@ -148,6 +130,8 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
           <VrToggle />
         </div>
       </header>
+
+      <TenYenHero />
 
       {top.length > 0 && (
         <section id="ranking" class="today-top" aria-labelledby="ranking-title">

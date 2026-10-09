@@ -9,15 +9,17 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import VrToggle from '../../components/VrToggle.astro';
 import ItemCard from '../../components/ItemCard.astro';
 import CampaignFacts from '../../components/CampaignFacts.astro';
-import { all, today, sale, contentGenres, saleCampaignBySlug, activeFloors, floors } from '../../lib/data.js';
+import TenYenHero from '../../components/TenYenHero.astro';
+import { TEN_YEN_PATH } from '../../lib/ten-yen.js';
+import { all, today, sale, contentGenres, saleCampaignBySlug, activeFloors, floors, tenYenNow } from '../../lib/data.js';
 import { FLOORS, floorSaleItems, floorSalePath } from '../../lib/floors.js';
-import { SALE_HISTORY_PATH, SALE_PATH, campaignSlug, endIso, endLabel, endSoonTag, saleAnchor, saleBadge, saleGroups, salePriceNote } from '../../lib/sale.js';
+import { SALE_HISTORY_PATH, SALE_PATH, isTenYenCampaign, campaignSlug, endIso, endLabel, endSoonTag, saleAnchor, saleBadge, saleGroups, salePriceNote } from '../../lib/sale.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp, filterAttrs } from '../../lib/items.js';
 
 const groups = saleGroups(all, sale, today, undefined, { genres: contentGenres });
 // 特集ごとのページ（未成年を連想させる名前の特集には作らない）
-const pageOfCamp = (g) => saleCampaignBySlug.get(campaignSlug(g.title))?.path ?? '';
+const pageOfCamp = (g) => (isTenYenCampaign(g.title) ? TEN_YEN_PATH : saleCampaignBySlug.get(campaignSlug(g.title))?.path ?? '');
 const maxOff = Math.max(0, ...groups.map((g) => g.maxOff ?? 0));
 const day = sale.date ? dateParts(sale.date) : null;
 const shownItems = groups.flatMap((g) => g.items);
@@ -28,9 +30,11 @@ const trail = [
 ];
 // 作品が無い・コメントのある作品が1本も無いあいだは、検索エンジンに出さない
 const noindex = shownItems.length === 0 || !listIndexable(shownItems);
+// 10円セールの開催中は、タイトルの先頭に出す（「FANZA セール」の検索結果で目に入るように。2026-10-09）
+const tenLive = tenYenNow.total > 0 ? 'FANZA 10円セール開催中・' : '';
 const title = groups.length > 0
-  ? `FANZAセール開催中の作品一覧【${day ? `${day.m}月${day.d}日` : '毎日'}更新】${maxOff ? `最大${maxOff}%OFF・` : ''}特集${groups.length}件｜${SITE_NAME}`
-  : `FANZA動画のセール・キャンペーン中の作品｜${SITE_NAME}`;
+  ? `${tenLive}FANZAセール開催中の作品一覧【${day ? `${day.m}月${day.d}日` : '毎日'}更新】${maxOff ? `最大${maxOff}%OFF・` : ''}特集${groups.length}件｜${SITE_NAME}`
+  : `${tenLive}FANZA動画のセール・キャンペーン中の作品｜${SITE_NAME}`;
 const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'FANZAセール開催中の作品一覧', url: SITE_URL + SALE_PATH, ...(sale.date ? { dateModified: sale.date } : {}) };
 import { inlineScript } from '../../lib/assets.js';
 ---
@@ -41,9 +45,10 @@ import { inlineScript } from '../../lib/assets.js';
   path={SALE_PATH}
   noindex={noindex}
   jsonLd={[breadcrumbLd(trail), pageLd]}
+  tenYenBar={false}
 >
   {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
-  {groups.length > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
+  {(groups.length > 0 || tenYenNow.total > 0) && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
@@ -53,11 +58,14 @@ import { inlineScript } from '../../lib/assets.js';
         いまセール中の作品を、終わりが近い順に。{sale.date && `${formatDateJp(sale.date)}の時点の情報です（くわしくはFANZAの作品ページで確かめてください）。`}
       </p>
       <p class="hero-links"><a class="spec-link" href={SALE_HISTORY_PATH}>FANZAのセールはいつ？これまでのセールの履歴</a></p>
+      <p class="hero-links"><a class="spec-link" href={TEN_YEN_PATH}>FANZAの10円セール{tenYenNow.total > 0 ? '（開催中）' : '（開催状況・これまでの開催）'}</a></p>
       {/* FANZA同人・FANZAゲームのセール（2026-10-09） */}
       {activeFloors.filter((k) => floorSaleItems(floors[k].items).length > 0).map((k) => (
         <p class="hero-links"><a class="spec-link" href={floorSalePath(k)}>{FLOORS[k].label}のセールはこちら</a></p>
       ))}
     </section>
+
+    <TenYenHero />
 
     {groups.length > 0
       ? (

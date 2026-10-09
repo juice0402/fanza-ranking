@@ -3304,7 +3304,7 @@ html.lightbox-open {
 
   .home.has-side > .home-side {
     grid-column: 2;
-    grid-row: 2 / span var(--side-span, 5);
+    grid-row: var(--side-start, 2) / span var(--side-span, 5); /* 10円セールの大きな案内があるときは、その下の行から（--side-start: 3） */
   }
 
   .today-head {
@@ -5781,4 +5781,337 @@ a.tf-name {
 
 .entity-genres {
   margin-top: 12px;
+}
+
+/* ---------- 10円セール（動画・同人・ゲーム。運営者の希望「10円セールは大イベント。開催中はものすごく訴求したい」。2026-10-09） ----------
+   印は「10円玉」の色の丸（銅の色＝メダルの銅と同じ色。図柄は入れない）。開催中だけ、全部のページのヘッダーの下に赤い帯（.ten-bar）、
+   トップ・売り場のトップ・セールのページに大きな案内（.ten-hero）。10円の札は、赤い地の上でも目立つ黄色（POPの黄色） */
+.ten-coin {
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  justify-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, var(--bronze-hi) 0, var(--bronze) 46%, var(--bronze-lo) 100%);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.28), inset 0 0 0 4px rgba(135, 74, 32, 0.55), 0 1px 0 rgba(0, 0, 0, 0.35);
+  color: #3a1a06;
+  line-height: 1;
+}
+
+.ten-coin-num {
+  font: 400 15px/0.9 var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+.ten-coin-yen {
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.ten-coin-lg {
+  width: 62px;
+  height: 62px;
+}
+
+.ten-coin-lg .ten-coin-num {
+  font-size: 27px;
+}
+
+.ten-coin-lg .ten-coin-yen {
+  font-size: 12px;
+}
+
+/* 全部のページの帯（ヘッダーのすぐ下・横いっぱい。中の文字はページの幅にそろえる） */
+.ten-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px max(var(--gutter), calc((100% - var(--maxw)) / 2 + var(--gutter)));
+  background: repeating-linear-gradient(-45deg, var(--hot) 0 14px, #c40f38 14px 28px);
+  color: #fff;
+  text-decoration: none;
+}
+
+.ten-bar[hidden] {
+  display: none;
+}
+
+.ten-bar:focus-visible {
+  outline: 3px solid var(--pop);
+  outline-offset: -3px;
+}
+
+.ten-bar-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+  min-width: 0;
+}
+
+.ten-bar-title {
+  font: 400 15px/1.35 var(--font-display);
+}
+
+.ten-bar-meta {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.92;
+}
+
+.ten-bar-go {
+  flex: none;
+  margin-left: auto;
+  padding: 5px 14px 4px;
+  border-radius: var(--r-pill);
+  background: var(--pop);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ten-bar:hover .ten-bar-go {
+  background: #fff;
+}
+
+/* 大きな案内（トップ・売り場のトップ・セールのページ） */
+.ten-hero {
+  margin-top: 24px;
+  padding: 18px 16px 16px;
+  border-radius: var(--r-panel);
+  background: linear-gradient(160deg, #a90c31 0%, var(--hot) 55%, #e0264d 100%);
+  outline: 2px dashed rgba(255, 255, 255, 0.32);
+  outline-offset: -7px;
+  color: #fff;
+  container-type: inline-size;
+}
+
+.ten-hero-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ten-hero-copy {
+  min-width: 0;
+}
+
+.ten-hero-title {
+  margin: 0;
+  color: #fff;
+  font: 400 26px/1.15 var(--font-display);
+}
+
+.ten-hero-meta {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ten-hero-meta strong {
+  color: var(--pop);
+}
+
+.ten-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ten-tile {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: visible;
+  border-radius: var(--r-media);
+  color: inherit;
+}
+
+.ten-tile-pic {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--r-media);
+  background: var(--ink-deep);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
+.ten-tile-pic .pic,
+.ten-tile-pic img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ten-tile-pic img {
+  object-fit: cover;
+  object-position: 50% 12%;
+}
+
+.ten-tile-pic .floor-img:not(.is-small) {
+  object-position: 50% 30%;
+}
+
+.ten-tile:hover .ten-tile-pic {
+  box-shadow: 0 0 0 3px var(--pop);
+}
+
+/* 表紙の左下のふちに半分かける札（顔を隠さない。TOP3のメダルと同じ考え方） */
+.ten-tag {
+  position: absolute;
+  bottom: -7px;
+  left: 4px;
+  padding: 2px 7px 1px;
+  border-radius: 3px;
+  background: var(--pop);
+  box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.35);
+  color: var(--ink);
+  font: 400 13px/1.25 var(--font-display);
+  transform: rotate(-4deg);
+}
+
+.ten-hero-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 20px 0 0;
+}
+
+.ten-hero-cta {
+  flex: 1 1 100%;
+  min-height: 46px;
+  border-color: var(--pop);
+  background: var(--pop);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.ten-hero-cta:hover {
+  border-color: #fff;
+  background: #fff;
+  color: var(--ink);
+}
+
+.ten-hero-at {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+@container (min-width: 560px) {
+  .ten-tiles {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .ten-hero-cta {
+    flex: 0 1 auto;
+    padding-inline: 28px;
+  }
+}
+
+@supports not (container-type: inline-size) {
+  @media (min-width: 640px) {
+    .ten-tiles {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (min-width: 640px) {
+  .ten-bar-title {
+    font-size: 17px;
+  }
+
+  .ten-bar-meta {
+    font-size: 13px;
+  }
+
+  .ten-hero {
+    padding: 22px 24px 20px;
+  }
+
+  .ten-hero-title {
+    font-size: 32px;
+  }
+
+  .ten-hero-meta {
+    font-size: 14px;
+  }
+
+  .ten-coin-lg {
+    width: 76px;
+    height: 76px;
+  }
+
+  .ten-coin-lg .ten-coin-num {
+    font-size: 33px;
+  }
+
+  .ten-coin-lg .ten-coin-yen {
+    font-size: 14px;
+  }
+}
+
+/* トップ・売り場のトップ: パソコンでは、見出しの下に横いっぱい（右の欄は、その下の行から。--side-start） */
+@media (min-width: 960px) {
+  .home.has-side > .ten-hero {
+    grid-column: 1 / -1;
+  }
+}
+
+/* 10円セールのページの見出しと、いまの様子 */
+.ten-page-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ten-page-head .hero-title {
+  margin: 0;
+}
+
+.ten-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 14px 0 0;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ten-status strong {
+  color: var(--pop);
+}
+
+.ten-status[hidden] {
+  display: none;
+}
+
+.ten-pill {
+  padding: 4px 12px 3px;
+  border-radius: var(--r-pill);
+  background: var(--hot);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ten-pill.is-off {
+  border: 1px solid var(--edge);
+  background: var(--fill);
+  color: var(--paper-dim);
+}
+
+/* 作品ページの10円の札（黄色の「10円」） */
+.sale-strip.ten-strip .sale-strip-off {
+  background: var(--pop);
+  color: var(--ink);
 }

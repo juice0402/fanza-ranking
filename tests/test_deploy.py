@@ -186,6 +186,22 @@ for name in ("update.yml", "refresh-data.yml"):
           and "GH_TOKEN: ${{ github.token }}" in step and re.search(r"permissions:\s*\n\s*contents: write\s*\n\s*actions: write", wf))
     check(f"{name}: 変更が無い日は、保存も公開もしない", step.index("exit 0") < step.index("gh workflow run deploy.yml"))
 
+# 10円セールの確認（1日に数回。2026-10-09）: 変わったときだけ保存して公開を頼む・保存するのは10円セールのデータだけ・毎日の更新と同じ順番待ち・Gemini の鍵は渡さない
+ten = read(".github", "workflows", "ten-yen.yml")
+tstep = ten[ten.index("Commit and deploy if changed"):]
+check("ten-yen.yml: 10円の作品が変わったときだけ、保存（push）してから公開を頼む・保存するのは ten_yen.json だけ",
+      "steps.ten.outputs.saved == '1'" in tstep and "--if-changed" in ten
+      and tstep.index('git push origin "HEAD:${GITHUB_REF_NAME}"') < tstep.index('gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}"')
+      and "git add -- site/src/data/ten_yen.json" in tstep and "git add -A" not in tstep and tstep.index("exit 0") < tstep.index("gh workflow run deploy.yml"))
+check("ten-yen.yml: 毎日の更新と同じ順番待ち（データが混ざらない）・Gemini の鍵は渡さない・1日に数回の定時実行",
+      "group: daily-update" in ten and "GEMINI" not in ten and len(re.findall(r"- cron: '\d+ \d+ \* \* \*'", ten)) >= 3
+      and re.search(r"permissions:\s*\n\s*contents: write\s*\n\s*actions: write", ten))
+for name in ("update.yml", "refresh-data.yml"):
+    wf = read(".github", "workflows", name)
+    check(f"{name}: 10円セールも集める（失敗しても、ほかの更新は止めない）・保存の前",
+          "python scripts/ten_yen.py --update" in wf and wf.index("scripts/ten_yen.py") < wf.index("Commit and push if changed")
+          and "continue-on-error: true" in wf[wf.rindex("- name:", 0, wf.index("scripts/ten_yen.py")):wf.index("scripts/ten_yen.py")])
+
 ci = read(".github", "workflows", "ci.yml")
 prev = ci[ci.index("Preview on Cloudflare Pages"):]
 check("ci.yml: PRのプレビューは、テスト・ビルド・点検のあと・同じリポジトリのPRだけ・失敗してもチェックの結果は変えない",

@@ -96,6 +96,15 @@ jobs:
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
         run: python scripts/doujin_game.py --update
 
+      # 10円セール（Gemini は使わない。失敗しても、ほかの取り直しは残す）
+      - name: Refresh 10-yen sale
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python scripts/ten_yen.py --update
+
       - name: Commit and push if changed
         env:
           GH_TOKEN: ${{ github.token }}
