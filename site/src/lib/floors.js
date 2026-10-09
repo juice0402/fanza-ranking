@@ -820,11 +820,21 @@ export const FLOOR_SEARCH_PAGE = 30; // 1回に出す本数（はじめの一覧
 export const floorImageOf = (key, cid, type) => `https://pics.dmm.co.jp/digital/${key === 'game' ? 'pcgame' : type}/${cid}/${cid}pl.jpg`;
 
 /**
- * 作品検索の索引: { key, genres: [名前]（おだやかなジャンルだけ）, themes: [{ s, n }]（特集）, types: [{ s, n }]（同人の形式）,
+ * 作品検索の索引: { key, genres: [名前]（おだやかなジャンルだけ）, themes: [{ s, n }]（特集）, types: [{ s, n }]（同人の形式）, yomi: { 名前: 読み },
  *   items: [{ c, t（文節の区切り入り）, m（サークル/ブランド）, a（作家）, g:[ジャンルの番号], h:[特集の番号], y（形式）, p（価格）, o（割引%）, r（人気の順位）, d（発売日）, u（予約なら1）, s（セール中なら1）, i（画像。決まった形なら省く） }] }。人気の高い順
  */
-export function floorSearchIndex(items, key, groups) {
+export function floorSearchIndex(items, key, groups, readingOf = () => '') {
   const genres = topGenres(items, FLOOR_GENRE_OK.length).map((g) => g.name);
+  // 読みがな（サークル/ブランドは id、作家・ジャンルは名前で引く）→ { 名前: 読み }（ひらがなで打っても見つかるように。2026-10-10）
+  const yomi = {};
+  const put = (name, r) => {
+    if (name && r && !(name in yomi) && r.replace(/\s/g, '') !== name.replace(/\s/g, '')) yomi[name] = r;
+  };
+  for (const i of items) {
+    if (i.maker) put(i.maker.name, readingOf('maker', i.maker.id));
+    for (const a of i.authors) put(a, readingOf('author', a));
+  }
+  for (const g of genres) put(g, readingOf('genre', g));
   const gIndex = new Map(genres.map((g, n) => [g, n]));
   const themes = (groups.theme ?? []).map((g) => ({ s: g.slug, n: g.name }));
   const themeOf = new Map();
@@ -835,6 +845,7 @@ export function floorSearchIndex(items, key, groups) {
     genres,
     themes,
     types: key === 'doujin' ? DOUJIN_TYPES.filter((t) => items.some((i) => i.type === t.slug)).map((t) => ({ s: t.slug, n: t.short })) : [],
+    yomi,
     items: items.map((i) => {
       const g = [...new Set(i.genres)].filter((x) => gIndex.has(x)).map((x) => gIndex.get(x));
       const h = themeOf.get(i.cid) ?? [];

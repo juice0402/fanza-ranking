@@ -25,9 +25,16 @@ export const searchPath = (tag = '') => (tag ? `${SEARCH_PATH}?tag=${encodeURICo
  * 画像は、DMMの画像のURLの先頭（https://pics.dmm.co.jp/）を省いた形（ほかのホストのURLはそのまま）。
  */
 /** 索引で省く、決まった形の画像のパス（DMM の URL の先頭を除いたもの） */
+// 読みと名前が同じ（ひらがなの名前など）なら、索引に入れない（public/search.js の normalizeText と同じそろえ方の一部）
+const normalizeYomi = (t) => String(t ?? '').normalize('NFKC').toLowerCase().replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60)).replace(/[\s　・·.\-]/g, '');
+
 export const standardImage = (cid) => `digital/video/${cid}/${cid}pl.jpg`;
 
-export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT, popularCount = ITEMS_INDEX_POPULAR) {
+/**
+ * readingOf: 名前 → 読みがな（出演者・メーカー・ジャンル。無ければ ''）。索引の yomi（{名前: 読み}）に入れて、
+ * ひらがなで打っても見つかるようにする（「みかみ」で 三上…。2026-10-10。読みは FANZA公式のAPIから＝lib/kana.js・profiles.js）
+ */
+export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT, popularCount = ITEMS_INDEX_POPULAR, readingOf = () => '') {
   const newest = (a, b) => b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid);
   const popular = items.filter((i) => i.popAll).sort((a, b) => a.popAll - b.popAll || newest(a, b)).slice(0, Math.min(popularCount, limit));
   const chosen = new Set(popular.map((i) => i.cid));
@@ -39,10 +46,16 @@ export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT, popular
   const numberOf = new Map(genres.map((g, i) => [g, i]));
   const namesRe = namesPattern(picked.flatMap((i) => [...i.actress, i.maker]).filter((n) => n !== '不明'));
 
+  const yomi = {};
+  for (const name of [...new Set(picked.flatMap((i) => [...i.actress, i.maker]))].concat(genres).sort()) {
+    const r = name && name !== '不明' ? readingOf(name) : '';
+    if (r && normalizeYomi(r) !== normalizeYomi(name)) yomi[name] = r;
+  }
   return {
     generated: today,
     newDays: NEW_BADGE_DAYS,
     genres,
+    yomi,
     items: picked.map((item) => {
       const row = {
         c: item.cid,

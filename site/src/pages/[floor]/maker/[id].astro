@@ -4,7 +4,8 @@
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorCard from '../../../components/FloorCard.astro';
-import { activeFloors, floorCollectionGroups, floorMakerGroups, floors, today } from '../../../lib/data.js';
+import { activeFloors, floorCollectionGroups, floorMakerGroups, floors, readings, today } from '../../../lib/data.js';
+import { readingLine } from '../../../lib/kana.js';
 import { FLOORS, FLOOR_MAKER_LIST, floorItemListLd, floorMakerIndexPath, floorMaxOff, floorPath, onSale, priceNote, saleBadgeOf, topGenres } from '../../../lib/floors.js';
 import { listIndexable } from '../../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, listLastmod, shortSpan } from '../../../lib/items.js';
@@ -33,7 +34,9 @@ const trail = [
 ];
 const noindex = !listIndexable(shown) || shown.every((i) => !i.comment);
 const updated = listLastmod(group.items, today);
-const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${group.name}の${f.kind}一覧`, url: SITE_URL + group.path, about: { '@type': 'Organization', name: group.name }, ...(updated ? { dateModified: updated } : {}) };
+// 読みがな（FANZA公式のAPIから。見出しの下と、構造化データの alternateName に。2026-10-10）
+const ruby = readingLine(group.name, readings.of(key, 'maker', group.id));
+const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${group.name}の${f.kind}一覧`, url: SITE_URL + group.path, about: { '@type': 'Organization', name: group.name, ...(ruby ? { alternateName: ruby } : {}) }, ...(updated ? { dateModified: updated } : {}) };
 ---
 
 <Base
@@ -48,6 +51,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 
     <section class="hero">
       <h1 class="hero-title">{group.name}の{f.kind}</h1>
+      {ruby && <p class="hero-ruby">{ruby}</p>}
       <p class="page-facts">{group.total}本・{shortSpan(group.items)}発売{saleCount > 0 && `・セール中${saleCount}本`}</p>
       {updated && <p class="page-updated">{+updated.slice(5, 7)}月{+updated.slice(8, 10)}日更新</p>}
     </section>

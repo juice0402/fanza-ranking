@@ -18,11 +18,12 @@ import { genreTopLists, groupByEntry } from './insights.js';
 import { buildItemsIndex } from './search.js';
 import { TEN_YEN_PATH, normalizeTenYen, tenYenState } from './ten-yen.js';
 import { FLOOR_REVIEW_MIN, normalizeReviews, topRated } from './reviews.js';
+import { normalizeReadings } from './kana.js';
 import { FLOOR_KEYS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews,readings}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -45,6 +46,8 @@ const catalogRanks = optionalData('catalog_rank');
 // FANZAのレビューの評価（get_new_releases.py が毎日の取得で見かけた作品からためる。2026-10-10 から。lib/reviews.js）。cid → { avg, count }
 export const reviews = normalizeReviews(optionalData('reviews'));
 const reviewOfCid = (cid) => reviews.byCid.get(cid) ?? null;
+// 読みがな（scripts/readings.py が FANZA公式のAPIから集める。2026-10-10 から。lib/kana.js）。readings.of('video', 'maker', 名前) → ひらがな（無ければ ''）
+export const readings = normalizeReadings(optionalData('readings'));
 // 毎日の更新で載せた作品（新作・予約。コメントがある）。トップ・月ごと/ジャンルごとのページ・お気に入り・カレンダー・まとめ記事は、これだけを使う
 export const curated = normalizeItems(raw).map((i) => ({ ...i, popAll: popularity.allRank.get(i.cid) ?? null, popNew: popularity.newRank.get(i.cid) ?? null, review: reviewOfCid(i.cid) }));
 const curatedCids = new Set(curated.map((i) => i.cid));
@@ -133,7 +136,7 @@ export const floorEntityRankings = Object.fromEntries(FLOOR_KEYS.map((k) => {
 /** 運命の作品の候補（売り場ごと。トップはページの中に、作品ページは /data/<売り場>-gacha.json を読む） */
 export const floorGachaPools = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorGachaPool(floors[k].items)]));
 /** 作品検索の索引（/data/<売り場>-index.json と、検索のページの「はじめの一覧」） */
-export const floorSearchIndexes = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorSearchIndex(floors[k].items, k, floorCollectionGroups[k])]));
+export const floorSearchIndexes = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorSearchIndex(floors[k].items, k, floorCollectionGroups[k], (kind, key) => readings.of(k, kind, key))]));
 /** ページのある売り場（作品が1本以上） */
 export const activeFloors = FLOOR_KEYS.filter((k) => floors[k].items.length > 0);
 /** 売り場ごとの高評価ランキング（レビュー FLOOR_REVIEW_MIN 件以上。/<売り場>/ranking/review/。2026-10-10） */
@@ -200,9 +203,13 @@ export const actressIndexCoverage = indexCoverage(actressSearchIndex);
 // 売れ筋ランキング（FANZAの人気順の上位3本）。無い・古いときは null（画面に出さない）
 export const ranking = rankingForDisplay(optionalData('ranking'), today, new Set(all.filter((i) => i.vr).map((i) => i.cid)));
 
+// 名前の読みがな（出演者はFANZAのプロフィール・名簿、メーカー・ジャンルは readings.json。作品検索で、ひらがなで打っても見つかるように）
+export const actressReading = (name) => profilesByName.get(name)?.ruby || directoryByName.get(name)?.ruby || '';
+export const nameReading = (name) => actressReading(name) || readings.of('video', 'maker', name) || readings.of('video', 'genre', name) || '';
+
 // 作品検索の索引（/data/items-index.json と、検索ページの「はじめの一覧」が同じものを使う。作るのは1回だけ。lib/search.js）
 let itemsIndexCache = null;
 export function itemsIndex() {
-  if (!itemsIndexCache) itemsIndexCache = buildItemsIndex(all.filter((i) => paged.has(i.cid)), today);
+  if (!itemsIndexCache) itemsIndexCache = buildItemsIndex(all.filter((i) => paged.has(i.cid)), today, undefined, undefined, nameReading);
   return itemsIndexCache;
 }

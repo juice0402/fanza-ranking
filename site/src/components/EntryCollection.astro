@@ -11,7 +11,8 @@ import CastFaces from './CastFaces.astro';
 import MiniShelf from './MiniShelf.astro';
 import RatedShelf from './RatedShelf.astro';
 import { isMinorTitle } from '../lib/gacha.js';
-import { actressByName, makerByName, contentGenres, sale, tagByName, today } from '../lib/data.js';
+import { actressByName, makerByName, contentGenres, readings, sale, tagByName, today } from '../lib/data.js';
+import { readingLine } from '../lib/kana.js';
 import { campaignSummary, onSaleItems } from '../lib/sale.js';
 import { formatsOf, groupByDate, listLastmod, rankedNames, shortSpan } from '../lib/items.js';
 import { bestRank } from '../lib/popularity.js';
@@ -36,6 +37,8 @@ const castFaces = counted.actresses.slice(0, 6);
 const genreChips = counted.genres.slice(0, 8);
 const modified = listLastmod(group.items, today);
 const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
+// 読みがな（シリーズだけ。FANZA公式のAPIから。2026-10-10）
+const ruby = group.kind === 'series' ? readingLine(group.name, readings.of('video', 'series', group.id)) : '';
 ---
 
 <div class="wrap">
@@ -43,6 +46,7 @@ const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 
   <section class="hero">
     <h1 class="hero-title">{group.name}<span class="hero-kind">（{kind}）</span>の作品一覧</h1>
+    {ruby && <p class="hero-ruby">{ruby}</p>}
     {modified && <p class="page-updated">{md(modified)}更新</p>}
   </section>
 

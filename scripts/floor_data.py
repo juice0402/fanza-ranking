@@ -24,11 +24,11 @@ DATA_DIR = os.path.join(ROOT, "site", "src", "data")
 # 運営者が決めた本数（2026-10-09）: 同人 1,000本・ゲーム 500本（どちらも、FANZAの人気順の上から。未成年を連想させる作品は入れない）
 FLOORS = {
     "doujin": {
-        "label": "FANZA同人", "service": "doujin", "floor": "digital_doujin", "target": 1000, "max_calls": 40, "upcoming": 0,
+        "label": "FANZA同人", "service": "doujin", "floor": "digital_doujin", "floor_id": 81, "target": 1000, "max_calls": 40, "upcoming": 0,
         "env": "DOUJIN_PATH", "file": "doujin.json", "samples": 6,
     },
     "game": {
-        "label": "FANZAゲーム", "service": "pcgame", "floor": "digital_pcgame", "target": 500, "max_calls": 40, "upcoming": 30,
+        "label": "FANZAゲーム", "service": "pcgame", "floor": "digital_pcgame", "floor_id": 80, "author_search": True, "target": 500, "max_calls": 40, "upcoming": 30,
         "env": "GAME_PATH", "file": "game.json", "samples": 8,
     },
 }

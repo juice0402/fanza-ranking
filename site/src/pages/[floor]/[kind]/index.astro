@@ -3,7 +3,9 @@
 // ページのある名前を、作品の多い順（発売月は新しい月から）に並べる
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
-import { activeFloors, floorCollectionGroups, floors } from '../../../lib/data.js';
+import NameIndex from '../../../components/NameIndex.astro';
+import { activeFloors, floorCollectionGroups, floors, readings } from '../../../lib/data.js';
+import { kanaIndex } from '../../../lib/kana.js';
 import { FLOORS, FLOOR_COLLECTIONS, FLOOR_COLLECTION_KINDS, collectionIndexIndexable, floorCollectionIndexPath, floorPath, floorSearchPath } from '../../../lib/floors.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../../../lib/items.js';
 
@@ -34,6 +36,9 @@ const description = kind === 'month'
   : ordered
   ? `${f.label}の${f.kind}を、${c.label}ごとにまとめた一覧です（${groups.map((g) => g.name).slice(0, 4).join('・')}など${groups.length}件）。それぞれの作品を、FANZAの人気順で見られます。毎日更新。`
   : `${f.label}の${f.kind}を、${c.label}ごとにまとめた一覧です（${groups.length}件・作品の多い順）。${groups.slice(0, 3).map((g) => g.name).join('・')}など。それぞれの作品を、FANZAの人気順で見られます。毎日更新。`;
+// ジャンル・シリーズ・作家: 作品数の多い順のタイル → 50音で探す（読みがなは FANZA公式のAPIから。発売月・形式・特集は決めた順のタイルだけ）
+const readingKind = { genre: 'genre', series: 'series', author: 'author' }[kind];
+const index = kanaIndex(groups.map((g) => ({ name: g.name, path: g.path, count: g.total, reading: readingKind ? readings.of(key, readingKind, kind === 'series' ? g.slug : g.name) : '' })));
 const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${f.label}の${c.label}一覧`, url: SITE_URL + floorCollectionIndexPath(key, kind), ...(data.updated ? { dateModified: data.updated } : {}) };
 ---
 
@@ -43,22 +48,10 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 
     <section class="hero">
       <h1 class="hero-title">{c.find}</h1>
-      <p class="hero-lead">{kind === 'month' ? '新しい月から並べています。' : ordered ? `${f.label}ならではの${c.label}です。` : '作品数の多い順です。'}ほかの言葉では<a class="spec-link" href={floorSearchPath(key)}>作品検索</a>で探せます。</p>
+      <p class="hero-lead">{kind === 'month' ? '新しい月から並べています。' : ordered ? `${f.label}ならではの${c.label}です。` : index.show ? '作品数の多い順と50音順で探せます。' : '作品数の多い順です。'}ほかの言葉では<a class="spec-link" href={floorSearchPath(key)}>作品検索</a>で探せます。</p>
     </section>
 
-    <section class="section" aria-labelledby="fl-col-index-title">
-      <h2 id="fl-col-index-title" class="visually-hidden">{c.label}の一覧</h2>
-      <ul class="name-grid">
-        {groups.map((g) => (
-          <li>
-            <a class="name-link" href={g.path} title={g.name}>
-              <span class="name-link-name">{g.name}</span>
-              <span class="name-link-count">{g.total}本</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <NameIndex index={index} label={c.label} prefix="fl-col-kana" />
     <p class="section-note">本数は、このサイトに載っている作品から数えています。</p>
   </div>
 </Base>

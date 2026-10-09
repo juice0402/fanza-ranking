@@ -528,7 +528,27 @@ else:
         check("reviews.json: 更新日・続きの場所・作品ごとの [平均×100, 件数] だけ（1作品1行）",
               isinstance(rv, dict) and set(rv) == {"updated", "cursor", "items"} and isinstance(rv["items"], dict)
               and all(re.fullmatch(r"[A-Za-z0-9_\-]{1,40}", c) and isinstance(v, list) and len(v) == 2 and all(isinstance(n, int) for n in v) and 100 <= v[0] <= 500 and v[1] >= 1 for c, v in rv["items"].items())
-              and rvtext.count("\n") == len(rv["items"]) + 3 - (1 if not rv["items"] else 0))
+              and (not rv["items"] or rvtext.count("\n") == len(rv["items"]) + 3))
+
+# ---- 読みがな（readings.json。scripts/readings.py が週1回。2026-10-10 から） ----
+print("\n■ 読みがな（readings.json）")
+READINGS = os.path.join(ROOT, "site", "src", "data", "readings.json")
+if not os.path.exists(READINGS):
+    print("  （readings.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        rdtext = open(READINGS, encoding="utf-8").read()
+        rd = json.loads(rdtext)
+    except (OSError, ValueError) as e:
+        rd = None
+        check("readings.json を読める", False, str(e))
+    if rd is not None:
+        _kinds = {"genre", "maker", "series", "author"}
+        _floors = [k for k in rd if k not in ("updated", "next")]
+        check("readings.json: 更新日・続きの場所と、売り場ごとの {種類: {キー: 読み}} だけ（1つの読みを1行に）",
+              isinstance(rd, dict) and "video" in _floors and isinstance(rd.get("next"), dict)
+              and all(isinstance(rd[k], dict) and set(rd[k]) == _kinds and all(isinstance(m, dict) and all(isinstance(a, str) and isinstance(b, str) and 0 < len(b) <= 60 for a, b in m.items()) for m in rd[k].values()) for k in _floors)
+              and rdtext.count("\n") >= sum(len(m) for k in _floors for m in rd[k].values()))
 
 # ---- 10円セール（ten_yen.json。scripts/ten_yen.py が毎日と、開催中は1日に数回。2026-10-09 から） ----
 print("\n■ 10円セール（ten_yen.json）")

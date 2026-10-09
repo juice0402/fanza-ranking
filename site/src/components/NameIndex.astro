@@ -1,0 +1,62 @@
+---
+// 一覧のページの名前の並び（メーカー・シリーズ・ジャンル・サークル/ブランド・作家。2026-10-10。lib/kana.js）。
+// 読みがなの分かる名前が多い一覧は「作品数の多い順」のタイル（KANA_TOP）→「50音で探す」（行へのボタン＋行ごとの名前の一覧）。
+// 読みがなの分からない一覧は、いままでどおり、作品数の多い順のタイルだけ
+import { kanaJumps } from '../lib/kana.js';
+
+// index: kanaIndex() の結果。label: 「メーカー」など。prefix: 行の id の頭（1ページに1つ）
+const { index, label, prefix = 'kana', empty = '' } = Astro.props;
+const jumps = index.show ? kanaJumps(index.rows, prefix) : [];
+---
+
+{index.top.length === 0
+  ? <p class="empty">{empty}</p>
+  : index.show
+  ? (
+    <>
+      <section class="section" aria-labelledby={`${prefix}-top-title`}>
+        <h2 id={`${prefix}-top-title`} class="section-title">作品数の多い{label}</h2>
+        <ul class="name-grid">
+          {index.top.map((g) => (
+            <li>
+              <a class="name-link" href={g.path} title={g.name}>
+                <span class="name-link-name">{g.name}</span>
+                <span class="name-link-count">{g.count}本</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section class="section" aria-labelledby={`${prefix}-title`}>
+        <h2 id={`${prefix}-title`} class="section-title">50音で探す</h2>
+        <nav class="kana-jump" aria-label="50音の行へ">
+          {jumps.map((j) => (j.href ? <a class="kana-key" href={j.href}>{j.head}</a> : <span class="kana-key is-off" aria-hidden="true">{j.head}</span>))}
+        </nav>
+        {index.rows.map((r) => (
+          <div class="kana-block">
+            <h3 id={r.id} class="kana-head">{r.head}<span class="kana-head-n">{r.entries.length}件</span></h3>
+            <ul class="kana-list">
+              {r.entries.map((e) => (
+                <li><a href={e.path}>{e.name}</a><span class="kana-n">{e.count}</span></li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </section>
+    </>
+  )
+  : (
+    <section class="section" aria-labelledby={`${prefix}-list-title`}>
+      <h2 id={`${prefix}-list-title`} class="visually-hidden">{label}の一覧</h2>
+      <ul class="name-grid">
+        {index.top.map((g) => (
+          <li>
+            <a class="name-link" href={g.path} title={g.name}>
+              <span class="name-link-name">{g.name}</span>
+              <span class="name-link-count">{g.count}本</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}

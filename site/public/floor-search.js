@@ -8,12 +8,15 @@
   var THUMB_MEDIA = '(max-width: 480px)'; // スマホ（lib/items.js の THUMB_MEDIA と同じ）
   var AWS_IMG = 'https://awsimgsrc.dmm.co.jp/pics_dig/';
 
-  // くらべるための文字（全角・半角、大文字・小文字、文節の区切りの見えない文字をそろえる）
+  // くらべるための文字（全角・半角、大文字・小文字、カタカナ・ひらがな、文節の区切りの見えない文字をそろえる）
   function norm(s) {
     return String(s || '')
       .normalize('NFKC')
       .replace(/[​⁠ ]/g, '')
-      .toLowerCase();
+      .toLowerCase()
+      .replace(/[ァ-ヶ]/g, function (c) {
+        return String.fromCharCode(c.charCodeAt(0) - 0x60);
+      });
   }
 
   function comma(n) {
@@ -270,9 +273,12 @@
   function start(raw) {
     if (!raw || !Array.isArray(raw.items) || !Array.isArray(raw.genres) || !Array.isArray(raw.themes)) throw new Error('index');
     index = raw;
+    var yomi = raw.yomi && typeof raw.yomi === 'object' ? raw.yomi : {};
     index.items.forEach(function (row) {
-      // 照らし合わせ用の文字は1作品1回だけ作る（タイトル・サークル/ブランド・作家・ジャンル）
-      row.$k = norm([row.t, row.m, row.a].concat((row.g || []).map(function (n) { return raw.genres[n]; })).join(' '));
+      // 照らし合わせ用の文字は1作品1回だけ作る（タイトル・サークル/ブランド・作家・ジャンルと、その読みがな＝索引の yomi。ひらがなで打っても見つかるように）
+      var names = [row.m].concat(String(row.a || '').split('、')).concat((row.g || []).map(function (n) { return raw.genres[n]; }));
+      var readings = names.map(function (n) { return n && Object.prototype.hasOwnProperty.call(yomi, n) && typeof yomi[n] === 'string' ? yomi[n] : ''; });
+      row.$k = norm([row.t, row.m, row.a].concat((row.g || []).map(function (n) { return raw.genres[n]; })).concat(readings).join(' '));
     });
     readUrl();
     if (!isBlank(state())) update(true); // 条件つきの URL で開いたときだけ作り直す（条件なしは、ページに入っている一覧のまま）

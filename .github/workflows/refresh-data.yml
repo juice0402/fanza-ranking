@@ -12,6 +12,7 @@ name: Refresh FANZA Data
 #     ふだんは毎日30回ずつ（3,000本）。「過去作品の一覧を取る回数」を増やして実行すると、一気に集められる（90回で上位1万本が一回り）
 #   ・FANZA同人（1,000本）・FANZAゲーム（500本）の人気作品を集め直す（scripts/doujin_game.py。2026-10-09 から）。
 #     「同人・ゲームだけ」を 1 にすると、ほかのデータには触らずに、同人・ゲームだけを集める（新しい機能のブランチで、本物のデータを入れて確かめるとき）
+#   ・読みがな（ジャンル・メーカー・シリーズ・作家。scripts/readings.py。2026-10-10 から）。ふだんは7日に1回。「読みがな」を 1 にすると、いますぐ集め直す
 # 新しい機能のブランチで、本物のAPIを使った確認をするときにも使う（Run workflow で、ブランチを選んで実行）。
 # 結果のデータは、実行したブランチに commit する。
 on:
@@ -31,6 +32,10 @@ on:
         default: '0'
       floors_only:
         description: '同人・ゲームだけを集める（1 で、ほかのデータには触らない。ふだんは 0 ＝ ぜんぶ）'
+        required: false
+        default: '0'
+      readings:
+        description: '読みがな（ジャンル・メーカー・シリーズ・作家）を、いますぐ集め直す（1 で集め直す。ふだんは毎日の更新が週1回）'
         required: false
         default: '0'
 
@@ -95,6 +100,16 @@ jobs:
           API_ID: ${{ secrets.API_ID }}
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
         run: python scripts/doujin_game.py --update
+
+      # 読みがな（Gemini は使わない。失敗しても、ほかの取り直しは残す。「読みがな」を 1 にしたときは、7日たっていなくても集める）
+      - name: Refresh readings
+        continue-on-error: true
+        timeout-minutes: 15
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+          FORCE: ${{ inputs.readings == '1' && '--force' || '' }}
+        run: python scripts/readings.py --update $FORCE
 
       # 10円セール（Gemini は使わない。失敗しても、ほかの取り直しは残す）
       - name: Refresh 10-yen sale

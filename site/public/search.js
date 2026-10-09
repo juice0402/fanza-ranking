@@ -146,13 +146,20 @@
     );
   }
 
-  // 検索用の文字を、行ごとに1回だけ作る（タイトル・出演者・メーカー・品番・ジャンル）
-  function prepare(rows, genres) {
+  // 検索用の文字を、行ごとに1回だけ作る（タイトル・出演者・メーカー・品番・ジャンル・出演者/メーカー/ジャンルの読みがな）
+  // yomi: 索引の { 名前: 読み }（ひらがなで打っても見つかるように。2026-10-10）
+  function prepare(rows, genres, yomi) {
+    var dict = yomi && typeof yomi === 'object' ? yomi : {};
+    function reading(name) {
+      var r = Object.prototype.hasOwnProperty.call(dict, name) ? dict[name] : '';
+      return typeof r === 'string' && r ? SEP + normalizeText(r) : '';
+    }
     rows.forEach(function (row) {
       var names = row.g.map(function (n) {
         return genres[n] || '';
       });
-      row._h = normalizeText(row.t) + SEP + row.a.map(normalizeText).join(SEP) + SEP + normalizeText(row.m) + SEP + normalizeText(row.c) + SEP + normalizeText(typeof row.p === 'string' ? row.p : '') + SEP + names.map(normalizeText).join(SEP);
+      var yomiText = row.a.map(reading).join('') + reading(row.m) + names.map(reading).join('');
+      row._h = normalizeText(row.t) + SEP + row.a.map(normalizeText).join(SEP) + SEP + normalizeText(row.m) + SEP + normalizeText(row.c) + SEP + normalizeText(typeof row.p === 'string' ? row.p : '') + SEP + names.map(normalizeText).join(SEP) + yomiText;
     });
     return rows;
   }
@@ -649,7 +656,7 @@
       rows = data && Array.isArray(data.items) ? data.items.filter(isRow) : [];
       if (data && typeof data.newDays === 'number') newDays = data.newDays;
       if (!rows.length) throw new Error('empty');
-      prepare(rows, indexGenres);
+      prepare(rows, indexGenres, data.yomi);
       // ページのジャンルのボタンが、索引のジャンルと違えば作り直す（選んでいるジャンルは、名前で引き継ぐ）
       if (indexGenres.join('\n') !== genres.join('\n')) {
         var names = selected.map(function (n) {

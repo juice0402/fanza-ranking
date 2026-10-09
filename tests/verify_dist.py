@@ -2375,6 +2375,32 @@ if os.path.isfile(_mi):
     _mt = htmllib.unescape(_mt.group(1)) if _mt else ""
     check("メーカー一覧のタイトルに「FANZAのメーカー一覧」・社数・年月", _mt.startswith("FANZAのメーカー一覧（") and "社）" in _mt and _ym in _mt, _mt)
 
+# 50音で探す（一覧のページ。components/NameIndex.astro・lib/kana.js。2026-10-10）: 行へのボタンの飛び先がページにある・名前のリンク先が実在する・
+# 作品数の多い順のタイルの名前は、どれも50音の並びにもある。読みがなは、名前と同じ読みなら出さない
+_kana_pages, _kana_bad, _ruby_bad = [], [], []
+for p_ in glob.glob(os.path.join(DIST, "**", "index.html"), recursive=True):
+    h_ = read_raw(p_)
+    if 'class="hero-ruby"' in h_:
+        for m_ in re.finditer(r'<p class="hero-ruby">(.*?)</p>', unphrase(h_), re.S):
+            if not strip_tags(m_.group(1)).strip() or re.search(r"[一-龥ァ-ヶ]", strip_tags(m_.group(1))):
+                _ruby_bad.append(rel(p_))
+    if 'class="kana-jump"' not in h_:
+        continue
+    _kana_pages.append(p_)
+    ids_ = set(re.findall(r'\bid="([^"]+)"', h_))
+    nav_ = re.search(r'<nav class="kana-jump"[^>]*>(.*?)</nav>', h_, re.S)
+    jumps_ = [t.get("href", "") for t in tags(nav_.group(1), "a")] if nav_ else []
+    lists_ = re.findall(r'<ul class="kana-list">(.*?)</ul>', h_, re.S)
+    links_ = [t.get("href", "") for blk in lists_ for t in tags(blk, "a")]
+    grid_ = re.search(r'<ul class="name-grid">(.*?)</ul>', h_, re.S)
+    tiles_ = [t.get("href", "") for t in tags(grid_.group(1), "a")] if grid_ else []
+    if not jumps_ or any(not j.startswith("#") or j[1:] not in ids_ for j in jumps_) \
+            or not links_ or len(links_) != len(set(links_)) or any(not os.path.isfile(page_file(l)) for l in links_) or not set(tiles_) <= set(links_) or len(tiles_) > 30:
+        _kana_bad.append(rel(p_))
+check("50音で探す: 行へのボタンの飛び先がページにある・名前のリンク先が実在する・上のタイルの名前は、どれも50音の並びにもある（タイルは30まで）", not _kana_bad, _kana_bad[:3])
+print(f"     （50音で探すのあるページ: {len(_kana_pages)}）")
+check("見出しの下の読みがな（.hero-ruby）は、ひらがなの読み（漢字・カタカナが無い・空でない）", not _ruby_bad, _ruby_bad[:3])
+
 # 検索ページ
 sp = os.path.join(DIST, "search", "index.html")
 check("検索ページ（/search/）がある", os.path.isfile(sp))
