@@ -1197,6 +1197,15 @@ summary:focus-visible {
   margin: 6px 0 0;
 }
 
+/* 同人・ゲームの「セールはいつ？」の、毎日のセール中の本数（1日1本の棒。目もりと文字は、人気の動きのグラフと同じ。2026-10-09） */
+.daybar rect {
+  fill: var(--pop);
+}
+
+.daybar:hover rect {
+  fill: var(--paper);
+}
+
 /* 作品ページの「この作品のデータ」欄（保存データから数えた事実の文）。1つの枠の中に、罫線で区切った行を並べる（表のように読める） */
 .facts {
   max-width: 760px;
@@ -4760,6 +4769,9 @@ html:not(.js) .actress-search,
 /* ---------- セールの履歴・特集ごとのページ（/sale/history/・/sale/<印>/。lib/sale.js） ----------
    表は横にはみ出すときだけ、表の中で横に動かす（ページは横に動かない）。見出しの列（特集の名前）は太字 */
 .hero-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   margin: 10px 0 0;
   font-size: 14px;
 }

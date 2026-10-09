@@ -2,8 +2,9 @@
 // 運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも」→「同人 1,000本・ゲーム 500本」（2026-10-09）。
 // データは毎日の更新が集める site/src/data/doujin.json・game.json（scripts/doujin_game.py。形は scripts/floor_data.py）。
 // 未成年を連想させる作品は、集めるときに入れていない。ここでも、タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前を調べて、念のため外す（二重の備え）。
-import { FANZA_HOSTS, FANZA_LINK_HOSTS, addDays, entitySlug, isDay, resizedImage, safeHttpsUrl } from './items.js';
+import { FANZA_HOSTS, FANZA_LINK_HOSTS, addDays, daysBetween, entitySlug, isDay, resizedImage, safeHttpsUrl } from './items.js';
 import { isMinorTitle } from './gacha.js';
+import { bestOf } from './popularity.js';
 
 /** 売り場の設定。label: 正式な名前・short: 短い名前・maker: サークル/ブランドの呼び方・kind: 作品の呼び方 */
 export const FLOORS = {
@@ -397,7 +398,233 @@ export function floorItemListLd(items, siteUrl, limit = 20) {
   };
 }
 
-/** 売り場ごとのファイルの数（作品ページ・サークル/ブランドのページ・一覧・トップ・ランキング・セール・コレクションのページとその一覧）。サイト全体の計画（lib/plan.js）に足す */
-export const floorFileCount = (floor, makers, collections = {}) => (floor.items.length > 0
-  ? floor.items.length + makers.length + 4 + FLOOR_COLLECTION_KINDS.reduce((n, k) => n + (collections[k]?.length ? collections[k].length + 1 : 0), 0)
+// ---------- 人気の動き（毎日の順位。data/floor_rank_history.json。scripts/floor_history.py が毎日足す。2026-10-09） ----------
+// 運営者の希望「動画と同じレベルの仕組みを同人とゲームにも」→「人気の動き」。順位は、このサイトの人気ランキングでの順位（FANZAの人気順）
+
+export const FLOOR_TREND_TRACK = 300; // 順位を記録している深さ（floor_history.py の RANK_TRACK。tests/test_floors.mjs で突き合わせ）
+export const FLOOR_TREND_DAYS = 30; // 何日分を持つか（floor_history.py の RANK_DAYS）
+const histValue = (v) => (v === null ? null : Number.isInteger(v) && v >= 0 && v <= 100000 ? v : null);
+const mdJp = (d) => `${+d.slice(5, 7)}月${+d.slice(8, 10)}日`;
+
+/**
+ * floor_rank_history.json → { updated, since: { doujin: 記録のいちばん古い日, game }, doujin: Map(cid → { start, n: [順位|0（圏外）|null（分からない）], best, daysIn }), game: Map }。
+ * 壊れた行は捨てる。ファイルが無ければ空
+ */
+export function normalizeFloorRankHistory(raw) {
+  const data = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const out = { updated: isDay(data.updated) ? data.updated : '', since: {} };
+  for (const key of FLOOR_KEYS) {
+    const rows = data[key] && typeof data[key] === 'object' && !Array.isArray(data[key]) ? data[key] : {};
+    const m = new Map();
+    for (const [cid, r] of Object.entries(rows)) {
+      if (!CID.test(cid) || !r || typeof r !== 'object' || !isDay(r.d)) continue;
+      const n = (Array.isArray(r.r) ? r.r : []).slice(0, FLOOR_TREND_DAYS).map(histValue);
+      if (!n.length) continue;
+      m.set(cid, { start: r.d, n, best: bestOf(n), daysIn: n.filter((v) => v > 0).length });
+      if (!out.since[key] || r.d < out.since[key]) out.since[key] = r.d;
+    }
+    out[key] = m;
+  }
+  return out;
+}
+
+/** その日の順位（記録の外・分からない日は null。0 は圏外＝300位より下） */
+export function floorRankOn(hist, day) {
+  if (!hist || !isDay(day)) return null;
+  const i = daysBetween(day, hist.start);
+  return i >= 0 && i < hist.n.length ? hist.n[i] : null;
+}
+
+/**
+ * 人気ランキングのカードの下の1行: 「前日から▲3｜最高2位」。day: データの日、since: その売り場の記録の始まり（初登場の判定）。分からなければ ''。
+ * 初登場＝きのうも記録していたのに、この作品の記録がきょう始まった（上位300本に入った）。再登場＝前は入っていて、きのうは圏外だった
+ */
+export function floorRankNote(hist, day, since = '') {
+  const cur = floorRankOn(hist, day);
+  if (!cur) return '';
+  const prev = floorRankOn(hist, addDays(day, -1));
+  const parts = [];
+  if (prev > 0) {
+    const d = prev - cur;
+    parts.push(d > 0 ? `前日から▲${d}` : d < 0 ? `前日から▼${-d}` : '前日と同じ');
+  } else if (prev === 0) parts.push('再登場');
+  else if (hist.start === day && since && since < day) parts.push('初登場');
+  if (hist.best && hist.best.rank < cur) parts.push(`最高${hist.best.rank}位`);
+  return parts.join('｜');
+}
+
+/** 作品ページの「人気の動き」の文（f: 売り場の設定）。一度も上位300本に入っていない・順位の分かる日が2日に満たない（記録を始めたばかり）ときは [] */
+export function floorTrendLines(hist, f) {
+  if (!hist?.best || hist.n.filter((v) => v !== null).length < 2) return [];
+  return [`${f.label}の人気ランキングで最高${hist.best.rank}位（${mdJp(addDays(hist.start, hist.best.day))}）・${FLOOR_TREND_TRACK}位以内に${hist.daysIn}日（${mdJp(hist.start)}からの記録）`];
+}
+
+/** 作品ページの「人気の動き」のグラフの下の注記 */
+export const floorTrendCaption = (f) => `このサイトの${f.label}の人気ランキング（FANZAの人気順）の毎日の順位。毎日0時すぎの時点で、上位${FLOOR_TREND_TRACK}本まで記録しています。`;
+
+/**
+ * きのうから人気が上がった作品（売り場のトップ）: 発売済みで、きのうもきょうも上位300本に入っていて、3つ以上・1.25倍以上上がった作品を、
+ * 上がった割合の大きい順（同じなら、いまの順位の高い順）に limit 本。[{ item, rise, cur }]
+ */
+export function floorRisers(items, histMap, day, limit = 6) {
+  const out = [];
+  for (const item of items) {
+    if (item.upcoming) continue;
+    const h = histMap?.get(item.cid);
+    const cur = floorRankOn(h, day);
+    const prev = floorRankOn(h, addDays(day, -1));
+    if (cur > 0 && prev > 0 && prev - cur >= 3 && prev / cur >= 1.25) out.push({ item, rise: prev - cur, cur, ratio: prev / cur });
+  }
+  return out.sort((a, b) => b.ratio - a.ratio || a.cur - b.cur).slice(0, limit).map(({ item, rise, cur }) => ({ item, rise, cur }));
+}
+
+// ---------- セールのページ（ゲームはセールの札ごと・同人は割引ごと）と、セールの記録（2026-10-09） ----------
+// 運営者の希望「動画と同じレベルの仕組みを同人とゲームにも。SEO対策も徹底的に」→「セールの充実」
+
+export const FLOOR_SALE_PAGE_MIN = 3; // セールのページを作る作品の数
+export const FLOOR_SALE_PAGE_LIST = 60; // セールのページに並べる本数（人気の高い順）
+export const DOUJIN_OFF_BANDS = [90, 70, 50]; // 同人の割引のページ（○%OFF以上）
+export const FLOOR_SALE_HISTORY_MIN_DAYS = 7; // 「セールはいつ？」を検索エンジンに出す、記録の日数（それまでは noindex）
+export const floorSalePagePath = (key, slug) => `${floorSalePath(key)}${slug}/`;
+export const floorSaleHistoryPath = (key) => `${floorSalePath(key)}history/`;
+
+/** 名前から読める最大の割引（「最大90%OFF」→ 90、「半額」→ 50）。読めなければ 0（scripts/floor_history.py の off_in_title と同じ） */
+export function offInTitle(title) {
+  const nums = [...String(title ?? '').matchAll(/(\d{1,2})\s*[%％]\s*(?:OFF|ＯＦＦ|オフ)/g)].map((m) => Number(m[1]));
+  if (nums.length) return Math.max(...nums);
+  return String(title ?? '').includes('半額') ? 50 : 0;
+}
+
+/**
+ * セールのページ: [{ kind: 'tag'|'off', slug, path, name, heading, off, items（人気の高い順・全部）, total }]。
+ * ゲーム: 値下げのセールの札ごと（対象が3本以上。対象の多い順）。同人: 割引ごと（90%OFF以上・70%OFF以上・半額以上。3本以上）
+ */
+export function floorSalePages(items, key) {
+  if (key === 'game') {
+    return saleTagGroups(items, Infinity)
+      .filter((g) => g.total >= FLOOR_SALE_PAGE_MIN)
+      .map((g) => {
+        const slug = entitySlug(g.title);
+        return { kind: 'tag', slug, path: floorSalePagePath(key, slug), name: g.title, heading: g.title, off: offInTitle(g.title), items: g.items, total: g.total };
+      });
+  }
+  const sale = floorSaleItems(items);
+  return DOUJIN_OFF_BANDS.map((min) => {
+    const list = sale.filter((i) => i.off >= min);
+    const name = min === 50 ? '半額以上（50%OFF〜）' : `${min}%OFF以上`;
+    return { kind: 'off', slug: `off${min}`, path: floorSalePagePath(key, `off${min}`), name, heading: `${name}の${FLOORS[key].kind}`, off: min, items: list, total: list.length };
+  }).filter((p) => p.total >= FLOOR_SALE_PAGE_MIN);
+}
+
+/** 作品ページの札の行き先: セールのページがあれば、そのページ。無ければセールのページの中の見出し（saleTagHref） */
+export function saleTagLink(key, t, pagesBySlug) {
+  if (isSaleTag(t)) {
+    const page = pagesBySlug?.get(entitySlug(t));
+    if (page) return page.path;
+  }
+  return saleTagHref(key, t);
+}
+
+/** セールのページのタイトル（検索に出る名前）。dayLabel: 「10月9日」 */
+export function floorSalePageTitle(f, page, dayLabel, siteName) {
+  return page.kind === 'tag'
+    ? `${page.name}の対象${f.kind}一覧【${dayLabel}更新】（${page.total}本）｜${siteName}`
+    : `${f.label} ${page.name}のセール作品一覧【${dayLabel}更新】（${page.total}本）｜${siteName}`;
+}
+
+/**
+ * floor_sale_history.json → { updated, doujin: { days: [{ d, n, max }]（古い順）, tags: [{ title, begin, first, last, count, off }] }, game }。
+ * 壊れた行は捨てる。ファイルが無ければ空
+ */
+export function normalizeFloorSaleHistory(raw) {
+  const data = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const out = { updated: isDay(data.updated) ? data.updated : '' };
+  const int = (v) => (Number.isInteger(v) && v >= 0 && v <= 1000000 ? v : null);
+  for (const key of FLOOR_KEYS) {
+    const fl = data[key] && typeof data[key] === 'object' ? data[key] : {};
+    const days = (Array.isArray(fl.days) ? fl.days : [])
+      .filter((d) => d && isDay(d.d) && int(d.n) !== null && int(d.max) !== null && d.max <= 100)
+      .map((d) => ({ d: d.d, n: d.n, max: d.max }))
+      .sort((a, b) => (a.d < b.d ? -1 : 1));
+    const tags = (Array.isArray(fl.tags) ? fl.tags : [])
+      .filter((t) => t && typeof t.title === 'string' && t.title.trim() && isDay(t.first) && isDay(t.last) && t.first <= t.last && !minor(t.title))
+      .map((t) => ({ title: t.title.trim().slice(0, 60), begin: isDay(t.begin) ? t.begin : '', first: t.first, last: t.last, count: int(t.count) ?? 0, off: Math.min(int(t.off) ?? 0, 100) }));
+    out[key] = { days, tags };
+  }
+  return out;
+}
+
+/** 「セールはいつ？」の記録の日数（記録の日と、きょうのデータの日）。FLOOR_SALE_HISTORY_MIN_DAYS 日に満たないあいだは、ページを検索エンジンに出さない（sitemap も同じ） */
+export const floorSaleHistoryDays = (hist, updated) => new Set([...(hist?.days ?? []).map((d) => d.d), ...(isDay(updated) ? [updated] : [])]).size;
+export const floorSaleHistoryIndexable = (hist, updated) => floorSaleHistoryDays(hist, updated) >= FLOOR_SALE_HISTORY_MIN_DAYS;
+/** セールのページを検索エンジンに出してよいか: 並べる作品（60本）にコメントのある作品があるとき（sitemap も同じ） */
+export const floorSalePageIndexable = (page) => page.items.slice(0, FLOOR_SALE_PAGE_LIST).some((i) => i.comment);
+
+/**
+ * 「セールはいつ？」の数字（データから数えた事実だけ。予想は書かない）。today: { d, n, max }（きょうのデータから数えたもの。記録にまだ無ければ足す）。
+ * { days（記録の日数）, first, last, withSale（セール中の作品があった日数）, recordMax: { max, d }, today, ongoing（きょう見かけたセールの札）, ended }
+ */
+export function floorSaleFacts(hist, todayFacts, key) {
+  const days = [...(hist?.days ?? [])];
+  if (todayFacts && isDay(todayFacts.d) && !days.some((d) => d.d === todayFacts.d)) days.push(todayFacts);
+  days.sort((a, b) => (a.d < b.d ? -1 : 1));
+  const last = days.at(-1)?.d ?? '';
+  const recordMax = days.reduce((b, d) => (d.max > (b?.max ?? 0) ? d : b), null);
+  const tags = (hist?.tags ?? []).filter((t) => key !== 'game' || isSaleTag(t.title));
+  const ongoing = tags.filter((t) => t.last === last).sort((a, b) => b.count - a.count || (a.title < b.title ? -1 : 1));
+  const ended = tags.filter((t) => t.last < last).sort((a, b) => (a.last > b.last ? -1 : a.last < b.last ? 1 : b.count - a.count));
+  return {
+    days: days.length,
+    list: days,
+    first: days[0]?.d ?? '',
+    last,
+    withSale: days.filter((d) => d.n > 0).length,
+    recordMax: recordMax ? { max: recordMax.max, d: recordMax.d } : null,
+    today: days.at(-1) ?? null,
+    ongoing,
+    ended,
+  };
+}
+
+/**
+ * 毎日のセール中の本数のグラフ（SVG。1日1本の棒。最近 span 日）: { w, h, bars: [{ x, y, bw, bh, d, n, max }], grid: [{ v, y }], ticks: [{ x, label }] }。
+ * 記録が2日に満たなければ null
+ */
+export function floorSaleDayChart(list, { w = 320, h = 120, span = 30 } = {}) {
+  const days = (list ?? []).slice(-span);
+  if (days.length < 2) return null;
+  const pad = { left: 34, right: 8, top: 10, bottom: 22 };
+  const from = days[0].d;
+  const count = daysBetween(days.at(-1).d, from) + 1;
+  const step = (w - pad.left - pad.right) / count;
+  const top = Math.max(...days.map((d) => d.n), 1);
+  const nice = top <= 10 ? 10 : 10 ** Math.floor(Math.log10(top)) * Math.ceil(top / 10 ** Math.floor(Math.log10(top)));
+  const yOf = (v) => +(pad.top + (1 - v / nice) * (h - pad.top - pad.bottom)).toFixed(1);
+  const bw = +Math.max(2, step - 2).toFixed(1);
+  const bars = days.map((d) => {
+    const i = daysBetween(d.d, from);
+    const y = yOf(d.n);
+    return { x: +(pad.left + i * step + (step - bw) / 2).toFixed(1), y, bw, bh: +(h - pad.bottom - y).toFixed(1), d: d.d, n: d.n, max: d.max };
+  });
+  const every = Math.max(1, Math.ceil(count / 6));
+  const ticks = [];
+  for (let i = 0; i < count; i++) {
+    if (i === 0 || i === count - 1 || (i % every === 0 && count - 1 - i >= Math.ceil(every / 2))) {
+      const d = addDays(from, i);
+      ticks.push({ x: +(pad.left + i * step + step / 2).toFixed(1), label: `${+d.slice(5, 7)}/${+d.slice(8, 10)}` });
+    }
+  }
+  return { w, h, bars, grid: [0, nice / 2, nice].map((v) => ({ v, y: yOf(v) })), ticks, left: pad.left, right: w - pad.right, bottom: h - pad.bottom };
+}
+
+/** 同人の、いまの割引ごとの本数（セールの記録のページ）: [{ name, count }]（割引の大きい順。0本の幅は出さない） */
+export function offBands(items) {
+  const bands = [[90, 100, '90%OFF以上'], [70, 89, '70〜89%OFF'], [50, 69, '50〜69%OFF'], [30, 49, '30〜49%OFF'], [1, 29, '30%OFF未満']];
+  const sale = floorSaleItems(items);
+  return bands.map(([lo, hi, name]) => ({ name, count: sale.filter((i) => i.off >= lo && i.off <= hi).length })).filter((b) => b.count > 0);
+}
+
+/** 売り場ごとのファイルの数（作品ページ・サークル/ブランドのページ・一覧・トップ・ランキング・セール・セールの記録・コレクションのページとその一覧・セールのページ）。サイト全体の計画（lib/plan.js）に足す */
+export const floorFileCount = (floor, makers, collections = {}, salePages = []) => (floor.items.length > 0
+  ? floor.items.length + makers.length + 5 + salePages.length + FLOOR_COLLECTION_KINDS.reduce((n, k) => n + (collections[k]?.length ? collections[k].length + 1 : 0), 0)
   : 0);

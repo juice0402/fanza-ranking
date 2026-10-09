@@ -7,8 +7,9 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
 import FloorTabs from '../../components/FloorTabs.astro';
-import { activeFloors, floors } from '../../lib/data.js';
-import { FLOORS, FLOOR_SALE_LIMIT, couponTags, floorMaxOff, floorPath, floorSaleItems, floorSalePath, priceNote, saleBadgeOf, saleTagAnchor, saleTagGroups } from '../../lib/floors.js';
+import { activeFloors, floorSalePageBySlug, floorSalePageGroups, floors } from '../../lib/data.js';
+import { FLOORS, FLOOR_SALE_LIMIT, couponTags, floorItemListLd, floorMaxOff, floorPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, priceNote, saleBadgeOf, saleTagAnchor, saleTagGroups } from '../../lib/floors.js';
+import { entitySlug } from '../../lib/items.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SALE_PATH } from '../../lib/sale.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
@@ -27,6 +28,9 @@ const groups = key === 'game' ? saleTagGroups(data.items) : [];
 const coupons = key === 'game' ? couponTags(data.items) : [];
 const list = key === 'game' ? [] : sale.slice(0, FLOOR_SALE_LIMIT);
 const shown = key === 'game' ? groups.flatMap((g) => g.items) : list;
+// セールごと（ゲーム）・割引ごと（同人）のページ（2026-10-09）
+const salePages = floorSalePageGroups[key];
+const pageOf = (title) => floorSalePageBySlug[key].get(entitySlug(title));
 const day = data.updated ? dateParts(data.updated) : null;
 const dayLabel = day ? `${day.m}月${day.d}日` : '毎日';
 const trail = [
@@ -44,7 +48,7 @@ const description = key === 'game'
 const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${f.label}のセール中の作品`, url: SITE_URL + floorSalePath(key), ...(data.updated ? { dateModified: data.updated } : {}) };
 ---
 
-<Base title={title} description={description} path={floorSalePath(key)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd]}>
+<Base title={title} description={description} path={floorSalePath(key)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd, floorItemListLd(shown, SITE_URL)]}>
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
@@ -54,7 +58,12 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
         {key === 'game' ? 'セール中の人気作品を、セールごとに。' : `いまセール中の人気作品を、人気の高い順に${maxOff ? `（最大${maxOff}%OFF）` : ''}。`}
         {data.updated && `${formatDateJp(data.updated)}の時点の情報です（終わる日・くわしい条件は、FANZAの作品ページで確かめてください）。`}
       </p>
-      <p class="hero-links"><a class="spec-link" href={SALE_PATH}>FANZA動画のセールはこちら</a></p>
+      <p class="hero-links"><a class="spec-link" href={floorSaleHistoryPath(key)}>{f.label}のセールはいつ？（毎日の記録）</a><a class="spec-link" href={SALE_PATH}>FANZA動画のセールはこちら</a></p>
+      {key !== 'game' && salePages.length > 0 && (
+        <ul class="chips find-more" aria-label="割引ごと">
+          {salePages.map((p) => <li class="chip"><a class="chip-tag" href={p.path}>{p.name}（{p.total}本）</a></li>)}
+        </ul>
+      )}
       <FloorTabs floorKey={key} current="sale" />
     </section>
 
@@ -68,7 +77,9 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
             <section class="section" aria-labelledby={saleTagAnchor(g.title)}>
               <div class="section-head">
                 <h2 id={saleTagAnchor(g.title)} class="section-title">{g.title}</h2>
-                <p class="section-note">対象 {g.total}本{g.total > g.items.length && `（人気の高い${g.items.length}本）`}</p>
+                {pageOf(g.title)
+                  ? <a class="subsection-more" href={pageOf(g.title).path}>対象の{g.total}本を見る</a>
+                  : <p class="section-note">対象 {g.total}本</p>}
               </div>
               <ul class="shelf">
                 {g.items.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge="セール中" note={priceNote(item)} eager={gi === 0 && i < 4} /></li>)}

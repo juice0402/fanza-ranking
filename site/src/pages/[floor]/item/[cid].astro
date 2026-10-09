@@ -7,9 +7,10 @@
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorMiniShelf from '../../../components/FloorMiniShelf.astro';
-import { activeFloors, floorCollectionGroups, floorMakerById, floors } from '../../../lib/data.js';
+import RankTrend from '../../../components/RankTrend.astro';
+import { activeFloors, floorCollectionGroups, floorMakerById, floorRankHistory, floorSalePageBySlug, floorSalePageGroups, floors } from '../../../lib/data.js';
 import {
-  DOUJIN_IMG_ONERROR, FLOORS, FLOOR_SAMPLES, collectionLinksFor, floorItemDescription, floorItemPath, floorItemTitle, floorPath, floorSaleItems, floorSalePath, popularInFloorGenre, priceNote, sameMaker, saleTagHref,
+  DOUJIN_IMG_ONERROR, FLOORS, FLOOR_SAMPLES, FLOOR_TREND_TRACK, collectionLinksFor, floorTrendCaption, floorTrendLines, saleTagLink, floorItemDescription, floorItemPath, floorItemTitle, floorPath, floorSaleItems, floorSalePath, popularInFloorGenre, priceNote, sameMaker,
 } from '../../../lib/floors.js';
 import { breadcrumbLd, formatDateJp, SITE_NAME, truncate } from '../../../lib/items.js';
 import { assetUrl } from '../../../lib/assets.js';
@@ -39,6 +40,11 @@ const price = priceNote(item);
 const links = collectionLinksFor(item, floorCollectionGroups[key]);
 // セールのページがある売り場だけ、セールの札からセールのページへリンクする（リンク切れを作らない）
 const hasSalePage = floorSaleItems(items).length > 0;
+// セールごと（ゲーム）・割引ごと（同人）のページ（2026-10-09）。同人は、その作品の割引が入るいちばん上の割引のページ
+const bandPage = key === 'doujin' && item.off > 0 ? floorSalePageGroups[key].find((p) => item.off >= p.off) ?? null : null;
+// 人気の動き（毎日の順位の記録。上位300本に入ったことのある作品だけ。2026-10-09）
+const hist = floorRankHistory[key].get(item.cid);
+const trendLines = floorTrendLines(hist, f);
 ---
 
 <Base
@@ -117,7 +123,7 @@ const hasSalePage = floorSaleItems(items).length > 0;
               <dt class="spec-term">セール・キャンペーン</dt>
               <dd class="spec-desc">
                 <ul class="chips">
-                  {item.sales.map((s) => (hasSalePage ? <li class="chip"><a class="chip-tag" href={saleTagHref(key, s)}>{s}</a></li> : <li class="chip chip-plain">{s}</li>))}
+                  {item.sales.map((s) => (hasSalePage ? <li class="chip"><a class="chip-tag" href={saleTagLink(key, s, floorSalePageBySlug[key])}>{s}</a></li> : <li class="chip chip-plain">{s}</li>))}
                 </ul>
               </dd>
             </>
@@ -125,7 +131,7 @@ const hasSalePage = floorSaleItems(items).length > 0;
           {item.off > 0 && item.campaign && item.sales.length === 0 && (
             <>
               <dt class="spec-term">セール</dt>
-              <dd class="spec-desc"><a class="spec-link" href={floorSalePath(key)}>{item.campaign.title}</a>{item.campaign.begin && `（${formatDateJp(item.campaign.begin)}から）`}</dd>
+              <dd class="spec-desc"><a class="spec-link" href={floorSalePath(key)}>{item.campaign.title}</a>{item.campaign.begin && `（${formatDateJp(item.campaign.begin)}から）`}{bandPage && <> <a class="spec-link spec-sub" href={bandPage.path}>{bandPage.name}の{f.kind}</a></>}</dd>
             </>
           )}
         </dl>
@@ -150,6 +156,8 @@ const hasSalePage = floorSaleItems(items).length > 0;
         </ul>
       </section>
     )}
+
+    {trendLines.length > 0 && <RankTrend hist={hist} max={FLOOR_TREND_TRACK} title="人気の動き" caption={floorTrendCaption(f)} lines={trendLines} />}
 
     {gallery.length > 0 && (
       <dialog id="lightbox" class="lightbox" aria-label="画像の拡大表示" tabindex="-1">

@@ -19,18 +19,18 @@ export const TREND_W = 320;
 export const TREND_H = 132;
 const PAD = { left: 40, right: 14, top: 14, bottom: 24 };
 
-/** 順位 → 縦の位置（対数の目盛り。1位がいちばん上、500位がいちばん下。上のほうの動きが見えるように） */
-export const rankY = (rank, h = TREND_H) => {
-  const t = Math.log10(Math.max(1, Math.min(rank, TREND_MAX_RANK))) / Math.log10(TREND_MAX_RANK);
+/** 順位 → 縦の位置（対数の目盛り。1位がいちばん上、max 位（ふつうは500位）がいちばん下。上のほうの動きが見えるように） */
+export const rankY = (rank, h = TREND_H, max = TREND_MAX_RANK) => {
+  const t = Math.log10(Math.max(1, Math.min(rank, max))) / Math.log10(max);
   return +(PAD.top + t * (h - PAD.top - PAD.bottom)).toFixed(1);
 };
 
 /**
- * 作品ページの「発売後の人気の動き」のグラフ（新着の人気順。1日1点・対数の目盛り）。
+ * 作品ページの「発売後の人気の動き」のグラフ（新着の人気順。1日1点・対数の目盛り）。max: いちばん下の順位（同人・ゲームは300。lib/floors.js）。
  * 記録が無い・順位の分かる日が2日に満たないときは null（グラフは出さず、文だけにする）。
  * { points: [{ i, date, label, rank, x, y }], outs: [{ x, date }]（圏外の日）, path, best, grid: [{ rank, y }], days: [{ x, label }] }
  */
-export function trendChart(hist, { w = TREND_W, h = TREND_H } = {}) {
+export function trendChart(hist, { w = TREND_W, h = TREND_H, max = TREND_MAX_RANK } = {}) {
   if (!hist || !Array.isArray(hist.n)) return null;
   const known = hist.n.filter((v) => v !== null);
   const ranked = hist.n.filter((v) => v > 0);
@@ -42,7 +42,7 @@ export function trendChart(hist, { w = TREND_W, h = TREND_H } = {}) {
   const outs = [];
   hist.n.forEach((v, i) => {
     const date = addDays(hist.start, i);
-    if (v > 0) points.push({ i, date, label: mdShort(date), rank: v, x: xOf(i), y: rankY(v, h) });
+    if (v > 0) points.push({ i, date, label: mdShort(date), rank: v, x: xOf(i), y: rankY(v, h, max) });
     else if (v === 0) outs.push({ x: xOf(i), date, label: mdShort(date) });
   });
   // 線は、続いている日だけをつなぐ（圏外・取れなかった日で切る）
@@ -53,7 +53,7 @@ export function trendChart(hist, { w = TREND_W, h = TREND_H } = {}) {
     prev = p;
   }
   const best = points.reduce((b, p) => (!b || p.rank < b.rank ? p : b), null);
-  const grid = [1, 10, 100, TREND_MAX_RANK].map((rank) => ({ rank, y: rankY(rank, h) }));
+  const grid = [1, 10, 100, max].map((rank) => ({ rank, y: rankY(rank, h, max) }));
   const days = hist.n.map((_, i) => ({ x: xOf(i), label: mdShort(addDays(hist.start, i)) }));
   return { w, h, points, outs, path, best, grid, days, bottom: h - PAD.bottom, left: PAD.left, right: w - PAD.right };
 }

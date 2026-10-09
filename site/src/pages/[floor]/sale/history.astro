@@ -1,0 +1,182 @@
+---
+// 「FANZA同人・FANZAゲームのセールはいつ？」（/doujin/sale/history/・/game/sale/history/。運営者の希望「動画と同じレベルの仕組みを同人とゲームにも。SEO対策も徹底的に」→「セールの充実」。2026-10-09）。
+// このサイトが毎日0時すぎに記録している、セール中の作品の数・最大の割引・セールの名前（data/floor_sale_history.json。scripts/floor_history.py）から、毎日自動で作る。
+// データから数えた事実だけを書き、予想はしない（記録は 2026-10-09 から）。記録が FLOOR_SALE_HISTORY_MIN_DAYS 日に満たないあいだは、検索エンジンに出さない。
+//   よくある質問（答えの数字を先に大きく）→ 毎日のセール中の本数（棒のグラフ）→ ゲーム: セールの記録（帯のグラフ。components/SaleBars.astro）／同人: いまの割引ごとの本数 → 注記
+import Base from '../../../layouts/Base.astro';
+import Breadcrumb from '../../../components/Breadcrumb.astro';
+import FloorTabs from '../../../components/FloorTabs.astro';
+import SaleBars from '../../../components/SaleBars.astro';
+import { activeFloors, floorSaleHistory, floorSalePageBySlug, floors } from '../../../lib/data.js';
+import {
+  FLOORS, floorMaxOff, floorSaleHistoryIndexable, floorPath, floorSaleDayChart, floorSaleFacts, floorSaleHistoryPath, floorSaleItems, floorSalePath, isSaleTag, offBands, offInTitle, saleTagGroups,
+} from '../../../lib/floors.js';
+import { barSpan, dayTicks } from '../../../lib/sale.js';
+import { SITE_NAME, SITE_URL, addDays, breadcrumbLd, daysBetween, entitySlug, formatDateJp } from '../../../lib/items.js';
+
+export function getStaticPaths() {
+  return activeFloors.map((floor) => ({ params: { floor } }));
+}
+
+const { floor: key } = Astro.params;
+const f = FLOORS[key];
+const data = floors[key];
+const sale = floorSaleItems(data.items);
+// きょうの数字（記録にまだ無いとき＝記録を始める前のデータでも、きょうの分は出す）。ゲームの最大の割引は、セールの名前の「最大○%OFF」も入れる（scripts/floor_history.py と同じ）
+const todayMax = Math.max(floorMaxOff(sale), ...sale.flatMap((i) => i.sales.filter(isSaleTag).map(offInTitle)), 0);
+const facts = floorSaleFacts(floorSaleHistory[key], data.updated ? { d: data.updated, n: sale.length, max: todayMax } : null, key);
+const md = (d) => `${+d.slice(5, 7)}月${+d.slice(8, 10)}日`;
+const chart = floorSaleDayChart(facts.list);
+const pageOf = (title) => floorSalePageBySlug[key].get(entitySlug(title));
+// いま開催中のセール（ゲーム）は、きょうのデータから（記録はまだ無いこともあるので）。対象の多い順
+const nowTags = key === 'game' ? saleTagGroups(data.items, 0) : [];
+
+// ゲーム: セールの名前ごとの帯（最近30日。少なくとも7日の窓）。いまも見かけるセールが先（対象の多い順）、そのあと終わったセール（最近まで見かけた順）
+const last = facts.last;
+const from = last ? [[addDays(last, -29), facts.first].sort().at(-1), addDays(last, -6)].sort()[0] : '';
+const winDays = last ? daysBetween(last, from) + 1 : 0;
+const tagRows = key === 'game' && last
+  ? [...facts.ongoing, ...facts.ended]
+    .filter((t) => t.last >= from)
+    .slice(0, 30)
+    .map((t) => {
+      const ongoing = t.last === last;
+      const span = barSpan(t.first, t.last, from, last);
+      return {
+        title: t.title,
+        href: ongoing ? pageOf(t.title)?.path ?? '' : '',
+        off: t.off || null,
+        parts: span ? [{ ...span, future: false }] : [],
+        aria: `${t.title}: このサイトでは${md(t.first)}から${ongoing ? 'きょうまで' : `${md(t.last)}まで`}見かけています`,
+        meta: `${ongoing ? `${md(t.first)}から` : `${md(t.first)}〜${md(t.last)}`}・対象${t.count}本`,
+        saleEnd: '',
+      };
+    })
+  : [];
+const barsChart = winDays ? { days: winDays, t: winDays - 1, ticks: dayTicks(from, winDays, last, { step: winDays > 14 ? 5 : 1, anchor: last }) } : null;
+const bands = key === 'game' ? [] : offBands(data.items);
+
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: 'セール中の作品', path: floorSalePath(key) },
+  { name: 'セールはいつ？', path: floorSaleHistoryPath(key) },
+];
+const noindex = !floorSaleHistoryIndexable(floorSaleHistory[key], data.updated);
+const dayLabel = last ? md(last) : '毎日';
+const pageLd = { '@context': 'https://schema.org', '@type': 'WebPage', name: `${f.label}のセールはいつ？`, url: SITE_URL + floorSaleHistoryPath(key), ...(last ? { dateModified: last } : {}) };
+---
+
+<Base
+  title={`${f.label}のセールはいつ？開催中のセールと毎日の記録【${dayLabel}更新】｜${SITE_NAME}`}
+  description={`${f.label}のセールが、いつ・何本・最大何%OFFで開かれているかを、このサイトが毎日記録したデータから自動でまとめています（記録は${facts.first ? formatDateJp(facts.first) : '毎日の更新'}から）。いまセール中の作品は${sale.length}本${todayMax ? `（最大${todayMax}%OFF）` : ''}。`}
+  path={floorSaleHistoryPath(key)}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail), pageLd]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{f.label}のセールはいつ？</h1>
+      <p class="hero-lead">このサイトが毎日記録している、{f.label}のセールの記録です（{facts.first ? `${formatDateJp(facts.first)}から${facts.days}日分` : '記録はこれから'}）。</p>
+      {last && <p class="page-updated">{formatDateJp(last)}更新</p>}
+      <FloorTabs floorKey={key} current="sale" />
+    </section>
+
+    <section class="section" aria-labelledby="faq-title">
+      <div class="section-head">
+        <h2 id="faq-title" class="section-title">よくある質問</h2>
+      </div>
+      <dl class="faq faq-grid">
+        <div class="faq-row">
+          <dt>いまセール中の{f.kind}は？</dt>
+          <dd><span class="faq-key">{sale.length}本</span><span class="faq-text">{last && `${md(last)}の時点`}{todayMax > 0 && `・最大${todayMax}%OFF`}。<a class="spec-link" href={floorSalePath(key)}>セール中の作品を見る</a></span></dd>
+        </div>
+        {key === 'game' && (
+          <div class="faq-row">
+            <dt>いま開催中のセールは？</dt>
+            {nowTags.length > 0
+              ? <dd><span class="faq-key">{nowTags.length}件</span><span class="faq-text">{nowTags.slice(0, 3).map((t, n) => <>{n > 0 && '・'}{pageOf(t.title) ? <a class="spec-link" href={pageOf(t.title).path}>{t.title}</a> : t.title}（{t.total}本）</>)}{nowTags.length > 3 && 'など'}（このサイトに載っているゲームの中で）。</span></dd>
+              : <dd><span class="faq-key">0件</span><span class="faq-text">いまは、このサイトに載っているゲームで開催中のセールはありません。</span></dd>}
+          </div>
+        )}
+        {facts.days > 0 && (
+          <div class="faq-row">
+            <dt>セールは、いつやっていますか？</dt>
+            <dd><span class="faq-key">{facts.withSale}/{facts.days}日</span><span class="faq-text">記録した{facts.days}日{facts.days > 1 && `（${md(facts.first)}〜${md(facts.last)}）`}のうち、セール中の作品があった日の数です（このサイトに載っている作品から数えています）。</span></dd>
+          </div>
+        )}
+        {facts.recordMax && facts.recordMax.max > 0 && (
+          <div class="faq-row">
+            <dt>記録の中で、いちばん大きい割引は？</dt>
+            <dd><span class="faq-key">{facts.recordMax.max}%OFF</span><span class="faq-text">{md(facts.recordMax.d)}の記録{key === 'game' && '（セールの名前の「最大○%OFF」も入れています）'}。</span></dd>
+          </div>
+        )}
+        <div class="faq-row">
+          <dt>次のセールはいつ？</dt>
+          <dd><span class="faq-text">このサイトは、始まったセールだけを記録しているので、次の開催日は分かりません。新しいセールは、始まったあとの毎日の更新（日付が変わったあと）で、このページに出ます。</span></dd>
+        </div>
+      </dl>
+    </section>
+
+    {chart && (
+      <section class="section" aria-labelledby="fl-saledays-title">
+        <div class="section-head">
+          <h2 id="fl-saledays-title" class="section-title">毎日のセール中の本数</h2>
+          <p class="section-note">最近{chart.bars.length}日</p>
+        </div>
+        <figure class="trend daybars">
+          <svg class="trend-svg" viewBox={`0 0 ${chart.w} ${chart.h}`} role="img" aria-labelledby="daybars-cap">
+            {chart.grid.map((g) => (
+              <g class="trend-grid">
+                <line x1={chart.left} x2={chart.right} y1={g.y} y2={g.y} />
+                <text x={chart.left - 6} y={g.y + 3.5} text-anchor="end">{g.v}</text>
+              </g>
+            ))}
+            {chart.bars.map((b) => (
+              <g class="daybar"><title>{`${md(b.d)}: ${b.n}本（最大${b.max}%OFF）`}</title><rect x={b.x} y={b.y} width={b.bw} height={b.bh} rx="2" /></g>
+            ))}
+            {chart.ticks.map((t) => <text class="trend-day" x={t.x} y={chart.h - 6} text-anchor="middle">{t.label}</text>)}
+          </svg>
+          <figcaption id="daybars-cap" class="fine">このサイトに載っている{f.label}の作品のうち、毎日0時すぎの時点でセール中だった本数。</figcaption>
+          <ol class="visually-hidden">
+            {facts.list.slice(-chart.bars.length).map((d) => <li>{md(d.d)}: {d.n}本（最大{d.max}%OFF）</li>)}
+          </ol>
+        </figure>
+      </section>
+    )}
+
+    {tagRows.length > 0 && barsChart && (
+      <section class="section" aria-labelledby="fl-saletags-title">
+        <div class="section-head">
+          <h2 id="fl-saletags-title" class="section-title">セールの記録</h2>
+          <p class="section-note">最近{winDays}日・いま開催中が先</p>
+        </div>
+        <p class="bars-legend" aria-hidden="true">
+          <span class="lg lg-on"></span>見かけた日<span class="lg lg-today"></span>きょう
+        </p>
+        <SaleBars chart={barsChart} rows={tagRows} label={`${f.label}のセールの記録`} />
+      </section>
+    )}
+
+    {bands.length > 0 && (
+      <section class="section" aria-labelledby="fl-salebands-title">
+        <div class="section-head">
+          <h2 id="fl-salebands-title" class="section-title">いまの割引ごとの本数</h2>
+          <p class="section-note">{last && `${md(last)}の時点`}</p>
+        </div>
+        <ul class="facts">
+          {bands.map((b) => <li class="facts-row"><span class="facts-label">{b.count}本</span><span class="facts-text">{b.name}</span></li>)}
+        </ul>
+      </section>
+    )}
+
+    <p class="section-note run-note">
+      記録は{facts.first ? formatDateJp(facts.first) : '毎日の更新'}から（それより前の記録は、ほかのサイトから写していません）。本数と割引は、その日の更新の時点のFANZAの情報で、このサイトに載っている{f.label}の作品（{data.items.length}本）から数えています。
+    </p>
+    <p class="more camp-more">
+      <a class="btn btn-quiet" href={floorSalePath(key)}>セール中の作品を見る</a>
+    </p>
+  </div>
+</Base>
