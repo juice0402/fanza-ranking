@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import * as L from '../site/src/lib/floors.js';
 import { nonItemFileCount } from '../site/src/lib/plan.js';
+import { trendChart } from '../site/src/lib/insights.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -109,7 +110,7 @@ check('場所: /doujin/・/doujin/ranking/・/doujin/sale/・/doujin/item/<品�
   && L.floorItemPath('doujin', 'd_1') === '/doujin/item/d_1/' && L.floorMakerPath('game', 5) === '/game/maker/5/' && L.floorMakerIndexPath('game') === '/game/maker/');
 check('作品ページのタイトル: 「タイトル｜FANZA同人（サークル）｜サイト名」', L.floorItemTitle(i1, 'サイト') === '作った作品その1｜FANZA同人（サークル1）｜サイト');
 check('作品ページの説明文: コメントがあれば先に・発売日・サークル', L.floorItemDescription(fl.items.find((i) => i.cid === 'd_100003')).startsWith('Claudeが書いたコメント FANZA同人の同人作品「作った作品その3」（サークル：サークル0）。2026年9月20日発売。'));
-check('ファイルの数: 作品ページ＋サークル/ブランドのページ＋4（トップ・ランキング・セール・一覧）。作品が無い売り場は0', L.floorFileCount(fl, makers) === fl.items.length + 2 + 4 && L.floorFileCount({ items: [] }, []) === 0);
+check('ファイルの数: 作品ページ＋サークル/ブランドのページ＋5（トップ・ランキング・セール・セールの記録・一覧）。作品が無い売り場は0', L.floorFileCount(fl, makers) === fl.items.length + 2 + 5 && L.floorFileCount({ items: [] }, []) === 0);
 check('サイト全体の計画に、同人・ゲームのページの数を足せる（動画の作品ページより先に枠を取る）', nonItemFileCount({ floors: 100 }, 0, 30) - nonItemFileCount({}, 0, 30) === 100);
 check('本数の決まり: 同人の作品ページは、そのまま全部（動画の作品ページの枠から先に引く）', L.FLOOR_RANKING_LIMIT === 100 && L.FLOOR_SAMPLES === 8);
 
@@ -162,7 +163,81 @@ check('ページの無いジャンル（行為のジャンル）・月にはリ�
 const ld = L.floorItemListLd(big.items, 'https://example.pages.dev', 2);
 check('一覧の構造化データ（ItemList）: 作品ページへのリンクを並びの順に', ld['@type'] === 'ItemList' && ld.numberOfItems === 2 && ld.itemListElement[1].position === 2 && ld.itemListElement[1].url === 'https://example.pages.dev/doujin/item/d_300002/', ld);
 check('ファイルの数: コレクションのページ＋種類ごとの一覧（ページが無い種類は一覧も無し）',
-  L.floorFileCount(cfl, [], cols) === cfl.items.length + 4 + (2 + 1) + (1 + 1) + (2 + 1) + (1 + 1) && L.floorFileCount(cfl, [], { genre: [], series: [], author: [], month: [] }) === cfl.items.length + 4);
+  L.floorFileCount(cfl, [], cols) === cfl.items.length + 5 + (2 + 1) + (1 + 1) + (2 + 1) + (1 + 1) && L.floorFileCount(cfl, [], { genre: [], series: [], author: [], month: [] }) === cfl.items.length + 5);
+
+// 運営者の希望「人気の動き」「セールの充実」（2026-10-09）
+console.log('\n■ 人気の動き（毎日の順位の記録。data/floor_rank_history.json）');
+const hpy = fs.readFileSync(new URL('../scripts/floor_history.py', import.meta.url), 'utf-8');
+check('記録の深さ・日数は scripts/floor_history.py と同じ（300本・30日）',
+  L.FLOOR_TREND_TRACK === Number(hpy.match(/^RANK_TRACK = (\d+)/m)[1]) && L.FLOOR_TREND_DAYS === Number(hpy.match(/^RANK_DAYS = (\d+)/m)[1]));
+const RH = L.normalizeFloorRankHistory({
+  updated: '2026-10-09',
+  doujin: {
+    d_1: { d: '2026-10-05', r: [20, 12, null, 8, 5] }, // 上がり続け（10/7 は読めなかった日）
+    d_2: { d: '2026-10-07', r: [3, 4, 9] }, // 下がった
+    d_3: { d: '2026-10-09', r: [40] }, // きょう初めて入った
+    d_4: { d: '2026-10-06', r: [50, 0, 0, 30] }, // いちど圏外になって、また入った
+    d_5: { d: '2026-10-08', r: [7, 7] }, // 同じ
+    'bad cid': { d: '2026-10-09', r: [1] }, d_6: { d: 'x', r: [1] }, d_7: { d: '2026-10-09', r: [] }, d_8: { d: '2026-10-09', r: [-1, 'x'] },
+  },
+  game: 'こわれた',
+});
+check('読み込み: こわれた行は捨てる・順位は 0（圏外）と null（分からない）を区別・いちばん上の順位と日・入っていた日数',
+  RH.doujin.size === 6 && !RH.doujin.has('d_6') && RH.game.size === 0 && JSON.stringify(RH.doujin.get('d_1')) === JSON.stringify({ start: '2026-10-05', n: [20, 12, null, 8, 5], best: { rank: 5, day: 4 }, daysIn: 4 })
+  && JSON.stringify(RH.doujin.get('d_8').n) === '[null,null]' && RH.since.doujin === '2026-10-05', [...RH.doujin.keys()]);
+check('その日の順位: 記録の外は null', L.floorRankOn(RH.doujin.get('d_1'), '2026-10-08') === 8 && L.floorRankOn(RH.doujin.get('d_1'), '2026-10-04') === null && L.floorRankOn(RH.doujin.get('d_1'), '2026-10-10') === null && L.floorRankOn(undefined, '2026-10-09') === null);
+const note = (cid) => L.floorRankNote(RH.doujin.get(cid), '2026-10-09', RH.since.doujin);
+check('ランキングの1行: 「前日から▲3」「前日から▼5｜最高3位」「前日と同じ」「初登場」「再登場」',
+  note('d_1') === '前日から▲3' && note('d_2') === '前日から▼5｜最高3位' && note('d_5') === '前日と同じ' && note('d_3') === '初登場' && note('d_4') === '再登場' && L.floorRankNote(undefined, '2026-10-09') === '',
+  ['d_1', 'd_2', 'd_3', 'd_4', 'd_5'].map(note));
+check('記録を始めた日は「初登場」と書かない（みんな初めてなので）', L.floorRankNote(RH.doujin.get('d_3'), '2026-10-09', '2026-10-09') === '');
+check('作品ページの文: 「FANZA同人の人気ランキングで最高5位（10月9日）・300位以内に4日（10月5日からの記録）」（記録が1日だけ・入ったことが無ければ出さない）',
+  JSON.stringify(L.floorTrendLines(RH.doujin.get('d_1'), L.FLOORS.doujin)) === JSON.stringify(['FANZA同人の人気ランキングで最高5位（10月9日）・300位以内に4日（10月5日からの記録）']) && L.floorTrendLines(RH.doujin.get('d_8'), L.FLOORS.doujin).length === 0 && L.floorTrendLines(RH.doujin.get('d_3'), L.FLOORS.doujin).length === 0);
+const tc = trendChart(RH.doujin.get('d_1'), { max: L.FLOOR_TREND_TRACK });
+check('グラフ: いちばん下の目もりは300位（動画は500位のまま）・読めなかった日で線を切る', tc.grid.map((g) => g.rank).join() === '1,10,100,300' && trendChart(RH.doujin.get('d_1')).grid.at(-1).rank === 500 && (tc.path.match(/M/g) || []).length === 2, tc.path);
+const rItems = ['d_1', 'd_2', 'd_3', 'd_4', 'd_5'].map((cid) => ({ cid, upcoming: false }));
+check('きのうから人気が上がった作品: 3つ以上・1.25倍以上上がった作品だけ（圏外から・初登場は入れない）', L.floorRisers(rItems, RH.doujin, '2026-10-09').map((r) => `${r.item.cid}:${r.rise}:${r.cur}`).join() === 'd_1:3:5', L.floorRisers(rItems, RH.doujin, '2026-10-09'));
+
+console.log('\n■ セールのページ・セールの記録');
+check('名前から読める最大の割引（scripts/floor_history.py の off_in_title と同じ）', L.offInTitle('最大90%OFFセール【秋】') === 90 && L.offInTitle('30％OFF・50%OFF') === 50 && L.offInTitle('半額セール') === 50 && L.offInTitle('500円セール') === 0 && hpy.includes('OFF_IN_TITLE = re.compile(r"(\\d{1,2})\\s*[%％]\\s*(?:OFF|ＯＦＦ|オフ)")'));
+const gs = L.normalizeFloor({ ranks: { g_1: 1, g_2: 2, g_3: 3, g_4: 4 }, items: [1, 2, 3, 4].map((n) => row(n, { cid: `g_${n}`, price: 500, list_price: null, campaign: null, sales: n < 4 ? ['最大90%OFFセール【秋】', '3点以上で5%OFFクーポン'] : ['500円セール【秋】'] })) }, 'game', today);
+const gp = L.floorSalePages(gs.items, 'game');
+check('ゲーム: 値下げのセールの札ごとのページ（3本以上。クーポンは作らない）・場所は名前から決まる印', gp.length === 1 && gp[0].name === '最大90%OFFセール【秋】' && gp[0].total === 3 && gp[0].off === 90 && gp[0].path === `/game/sale/${gp[0].slug}/` && /^[0-9a-f]{10}$/.test(gp[0].slug), gp.map((p) => [p.name, p.total]));
+const gpBy = new Map(gp.map((p) => [p.slug, p]));
+check('作品ページの札の行き先: ページがあればそのページ・無ければセールのページの見出し・クーポンはクーポンの欄',
+  L.saleTagLink('game', '最大90%OFFセール【秋】', gpBy) === gp[0].path && L.saleTagLink('game', '500円セール【秋】', gpBy) === `/game/sale/#${L.saleTagAnchor('500円セール【秋】')}` && L.saleTagLink('game', '3点以上で5%OFFクーポン', gpBy) === '/game/sale/#coupons');
+const ds = L.normalizeFloor({ items: [95, 92, 91, 75, 72, 55, 50, 30, 10].map((off, n) => row(n + 1, { cid: `d_${400 + n}`, price: 100 - off, list_price: 100 })) }, 'doujin', today);
+const dp = L.floorSalePages(ds.items, 'doujin');
+check('同人: 割引ごとのページ（90%OFF以上・70%OFF以上・半額以上。3本以上）', dp.map((p) => `${p.slug}:${p.total}`).join() === 'off90:3,off70:5,off50:7' && dp[2].name === '半額以上（50%OFF〜）' && dp[2].path === '/doujin/sale/off50/', dp.map((p) => [p.slug, p.total]));
+check('セールのページのタイトル', L.floorSalePageTitle(L.FLOORS.game, gp[0], '10月9日', 'サイト') === '最大90%OFFセール【秋】の対象PCゲーム一覧【10月9日更新】（3本）｜サイト'
+  && L.floorSalePageTitle(L.FLOORS.doujin, dp[2], '10月9日', 'サイト') === 'FANZA同人 半額以上（50%OFF〜）のセール作品一覧【10月9日更新】（7本）｜サイト');
+check('セールのページを検索エンジンに出すのは、並べる作品にコメントのある作品があるときだけ', !L.floorSalePageIndexable(dp[0]) && L.floorSalePageIndexable({ items: [{ comment: 'x' }] }));
+check('同人の、いまの割引ごとの本数', JSON.stringify(L.offBands(ds.items)) === JSON.stringify([{ name: '90%OFF以上', count: 3 }, { name: '70〜89%OFF', count: 2 }, { name: '50〜69%OFF', count: 2 }, { name: '30〜49%OFF', count: 1 }, { name: '30%OFF未満', count: 1 }]));
+const SH = L.normalizeFloorSaleHistory({
+  updated: '2026-10-09',
+  game: {
+    days: [{ d: '2026-10-08', n: 260, max: 90 }, { d: '2026-10-07', n: 0, max: 0 }, { d: 'x', n: 1, max: 1 }, { d: '2026-10-06', n: 5, max: 120 }],
+    tags: [
+      { title: '最大90%OFFセール【秋】', begin: '', first: '2026-10-07', last: '2026-10-09', count: 264, off: 90 },
+      { title: '500円セール【夏】', begin: '', first: '2026-10-01', last: '2026-10-05', count: 12, off: 0 },
+      { title: '3点以上で5%OFFクーポン', begin: '', first: '2026-10-07', last: '2026-10-09', count: 478, off: 5 },
+      { title: '放課後セール', begin: '', first: '2026-10-07', last: '2026-10-09', count: 3, off: 0 },
+      { title: '日付がこわれた', begin: '', first: '2026-10-09', last: '2026-10-01', count: 3, off: 0 },
+    ],
+  },
+  doujin: null,
+});
+check('セールの記録の読み込み: こわれた日・割引が100をこえる日・未成年を連想させる名前・日付の前後が逆の名前は捨てる・日は古い順',
+  SH.game.days.map((d) => d.d).join() === '2026-10-07,2026-10-08' && SH.game.tags.length === 3 && SH.doujin.days.length === 0, SH.game);
+const sf = L.floorSaleFacts(SH.game, { d: '2026-10-09', n: 264, max: 90 }, 'game');
+check('「セールはいつ？」の数字: 記録の日数（きょうを足す）・セール中の作品があった日・いちばん大きい割引・いま見かけるセール（クーポンは入れない）・終わったセール',
+  sf.days === 3 && sf.withSale === 2 && sf.first === '2026-10-07' && sf.last === '2026-10-09' && sf.recordMax.max === 90 && sf.recordMax.d === '2026-10-08'
+  && sf.ongoing.map((t) => t.title).join() === '最大90%OFFセール【秋】' && sf.ended.map((t) => t.title).join() === '500円セール【夏】', sf);
+check('記録が7日に満たないあいだは、検索エンジンに出さない', L.floorSaleHistoryDays(SH.game, '2026-10-09') === 3 && !L.floorSaleHistoryIndexable(SH.game, '2026-10-09')
+  && L.floorSaleHistoryIndexable({ days: [1, 2, 3, 4, 5, 6].map((n) => ({ d: `2026-10-0${n}` })) }, '2026-10-07'));
+const dc = L.floorSaleDayChart(sf.list);
+check('毎日の本数のグラフ: 1日1本・高さは本数に比べて・2日に満たなければ出さない',
+  dc.bars.length === 3 && dc.bars[0].bh === 0 && dc.bars[2].bh > dc.bars[1].bh * 0.99 && dc.grid.at(-1).v >= 264 && dc.ticks[0].label === '10/7' && L.floorSaleDayChart([{ d: '2026-10-09', n: 1, max: 0 }]) === null, dc);
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

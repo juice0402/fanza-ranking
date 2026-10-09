@@ -2699,6 +2699,43 @@ for _fk in _FD.FLOORS:
           not _col_sm and not _col_noidx, (_col_sm[:3], _col_noidx[:3]))
     if _col_n["genre"]:
         check(f"{_flabel}: 売り場のトップと、案内のタブから「ジャンルから探す」へリンクしている", f'href="/{_fk}/genre/"' in read_raw(os.path.join(DIST, _fk, "index.html")) and f'href="/{_fk}/genre/"' in read_raw(os.path.join(DIST, _fk, "ranking", "index.html")))
+    # セールごと（ゲーム）・割引ごと（同人）のページ（運営者の希望「セールの充実」。2026-10-09）: 対象が3本以上のものだけ
+    _released = [x for x in _fshow if str(x["date"])[:10] <= JST_TODAY]
+    if _fk == "game":
+        _tagc = Counter(t_ for x in _released for t_ in _cnames(x["sales"], 8) if "セール" in t_ and not re.search(r"クーポン|還元", t_))
+        _sp_want = {_cslug(t_) for t_, n_ in _tagc.items() if n_ >= 3}
+    else:
+        _offs = [int((1 - x["price"] / x["list_price"]) * 100 + 0.5) for x in _released
+                 if isinstance(x["price"], int) and isinstance(x["list_price"], int) and 0 < x["price"] < x["list_price"] < 10_000_000]
+        _sp_want = {f"off{m_}" for m_ in (90, 70, 50) if sum(1 for o_ in _offs if o_ >= m_) >= 3}
+    _sp_pages = {os.path.basename(os.path.dirname(p_)): p_ for p_ in glob.glob(os.path.join(DIST, _fk, "sale", "*", "index.html"))}
+    _sp_pages.pop("history", None)
+    check(f"{_flabel}: セールのページ（{'セールの札ごと' if _fk == 'game' else '割引ごと'}・{len(_sp_pages)}ページ）は、対象が3本以上のものだけ", set(_sp_pages) == _sp_want, (sorted(_sp_want - set(_sp_pages))[:3], sorted(set(_sp_pages) - _sp_want)[:3]))
+    _sp_bad = []
+    for s_, p_ in _sp_pages.items():
+        h_ = read(p_)
+        path_ = f"/{_fk}/sale/{s_}/"
+        if "の時点" not in h_ or "FANZAの作品ページで確かめて" not in h_:
+            _sp_bad.append((path_, "注記"))
+        if ('name="robots" content="noindex' in read_raw(p_)) == (path_ in sm_paths):
+            _sp_bad.append((path_, "sitemap"))
+    check(f"{_flabel}: セールのページに「○日の時点」「FANZAの作品ページで確かめて」の注記がある・sitemap に入っている ⇔ noindex でない", not _sp_bad, _sp_bad[:3])
+    # 「セールはいつ？」（/…/sale/history/）: データから数えた事実だけ。記録が7日に満たないあいだは noindex
+    _hist_page = os.path.join(DIST, _fk, "sale", "history", "index.html")
+    _hh = read(_hist_page) if os.path.isfile(_hist_page) else ""
+    check(f"{_flabel}: 「セールはいつ？」のページがある・予想は書かない・sitemap に入っている ⇔ noindex でない",
+          bool(_hh) and "次の開催日は分かりません" in _hh and not re.search(r"予想されます|見込みです|はずです", _hh)
+          and ('name="robots" content="noindex' in read_raw(_hist_page)) != (f"/{_fk}/sale/history/" in sm_paths))
+    # 人気の動き（毎日の順位の記録。2026-10-09）: 上位300本に入ったことのある作品のページにだけ「人気の動き」がある
+    _frh_path = os.path.join(ROOT, "site", "src", "data", "floor_rank_history.json")
+    _frh = (json.load(open(_frh_path, encoding="utf-8")).get(_fk) or {}) if os.path.isfile(_frh_path) else {}
+    _show_cids = {x["cid"] for x in _fshow}
+    _trend_want = {c_ for c_, r_ in _frh.items() if c_ in _show_cids and isinstance(r_, dict) and re.match(r"^\d{4}-\d{2}-\d{2}$", str(r_.get("d", "")))
+                   and any(type(v_) is int and 0 < v_ <= 100000 for v_ in (r_.get("r") or [])[:30])
+                   and sum(1 for v_ in (r_.get("r") or [])[:30] if type(v_) is int and 0 <= v_ <= 100000) >= 2}
+    _trend_got = {os.path.basename(os.path.dirname(p_)) for p_ in _item_pages if 'aria-labelledby="trend-title"' in read_raw(p_)}
+    check(f"{_flabel}: 人気ランキングの上位300本に入ったことがあり、2日以上の記録がある作品（{len(_trend_want)}本）のページにだけ「人気の動き」がある", _trend_want == _trend_got,
+          (sorted(_trend_want - _trend_got)[:3], sorted(_trend_got - _trend_want)[:3]))
     _sale_page = os.path.join(DIST, _fk, "sale", "index.html")
     if os.path.isfile(_sale_page):
         _sh = read(_sale_page)

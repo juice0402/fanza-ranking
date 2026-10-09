@@ -6,9 +6,9 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
 import FloorTabs from '../../components/FloorTabs.astro';
-import { activeFloors, floorCollectionGroups, floorMakerGroups, floors, today } from '../../lib/data.js';
+import { activeFloors, floorCollectionGroups, floorMakerGroups, floorRankHistory, floorSalePageGroups, floors, today } from '../../lib/data.js';
 import {
-  FLOORS, FLOOR_COLLECTIONS, FLOOR_HUB_SHOWN, floorCollectionIndexPath, floorItemListLd, floorMakerIndexPath, floorMaxOff, floorNewPopular, floorPath, floorRanking, floorRankingPath,
+  FLOORS, FLOOR_COLLECTIONS, FLOOR_HUB_SHOWN, floorCollectionIndexPath, floorItemListLd, floorRankNote, floorRisers, floorSaleHistoryPath, floorMakerIndexPath, floorMaxOff, floorNewPopular, floorPath, floorRanking, floorRankingPath,
   floorSaleItems, floorSalePath, floorUpcoming, priceNote, saleBadgeOf,
 } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
@@ -32,6 +32,12 @@ const makers = floorMakerGroups[key].slice(0, 24);
 const cols = floorCollectionGroups[key];
 const genreChips = cols.genre.slice(0, 16);
 const findLinks = ['series', 'author', 'month'].filter((k) => cols[k].length > 0).map((k) => ({ name: FLOOR_COLLECTIONS[k].find, href: floorCollectionIndexPath(key, k), count: cols[k].length, unit: k === 'month' ? 'か月' : '件' }));
+// 人気の動き（毎日の順位の記録。2026-10-09）: ランキングのカードの「前日から▲3」と、きのうから人気が上がった作品
+const hist = floorRankHistory[key];
+const rankNotes = ranking.map((item) => (data.updated ? floorRankNote(hist.get(item.cid), data.updated, floorRankHistory.since[key]) : ''));
+const risers = data.updated ? floorRisers(items, hist, data.updated) : [];
+// セールのページ（ゲームはセールごと・同人は割引ごと）
+const salePages = floorSalePageGroups[key];
 const maxOff = floorMaxOff(sale);
 const day = data.updated ? dateParts(data.updated) : null;
 const dayLabel = day ? `${day.m}月${day.d}日` : '毎日';
@@ -63,7 +69,19 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
           <a class="subsection-more" href={floorRankingPath(key)}>TOP100を見る</a>
         </div>
         <ul class="shelf">
-          {ranking.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} /></li>)}
+          {ranking.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} rankNote={rankNotes[i]} /></li>)}
+        </ul>
+      </section>
+    )}
+
+    {risers.length >= 3 && (
+      <section class="section" aria-labelledby="fl-rise-title">
+        <div class="section-head">
+          <h2 id="fl-rise-title" class="section-title">きのうから人気が上がった作品</h2>
+          <p class="section-note">人気ランキングの順位の動き</p>
+        </div>
+        <ul class="shelf">
+          {risers.map((r) => <li class="shelf-cell"><FloorCard item={r.item} badge={`${r.cur}位`} rankNote={`前日から▲${r.rise}`} note={priceNote(r.item)} /></li>)}
         </ul>
       </section>
     )}
@@ -76,6 +94,10 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
         </div>
         <ul class="shelf">
           {saleShown.map((item) => <li class="shelf-cell"><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} /></li>)}
+        </ul>
+        <ul class="chips find-more">
+          {salePages.map((p) => <li class="chip"><a class="chip-tag" href={p.path}>{p.name}（{p.total}本）</a></li>)}
+          <li class="chip"><a class="chip-tag" href={floorSaleHistoryPath(key)}>{f.label}のセールはいつ？</a></li>
         </ul>
       </section>
     )}

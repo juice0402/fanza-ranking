@@ -5,8 +5,8 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
 import FloorTabs from '../../components/FloorTabs.astro';
-import { activeFloors, floors } from '../../lib/data.js';
-import { FLOORS, FLOOR_RANKING_LIMIT, floorItemListLd, floorPath, floorRanking, floorRankingPath, priceNote } from '../../lib/floors.js';
+import { activeFloors, floorRankHistory, floors } from '../../lib/data.js';
+import { FLOORS, FLOOR_RANKING_LIMIT, floorItemListLd, floorPath, floorRankNote, floorRanking, floorRankingPath, priceNote } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
 
@@ -25,11 +25,15 @@ const trail = [
   { name: '人気ランキング', path: floorRankingPath(key) },
 ];
 const noindex = list.length === 0 || !listIndexable(list);
+// 前日からの動きと、最近30日の最高順位（人気の動きの記録。scripts/floor_history.py。2026-10-09）
+const hist = floorRankHistory[key];
+const notes = list.map((item) => (data.updated ? floorRankNote(hist.get(item.cid), data.updated, floorRankHistory.since[key]) : ''));
+const hasNotes = notes.some(Boolean);
 ---
 
 <Base
   title={`${f.label}の人気ランキングTOP${list.length}【${day ? `${day.m}月${day.d}日` : '毎日'}更新】｜${SITE_NAME}`}
-  description={`${f.label}の${f.kind}を、その日のFANZAの人気順に${list.length}本並べたランキングです。価格・セール中の作品・${f.maker}も。毎日、日付が変わったあとに更新します。`}
+  description={`${f.label}の${f.kind}を、その日のFANZAの人気順に${list.length}本並べたランキングです。${hasNotes ? '前日からの順位の動き・最近30日の最高順位、' : ''}価格・セール中の作品・${f.maker}も。毎日、日付が変わったあとに更新します。`}
   path={floorRankingPath(key)}
   noindex={noindex}
   jsonLd={[breadcrumbLd(trail), floorItemListLd(list, SITE_URL)]}
@@ -39,14 +43,14 @@ const noindex = list.length === 0 || !listIndexable(list);
 
     <section class="hero">
       <h1 class="hero-title">{f.label}の人気ランキング</h1>
-      <p class="hero-lead">{data.updated ? `${formatDateJp(data.updated)}のFANZAの人気順です（毎日入れかわります）。` : 'FANZAの人気順です（毎日入れかわります）。'}</p>
+      <p class="hero-lead">{data.updated ? `${formatDateJp(data.updated)}の` : ''}FANZAの人気順です（毎日入れかわります{hasNotes && '・前日からの動きと最近30日の最高順位つき'}）。</p>
       <FloorTabs floorKey={key} current="ranking" />
     </section>
 
     <section class="section" aria-labelledby="fl-ranking-title">
       <h2 id="fl-ranking-title" class="section-title">人気順 TOP{list.length}</h2>
       <ul class="shelf">
-        {list.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} /></li>)}
+        {list.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} rankNote={notes[i]} /></li>)}
       </ul>
     </section>
   </div>

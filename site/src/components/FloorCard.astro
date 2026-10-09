@@ -10,7 +10,8 @@ import { THUMB_MEDIA } from '../lib/items.js';
 import { DOUJIN_THUMB_ONERROR, doujinThumb, floorItemPath, makerLine } from '../lib/floors.js';
 
 // level: 見出しの階層 / eager: 最初の画面に入る作品だけ、画像をすぐ読む / badge: 表紙の左上の札（順位・割引）/ note: 価格などの1行
-const { item, level = 'h3', eager = false, badge = '', note = '' } = Astro.props;
+// rankNote: 人気ランキングの1行（「前日から▲3｜最高2位」。ふつうの文字の色。動画の ItemCard の noteKind="rank" と同じ見た目。2026-10-09）
+const { item, level = 'h3', eager = false, badge = '', note = '', rankNote = '' } = Astro.props;
 const Heading = level;
 const href = floorItemPath(item.floor, item.cid);
 const wide = item.floor === 'doujin';
@@ -27,6 +28,7 @@ const line = makerLine(item);
   </a>
   <Heading class="item-title">{badge && <span class="visually-hidden">{badge}：</span>}{item.upcoming && <span class="visually-hidden">予約：</span>}<a class="item-title-link" href={href}>{item.title}</a></Heading>
   {line && <p class="item-cast">{line}</p>}
+  {rankNote && <p class="item-note is-rank">{rankNote}</p>}
   {note && <p class="item-note">{note}</p>}
   {item.comment && <p class="item-comment">{item.comment}</p>}
   <a class="btn btn-card btn-block" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで見る</a>
