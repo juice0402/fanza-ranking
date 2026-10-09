@@ -2854,8 +2854,9 @@ for _fk in _FD.FLOORS:
     # 「セールはいつ？」（/…/sale/history/）: データから数えた事実だけ。記録が7日に満たないあいだは noindex
     _hist_page = os.path.join(DIST, _fk, "sale", "history", "index.html")
     _hh = read(_hist_page) if os.path.isfile(_hist_page) else ""
-    if _fk == "vr":  # 見放題（価格を出さない売り場）には「セールはいつ？」を作らない（2026-10-10）
-        check(f"{_flabel}: 見放題なので「セールはいつ？」のページは無い", not _hh and f"/{_fk}/sale/history/" not in sm_paths)
+    if _fk == "vr" or not os.path.isfile(os.path.join(DIST, _fk, "sale", "index.html")):
+        # 見放題（価格を出さない売り場）・いまセール中の作品が無い売り場には「セールはいつ？」を作らない（セールのページへのリンクが切れるため。2026-10-10）
+        check(f"{_flabel}: 見放題・セールのページが無い売り場には「セールはいつ？」のページも無い", not _hh and f"/{_fk}/sale/history/" not in sm_paths)
     else:
         check(f"{_flabel}: 「セールはいつ？」のページがある・予想は書かない・sitemap に入っている ⇔ noindex でない",
               bool(_hh) and "次の開催日は分かりません" in _hh and not re.search(r"予想されます|見込みです|はずです", _hh)

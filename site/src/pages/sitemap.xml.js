@@ -72,7 +72,7 @@ export function GET() {
     for (const [by, list] of Object.entries(floorEntityRankings[k])) if (list.length > 0 && floorEntityIndexable(list)) out.push({ path: floorEntityRankingPath(k, by), lastmod });
     // セールごと（ゲーム）・割引ごと（同人）のページと「セールはいつ？」（2026-10-09）。ページの側と同じ決まり
     for (const p of floorSalePageGroups[k]) if (floorSalePageIndexable(p)) out.push({ path: p.path, lastmod });
-    if (!FLOORS[k].noPrice && floorSaleHistoryIndexable(floorSaleHistory[k], fl.updated)) out.push({ path: floorSaleHistoryPath(k), lastmod: floorSaleHistory.updated || lastmod });
+    if (!FLOORS[k].noPrice && floorSaleItems(fl.items).length > 0 && floorSaleHistoryIndexable(floorSaleHistory[k], fl.updated)) out.push({ path: floorSaleHistoryPath(k), lastmod: floorSaleHistory.updated || lastmod });
     if (floorReviewRankings[k].length >= REVIEW_RANKING_MIN_ITEMS && listIndexable(floorReviewRankings[k])) out.push({ path: floorReviewRankingPath(k), lastmod });
     // コレクション（ジャンル・シリーズ・作家・発売月。2026-10-09）。ページの側と同じ決まり（collectionIndexable）
     for (const kind of FLOOR_COLLECTION_KINDS) {
