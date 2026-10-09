@@ -2,7 +2,6 @@
 // FANZA同人のサークル一覧（/doujin/maker/）・FANZAゲームのブランド一覧（/game/maker/）。作品が2本以上あるものだけ、作品数の多い順（2026-10-09。lib/floors.js）
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
-import FloorTabs from '../../../components/FloorTabs.astro';
 import { activeFloors, floorMakerGroups, floors } from '../../../lib/data.js';
 import { FLOORS, FLOOR_MAKER_MIN, floorMakerIndexPath, floorPath } from '../../../lib/floors.js';
 import { listIndexable } from '../../../lib/plan.js';
@@ -35,8 +34,7 @@ const noindex = !listIndexable(groups.flatMap((g) => g.items)) || groups.every((
 
     <section class="hero">
       <h1 class="hero-title">{f.maker}から探す</h1>
-      <p class="hero-lead">このサイトに載っている{f.label}の作品が{FLOOR_MAKER_MIN}本以上ある{f.maker}です。作品数の多い順。</p>
-      <FloorTabs floorKey={key} current="maker" />
+      <p class="hero-lead">掲載している作品が{FLOOR_MAKER_MIN}本以上ある{f.maker}を、作品数の多い順に並べています。</p>
     </section>
 
     <section class="section" aria-labelledby="fl-makers-title">
@@ -52,6 +50,6 @@ const noindex = !listIndexable(groups.flatMap((g) => g.items)) || groups.every((
         ))}
       </ul>
     </section>
-    <p class="section-note">本数は、このサイトに載っている{f.label}の作品（{floors[key].items.length}本）から数えています。</p>
+    <p class="section-note">本数は、このサイトに載っている作品から数えています。</p>
   </div>
 </Base>

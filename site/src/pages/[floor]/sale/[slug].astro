@@ -7,7 +7,7 @@
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorCard from '../../../components/FloorCard.astro';
-import FloorTabs from '../../../components/FloorTabs.astro';
+import FloorSaleCards from '../../../components/FloorSaleCards.astro';
 import { activeFloors, floorCollectionGroups, floorMakerById, floorSaleHistory, floorSalePageGroups, floors } from '../../../lib/data.js';
 import {
   FLOORS, FLOOR_SALE_PAGE_LIST, floorItemListLd, floorSalePageIndexable, floorMaxOff, floorPath, floorSaleHistoryPath, floorSalePageTitle, floorSalePath, priceNote, saleBadgeOf, topGenres, topMakersIn,
@@ -26,8 +26,8 @@ const maxOff = page.kind === 'tag' ? page.off : floorMaxOff(page.items);
 const seen = page.kind === 'tag' ? floorSaleHistory[key].tags.find((t) => t.title === page.name) : null;
 const md = (d) => `${+d.slice(5, 7)}月${+d.slice(8, 10)}日`;
 const genreByName = new Map(floorCollectionGroups[key].genre.map((g) => [g.name, g]));
-const genres = topGenres(page.items, 8).map((g) => ({ ...g, path: genreByName.get(g.name)?.path }));
-const makers = topMakersIn(page.items, 8).map((m) => ({ ...m, path: floorMakerById[key].get(m.id)?.path }));
+const genres = topGenres(page.items, 8).filter((g) => g.count >= 2).map((g) => ({ ...g, path: genreByName.get(g.name)?.path }));
+const makers = topMakersIn(page.items, 8).filter((m) => m.count >= 2).map((m) => ({ ...m, path: floorMakerById[key].get(m.id)?.path }));
 const others = floorSalePageGroups[key].filter((p) => p.slug !== page.slug);
 const day = data.updated ? dateParts(data.updated) : null;
 const dayLabel = day ? `${day.m}月${day.d}日` : '毎日';
@@ -59,14 +59,39 @@ const pageLd = {
 
     <section class="hero">
       <h1 class="hero-title">{page.heading}</h1>
-      <p class="hero-lead">対象{page.total}本{maxOff > 0 && `・最大${maxOff}%OFF`}{seen && `・このサイトでは${md(seen.first)}から見かけています`}{data.updated && `（${formatDateJp(data.updated)}の時点。終わる日・くわしい条件は、FANZAの作品ページで確かめてください）`}。</p>
-      <p class="hero-links"><a class="spec-link" href={floorSalePath(key)}>{f.label}のセール中の作品すべて</a><a class="spec-link" href={floorSaleHistoryPath(key)}>{f.label}のセールはいつ？</a></p>
-      <FloorTabs floorKey={key} current="sale" />
+      <p class="page-facts">{page.total}本{maxOff > 0 && `・最大${maxOff}%OFF`}{data.updated && `・${dayLabel}時点`}</p>
+      <p class="hero-links"><a class="spec-link" href={floorSalePath(key)}>{f.label}のセール中の作品</a><a class="spec-link" href={floorSaleHistoryPath(key)}>セールはいつ？</a></p>
     </section>
+
+    {makers.length > 0 && (
+      <section class="section" aria-labelledby="fl-salepage-makers-title">
+        <div class="section-head">
+          <h2 id="fl-salepage-makers-title" class="section-title">おもな{f.maker}</h2>
+        </div>
+        <nav class="sale-jump genre-chips" aria-label={`おもな${f.maker}`}>
+          {makers.map((m) => (m.path
+            ? <a class="chip-link" href={m.path}>{m.name}<span class="chip-count">{m.count}本</span></a>
+            : <span class="chip-link chip-static">{m.name}<span class="chip-count">{m.count}本</span></span>))}
+        </nav>
+      </section>
+    )}
+
+    {genres.length > 0 && (
+      <section class="section" aria-labelledby="fl-salepage-genres-title">
+        <div class="section-head">
+          <h2 id="fl-salepage-genres-title" class="section-title">多いジャンル</h2>
+        </div>
+        <nav class="sale-jump genre-chips" aria-label="多いジャンル">
+          {genres.map((g) => (g.path
+            ? <a class="chip-link" href={g.path}>{g.name}<span class="chip-count">{g.count}本</span></a>
+            : <span class="chip-link chip-static">{g.name}<span class="chip-count">{g.count}本</span></span>))}
+        </nav>
+      </section>
+    )}
 
     <section class="section" aria-labelledby="fl-salepage-works-title">
       <div class="section-head">
-        <h2 id="fl-salepage-works-title" class="section-title">対象の人気作品</h2>
+        <h2 id="fl-salepage-works-title" class="section-title">対象の作品（{page.total}本）</h2>
         <p class="section-note">人気の高い順{page.total > shown.length && `（上位${shown.length}本）`}</p>
       </div>
       <ul class="shelf">
@@ -74,36 +99,15 @@ const pageLd = {
       </ul>
     </section>
 
-    {makers.length > 0 && (
-      <section class="section" aria-labelledby="fl-salepage-makers-title">
-        <h2 id="fl-salepage-makers-title" class="section-title">おもな{f.maker}</h2>
-        <ul class="chips">
-          {makers.map((m) => (m.path
-            ? <li class="chip"><a class="chip-tag" href={m.path}>{m.name} {m.count}本</a></li>
-            : <li class="chip chip-plain">{m.name} {m.count}本</li>))}
-        </ul>
-      </section>
-    )}
-
-    {genres.length > 0 && (
-      <section class="section" aria-labelledby="fl-salepage-genres-title">
-        <h2 id="fl-salepage-genres-title" class="section-title">多いジャンル</h2>
-        <ul class="chips">
-          {genres.map((g) => (g.path
-            ? <li class="chip"><a class="chip-tag" href={g.path}>{g.name} {g.count}本</a></li>
-            : <li class="chip chip-plain">{g.name} {g.count}本</li>))}
-        </ul>
-      </section>
-    )}
-
     {others.length > 0 && (
       <section class="section" aria-labelledby="fl-salepage-others-title">
-        <h2 id="fl-salepage-others-title" class="section-title">ほかのセール</h2>
-        <ul class="chips">
-          {others.map((p) => <li class="chip"><a class="chip-tag" href={p.path}>{p.name}（{p.total}本）</a></li>)}
-        </ul>
+        <div class="section-head">
+          <h2 id="fl-salepage-others-title" class="section-title">ほかのセール</h2>
+        </div>
+        <FloorSaleCards pages={others.slice(0, 4)} key={key} />
       </section>
     )}
-    <p class="section-note">本数は、このサイトに載っている{f.label}の作品（{data.items.length}本）から数えています。</p>
+
+    <p class="section-note run-note">価格・セールは{dayLabel}の時点の情報です。終わる日・くわしい条件は、FANZAの作品ページで確かめてください。</p>
   </div>
 </Base>

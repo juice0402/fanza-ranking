@@ -1,0 +1,30 @@
+---
+// いま人気のサークル/ブランド・作家（売り場のトップの右の欄。動画の「人気のジャンル」と同じ見た目・同じ CSS。2026-10-09）。
+// 1つずつ、いちばん人気の作品の表紙（四角く切り出す）・順位・名前。タップで、そのサークル/ブランド・作家のページ（無ければ、いちばん人気の作品のページ）
+import { SMALL_IMG_ONERROR, THUMB_MEDIA, smallImage } from '../lib/items.js';
+import { DOUJIN_THUMB_ONERROR, doujinThumb, floorItemPath } from '../lib/floors.js';
+
+// rows: lib/floors.js の floorEntityRanking の上から3つ
+const { rows } = Astro.props;
+---
+
+<ol class="hot-genres floor-hot">
+  {rows.map((r, i) => {
+    const top = r.items[0];
+    return (
+      <li class="genre-cell">
+        <a class="genre-link" href={r.path || floorItemPath(top.floor, top.cid)}>
+          <span class="genre-thumb">
+            <span class="genre-pic">
+              {top.image_url && (top.floor === 'doujin'
+                ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(top.image_url, 'tiny').small} /><img class="floor-img" src={top.image_url} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
+                : <img class="floor-img is-small" src={smallImage(top.image_url)} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={SMALL_IMG_ONERROR} />)}
+            </span>
+            <span class="hot-rank" aria-hidden="true">{i + 1}</span>
+          </span>
+          <span class="genre-name"><span class="visually-hidden">{i + 1}位 </span>{r.name}</span>
+        </a>
+      </li>
+    );
+  })}
+</ol>

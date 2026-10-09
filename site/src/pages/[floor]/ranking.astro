@@ -4,8 +4,7 @@
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
-import FloorTabs from '../../components/FloorTabs.astro';
-import RankingNav from '../../components/FloorRankingNav.astro';
+import FloorMoreNav from '../../components/FloorMoreNav.astro';
 import { activeFloors, floorRankHistory, floors } from '../../lib/data.js';
 import { FLOORS, FLOOR_RANKING_LIMIT, floorItemListLd, floorPath, floorRankNote, floorRanking, floorRankingPath, priceNote } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
@@ -44,17 +43,19 @@ const hasNotes = notes.some(Boolean);
 
     <section class="hero">
       <h1 class="hero-title">{f.label}の人気ランキング</h1>
-      <p class="hero-lead">{data.updated ? `${formatDateJp(data.updated)}の` : ''}FANZAの人気順です（毎日入れかわります{hasNotes && '・前日からの動きと最近30日の最高順位つき'}）。</p>
-      <FloorTabs floorKey={key} current="ranking" />
+      <p class="hero-lead">その日のFANZAの人気順です（毎日入れかわります）。</p>
     </section>
 
-    <RankingNav floorKey={key} current="works" />
-
     <section class="section" aria-labelledby="fl-ranking-title">
-      <h2 id="fl-ranking-title" class="section-title">人気順 TOP{list.length}</h2>
+      <div class="section-head">
+        <h2 id="fl-ranking-title" class="section-title">人気順 TOP{list.length}</h2>
+        {data.updated && <p class="section-note">{formatDateJp(data.updated)}のFANZAの人気順{hasNotes && '（▲▼は前の日から・最高は最近30日）'}</p>}
+      </div>
       <ul class="shelf">
         {list.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} rankNote={notes[i]} /></li>)}
       </ul>
     </section>
+
+    <FloorMoreNav floorKey={key} current="works" />
   </div>
 </Base>

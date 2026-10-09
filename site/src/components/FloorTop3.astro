@@ -1,0 +1,38 @@
+---
+// 同人・ゲームの「きょうの人気TOP3」（売り場のトップ。動画のトップの TopThree.astro と同じ見た目・同じ CSS。2026-10-09）。
+// 🥇🥈🥉のメダルは表紙の左下のふち、前の日からの順位の動き（▲3・▼1・→・初登場）は表紙の右上のふちの小さな札。
+// 同人の表紙は横長なので、表紙の枠も横長（.medals.is-wide）。VR・単体の絞り込みは無い（vr-filter.js の目印 .rank-podium は付けない）
+import Thumb from './Thumb.astro';
+import { THUMB_MEDIA, dateParts } from '../lib/items.js';
+import { DOUJIN_THUMB_ONERROR, doujinThumb, floorItemPath, floorMove, makerLine } from '../lib/floors.js';
+
+// items: 人気ランキングの上から3本、hist: 人気の動きの記録（cid → 記録）、day: データの日（無ければ動きの札を出さない）、since: 記録の始まり
+// eager: 画像をすぐ読む（ページのいちばん上の TOP3 だけ。形式別ランキングでは遅れて読む）
+const { items, hist = null, day = '', since = '', eager = true } = Astro.props;
+const wide = items[0]?.floor === 'doujin';
+---
+
+<ol class:list={['medals', { 'is-wide': wide }]}>
+  {items.map((item, i) => {
+    const md = dateParts(item.dateKey);
+    const move = day ? floorMove(hist?.get(item.cid), day, since) : null;
+    return (
+      <li class="medal-cell" data-place={i + 1}>
+        <a class="medal-card" href={floorItemPath(item.floor, item.cid)}>
+          <span class="medal-art">
+            <span class="medal-cover">
+              {item.image_url && (wide
+                ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(item.image_url, 'card').small} /><img class="floor-img" src={item.image_url} alt="" width="560" height="420" loading={eager ? 'eager' : 'lazy'} fetchpriority={eager && i === 0 ? 'high' : undefined} decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
+                : <Thumb src={item.image_url} kind="card" loading={eager ? 'eager' : 'lazy'} fetchpriority={eager && i === 0 ? 'high' : undefined} />)}
+            </span>
+            <span class="medal rank-badge">{i + 1}位</span>
+            {move && <span class={`medal-move move-${move.kind}`} title={move.label}><span class="visually-hidden">{move.label}</span><span aria-hidden="true">{move.text}</span></span>}
+          </span>
+          <span class="medal-meta"><span class="medal-date">{md.m}/{md.d}発売</span></span>
+          <span class="medal-title">{item.title}</span>
+          <span class="medal-cast">{item.maker?.name ?? ''}</span>
+        </a>
+      </li>
+    );
+  })}
+</ol>

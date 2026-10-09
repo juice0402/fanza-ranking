@@ -5645,13 +5645,9 @@ a.tf-name {
   transform: rotate(-3deg);
 }
 
-.item-cover.is-wide:has(.rank-badge) + .item-title {
+/* 札のある棚は、札の無いカードもタイトルを同じだけ下げる（同じ行のタイトルの高さをそろえる。2026-10-09） */
+.shelf:has(.item-cover.is-wide .rank-badge) .item-cover.is-wide + .item-title {
   margin-top: 16px;
-}
-
-/* 売り場のトップの「ジャンルから探す」: ジャンルのチップの下に、シリーズ・作家・発売月の一覧へのチップ（2026-10-09） */
-.find-more {
-  margin-top: 12px;
 }
 
 /* 作品ページの大きな表紙: 元の大きさより大きくしない（同人 560px・ゲーム 411px が元の幅） */
@@ -5696,113 +5692,44 @@ a.tf-name {
   font-size: 12px;
 }
 
-/* 売り場の中の案内（トップ・人気ランキング・セール・サークル/ブランド・もう一つの売り場） */
-.floor-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+/* ---------- 同人・ゲームの売り場のトップ（動画のトップと同じ .home.has-side の形。運営者の希望「動画のページと、ほぼ同じ要領で」。2026-10-09） ---------- */
+/* 同人の表紙は横長なので、TOP3・きょうの話題の表紙の枠も横長に */
+.medals.is-wide .medal-cover {
+  aspect-ratio: 4 / 3;
+}
+
+.topic-thumb.is-wide {
+  aspect-ratio: 4 / 3;
+  align-self: start;
+}
+
+/* いま人気のサークル/ブランド・作家: ゲームの表紙（縦長）は、上のほうから四角く切り出す */
+.floor-hot .floor-img.is-small {
+  object-position: 50% 15%;
+}
+
+/* 右の欄の特集のタイル（パソコンでも2列。欄がせまいため） */
+.home-side .name-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
+.sale-note {
+  margin-top: 12px;
+}
+
+/* 形式別ランキング（同人。形式ごとに、上から3本を、TOP3と同じメダルの3つ並び（同じ .medals のまま。大きさもTOP3と同じく画面の幅に合わせて変わる）。
+   前の小さな表紙の棚は、640px〜で6列になり、3本だと欄の半分に縮んでいた。運営者の指摘「端末によってはものすごく小さく見える」。2026-10-09） */
+.type-grid {
+  display: grid;
+  gap: 26px;
   margin-top: 16px;
 }
 
-.floor-tabs .chip-link[aria-current='page'] {
-  border-color: var(--pop);
-  color: var(--pop);
-}
 
-/* ---------- 同人・ゲームの売り場のトップ（.fhome。運営者の希望「コレクションが増えてきたら、パソコンはパソコン版用のレイアウトに」。2026-10-09） ----------
-   スマホ: 1列。左右の欄（.fhome-main・.fhome-side）は箱を作らず、中の欄を、ページが付けた order の順に並べる
-   パソコン（960px〜）: 動画のトップと同じ2列（左に作品の棚、右の欄に 作品を探す・ランキング・特集・ジャンル・運命の作品。欄と欄の間は細い線） */
-.fhome {
-  display: flex;
-  flex-direction: column;
-}
-
-.fhome-main,
-.fhome-side {
-  display: contents;
-}
-
-.fhome .find {
-  margin-top: 28px;
-}
-
-/* 運命の作品が出ないとき（JavaScript が使えない・候補を読めない）は、包みごと隠す（パソコンの右の欄の仕切り線を残さない） */
-html:not(.js) .fhome-gacha,
-.fhome-gacha:has(> [hidden]) {
-  display: none;
-}
-
-.type-block + .type-block {
-  margin-top: 22px;
-}
-
-.type-block .mini-shelf {
-  margin-top: 8px;
-}
-
-@media (min-width: 960px) {
-  .fhome {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) clamp(300px, 30%, 380px);
-    column-gap: 48px;
-    align-items: start;
-  }
-
-  .fhome-main,
-  .fhome-side {
-    display: block;
-    min-width: 0;
-  }
-
-  .fhome-side > section,
-  .fhome-side > .fhome-gacha {
-    margin-top: 28px;
-    padding-top: 26px;
-    border-top: 1px solid var(--line);
-  }
-
-  .fhome-side > section:first-child {
-    margin-top: 44px;
-    padding-top: 0;
-    border-top: 0;
-  }
-
-  .fhome-side .section-head {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .fhome-side .hero-search {
-    max-width: none;
-  }
-
-  .fhome-side .gacha-solo {
-    margin-top: 0;
-  }
-
-  .fhome-side .corner-title {
-    color: var(--paper);
-    font-size: 22px;
-  }
-
-  .fhome-side .slot-reels {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-    max-width: none;
-    margin-top: 14px;
-  }
-
-  .fhome-side .slot {
-    margin-top: 0;
-    padding: 0;
-    background: none;
-    box-shadow: none;
-  }
-}
-
-/* ランキングの切りかえ（作品・サークル/ブランド・作家・同人の形式ごと。2026-10-09） */
-.floor-tabs.rank-nav {
-  margin: 0 0 4px;
+/* ほかのランキング（ランキングのページのいちばん下。同じ幅のボタンの並び） */
+.more-jump {
+  margin-top: 14px;
 }
 
 /* 人気サークル/ブランド・作家ランキングの行（.ws-row）: 行の頭の順位と、前日からの動き */
