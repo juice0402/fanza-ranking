@@ -190,6 +190,8 @@ check("読むときに、決まった項目だけ・コメントの無い claude
 
 print("\n■ 1つの売り場を集め直して保存する（update_floor）")
 os.environ["DOUJIN_PATH"] = path
+os.environ["FLOOR_RANK_HISTORY_PATH"] = os.path.join(tmp, "floor_rank_history.json")  # 本物のデータに書かないように
+os.environ["FLOOR_SALE_HISTORY_PATH"] = os.path.join(tmp, "floor_sale_history.json")
 F.FLOORS["doujin"].update(target=3, max_calls=2)
 before = open(path, encoding="utf-8").read()
 with contextlib.redirect_stdout(io.StringIO()) as out:
@@ -204,8 +206,85 @@ with contextlib.redirect_stdout(io.StringIO()) as out:
     line = D.update_floor("doujin", TODAY, FakeAPI(rows))
 saved_data = F.load_floor(path)
 check("はじめての日（ファイルが無い）は、新しく作る", len(saved_data["items"]) == 3 and "新しく3本" in line, line)
+check("集めたあと、人気の動きとセールの記録も足す（結果の要約に出る）", "人気の動き 3本を記録中" in line and "セール中" in line
+      and os.path.exists(os.environ["FLOOR_RANK_HISTORY_PATH"]) and os.path.exists(os.environ["FLOOR_SALE_HISTORY_PATH"]), line)
 F.FLOORS["doujin"].update(saved)
 del os.environ["DOUJIN_PATH"]
+
+print("\n■ 人気の動き（scripts/floor_history.py。2026-10-09 から）")
+H = D.H
+check("順位は、このサイトの人気ランキングと同じ数え方（発売済みを FANZA の人気順に並べた順位）・上位だけ",
+      H.positions({"ranks": {"a": 5, "b": 2, "c": 9, "d": 0}}) == {"b": 1, "a": 2, "c": 3} and H.positions({"ranks": {"a": 5, "b": 2, "c": 9}}, track=2) == {"b": 1, "a": 2})
+hist = {"updated": "", "doujin": {}, "game": {}}
+H.merge_rank_history(hist, "doujin", "2026-10-09", {"a": 1, "b": 2})
+H.merge_rank_history(hist, "doujin", "2026-10-10", {"a": 2, "c": 1})
+check("毎日1つずつ順位を足す（載っていない日は 0・新しく入った作品はその日から）",
+      hist["doujin"]["a"] == {"d": "2026-10-09", "r": [1, 2]} and hist["doujin"]["b"] == {"d": "2026-10-09", "r": [2, 0]} and hist["doujin"]["c"] == {"d": "2026-10-10", "r": [1]}, hist["doujin"])
+H.merge_rank_history(hist, "doujin", "2026-10-11", None)
+check("最後まで読めなかった日は「分からない」（null）", hist["doujin"]["a"]["r"] == [1, 2, None] and hist["doujin"]["c"]["r"] == [1, None])
+H.merge_rank_history(hist, "doujin", "2026-10-11", {"a": 4})
+H.merge_rank_history(hist, "doujin", "2026-10-11", None)
+check("同じ日に動き直したら新しい順位にする・分かっている順位を「分からない」で上書きしない", hist["doujin"]["a"]["r"] == [1, 2, 4] and hist["doujin"]["b"]["r"] == [2, 0, 0])
+day = "2026-10-11"
+for n in range(1, 31):
+    day = H.add_days("2026-10-11", n)
+    H.merge_rank_history(hist, "doujin", day, {"a": 3})
+check(f"{H.RANK_DAYS}日分だけ持つ（古い日は前から捨てて、最初の日を進める）・ずっと圏外だった作品は消す",
+      len(hist["doujin"]["a"]["r"]) == H.RANK_DAYS and hist["doujin"]["a"]["d"] == H.add_days(day, -(H.RANK_DAYS - 1)) and "b" not in hist["doujin"] and "c" not in hist["doujin"], hist["doujin"].keys())
+rh_path = os.environ["FLOOR_RANK_HISTORY_PATH"]
+H.save_rank_history(hist)
+text = open(rh_path, encoding="utf-8").read()
+back = H.load_rank_history()
+check("書いて読み直すと同じ・1作品1行（毎日の差分を小さく）", back["doujin"] == hist["doujin"] and back["updated"] == day and sum(1 for ln in text.split("\n") if ln.startswith('"a":')) == 1, text[:200])
+H.save_rank_history(back)
+check("読んで書き直しても、1文字も変わらない", open(rh_path, encoding="utf-8").read() == text)
+open(rh_path, "w").write("{broken")
+with contextlib.redirect_stdout(io.StringIO()):
+    empty = H.load_rank_history()
+check("壊れていたら、空から記録し直す（ほかに元のデータが無いので）", empty["doujin"] == {} and empty["game"] == {})
+
+print("\n■ セールの記録（scripts/floor_history.py）")
+sale_data = {"items": {
+    "d1": {"date": "2026-10-01", "price": 550, "list_price": 1100, "sales": [], "campaign": {"title": "50%OFF", "begin": "2026-10-01"}},
+    "d2": {"date": "2026-10-02", "price": 770, "list_price": 1100, "sales": [], "campaign": {"title": "30%OFF", "begin": "2026-09-29"}},
+    "d3": {"date": "2026-10-03", "price": 1100, "list_price": 1100, "sales": [], "campaign": None},
+    "g1": {"date": "2026-09-01", "price": None, "list_price": None, "sales": ["最大90%OFFセール【感謝祭オータム2026】", "3点以上で5%OFFクーポン"], "campaign": None},
+    "g2": {"date": "2026-12-01", "price": 500, "list_price": 1000, "sales": [], "campaign": None},  # 予約（まだ発売前）は数えない
+}}
+d_, t_ = H.sale_today(sale_data, "2026-10-09")
+tags_ = {(t["title"], t["begin"]): t for t in t_}
+check("その日のセール中の本数・最大の割引（価格と定価・札の名前の「最大90%OFF」から）。クーポンだけの作品は数えない・予約は数えない",
+      d_ == {"d": "2026-10-09", "n": 3, "max": 90}, d_)
+check("セールの名前ごと: 同人は名前と始まりの日・ゲームは札（クーポンも名前は残す）・名前から読める割引",
+      tags_[("50%OFF", "2026-10-01")]["count"] == 1 and tags_[("最大90%OFFセール【感謝祭オータム2026】", "")]["off"] == 90
+      and ("3点以上で5%OFFクーポン", "") in tags_ and H.off_in_title("アトリエかぐや25周年記念！半額セール") == 50 and H.off_in_title("500円セール") == 0, t_)
+sales = {"updated": "", "doujin": {"days": [], "tags": []}, "game": {"days": [], "tags": []}}
+H.merge_sale_history(sales, "doujin", "2026-10-09", d_, t_)
+H.merge_sale_history(sales, "doujin", "2026-10-09", {**d_, "n": 4}, t_)
+H.merge_sale_history(sales, "doujin", "2026-10-10", {**d_, "d": "2026-10-10", "n": 2}, [{**t_[0], "count": 5}])
+row_ = next(t for t in sales["doujin"]["tags"] if t["title"] == t_[0]["title"] and t["begin"] == t_[0]["begin"])
+check("1日1行（同じ日に動き直したら入れかえ）・名前ごとに最初と最後に見かけた日・いちばん多かった日の本数",
+      [d["d"] for d in sales["doujin"]["days"]] == ["2026-10-09", "2026-10-10"] and sales["doujin"]["days"][0]["n"] == 4
+      and row_["first"] == "2026-10-09" and row_["last"] == "2026-10-10" and row_["count"] == 5, sales["doujin"])
+far = H.add_days("2026-10-10", H.SALE_KEEP_DAYS)
+H.merge_sale_history(sales, "doujin", far, {**d_, "d": far}, [])
+check(f"{H.SALE_KEEP_DAYS}日より前の記録は消す", [d["d"] for d in sales["doujin"]["days"]] == [far] and sales["doujin"]["tags"] == [], sales["doujin"])
+sh_path = os.environ["FLOOR_SALE_HISTORY_PATH"]
+H.save_sale_history(sales)
+text = open(sh_path, encoding="utf-8").read()
+check("書いて読み直すと同じ・読んで書き直しても1文字も変わらない", H.load_sale_history()["doujin"] == sales["doujin"]
+      and (H.save_sale_history(H.load_sale_history()) or open(sh_path, encoding="utf-8").read() == text))
+open(sh_path, "w").write("{broken")
+with contextlib.redirect_stdout(io.StringIO()) as out_:
+    note_ = H.record("doujin", {"ranks": {"d1": 3}, "items": sale_data["items"]}, "2026-10-12", True)
+check("セールの記録が壊れていたら、上書きせずに、その日は記録しない（人気の動きは記録する）", open(sh_path).read() == "{broken" and "読めなかった" in note_, note_)
+with contextlib.redirect_stdout(io.StringIO()):
+    note_ = H.record("game", {"ranks": {"g1": 1}, "items": sale_data["items"]}, "2026-10-12", False)
+check("最後まで読めなかった日は、順位を「分からない」にして、セールは記録しない", "記録しない" in note_ and H.load_rank_history()["game"] == {}, note_)
+for k in ("FLOOR_RANK_HISTORY_PATH", "FLOOR_SALE_HISTORY_PATH"):
+    del os.environ[k]
+check("本物の置き場所は site/src/data（毎日の更新が保存する場所）", H.rank_history_path().endswith(os.path.join("site", "src", "data", "floor_rank_history.json"))
+      and H.sale_history_path().endswith(os.path.join("site", "src", "data", "floor_sale_history.json")))
 
 print("\n■ 本番の設定")
 check("同人は1,000本・ゲームは500本（運営者の希望。2026-10-09）・ゲームは予約も", F.FLOORS["doujin"]["target"] == 1000 and F.FLOORS["game"]["target"] == 500 and F.FLOORS["game"]["upcoming"] > 0)

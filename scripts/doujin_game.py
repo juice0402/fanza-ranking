@@ -12,6 +12,7 @@
   claude_comments.py の title_block_reason が "minor" と見る言葉があるもの）。同人の約半分・ゲームの約7割が当たる（2026-10-09 に本物のAPIで確認）
 ・前の日にあって今日の上位に無い作品は外す（Claude がコメントを書いた作品は残す）。途中で取れなくなった日は、前の作品を外さない
 ・ファイルの形は scripts/floor_data.py。失敗しても、ほかの毎日の更新は止めない（ワークフローは continue-on-error）
+・集めたあと、人気の動き（毎日の順位）とセールの記録を足していく（scripts/floor_history.py。2026-10-09 から）
 """
 import argparse
 import os
@@ -26,6 +27,7 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import get_new_releases as G  # noqa: E402
 from claude_comments import title_block_reason  # noqa: E402
 import floor_data as F  # noqa: E402
+import floor_history as H  # noqa: E402
 
 PAGE = 100  # 1回の本数（APIの上限）
 SHRINK_GUARD = 0.5  # 今日そろった本数が、前の日の半分より少なければ、念のため前の作品を外さない（APIの答えがおかしいとき）
@@ -254,6 +256,11 @@ def update_floor(key, today, call=None):
     if not result["trusted"]:
         line += "（最後まで読めなかった・本数が少なすぎたので、前の作品は外していません）"
         print(f"::warning title={conf['label']}を最後まで集められませんでした::前の作品は外していません")
+    # 人気の動き・セールの記録（2026-10-09 から。失敗しても、集めたデータはそのまま）
+    try:
+        line += "。" + H.record(key, data, today_str, result["trusted"])
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning title={conf['label']}の人気の動き・セールを記録できませんでした::{type(e).__name__}: {e}")
     print(line)
     return line
 
