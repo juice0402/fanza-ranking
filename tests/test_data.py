@@ -342,6 +342,46 @@ else:
               and [(r["begin"] or r["first"]) for r in rows_h] == sorted([(r["begin"] or r["first"]) for r in rows_h], reverse=True),
               str(sh)[:120])
 
+# ---- FANZA同人・FANZAゲームの人気の動き・セールの記録（scripts/floor_history.py。2026-10-09 から）----
+FLOOR_RH = os.path.join(ROOT, "site", "src", "data", "floor_rank_history.json")
+if not os.path.exists(FLOOR_RH):
+    print("  （floor_rank_history.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        frh = json.load(open(FLOOR_RH, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        frh = None
+        check("floor_rank_history.json を読める", False, str(e))
+    if frh is not None:
+        _fv = lambda v: v is None or (isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 100000)
+        check("同人・ゲームの人気の動き（floor_rank_history.json）: 更新日・売り場ごとに {cid: {d: 最初の日, r: 順位（30日分まで。0＝圏外・null＝分からない日）}}・未来の日付でない",
+              isinstance(frh, dict) and set(frh) == {"updated", "doujin", "game"} and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(frh.get("updated", ""))) is not None
+              and all(isinstance(frh[k], dict) and all(re.fullmatch(r"[A-Za-z0-9_\-]+", c) and isinstance(r, dict) and set(r) == {"d", "r"}
+                                                       and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r["d"])) and r["d"] <= jst_tomorrow
+                                                       and isinstance(r["r"], list) and len(r["r"]) <= 30 and all(_fv(v) for v in r["r"]) and any(v for v in r["r"])
+                                                       for c, r in frh[k].items()) for k in ("doujin", "game")),
+              str(frh)[:120])
+FLOOR_SH = os.path.join(ROOT, "site", "src", "data", "floor_sale_history.json")
+if not os.path.exists(FLOOR_SH):
+    print("  （floor_sale_history.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        fsh = json.load(open(FLOOR_SH, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        fsh = None
+        check("floor_sale_history.json を読める", False, str(e))
+    if fsh is not None:
+        _d = lambda v: re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(v or "")) is not None
+        check("同人・ゲームのセールの記録（floor_sale_history.json）: 売り場ごとに days（1日1行・本数・最大の割引）と tags（名前・始まり・最初と最後に見かけた日・本数・割引）だけ",
+              isinstance(fsh, dict) and set(fsh) == {"updated", "doujin", "game"}
+              and all(isinstance(fsh[k], dict) and set(fsh[k]) == {"days", "tags"}
+                      and all(isinstance(d, dict) and set(d) == {"d", "n", "max"} and _d(d["d"]) and isinstance(d["n"], int) and 0 <= d["max"] < 100 for d in fsh[k]["days"])
+                      and len({d["d"] for d in fsh[k]["days"]}) == len(fsh[k]["days"])
+                      and all(isinstance(t, dict) and set(t) == {"title", "begin", "first", "last", "count", "off"} and str(t["title"]).strip()
+                              and _d(t["first"]) and _d(t["last"]) and t["first"] <= t["last"] and isinstance(t["count"], int) and 0 <= t["off"] < 100 for t in fsh[k]["tags"])
+                      for k in ("doujin", "game")),
+              str(fsh)[:120])
+
 # ---- 週のまとめ記事（roundups.json）。Claude が毎週書き足すので、壊れていないかを見張る ----
 print("\n■ 週のまとめ記事（roundups.json）")
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
