@@ -299,5 +299,39 @@ rf = open(os.path.join(ROOT, ".github", "workflows", "refresh-data.yml"), encodi
 check("取り直しのワークフロー: 「同人・ゲームだけ」のときは、ほかの取り直しを動かさない",
       "floors_only" in rf and rf.count("inputs.floors_only != '1'") >= 4 and "python scripts/doujin_game.py --update" in rf)
 
+print("\n■ 新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題。2026-10-10）")
+check("本数: アニメ・成人映画・コミック・写真集・VR見放題は100本・素人は500本（運営者の希望）。API の service/floor は 2026-10-10 に本物で確認したもの",
+      all(F.FLOORS[k]["target"] == 100 for k in ("anime", "cinema", "comic", "photo", "vr")) and F.FLOORS["amateur"]["target"] == 500
+      and [(F.FLOORS[k]["service"], F.FLOORS[k]["floor"]) for k in ("anime", "amateur", "cinema", "comic", "photo", "vr")]
+      == [("digital", "anime"), ("digital", "videoc"), ("digital", "nikkatsu"), ("ebook", "comic"), ("ebook", "photo"), ("monthly", "vr")]
+      and len({F.FLOORS[k]["file"] for k in F.FLOORS}) == len(F.FLOORS) and len({F.FLOORS[k]["env"] for k in F.FLOORS}) == len(F.FLOORS))
+am = {"content_id": "abc123", "title": "作った素人の作品", "date": "2026-09-01 10:00:00",
+      "affiliateURL": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Famateur%2Fcontent%2F%3Fid%3Dabc123&af_id=test-990&ch=api",
+      "imageURL": {"list": "https://pics.dmm.co.jp/digital/amateur/abc123/abc123jm.jpg", "small": "https://pics.dmm.co.jp/digital/amateur/abc123/abc123jp.jpg"},
+      "sampleMovieURL": {"size_476_306": "https://www.dmm.co.jp/litevideo/-/part/=/cid=abc123/size=476_306/", "pc_flag": 1, "sp_flag": 1},
+      "iteminfo": {"genre": [{"id": 1, "name": "素人"}, {"id": 2, "name": "ハイビジョン"}], "maker": [{"id": 5, "name": "作ったメーカー"}],
+                   "actress": [{"id": 9, "name": "作った出演者"}, {"id": 0, "name": "----"}]}}
+it = D.parse_floor_item(am, "amateur")
+check("素人: 大きい表紙が無ければ小さい版（1200×1200の四角）・サンプル動画・出演者（「----」は入れない）・ハイビジョンは形式",
+      it and it["image_url"].endswith("abc123jp.jpg") and it["sample_movie"].startswith("https://www.dmm.co.jp/litevideo/") and it["actress"] == ["作った出演者"]
+      and "ハイビジョン" in it["formats"] and it["genres"] == ["素人"], it)
+bk = {"content_id": "b123abc456", "title": "作った写真集", "date": "2026-09-01 00:00:00",
+      "affiliateURL": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fbook.dmm.co.jp%2Fproduct%2F1%2Fb123abc456%2F&af_id=test-990&ch=api",
+      "imageURL": {"large": "https://ebook-assets.dmm.co.jp/digital/e-book/b123abc456/b123abc456pl.jpg"},
+      "tachiyomi": {"URL": "https://book.dmm.co.jp/tachiyomi/?cid=b123abc456", "affiliateURL": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fbook.dmm.co.jp%2Ftachiyomi%2F&af_id=test-990&ch=api"},
+      "iteminfo": {"manufacture": [{"id": 77, "name": "作った出版社"}], "author": [{"id": 3, "name": "作った写真家"}]}}
+it = D.parse_floor_item(bk, "photo")
+check("ブックス: 出版社をメーカーの代わりに・ebook-assets の表紙・立ち読みのページ・サンプル画像は無し",
+      it and it["maker"] == "作った出版社" and it["maker_id"] == 77 and it["image_url"].startswith("https://ebook-assets.dmm.co.jp/") and it["trial_url"].startswith("https://al.fanza.co.jp/")
+      and it["sample_images"] == [] and it["authors"] == ["作った写真家"], it)
+check("出演者・レーベル・監督・出版社の名前でも、未成年を連想させる作品は入れない",
+      D.blocked_reason(dict(am, iteminfo=dict(am["iteminfo"], actress=[{"name": "女子校生A"}]))) == "出演者"
+      and D.blocked_reason(dict(am, iteminfo=dict(am["iteminfo"], label=[{"name": "ロリ系レーベル"}]))) == "レーベル"
+      and D.blocked_reason(dict(bk, iteminfo=dict(bk["iteminfo"], manufacture=[{"name": "女子中学生出版"}]))) == "出版社"
+      and D.blocked_reason(am) == "")
+check("保存の形: 出演者・サンプル動画・立ち読みも1行に（FANZA以外のURLは捨てる）",
+      F.clean_item(dict(it, sample_movie="https://example.com/x", trial_url="javascript:alert(1)"))["sample_movie"] == ""
+      and F.clean_item(dict(it, trial_url="javascript:alert(1)"))["trial_url"] == "" and "actress" in F.clean_item(it))
+
 print(f"\n=== {passed}/{passed + failed} 合格 ===")
 sys.exit(1 if failed else 0)

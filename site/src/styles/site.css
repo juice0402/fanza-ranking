@@ -3581,6 +3581,11 @@ html.lightbox-open {
   aspect-ratio: 4 / 3;
 }
 
+/* 素人の運命の作品は、正方形の表紙がまるごと入る正方形の窓（2026-10-10） */
+.gacha.is-wide.is-square .reel-window {
+  aspect-ratio: 1 / 1;
+}
+
 /* 回っているあいだは、表紙を少しぼかして、回っている感じを出す */
 .reel-card.is-spinning .reel-window img {
   filter: blur(1.5px) saturate(0.8);
@@ -5855,6 +5860,27 @@ a.tf-name {
   align-self: start;
 }
 
+/* 素人の表紙は正方形（1200×1200。2026-10-10 に本物で確かめた）。横長の枠と同じ置き方（札は左下のふち）で、枠だけ正方形に */
+.item-cover.is-wide.is-square,
+.mini-cover.is-wide.is-square,
+.medals.is-wide.is-square .medal-cover,
+.topic-thumb.is-wide.is-square {
+  aspect-ratio: 1 / 1;
+}
+
+.detail-cover.is-square {
+  display: block;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* アニメ・成人映画・VR見放題の作品ページの大きな表紙は、パッケージの見開き（800×538 前後。動画の作品ページと同じ） */
+.detail-cover.is-spread {
+  display: block;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
 /* いま人気のサークル/ブランド・作家: ゲームの表紙（縦長）は、上のほうから四角く切り出す */
 .floor-hot .floor-img.is-small {
   object-position: 50% 15%;
@@ -5929,6 +5955,17 @@ a.tf-name {
 
 .hero-jump.floor-jump .chip-link {
   flex: 1 1 calc((100% - 8px) / 2);
+}
+
+/* 売り場が3つ以上（2026-10-10 から8つ）: 短い名前で、4つずつ同じ幅に */
+.hero-jump.floor-jump.is-many {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.hero-jump.floor-jump.is-many .chip-link {
+  padding: 0 4px;
+  font-size: 12px;
 }
 
 .entity-genres {

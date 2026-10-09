@@ -16,7 +16,7 @@ import TenYenHero from '../../components/TenYenHero.astro';
 import { activeFloors, floorCollectionGroups, floorEntityRankings, floorGachaPools, floorMakerGroups, floorRankHistory, floorSaleHistory, floorSalePageGroups, floors, tenYenNow } from '../../lib/data.js';
 import {
   DOUJIN_TYPES, FLOORS, FLOOR_HUB_SHOWN, floorCollectionIndexPath, floorEntityLabel, floorEntityRankingPath, floorItemListLd, floorMakerIndexPath, floorMaxOff, floorNewPopular,
-  floorPath, floorRankNote, floorRanking, floorRankingPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, floorSearchPath, floorTopics, floorUpcoming, hubThemes, priceNote,
+  floorPath, floorRankNote, floorRanking, floorRankingPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, floorSearchHint, floorSearchPath, floorTopics, floorUpcoming, hubThemes, priceNote,
 } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../../lib/items.js';
@@ -98,8 +98,8 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
           <h2 id="fl-find-title" class="find-title">作品を探す</h2>
           <form class="hero-search search-bar" action={floorSearchPath(key)} method="get" role="search">
             <svg class="search-bar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5 20 20" /></svg>
-            <label class="visually-hidden" for="fl-q">{f.label}の作品を探す（タイトル・{f.maker}{key === 'game' ? '・作家' : ''}）</label>
-            <input id="fl-q" class="search-bar-input" type="search" name="q" placeholder={key === 'game' ? 'タイトル・ブランド・作家' : 'タイトル・サークル'} enterkeyhint="search" autocomplete="off" />
+            <label class="visually-hidden" for="fl-q">{f.label}の作品を探す（{floorSearchHint(key)}）</label>
+            <input id="fl-q" class="search-bar-input" type="search" name="q" placeholder={floorSearchHint(key)} enterkeyhint="search" autocomplete="off" />
             <button class="search-bar-btn" type="submit">探す</button>
           </form>
           <nav class="hero-jump" aria-label="探し方">

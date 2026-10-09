@@ -1,5 +1,6 @@
 ---
-// FANZA同人・FANZAゲームの作品ページ（/doujin/item/<品番>/・/game/item/<品番>/。2026-10-09。lib/floors.js）。
+// FANZA同人・FANZAゲームなどの売り場の作品ページ（/doujin/item/<品番>/・/game/item/<品番>/・/amateur/item/<品番>/ など。2026-10-09。lib/floors.js）。
+// 出演者（VR・成人映画・写真集など）・サンプル動画（アニメ・素人・VR見放題など）・立ち読み（ブックス）も（2026-10-10）。
 // 表紙・タイトル・ひとこと（Claude が毎日 同人4本・ゲーム1本ずつ書く）・発売日・サークル/ブランド・作家・シリーズ・ジャンル・価格とセール・FANZAへ・
 // サンプル画像（拡大表示）・同じサークル/ブランドの作品・同じジャンルで人気の作品。
 // コメントがまだ無い作品は、FANZAの情報を並べただけのページなので、検索エンジンには出さない（noindex。sitemap にも入れない）。
@@ -9,7 +10,8 @@ import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorMiniShelf from '../../../components/FloorMiniShelf.astro';
 import RankTrend from '../../../components/RankTrend.astro';
 import GachaCorner from '../../../components/GachaCorner.astro';
-import { activeFloors, floorCollectionGroups, floorMakerById, floorRankHistory, floorSalePageBySlug, floorSalePageGroups, floors, tenYenInfo, floorReviewRankOf } from '../../../lib/data.js';
+import SampleMovie from '../../../components/SampleMovie.astro';
+import { actressByName, activeFloors, floorCollectionGroups, floorMakerById, floorRankHistory, floorSalePageBySlug, floorSalePageGroups, floors, tenYenInfo, floorReviewRankOf } from '../../../lib/data.js';
 import { floorReviewRankingPath } from '../../../lib/reviews.js';
 import { tenYenPath } from '../../../lib/ten-yen.js';
 import { endIso, endLabel } from '../../../lib/sale.js';
@@ -33,7 +35,10 @@ const same = sameMaker(item, floorMakerById[key]);
 const genrePop = popularInFloorGenre(item, items, new Set(same.map((i) => i.cid)));
 const samples = item.sample_images.slice(0, FLOOR_SAMPLES);
 const gallery = samples.map((src, i) => ({ src, label: `サンプル画像 ${i + 1}` }));
-const wide = key === 'doujin';
+// 大きな表紙の形（lib/floors.js の FLOORS の detail）: 同人＝横長 560×420・素人＝正方形・アニメ/成人映画/VR＝見開き 800×538・ゲーム/ブックス＝縦長
+const shape = f.detail ?? 'tall';
+const coverSize = { wide: [560, 420], square: [600, 600], spread: [800, 538], tall: [411, 560] }[shape];
+const doujinImg = key === 'doujin';
 const noindex = !item.comment;
 const trail = [
   { name: 'トップ', path: '/' },
@@ -73,14 +78,14 @@ const tenNow = tenYenInfo(key, item.cid);
       <div class="detail-media">
         {item.image_url && (
           <img
-            class:list={['detail-cover', { 'is-wide': wide, 'is-tall': !wide }]}
+            class:list={['detail-cover', `is-${shape}`]}
             src={item.image_url}
             alt={`${truncate(item.title, 60)} の表紙`}
-            width={wide ? 560 : 411}
-            height={wide ? 420 : 560}
+            width={coverSize[0]}
+            height={coverSize[1]}
             fetchpriority="high"
             referrerpolicy="no-referrer"
-            onerror={wide ? DOUJIN_IMG_ONERROR : undefined}
+            onerror={doujinImg ? DOUJIN_IMG_ONERROR : undefined}
           />
         )}
       </div>
@@ -98,6 +103,13 @@ const tenNow = tenYenInfo(key, item.cid);
             <>
               <dt class="spec-term">{f.maker}</dt>
               <dd class="spec-desc">{makerGroup ? <a class="spec-link" href={makerGroup.path}>{item.maker.name}</a> : item.maker.name}</dd>
+            </>
+          )}
+          {/* 出演者（VR・成人映画・写真集など。動画の出演者のページがあれば、そのページへ。2026-10-10） */}
+          {item.actress.length > 0 && (
+            <>
+              <dt class="spec-term">出演</dt>
+              <dd class="spec-desc">{item.actress.map((a, n) => <>{n > 0 && '、'}{actressByName.get(a) ? <a class="spec-link" href={actressByName.get(a).path}>{a}</a> : a}</>)}</dd>
             </>
           )}
           {item.authors.length > 0 && (
@@ -184,9 +196,19 @@ const tenNow = tenYenInfo(key, item.cid);
 
         <div class="detail-actions">
           <a class="btn btn-hot btn-lg detail-cta" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで詳細を見る</a>
+          {/* 立ち読み（FANZAブックス。FANZAの立ち読みのページへ。2026-10-10） */}
+          {item.trialUrl && <a class="btn btn-quiet detail-trial" href={item.trialUrl} target="_blank" rel="sponsored nofollow noopener noreferrer">立ち読みする（FANZA）</a>}
         </div>
       </div>
     </article>
+
+    {/* サンプル動画（アニメ・素人・VR見放題など。FANZAの公式の埋め込み。動画の作品ページと同じ部品。2026-10-10） */}
+    {item.sampleMovie && (
+      <section class="subsection" aria-labelledby="movie-title">
+        <h2 id="movie-title" class="subsection-title">サンプル動画</h2>
+        <SampleMovie src={item.sampleMovie} title={truncate(item.title, 60)} fallbackUrl={item.url} />
+      </section>
+    )}
 
     {gallery.length > 0 && (
       <section class="subsection" aria-labelledby="samples-title">
@@ -195,7 +217,7 @@ const tenNow = tenYenInfo(key, item.cid);
           {gallery.map((g) => (
             <li>
               <a class="sample-link" href={g.src} data-label={g.label} target="_blank" rel="noopener noreferrer" aria-label={`${g.label} を拡大して見る`}>
-                <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={wide ? DOUJIN_IMG_ONERROR : undefined} />
+                <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={doujinImg ? DOUJIN_IMG_ONERROR : undefined} />
               </a>
             </li>
           ))}
@@ -241,6 +263,7 @@ const tenNow = tenYenInfo(key, item.cid);
   </div>
 
   {gallery.length > 0 && <script is:inline src={assetUrl('/lightbox.js')} defer></script>}
+  {item.sampleMovie && <script is:inline src={assetUrl('/movie.js')} defer></script>}
   <script is:inline src={assetUrl('/gacha.js')} defer></script>
 
   <div class="sticky-cta">

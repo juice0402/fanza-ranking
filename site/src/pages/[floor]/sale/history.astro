@@ -14,7 +14,8 @@ import { barSpan, dayTicks } from '../../../lib/sale.js';
 import { SITE_NAME, SITE_URL, addDays, breadcrumbLd, daysBetween, entitySlug, formatDateJp } from '../../../lib/items.js';
 
 export function getStaticPaths() {
-  return activeFloors.map((floor) => ({ params: { floor } }));
+  // 見放題（価格を出さない売り場）には作らない（2026-10-10）
+  return activeFloors.filter((k) => !FLOORS[k].noPrice).map((floor) => ({ params: { floor } }));
 }
 
 const { floor: key } = Astro.params;

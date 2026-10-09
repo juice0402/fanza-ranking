@@ -1,9 +1,8 @@
 ---
 // FANZA同人・FANZAゲームの小さな表紙の棚（作品ページの「同じサークル/ブランドの作品」「○○で人気の作品」。動画の MiniShelf と同じ形。2026-10-09）。
 // ゲームは表紙だけの軽い画像（components/Thumb.astro の tiny）。同人は横長の表紙を横長の枠にまるごと（スマホは幅240に縮めた版。lib/floors.js の doujinThumb）
-import Thumb from './Thumb.astro';
-import { THUMB_MEDIA } from '../lib/items.js';
-import { DOUJIN_THUMB_ONERROR, doujinThumb, floorItemPath } from '../lib/floors.js';
+import FloorImg from './FloorImg.astro';
+import { floorItemPath, frameClass, makerLine } from '../lib/floors.js';
 
 const { items, level = 'h3' } = Astro.props;
 const Heading = level;
@@ -13,13 +12,11 @@ const Heading = level;
   {items.map((i) => (
     <li class="shelf-cell mini-cell">
       <a class="mini-card" href={floorItemPath(i.floor, i.cid)}>
-        <span class:list={['mini-cover', { 'is-wide': i.floor === 'doujin' }]}>
-          {i.image_url && (i.floor === 'doujin'
-            ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(i.image_url, 'tiny').small} /><img class="floor-img" src={i.image_url} alt="" width="560" height="420" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
-            : <Thumb src={i.image_url} kind="tiny" class="item-img is-small" />)}
+        <span class:list={['mini-cover', frameClass(i.floor)]}>
+          <FloorImg floor={i.floor} url={i.image_url} kind="tiny" />
         </span>
         <Heading class="mini-title">{i.title}</Heading>
-        <span class="mini-cast">{i.maker?.name ?? ''}</span>
+        <span class="mini-cast">{makerLine(i)}</span>
       </a>
     </li>
   ))}

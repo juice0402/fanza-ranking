@@ -8,8 +8,8 @@ import Base from '../layouts/Base.astro';
 import Breadcrumb from './Breadcrumb.astro';
 import ItemCard from './ItemCard.astro';
 import FloorCard from './FloorCard.astro';
-import { activeFloors, all, floors, floorSalePageGroups, paged, sale, saleCampaignPages, today, tenYen } from '../lib/data.js';
-import { FLOORS, floorPath, floorSaleHistoryPath, floorSalePath, priceNote, saleBadgeOf } from '../lib/floors.js';
+import { activeFloors, all, floors, floorSalePageGroups, paged, sale, saleCampaignPages, today, tenYen, tenYenFloors } from '../lib/data.js';
+import { FLOORS, floorPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, priceNote, saleBadgeOf } from '../lib/floors.js';
 import { SALE_HISTORY_PATH, SALE_PATH, endIso, endLabel, onSaleItems, saleBadge, salePriceNote } from '../lib/sale.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, filterAttrs } from '../lib/items.js';
 import { isMinorTitle } from '../lib/gacha.js';
@@ -54,7 +54,7 @@ const prev = hub ? latestRun(tenYen) : latestRun(tenYen, key);
 // まとめのページから、同人・ゲームのページへ（その売り場のページがあるときだけ）／売り場のページから、まとめのページ・ほかの売り場へ
 const otherPages = [
   ...(hub ? [] : [{ path: TEN_YEN_PATH, label: 'FANZAの10円セール（動画・同人・ゲーム）' }]),
-  ...activeFloors.filter((k) => k !== key).map((k) => ({ path: tenYenPath(k), label: `${TEN_YEN_NAMES[k]}の10円セール` })),
+  ...tenYenFloors.filter((k) => k !== key).map((k) => ({ path: tenYenPath(k), label: `${TEN_YEN_NAMES[k]}の10円セール` })),
 ];
 
 // 開催していないあいだの「いま割引の大きい作品」（売り場ごとに6本。割引の大きい順・同じなら人気の高い順。こちらから案内する欄なので、未成年を連想させるタイトルは出さない）
@@ -75,7 +75,8 @@ const deals = live ? [] : keys.map((k) => {
 // ほかのセール（開催中のセールのページ・セールはいつ？）
 const saleLinks = [
   ...(hub || key === 'video' ? [{ path: SALE_PATH, label: `FANZA動画のセール${saleCampaignPages.filter((p) => p.active).length ? `（開催中${saleCampaignPages.filter((p) => p.active).length}件）` : ''}` }] : []),
-  ...activeFloors.filter((k) => hub || k === key).map((k) => ({ path: floorSalePath(k), label: `${FLOORS[k].label}のセール${floorSalePageGroups[k].length ? `（${floorSalePageGroups[k].length}件）` : ''}` })),
+  // （セールのページがある売り場だけ。見放題など、セール中の作品が無い売り場にはページが無い。2026-10-10）
+  ...activeFloors.filter((k) => (hub || k === key) && floorSaleItems(floors[k].items).length > 0).map((k) => ({ path: floorSalePath(k), label: `${FLOORS[k].label}のセール${floorSalePageGroups[k].length ? `（${floorSalePageGroups[k].length}件）` : ''}` })),
   ...(hub ? [{ path: SALE_HISTORY_PATH, label: 'FANZAのセールはいつ？' }] : [{ path: floorSaleHistoryPath(key), label: `${FLOORS[key].label}のセールはいつ？` }]),
 ];
 
@@ -154,7 +155,7 @@ const hasEnds = listed.some((i) => i.tenYen.end);
               </li>
             ))}
           </ul>
-          {hub && k !== 'video' && activeFloors.includes(k) && <p class="more"><a class="btn btn-quiet" href={tenYenPath(k)}>{TEN_YEN_NAMES[k]}の10円セールのページ</a></p>}
+          {hub && k !== 'video' && tenYenFloors.includes(k) && <p class="more"><a class="btn btn-quiet" href={tenYenPath(k)}>{TEN_YEN_NAMES[k]}の10円セールのページ</a></p>}
         </section>
       );
     })}

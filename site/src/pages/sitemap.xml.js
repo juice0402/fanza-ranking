@@ -3,7 +3,7 @@
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
 import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors, reviewRanking, reviews, floorReviewRankings } from '../lib/data.js';
 import { REVIEW_RANKING_MIN_ITEMS, REVIEW_RANKING_PATH, floorReviewRankingPath } from '../lib/reviews.js';
-import { FLOOR_COLLECTION_KINDS, FLOOR_HUB_SHOWN, floorEntityIndexable, floorEntityRankingPath, collectionIndexIndexable, collectionIndexable, floorCollectionIndexPath, floorSaleHistoryIndexable, floorSaleHistoryPath, floorSalePageIndexable, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorUpcoming } from '../lib/floors.js';
+import { FLOORS, FLOOR_COLLECTION_KINDS, FLOOR_HUB_SHOWN, floorEntityIndexable, floorEntityRankingPath, collectionIndexIndexable, collectionIndexable, floorCollectionIndexPath, floorSaleHistoryIndexable, floorSaleHistoryPath, floorSalePageIndexable, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorUpcoming } from '../lib/floors.js';
 import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemIndexable, listIndexable } from '../lib/plan.js';
@@ -72,7 +72,7 @@ export function GET() {
     for (const [by, list] of Object.entries(floorEntityRankings[k])) if (list.length > 0 && floorEntityIndexable(list)) out.push({ path: floorEntityRankingPath(k, by), lastmod });
     // セールごと（ゲーム）・割引ごと（同人）のページと「セールはいつ？」（2026-10-09）。ページの側と同じ決まり
     for (const p of floorSalePageGroups[k]) if (floorSalePageIndexable(p)) out.push({ path: p.path, lastmod });
-    if (floorSaleHistoryIndexable(floorSaleHistory[k], fl.updated)) out.push({ path: floorSaleHistoryPath(k), lastmod: floorSaleHistory.updated || lastmod });
+    if (!FLOORS[k].noPrice && floorSaleHistoryIndexable(floorSaleHistory[k], fl.updated)) out.push({ path: floorSaleHistoryPath(k), lastmod: floorSaleHistory.updated || lastmod });
     if (floorReviewRankings[k].length >= REVIEW_RANKING_MIN_ITEMS && listIndexable(floorReviewRankings[k])) out.push({ path: floorReviewRankingPath(k), lastmod });
     // コレクション（ジャンル・シリーズ・作家・発売月。2026-10-09）。ページの側と同じ決まり（collectionIndexable）
     for (const kind of FLOOR_COLLECTION_KINDS) {

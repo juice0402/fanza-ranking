@@ -47,10 +47,10 @@ const noindex = shown.length === 0 || !listIndexable(shown);
 const tenLive = tenYenNow.counts[key] > 0 ? `${f.label} 10円セール開催中・` : '';
 const title = tenLive + (key === 'game'
   ? `FANZAゲームのセール中の作品【${dayLabel}更新】${groups[0] ? `${groups[0].title}ほか` : ''}${sale.length}本｜${SITE_NAME}`
-  : `FANZA同人のセール中の作品【${dayLabel}更新】${maxOff ? `最大${maxOff}%OFF・` : ''}${sale.length}本｜${SITE_NAME}`);
+  : `${f.label}のセール中の作品【${dayLabel}更新】${maxOff ? `最大${maxOff}%OFF・` : ''}${sale.length}本｜${SITE_NAME}`);
 const description = key === 'game'
   ? `FANZAゲーム（PCゲーム）で、いま値下げのセール中の人気作品${sale.length}本を、セールごとにまとめています（${groups.map((g) => g.title).slice(0, 3).join('・')}）。クーポン・ポイント還元の対象も。毎日、日付が変わったあとに更新します。`
-  : `FANZA同人で、いまセール中の人気作品${sale.length}本${maxOff ? `（最大${maxOff}%OFF）` : ''}を、人気の高い順にまとめています。いまの価格と通常の価格も。毎日、日付が変わったあとに更新します。`;
+  : `${f.label}で、いまセール中の人気作品${sale.length}本${maxOff ? `（最大${maxOff}%OFF）` : ''}を、人気の高い順にまとめています。いまの価格と通常の価格も。毎日、日付が変わったあとに更新します。`;
 const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${f.label}のセール中の作品`, url: SITE_URL + floorSalePath(key), ...(data.updated ? { dateModified: data.updated } : {}) };
 ---
 

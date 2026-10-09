@@ -76,7 +76,8 @@ def blocked(raw):
 def fetch_top(call, gid, now):
     """そのジャンルの、発売済みの作品を人気順に → 保存する形の作品（TOP 本まで）"""
     items = call("ItemList", {"site": "FANZA", "service": "digital", "floor": "videoa", "article": "genre", "article_id": gid,
-                              "sort": "rank", "hits": FETCH, "offset": 1, "lte": G.iso(now)}).get("items") or []
+                              "sort": "rank", "hits": FETCH, "offset": 1,
+                              "lte_date": G.iso(now.replace(hour=23, minute=59, second=59))}).get("items") or []
     out, seen = [], set()
     for raw in items:
         if not isinstance(raw, dict) or blocked(raw):

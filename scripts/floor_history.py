@@ -24,7 +24,10 @@ from datetime import datetime, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "site", "src", "data")
-FLOOR_KEYS = ("doujin", "game")
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import floor_data as F  # noqa: E402
+
+FLOOR_KEYS = tuple(F.FLOORS)  # 売り場（同人・ゲーム・アニメ・素人・成人映画・コミック・写真集・VR見放題。scripts/floor_data.py）
 
 RANK_TRACK = 300  # 順位を記録する本数（売り場ごと、人気順の上から。ファイルと毎日の差分を小さく）
 RANK_DAYS = 30  # 何日分の順位を持つか（作品ページのグラフ）

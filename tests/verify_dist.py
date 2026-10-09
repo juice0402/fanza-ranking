@@ -1719,7 +1719,11 @@ for pth in all_html:
         cls_ = a_.get("class", "").split()
         src_ = a_.get("src", "")
         small_ = htmllib.unescape(small_)
-        if "floor-img" in cls_:
+        if "floor-img" in cls_ and "/digital/amateur/" in src_:
+            # 素人の正方形の表紙（…jp.jpg 1200×1200。2026-10-10）
+            kind_, want_ = "amateur", (src_.startswith(_PICS_HOST) and src_.endswith("jp.jpg") and small_ in (_resized(src_, 300), _resized(src_, 240))
+                                       and a_.get("referrerpolicy") == "no-referrer")
+        elif "floor-img" in cls_:
             kind_, want_ = "doujin", (src_.startswith(_PICS_HOST) and src_.endswith("pl.jpg") and small_ in (_resized(src_, 300), _resized(src_, 240))
                                       and a_.get("referrerpolicy") == "no-referrer")
         elif "is-small" in cls_:
@@ -1729,19 +1733,22 @@ for pth in all_html:
         elif "item-img" in cls_ and _is_game_img(src_):
             kind_, want_ = "game-card", (small_ == _resized(src_, 300) and "has-small" not in cls_)
         elif "item-img" in cls_:
-            kind_, want_ = "card", (src_.endswith("pl.jpg") and _is_video_img(src_) and small_ == _resized(_as_ps(src_), 300) and "has-small" in cls_)
+            # 成人映画の一部は、大きい表紙が無く、表紙（…ps.jpg）だけ（2026-10-10）
+            kind_, want_ = "card", (re.search(r"p[ls]\.jpg$", src_) and _is_video_img(src_) and small_ == _resized(_as_ps(src_), 300) and "has-small" in cls_)
         else:
             kind_, want_ = "?", False
         pic_kinds[kind_] += 1
         onerr_ = a_.get("onerror", "")
         # alt="" は、Astro が値の無い「alt」だけで書く（どちらも空の代替テキスト）
         has_alt_ = a_.get("alt") is not None or re.search(r'(?:^|\s)alt(?=\s|/?$)', re.sub(r'"[^"]*"', '""', img_)) is not None
-        back_ = "doujin-assets.dmm.co.jp" in onerr_ if kind_ == "doujin" else "pl.jpg" in onerr_  # 元の画像も読めなければ、の戻し先
+        back_ = ("doujin-assets.dmm.co.jp" in onerr_ if kind_ == "doujin" else "visibility" in onerr_ if kind_ == "amateur" else "pl.jpg" in onerr_)  # 元の画像も読めなければ、の戻し先
         if media_ != THUMB_MEDIA or not want_ or not fanza_https(src_, DMM) or not fanza_https(small_, DMM) or "previousElementSibling" not in onerr_ or "matchMedia(s.media)" not in onerr_ or not back_ or not has_alt_:
             bad_pic.append((rel_, kind_, src_[-20:], small_[-20:]))
     # 一覧のサムネ（item-img・genre-img）で、パッケージ画像（pl.jpg）を <picture> の外で読んでいるもの（スマホで重いまま）
     for t in tags(re.sub(r"<picture class=\"pic\">.*?</picture>", "", h_), "img"):
-        if (has_class(t, "item-img") or has_class(t, "genre-img") or has_class(t, "floor-img")) and str(t.get("src", "")).endswith("pl.jpg"):
+        # （FANZAブックスの表紙＝ebook-assets は、縮めた版が無いので、元の表紙のまま。2026-10-10）
+        if (has_class(t, "item-img") or has_class(t, "genre-img") or has_class(t, "floor-img")) and str(t.get("src", "")).endswith("pl.jpg") \
+                and not str(t.get("src", "")).startswith("https://ebook-assets.dmm.co.jp/"):
             bad_bare.append((rel_, t.get("src", "")[-24:]))
     # 作品ページの大きな表紙・パッケージ写真・サンプル画像は、元の画像のまま（<picture> に入れない）
     for cls_name in ("detail-cover", "package-img", "sample-img"):
@@ -2651,7 +2658,7 @@ no_desc = descs.get("", [])
 warn("タイトルがページごとに違う（重複があっても失敗にはしない）", not dup_titles, list(dup_titles.items())[:2])
 warn("説明文（description）がすべてのページにある", not no_desc, no_desc[:3])
 
-print("\n■ FANZA同人・FANZAゲーム（/doujin/・/game/。運営者の希望。2026-10-09）")
+print("\n■ FANZA同人・FANZAゲームなどの売り場（/doujin/・/game/・/anime/・/amateur/・/cinema/・/comic/・/photo/・/vr/。運営者の希望。2026-10-09・2026-10-10）")
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import floor_data as _FD  # noqa: E402
 from claude_comments import title_block_reason as _tbr  # noqa: E402
@@ -2662,7 +2669,7 @@ for _fk in _FD.FLOORS:
     _fdata = _FD.load_floor(_fpath) if os.path.isfile(_fpath) else None
     _fitems = list(_fdata["items"].values()) if _fdata else []
     # 画面でも、未成年を連想させる名前の作品は外す（二重の備え）。ページを作る作品は、そのあと
-    _fshow = [x for x in _fitems if not any(_tbr({"title": t}) == "minor" for t in [x["title"], *x["genres"], *x["formats"], *x["sales"], x["series"], x["maker"], *x["authors"]] if t)
+    _fshow = [x for x in _fitems if not any(_tbr({"title": t}) == "minor" for t in [x["title"], *x["genres"], *x["formats"], *x["sales"], x["series"], x["maker"], *x["authors"], *x.get("actress", [])] if t)
               and str(x["url"]).startswith("https://")]
     if not _fshow:
         check(f"{_flabel}: データが無いあいだは、ページを作らない・フッターにもリンクを出さない",
@@ -2731,7 +2738,7 @@ for _fk in _FD.FLOORS:
         "game": [("trial", _fmt("デモ・体験版あり")), ("browser", _fmt("ブラウザ対応")), ("win11", _fmt("Windows11対応作品")), ("dlonly", _fmt("DL版独占販売")),
                  ("set", _fmt("セット商品")), ("bestprice", _gen("BEST PRICE版")), ("budget", lambda x: 0 < _yen(x) <= 2000), ("anime", _gen("アニメーション")),
                  ("longseller", lambda x: _rel(x) and str(x["date"])[:10] <= _ago(365 * 5))],
-    }[_fk]
+    }.get(_fk, [])
     for x in _fshow:
         _m = re.match(r"^https://(?:pics|doujin-assets)\.dmm\.co\.jp/digital/(comic|cg|voice|game)/", str(x["image_url"] or "")) if _fk == "doujin" else None
         if _m:
@@ -2792,7 +2799,7 @@ for _fk in _FD.FLOORS:
         if ('name="robots" content="noindex' in h_) == (f"/{_fk}/ranking/{by_}/" in sm_paths):
             _er_bad.append((by_, "sitemap"))
     _want_maker_rank = any(x["maker_id"] for x in _released if x["cid"] in _fdata["ranks"])
-    check(f"{_flabel}: 人気{'サークル' if _fk == 'doujin' else 'ブランド'}ランキングがある・行に順位・「○日の時点」・sitemap に入っている ⇔ noindex でない",
+    check(f"{_flabel}: 人気{ {'doujin': 'サークル', 'game': 'ブランド', 'comic': '出版社', 'photo': '出版社'}.get(_fk, 'メーカー') }ランキングがある・行に順位・「○日の時点」・sitemap に入っている ⇔ noindex でない",
           not _er_bad and os.path.isfile(os.path.join(DIST, _fk, "ranking", "maker", "index.html")) == _want_maker_rank, _er_bad)
     _sp = os.path.join(DIST, _fk, "search", "index.html")
     _six = os.path.join(DIST, "data", f"{_fk}-index.json")
@@ -2845,9 +2852,12 @@ for _fk in _FD.FLOORS:
     # 「セールはいつ？」（/…/sale/history/）: データから数えた事実だけ。記録が7日に満たないあいだは noindex
     _hist_page = os.path.join(DIST, _fk, "sale", "history", "index.html")
     _hh = read(_hist_page) if os.path.isfile(_hist_page) else ""
-    check(f"{_flabel}: 「セールはいつ？」のページがある・予想は書かない・sitemap に入っている ⇔ noindex でない",
-          bool(_hh) and "次の開催日は分かりません" in _hh and not re.search(r"予想されます|見込みです|はずです", _hh)
-          and ('name="robots" content="noindex' in read_raw(_hist_page)) != (f"/{_fk}/sale/history/" in sm_paths))
+    if _fk == "vr":  # 見放題（価格を出さない売り場）には「セールはいつ？」を作らない（2026-10-10）
+        check(f"{_flabel}: 見放題なので「セールはいつ？」のページは無い", not _hh and f"/{_fk}/sale/history/" not in sm_paths)
+    else:
+        check(f"{_flabel}: 「セールはいつ？」のページがある・予想は書かない・sitemap に入っている ⇔ noindex でない",
+              bool(_hh) and "次の開催日は分かりません" in _hh and not re.search(r"予想されます|見込みです|はずです", _hh)
+              and ('name="robots" content="noindex' in read_raw(_hist_page)) != (f"/{_fk}/sale/history/" in sm_paths))
     # 人気の動き（毎日の順位の記録。2026-10-09）: 上位300本に入ったことのある作品のページにだけ「人気の動き」がある
     _frh_path = os.path.join(ROOT, "site", "src", "data", "floor_rank_history.json")
     _frh = (json.load(open(_frh_path, encoding="utf-8")).get(_fk) or {}) if os.path.isfile(_frh_path) else {}

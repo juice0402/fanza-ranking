@@ -1,13 +1,13 @@
 ---
-// FANZA同人・FANZAゲームの作品カード（一覧の1マス。動画の ItemCard と同じ形・同じ見た目。2026-10-09。lib/floors.js）。
+// FANZA同人・FANZAゲームなどの売り場の作品カード（一覧の1マス。動画の ItemCard と同じ形・同じ見た目。2026-10-09。lib/floors.js）。
+// 表紙は components/FloorImg.astro（枠の形は売り場ごと。素人は正方形。2026-10-10）。
 // 表紙: ゲームは、動画と同じく FANZA のパッケージ画像（スマホはパッケージを幅300に縮めた版。components/Thumb.astro）。
 // 同人は、表紙の画像が横長（560×420 前後。2026-10-09 に本物で確かめた）なので、横長の枠（is-wide）にまるごと入れる。
 // 同人のスマホ版は、FANZA の「縮めて返す版」の幅300（lib/floors.js の doujinThumb。運営者の「同じしくみを同人にも」。2026-10-09）。
 // 同人の画像は pics.dmm.co.jp から読む（lib/floors.js の picsUrl。doujin-assets.dmm.co.jp は、運営者のiPhoneで、ページの中では出なかった。2026-10-09）。
 // スマホ版が読めなければ元の画像に、元の画像も読めなければ doujin-assets に1回だけ戻す（DOUJIN_THUMB_ONERROR）。どのページから読んだかも送らない（referrerpolicy="no-referrer"）
-import Thumb from './Thumb.astro';
-import { THUMB_MEDIA } from '../lib/items.js';
-import { DOUJIN_THUMB_ONERROR, doujinThumb, floorItemPath, makerLine } from '../lib/floors.js';
+import FloorImg from './FloorImg.astro';
+import { floorItemPath, frameClass, makerLine } from '../lib/floors.js';
 import { OUTBOUND_ATTRS } from '../lib/plan.js';
 
 // level: 見出しの階層 / eager: 最初の画面に入る作品だけ、画像をすぐ読む / badge: 表紙の左上の札（順位・割引）/ note: 価格などの1行
@@ -17,15 +17,12 @@ const { item, level = 'h3', eager = false, badge = '', note = '', rankNote = '',
 const Heading = level;
 const href = external ? item.url : floorItemPath(item.floor, item.cid);
 const outbound = external ? OUTBOUND_ATTRS : {};
-const wide = item.floor === 'doujin';
 const line = makerLine(item);
 ---
 
 <article class="item">
-  <a class:list={['item-cover', { 'is-wide': wide }]} href={href} tabindex="-1" aria-hidden="true" {...outbound}>
-    {item.image_url && (wide
-      ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(item.image_url, 'card').small} /><img class="floor-img" src={item.image_url} alt="" width="560" height="420" loading={eager ? 'eager' : 'lazy'} decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
-      : <Thumb src={item.image_url} kind="card" loading={eager ? 'eager' : 'lazy'} />)}
+  <a class:list={['item-cover', frameClass(item.floor)]} href={href} tabindex="-1" aria-hidden="true" {...outbound}>
+    <FloorImg floor={item.floor} url={item.image_url} kind="card" loading={eager ? 'eager' : 'lazy'} />
     {badge && <span class="rank-badge">{badge}</span>}
     {item.upcoming && <span class="pop pop-wait">予約</span>}
   </a>

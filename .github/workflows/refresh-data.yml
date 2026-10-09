@@ -10,7 +10,8 @@ name: Refresh FANZA Data
 #   ・女優のイベント情報を、事務所の公式サイトのイベントの一覧から集め直す（毎回。4つのページを読むだけ）
 #   ・過去作品（FANZAの人気順の上位1万本の、発売済みの作品）を、その日の上位1,000本と新着の人気順を取り直してから、その下を続きから取る。
 #     ふだんは毎日30回ずつ（3,000本）。「過去作品の一覧を取る回数」を増やして実行すると、一気に集められる（90回で上位1万本が一回り）
-#   ・FANZA同人（1,000本）・FANZAゲーム（500本）の人気作品を集め直す（scripts/doujin_game.py。2026-10-09 から）。
+#   ・FANZA同人（1,000本）・FANZAゲーム（500本）・アニメ・成人映画・コミック・写真集・VR見放題（各100本）・素人（500本）の人気作品を集め直す
+#     （scripts/doujin_game.py。2026-10-09 から。新しい売り場は 2026-10-10 から）。
 #     「同人・ゲームだけ」を 1 にすると、ほかのデータには触らずに、同人・ゲームだけを集める（新しい機能のブランチで、本物のデータを入れて確かめるとき）
 #   ・読みがな（ジャンル・メーカー・シリーズ・作家。scripts/readings.py。2026-10-10 から）。ふだんは7日に1回。「読みがな」を 1 にすると、いますぐ集め直す
 #   ・ジャンルのページの「FANZA全体で人気の作品 TOP20」（scripts/genre_tops.py。2026-10-10 から）
@@ -32,7 +33,7 @@ on:
         required: false
         default: '0'
       floors_only:
-        description: '同人・ゲームだけを集める（1 で、ほかのデータには触らない。ふだんは 0 ＝ ぜんぶ）'
+        description: '同人・ゲームなどの売り場だけを集める（1 で、ほかのデータには触らない。ふだんは 0 ＝ ぜんぶ）'
         required: false
         default: '0'
       readings:
@@ -96,7 +97,7 @@ jobs:
       # FANZA同人・FANZAゲーム（Gemini は使わない。失敗しても、ほかの取り直しは残す）
       - name: Refresh doujin and games
         continue-on-error: true
-        timeout-minutes: 15
+        timeout-minutes: 25
         env:
           API_ID: ${{ secrets.API_ID }}
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}

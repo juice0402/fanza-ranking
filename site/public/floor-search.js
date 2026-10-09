@@ -23,18 +23,25 @@
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
-  // 表紙の決まった置き場所（lib/floors.js の floorImageOf と同じ）
+  // 表紙の決まった置き場所（lib/floors.js の floorImageOf と同じ。同人・ゲームだけ。ほかの売り場は、索引にいつも画像が入っている）
   function imageOf(key, row) {
     if (row.i) return row.i;
     if (key === 'game') return 'https://pics.dmm.co.jp/digital/pcgame/' + row.c + '/' + row.c + 'pl.jpg';
+    if (key !== 'doujin') return '';
     return row.y ? 'https://pics.dmm.co.jp/digital/' + row.y + '/' + row.c + '/' + row.c + 'pl.jpg' : '';
   }
 
-  // 小さな表紙: 同人は、スマホのとき FANZA の「縮めて返す版」の幅240（lib/floors.js の doujinThumb の tiny）。ゲームは表紙（…ps.jpg）
-  function thumbUrl(key, url, tiny) {
+  // 表紙の枠の形（lib/floors.js の FLOORS の frame。ページの data-frame）: 'wide'（同人）・'square'（素人）・'cover'（ほか）
+  function framed(frame) {
+    return frame === 'wide' || frame === 'square';
+  }
+
+  // 小さな表紙: 横長・正方形の枠（同人・素人）は、スマホのとき FANZA の「縮めて返す版」の幅240（lib/floors.js の doujinThumb の tiny）。
+  // ほかは表紙（…ps.jpg。ブックスは ebook-assets の ps も同じ形）
+  function thumbUrl(key, url, tiny, frame) {
     var s = String(url || '');
-    if (key === 'doujin') return tiny && s.indexOf('https://pics.dmm.co.jp/') === 0 ? AWS_IMG + s.slice(23) + '?w=240&q=75' : s;
-    return /^https:\/\/pics\.dmm\.co\.jp\/[^?#]+pl\.jpg$/.test(s) ? s.replace(/pl\.jpg$/, 'ps.jpg') : s;
+    if (framed(frame || (key === 'doujin' ? 'wide' : 'cover'))) return tiny && s.indexOf('https://pics.dmm.co.jp/') === 0 ? AWS_IMG + s.slice(23) + '?w=240&q=75' : s;
+    return /^https:\/\/(pics|ebook-assets)\.dmm\.co\.jp\/[^?#]+pl\.jpg$/.test(s) ? s.replace(/pl\.jpg$/, 'ps.jpg') : s;
   }
 
   // 並べ方（lib/floors.js の byRank と同じ考え方: 順位のある作品を順位の順、そのあと発売日の新しい順）
@@ -81,7 +88,8 @@
   }
 
   // 行の中身（lib/floors.js の floorSearchRow と同じ）
-  function rowView(row, key) {
+  function rowView(row, key, frame) {
+    frame = frame || (key === 'doujin' ? 'wide' : 'cover');
     var yen = row.p ? comma(row.p) + '円' + (row.o ? '（' + row.o + '%OFF）' : '') : '';
     var day = row.u
       ? +row.d.slice(5, 7) + '月' + +row.d.slice(8, 10) + '日発売予定'
@@ -91,7 +99,8 @@
       href: '/' + key + '/item/' + row.c + '/',
       title: row.t,
       img: imageOf(key, row),
-      wide: key === 'doujin',
+      wide: framed(frame),
+      square: frame === 'square',
       line: [row.m, row.a].filter(Boolean).join('｜'),
       meta: [day, yen].filter(Boolean).join('・'),
       upcoming: row.u === 1,
@@ -106,7 +115,8 @@
 
   var root = document.getElementById('floor-search');
   if (!root) return;
-  var key = root.getAttribute('data-floor') === 'game' ? 'game' : 'doujin';
+  var key = /^[a-z]{2,10}$/.test(root.getAttribute('data-floor') || '') ? root.getAttribute('data-floor') : 'doujin';
+  var frame = root.getAttribute('data-frame') || (key === 'doujin' ? 'wide' : 'cover');
   var form = root.querySelector('form');
   var input = document.getElementById('fs-q');
   var list = document.getElementById('fs-list');
@@ -192,7 +202,7 @@
   }
 
   function thumb(url) {
-    var img = el('img', key === 'doujin' ? 'floor-img' : 'item-img is-small');
+    var img = el('img', framed(frame) ? 'floor-img' : 'item-img is-small');
     img.alt = '';
     img.loading = 'lazy';
     img.decoding = 'async';
@@ -205,11 +215,11 @@
         img.classList.remove('is-small');
       } else img.style.visibility = 'hidden';
     });
-    if (key === 'doujin') {
-      img.width = 560;
-      img.height = 420;
+    if (framed(frame)) {
+      img.width = frame === 'square' ? 600 : 560;
+      img.height = frame === 'square' ? 600 : 420;
     }
-    img.src = thumbUrl(key, url, tiny);
+    img.src = thumbUrl(key, url, tiny, frame);
     return img;
   }
 
@@ -217,7 +227,7 @@
     var li = el('li', 'ws-row');
     li.setAttribute('data-c', v.c);
     var article = el('article', 'item');
-    var cover = el('a', 'item-cover' + (v.wide ? ' is-wide' : ''));
+    var cover = el('a', 'item-cover' + (v.wide ? ' is-wide' : '') + (v.square ? ' is-square' : ''));
     cover.href = v.href;
     cover.tabIndex = -1;
     cover.setAttribute('aria-hidden', 'true');
@@ -246,7 +256,7 @@
       list.appendChild(el('li', 'empty', '条件に合う作品はありません。条件をへらしてみてください。'));
     }
     found.slice(0, shownCount).forEach(function (row) {
-      list.appendChild(card(rowView(row, key)));
+      list.appendChild(card(rowView(row, key, frame)));
     });
     more.hidden = found.length <= shownCount;
     // ボタンの本数（いまの結果の中で、そのボタンも足したときの本数）。足すと0本になるボタンは押せない

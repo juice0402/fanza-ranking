@@ -27,7 +27,7 @@ const index = kanaIndex(groups.map((g) => ({ name: g.name, path: g.path, count: 
 ---
 
 <Base
-  title={`${f.label}の${f.maker}一覧（${groups.length}${key === 'doujin' ? 'サークル' : 'ブランド'}）人気作品｜${SITE_NAME}`}
+  title={`${f.label}の${f.maker}一覧（${groups.length}${f.makerUnit}）人気作品｜${SITE_NAME}`}
   description={`${f.label}の人気作品を、${f.maker}ごとにまとめた一覧です（${groups.length}件・作品数の多い順）。毎日更新。`}
   path={floorMakerIndexPath(key)}
   noindex={noindex}

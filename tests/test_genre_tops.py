@@ -36,7 +36,7 @@ calls = []
 
 
 def fake(endpoint, params):
-    calls.append((endpoint, params.get("article_id"), params.get("sort"), params.get("lte", "")[:10]))
+    calls.append((endpoint, params.get("article_id"), params.get("sort"), params.get("lte_date", "")[:10]))
     if endpoint == "GenreSearch":
         return {"total_count": "3", "genre": [{"genre_id": "2001", "name": "巨乳"}, {"genre_id": "1031", "name": "痴女"}, {"genre_id": "x", "name": "壊れた"}]}
     if params["article_id"] == 1031:

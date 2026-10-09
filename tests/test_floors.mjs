@@ -73,10 +73,16 @@ check('同人のスマホ版が読めない → <source> を外す（元の画�
   && runDoujinErr({ src: i1.image_url, prev: 'SOURCE', matches: true }) === 'remove-source'
   && runDoujinErr({ src: i1.image_url, prev: 'SOURCE', matches: false }) === 'src=https://doujin-assets.dmm.co.jp'
   && runDoujinErr({ src: i1.image_url, prev: null, matches: false, alt: true }) === 'hidden');
-for (const f of ['FloorCard', 'FloorMiniShelf']) {
-  const src = fs.readFileSync(new URL(`../site/src/components/${f}.astro`, import.meta.url), 'utf-8');
-  check(`${f}.astro: 同人は <picture>（スマホは縮めた版）・img は DOUJIN_THUMB_ONERROR・どのページから読んだかを送らない`,
-    /<picture class="pic"><source media=\{THUMB_MEDIA\} srcset=\{doujinThumb\([^)]*\)\.small\} \/><img class="floor-img"[^>]*referrerpolicy="no-referrer" onerror=\{DOUJIN_THUMB_ONERROR\} \/><\/picture>/.test(src));
+{
+  // 売り場の表紙は components/FloorImg.astro に（2026-10-10）。同人・素人は <picture>（スマホは縮めた版）・img は framedThumb の onerror・どのページから読んだかを送らない
+  const src = fs.readFileSync(new URL('../site/src/components/FloorImg.astro', import.meta.url), 'utf-8');
+  check('FloorImg.astro: 同人・素人は <picture>（スマホは縮めた版）・img は framedThumb の onerror（同人は DOUJIN_THUMB_ONERROR）・どのページから読んだかを送らない',
+    /<picture class="pic"><source media=\{THUMB_MEDIA\} srcset=\{t\.small\} \/><img class="floor-img"[^>]*referrerpolicy="no-referrer" onerror=\{t\.onerror\} \/><\/picture>/.test(src)
+    && L.framedThumb('doujin', i1.image_url).onerror === L.DOUJIN_THUMB_ONERROR && L.framedThumb('amateur', 'https://pics.dmm.co.jp/digital/amateur/x/xjp.jpg', 'tiny').small === 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/amateur/x/xjp.jpg?w=240&q=75');
+  for (const f of ['FloorCard', 'FloorMiniShelf', 'FloorTop3', 'FloorTopics', 'FloorSaleCards', 'FloorRow']) {
+    const c = fs.readFileSync(new URL(`../site/src/components/${f}.astro`, import.meta.url), 'utf-8');
+    check(`${f}.astro: 表紙は FloorImg.astro（売り場ごとの枠の形）`, c.includes("import FloorImg from './FloorImg.astro'") && c.includes('<FloorImg ') && !c.includes("=== 'doujin'"));
+  }
 }
 check('壊れたデータ・空でも落ちない', L.normalizeFloor(null, 'game', today).items.length === 0 && L.normalizeFloor({ items: 'x' }, 'game', today).items.length === 0);
 
@@ -304,8 +310,8 @@ const gp2 = L.floorGachaPool(tfl.items);
 check('運命の作品の候補: 人気の順・作品ページの場所・同人は縮めた表紙（幅240）', gp2.length === 6 && gp2[0].h === '/doujin/item/d_500001/' && gp2[0].i === 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/voice/d_500001/d_500001pl.jpg?w=240&q=75' && /^https:\/\/[^/]*dmm\.co\.jp\//.test(gp2[0].i), gp2[0]);
 check('ゲームの候補は表紙（…ps.jpg）', L.floorGachaPool(g.items)[0].i.endsWith('ps.jpg'));
 const gacha = fs.readFileSync(new URL('../site/public/gacha.js', import.meta.url), 'utf-8');
-check('public/gacha.js: 候補の場所（h）が /doujin/item/…/・/game/item/…/ のときだけ使う・同人/ゲームは VR・単体の絞り込みを使わない（data-nofilter）',
-  gacha.includes("/^\\/(doujin|game)\\/item\\/[A-Za-z0-9_-]+\\/$/.test(row.h)") && gacha.includes("hasAttribute('data-nofilter')") && G.eligible([{ c: 'a' }, { c: 'b', o: 1 }], false, false).length === 2);
+check('public/gacha.js: 候補の場所（h）が /<売り場>/item/…/ のときだけ使う・同人/ゲームは VR・単体の絞り込みを使わない（data-nofilter）',
+  gacha.includes("/^\\/[a-z]{2,10}\\/item\\/[A-Za-z0-9_-]+\\/$/.test(row.h)") && gacha.includes("hasAttribute('data-nofilter')") && G.eligible([{ c: 'a' }, { c: 'b', o: 1 }], false, false).length === 2);
 const SI = L.floorSearchIndex(tfl.items, 'doujin', tcols);
 check('検索の索引: 決まった形の表紙は省く・形式・特集・順位・セール・ジャンルはおだやかなものだけ',
   SI.items.length === 8 && !('i' in SI.items[0]) && SI.items.some((r) => r.c === 'd_500008' && !r.i) && SI.items[0].y === 'voice' && SI.items[0].r === 1 && SI.items[0].h.length === 4 && SI.themes[3].s === 'comiket108'
@@ -324,6 +330,27 @@ check('TOP3 の前の日からの動き（動画の rankMove と同じ形）: �
   && L.floorMove(undefined, '2026-10-09') === null && L.floorMove(RH.doujin.get('d_3'), '2026-10-09', '2026-10-09') === null);
 const tp = L.floorTopics([...rItems.map((x) => ({ ...cfl.items[0], ...x, upcoming: false })), ...g.items], RH.doujin, '2026-10-09');
 check('きょうの話題: 急上昇 → 新作で人気 → セールで人気（同じ作品は1回だけ・データで決まった文）', tp[0]?.label === '急上昇' && tp[0].text === '人気ランキング5位（前日から▲3）' && new Set(tp.map((t) => t.item.cid)).size === tp.length && tp.every((t) => t.kind && t.text), tp.map((t) => [t.label, t.text]));
+
+console.log('\n■ 新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題。2026-10-10）');
+const pyFloors = fs.readFileSync(new URL('../scripts/floor_data.py', import.meta.url), 'utf-8');
+const pyKeys = [...pyFloors.matchAll(/^    "([a-z]+)": \{$/gm)].map((m) => m[1]);
+check('売り場は、集める道具（scripts/floor_data.py の FLOORS）と同じ・同じ順', pyKeys.join() === L.FLOOR_KEYS.join() && L.FLOOR_KEYS.length === 8, [pyKeys.join(), L.FLOOR_KEYS.join()]);
+check('どの売り場も、名前・短い名前・作り手の呼び方・数える言葉・作品の呼び方・枠の形・大きな表紙の形がある',
+  L.FLOOR_KEYS.every((k) => ['label', 'short', 'maker', 'makerUnit', 'kind'].every((x) => L.FLOORS[k][x]) && ['wide', 'square', 'cover'].includes(L.FLOORS[k].frame) && ['wide', 'square', 'spread', 'tall'].includes(L.FLOORS[k].detail)));
+check('枠の印: 同人は横長・素人は正方形（横長の札の置き方を使う）・ほかは縦長', JSON.stringify(L.frameClass('doujin')) === '{"is-wide":true,"is-square":false}'
+  && JSON.stringify(L.frameClass('amateur')) === '{"is-wide":true,"is-square":true}' && JSON.stringify(L.frameClass('vr')) === '{"is-wide":false,"is-square":false}' && L.isFramed('amateur') && !L.isFramed('comic'));
+check('検索の欄の案内', L.floorSearchHint('doujin') === 'タイトル・サークル' && L.floorSearchHint('game') === 'タイトル・ブランド・作家' && L.floorSearchHint('vr') === 'タイトル・メーカー・出演者' && L.floorSearchHint('photo') === 'タイトル・出版社・作家・出演者');
+const nrow = (cid, extra = {}) => ({ cid, title: `作品${cid}`, url: 'https://al.fanza.co.jp/?x', image_url: `https://pics.dmm.co.jp/digital/video/${cid}/${cid}pl.jpg`, date: '2026-09-01 10:00:00', maker: 'M', maker_id: 1, price: 1980, list_price: 2980, ...extra });
+const vrF = L.normalizeFloor({ items: [nrow('v1', { actress: ['出演A', '出演B', '出演C'], sample_movie: 'https://www.dmm.co.jp/litevideo/x/', trial_url: 'https://example.com/' }), nrow('v2', { actress: ['女子校生A'] })], ranks: { v1: 1 } }, 'vr', '2026-10-10');
+const v1 = vrF.items[0];
+check('出演者・サンプル動画（DMM のだけ）・立ち読み（FANZAのだけ）を読む・見放題は価格を出さない・出演者の名前でも未成年を連想させる作品は外す',
+  vrF.items.length === 1 && v1.actress.join() === '出演A,出演B,出演C' && v1.sampleMovie.startsWith('https://www.dmm.co.jp/') && v1.trialUrl === '' && v1.price === null && v1.off === 0, v1);
+check('カードの1行: 出演者のいる売り場は出演者を先に2人まで（ほか○名）', L.makerLine(v1) === '出演A、出演B ほか1名｜M' && L.makerLine({ ...v1, floor: 'anime', actress: [] }) === 'M');
+const amF = L.normalizeFloor({ items: [nrow('a1', { image_url: 'https://pics.dmm.co.jp/digital/amateur/a1/a1jp.jpg' })], ranks: { a1: 1 } }, 'amateur', '2026-10-10');
+check('素人の運命の作品・検索の行: 正方形の表紙を縮めた版・検索の索引にはいつも画像', L.floorGachaPool(amF.items)[0].i === 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/amateur/a1/a1jp.jpg?w=240&q=75'
+  && L.floorSearchIndex(amF.items, 'amateur', {}).items[0].i === amF.items[0].image_url && L.floorSearchRow(L.floorSearchIndex(amF.items, 'amateur', {}).items[0], 'amateur').square === true
+  && JSON.stringify(FS.rowView(L.floorSearchIndex(amF.items, 'amateur', {}).items[0], 'amateur', 'square')) === JSON.stringify(Object.fromEntries(Object.entries(L.floorSearchRow(L.floorSearchIndex(amF.items, 'amateur', {}).items[0], 'amateur')).filter(([k]) => k !== 'rank'))));
+check('ブックスの表紙: スマホの小さな表紙は表紙の小さい版（ebook-assets の …ps.jpg）', FS.thumbUrl('comic', 'https://ebook-assets.dmm.co.jp/digital/e-book/b1/b1pl.jpg', true, 'cover').endsWith('b1ps.jpg'));
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

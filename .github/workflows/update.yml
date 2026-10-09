@@ -68,11 +68,12 @@ jobs:
         run: python scripts/agency_events.py --update
 
       # FANZA同人（1,000本）・FANZAゲーム（500本）の人気作品を集め直す（FANZAのAPIだけ。Gemini は使わない。2026-10-09 から）。
+      # アニメ・成人映画・コミック・写真集・VR見放題（各100本）・素人（500本）も（2026-10-10 から。scripts/floor_data.py の FLOORS）。
       # 失敗しても、ほかの更新は止めない（前のデータを残す。scripts/doujin_game.py）
       - name: Update doujin and games (daily)
         if: steps.guard.outputs.skip != '1'
         continue-on-error: true
-        timeout-minutes: 15
+        timeout-minutes: 25
         env:
           API_ID: ${{ secrets.API_ID }}
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}

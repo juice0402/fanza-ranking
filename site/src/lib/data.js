@@ -16,7 +16,7 @@ import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
 import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG_PAGE_GENRES } from '../config.js';
 import { genreTopLists, groupByEntry, normalizeGenreTops } from './insights.js';
 import { buildItemsIndex } from './search.js';
-import { TEN_YEN_PATH, normalizeTenYen, tenYenState } from './ten-yen.js';
+import { TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenState } from './ten-yen.js';
 import { FLOOR_REVIEW_MIN, normalizeReviews, topRated } from './reviews.js';
 import { normalizeReadings } from './kana.js';
 import { FLOOR_KEYS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
@@ -107,8 +107,9 @@ export const roundups = normalizeRoundups(rawRoundups, curated);
 export const monthly = normalizeMonthly(optionalData('monthly'), curated);
 export const monthlyByMonth = new Map(monthly.map((r) => [r.month, r]));
 
-// FANZA同人・FANZAゲーム（毎日の更新が集める doujin.json・game.json。2026-10-09 から。まだ無ければ空で、ページも作らない。lib/floors.js）
-const floorShards = import.meta.glob('../data/{doujin,game}.json', { eager: true, import: 'default' });
+// FANZA同人・FANZAゲームなどの売り場（毎日の更新が集める doujin.json・game.json など。2026-10-09 から。まだ無ければ空で、ページも作らない。lib/floors.js）
+// 売り場のファイル（lib/floors.js の FLOOR_KEYS と同じ名前。glob の形は、ビルドの道具の決まりで、文字のまま書く。アニメ・素人・成人映画・コミック・写真集・VR見放題は 2026-10-10 から）
+const floorShards = import.meta.glob('../data/{doujin,game,anime,amateur,cinema,comic,photo,vr}.json', { eager: true, import: 'default' });
 export const floors = Object.fromEntries(FLOOR_KEYS.map((k) => [k, normalizeFloor(floorShards[`../data/${k}.json`] ?? null, k, today)]));
 export const floorMakerGroups = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorMakers(floors[k].items, k)]));
 export const floorMakerById = Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floorMakerGroups[k].map((g) => [g.id, g]))]));
@@ -157,7 +158,8 @@ const tenYenInfoMap = new Map(Object.entries(tenYen.items).flatMap(([k, list]) =
 /** その作品が、いま10円セールの対象なら { price, listPrice, off, title, end }（作品ページの札。key: 'video'・'doujin'・'game'） */
 export const tenYenInfo = (key, cid) => tenYenInfoMap.get(`${key}:${cid}`) ?? null;
 /** 10円セールのページのある売り場（まとめのページ /sale/10yen/ はいつも。同人・ゲームは、その売り場のページがあるときだけ） */
-export const tenYenFloors = activeFloors;
+// 10円セールを集めている売り場（同人・ゲーム。ten_yen.py の FLOOR_KEYS と同じ）のうち、ページのある売り場
+export const tenYenFloors = activeFloors.filter((k) => TEN_YEN_KEYS.includes(k));
 
 // 作品ページを作る作品（サイト全体を2万ファイル以内に収める。lib/plan.js）
 export const pagePlan = planPages(all, {
