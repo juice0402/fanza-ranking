@@ -8,6 +8,7 @@ import Face from '../../components/Face.astro';
 import EventList from '../../components/EventList.astro';
 import NextWorks from '../../components/NextWorks.astro';
 import OnSaleWorks from '../../components/OnSaleWorks.astro';
+import RatedShelf from '../../components/RatedShelf.astro';
 import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
 import { actressByName, actressGroups, agencyOfName, events, eventsOfName, makerByName, profilesByName, sale, today, seriesById } from '../../lib/data.js';
@@ -177,6 +178,7 @@ const trail = [
 
     <NextWorks items={upcomingWorks} shown={NEXT_SHOWN} />
     <OnSaleWorks items={saleWorks} shown={SALE_SHOWN} label="出演作品が入っているセール" />
+    <RatedShelf items={group.items} title={`${group.name}さんの評価の高い作品`} />
 
     {myEvents.length > 0 && (
       <section class="section" aria-labelledby="events-title">

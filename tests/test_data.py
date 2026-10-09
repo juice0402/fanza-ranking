@@ -512,6 +512,24 @@ for key in FD.FLOORS:
     check(f"{label}: APIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}|api_id=", ftext))
     check(f"{label}: 画像は pics.dmm.co.jp から（doujin-assets はページの中で出ないことがあるため。2026-10-09）", "doujin-assets.dmm.co.jp" not in ftext)
 
+# ---- FANZAのレビューの評価（reviews.json。get_new_releases.py が毎日ためる。2026-10-10 から） ----
+print("\n■ レビューの評価（reviews.json）")
+REVIEWS = os.path.join(ROOT, "site", "src", "data", "reviews.json")
+if not os.path.exists(REVIEWS):
+    print("  （reviews.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        rvtext = open(REVIEWS, encoding="utf-8").read()
+        rv = json.loads(rvtext)
+    except (OSError, json.JSONDecodeError) as e:
+        rv = None
+        check("reviews.json を読める", False, str(e))
+    if rv is not None:
+        check("reviews.json: 更新日・続きの場所・作品ごとの [平均×100, 件数] だけ（1作品1行）",
+              isinstance(rv, dict) and set(rv) == {"updated", "cursor", "items"} and isinstance(rv["items"], dict)
+              and all(re.fullmatch(r"[A-Za-z0-9_\-]{1,40}", c) and isinstance(v, list) and len(v) == 2 and all(isinstance(n, int) for n in v) and 100 <= v[0] <= 500 and v[1] >= 1 for c, v in rv["items"].items())
+              and rvtext.count("\n") == len(rv["items"]) + 3 - (1 if not rv["items"] else 0))
+
 # ---- 10円セール（ten_yen.json。scripts/ten_yen.py が毎日と、開催中は1日に数回。2026-10-09 から） ----
 print("\n■ 10円セール（ten_yen.json）")
 import ten_yen as TY  # noqa: E402

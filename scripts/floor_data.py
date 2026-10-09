@@ -8,9 +8,10 @@
   {"updated": 集めた日, "scanned": 人気順を何本目まで見たか, "skipped": 入れなかった本数（未成年を連想させる作品）,
    "ranks": {cid: その日の人気順の順位},
    "items": [{cid, title, url, image_url, sample_images, date, maker, maker_id, authors, series, series_id,
-              genres, formats, sales, price, list_price, campaign, comment, comment_kind, updated}, …]}
+              genres, formats, sales, price, list_price, campaign, review, comment, comment_kind, updated}, …]}
   ・genres: 中身のジャンル / formats: 形式・配信の区分（男性向け・Windows11対応作品 など） / sales: セール・クーポンの対象を表す札（ゲーム）
   ・price・list_price: 円（分からなければ null）。campaign: {"title": "30%OFF", "begin": "2026-10-01"}（同人。無ければ null）
+  ・review: FANZAのレビューの評価 [平均×100, 件数]（無ければ null。2026-10-10 から）
   ・comment_kind: "none"（コメントがまだ無い）か "claude"（Claude が書いた）。updated: 入れた日・コメントを変えた日（sitemap の lastmod）
 """
 import json
@@ -55,6 +56,11 @@ def _names(values, limit):
     return out[:limit]
 
 
+def _review(v):
+    """FANZAのレビューの評価 [平均×100, 件数]（無い・形が違えば None。get_new_releases.py の parse_review と同じ形）"""
+    return v if isinstance(v, list) and len(v) == 2 and all(isinstance(n, int) and not isinstance(n, bool) for n in v) and 100 <= v[0] <= 500 and v[1] >= 1 else None
+
+
 def clean_item(row):
     """保存されている1作品を、決まった項目だけの形にそろえる（読めなければ None）"""
     if not isinstance(row, dict):
@@ -90,6 +96,7 @@ def clean_item(row):
         "price": _int_or_none(row.get("price"), 1),
         "list_price": _int_or_none(row.get("list_price"), 1),
         "campaign": campaign,
+        "review": _review(row.get("review")),
         "comment": comment,
         "comment_kind": kind,
         "updated": str(row.get("updated") or "") if DAY.match(str(row.get("updated") or "")) else date[:10],

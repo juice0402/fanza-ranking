@@ -2,6 +2,7 @@
 // 運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも」→「同人 1,000本・ゲーム 500本」（2026-10-09）。
 // データは毎日の更新が集める site/src/data/doujin.json・game.json（scripts/doujin_game.py。形は scripts/floor_data.py）。
 // 未成年を連想させる作品は、集めるときに入れていない。ここでも、タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前を調べて、念のため外す（二重の備え）。
+import { reviewOf } from './reviews.js';
 import { FANZA_HOSTS, FANZA_LINK_HOSTS, addDays, daysBetween, entitySlug, isDay, resizedImage, safeHttpsUrl, smallImage } from './items.js';
 import { isMinorTitle } from './gacha.js';
 import { bestOf } from './popularity.js';
@@ -115,6 +116,8 @@ export function normalizeFloor(raw, key, today) {
       listPrice: listPrice && price && price <= listPrice ? listPrice : null,
       off: offOf(price, listPrice),
       campaign: camp,
+      // FANZAのレビューの評価（2026-10-10 から。lib/reviews.js）。無ければ null
+      review: reviewOf(r.review),
       comment: r.comment_kind === 'claude' ? String(r.comment ?? '').trim() : '',
       updated: isDay(r.updated) ? r.updated : '',
       rank,
@@ -845,6 +848,8 @@ export function floorSearchIndex(items, key, groups) {
         ...(i.type ? { y: i.type } : {}),
         ...(i.price ? { p: i.price } : {}),
         ...(i.off ? { o: i.off } : {}),
+        // FANZAのレビューの評価（並び順「評価が高い順」。平均×100・件数。2026-10-10）
+        ...(i.review ? { v: Math.round(i.review.avg * 100), vc: i.review.count } : {}),
         ...(pos.has(i.cid) ? { r: pos.get(i.cid) } : {}),
         d: i.dateKey,
         ...(i.upcoming ? { u: 1 } : {}),

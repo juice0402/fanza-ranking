@@ -5,7 +5,8 @@ import VrToggle from '../../components/VrToggle.astro';
 import DaySection from '../../components/DaySection.astro';
 import CastFaces from '../../components/CastFaces.astro';
 import MiniShelf from '../../components/MiniShelf.astro';
-import { tagGroups, tagByName, contentGenres, genreTops } from '../../lib/data.js';
+import RatedShelf from '../../components/RatedShelf.astro';
+import { all, tagGroups, tagByName, contentGenres, genreTops } from '../../lib/data.js';
 import { campaignSummary } from '../../lib/sale.js';
 import { relatedGenres } from '../../lib/insights.js';
 import { TAG_INDEX_PATH, VR_TAG_NAME, tagPageTitle, tagSummary } from '../../lib/collections.js';
@@ -58,6 +59,9 @@ const trail = [
         <MiniShelf items={popular} />
       </section>
     )}
+
+    {/* 評価の高い作品（このサイトの全作品から。FANZAのレビューの評価。2026-10-10） */}
+    {!isVr && <RatedShelf items={all.filter((i) => i.genres.includes(group.name))} title={`${group.name}の評価の高い作品`} id="rated-title" />}
 
     {castFaces.length > 0 && (
       <section class="section" aria-labelledby="cast-title">

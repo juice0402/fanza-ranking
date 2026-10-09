@@ -282,6 +282,7 @@ def load_module(data_path, api_id="fake", gemini="fake", max_calls=None, directo
     os.environ["CATALOG_TOP_CALLS"] = str(catalog_top)  # 過去作品: その日の人気順の上位を取り直す回数
     os.environ["NEW_RANK_CALLS"] = str(new_rank)  # 新着の人気順を取る回数
     os.environ["TODAY_STATS"] = "1" if today_stats else "0"  # きょうの数字（専用のシナリオで試す）
+    os.environ["REVIEW_REFETCH_PER_RUN"] = "0"  # レビューの評価の取り直し（品番で取り直す回数に数えないよう、ふだんのシナリオでは呼ばない。tests/test_reviews.py で試す）
     if catalog_limit is None:
         os.environ.pop("CATALOG_LIMIT", None)  # 集める深さ（既定の3万本）
     else:

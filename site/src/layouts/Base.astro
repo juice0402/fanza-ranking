@@ -2,7 +2,7 @@
 import '../styles/site.css';
 import { SITE_NAME, SITE_URL, jsonLdScript, ABOUT_PATH, ACTRESS_INDEX_PATH, MAKER_INDEX_PATH, DMM_CREDIT_HTML } from '../lib/items.js';
 import { GOOGLE_SITE_VERIFICATION } from '../config.js';
-import { roundups, monthGroups, tagGroups, upcoming, upcomingEventList, seriesGroups, labelGroups, activeFloors, floors } from '../lib/data.js';
+import { roundups, monthGroups, tagGroups, upcoming, upcomingEventList, seriesGroups, labelGroups, activeFloors, floors, reviewRanking } from '../lib/data.js';
 import { FLOORS, floorPath, floorSaleItems, floorSalePath } from '../lib/floors.js';
 import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
 import { FAVORITES_PATH } from '../lib/favorites.js';
@@ -14,6 +14,7 @@ import { RANKING_PATH } from '../lib/popularity.js';
 import { SALE_PATH } from '../lib/sale.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { TEN_YEN_PATH } from '../lib/ten-yen.js';
+import { REVIEW_RANKING_MIN_ITEMS, REVIEW_RANKING_PATH } from '../lib/reviews.js';
 import TenYenBanner from '../components/TenYenBanner.astro';
 import { FEED_PATH, FEED_TITLE, WEEKLY_FEED_PATH, WEEKLY_FEED_TITLE } from '../lib/feed.js';
 
@@ -187,6 +188,7 @@ import { assetUrl } from '../lib/assets.js';
           <a class="foot-link" href="/#released">発売中</a>
           {hasUpcoming && <a class="foot-link" href="/#upcoming">予約</a>}
           <a class="foot-link" href={RANKING_PATH}>新着の人気ランキング</a>
+          {reviewRanking.length >= REVIEW_RANKING_MIN_ITEMS && <a class="foot-link" href={REVIEW_RANKING_PATH}>高評価ランキング</a>}
           <a class="foot-link" href={SALE_PATH}>セール・キャンペーン</a>
           {/* 10円セールのページは、開催していないあいだも、いつも同じURLにある（検索エンジンに覚えてもらうため、どのページからもリンクする） */}
           <a class="foot-link" href={TEN_YEN_PATH}>10円セール</a>

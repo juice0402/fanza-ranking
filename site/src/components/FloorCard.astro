@@ -31,6 +31,7 @@ const line = makerLine(item);
   </a>
   <Heading class="item-title">{badge && <span class="visually-hidden">{badge}：</span>}{item.upcoming && <span class="visually-hidden">予約：</span>}<a class="item-title-link" href={href} {...outbound}>{item.title}</a></Heading>
   {line && <p class="item-cast">{line}</p>}
+  {item.review && <p class="item-rate"><span class="rate-star">★{item.review.avg.toFixed(2)}</span><span class="rate-count">（{item.review.count.toLocaleString('ja-JP')}件）</span></p>}
   {rankNote && <p class="item-note is-rank">{rankNote}</p>}
   {note && <p class="item-note">{note}</p>}
   {item.comment && <p class="item-comment">{item.comment}</p>}

@@ -29,6 +29,9 @@ python3 tests/test_doujin_game.py || failed=1
 step "10円セールを集める道具 (Python)"
 python3 tests/test_ten_yen.py || failed=1
 
+step "FANZAのレビューの評価を集める道具 (Python)"
+python3 tests/test_reviews.py || failed=1
+
 step "公開のしくみ（Cloudflare Pages への直接アップロード）"
 python3 tests/test_deploy.py || failed=1
 
@@ -101,6 +104,9 @@ node tests/test_sale.mjs || failed=1
 
 step "10円セールの部品 (Node.js + Pythonとの突き合わせ)"
 node tests/test_ten_yen.mjs || failed=1
+
+step "レビューの評価・高評価ランキングの部品 (Node.js + Pythonとの突き合わせ)"
+node tests/test_reviews.mjs || failed=1
 node tests/test_topics.mjs || failed=1
 node tests/test_gacha.mjs || failed=1
 

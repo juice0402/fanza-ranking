@@ -130,6 +130,7 @@ def parse_floor_item(raw, key):
         "price": price,
         "list_price": list_price,
         "campaign": campaign,
+        "review": G.parse_review(raw),
         "comment": "",
         "comment_kind": "none",
         "updated": "",

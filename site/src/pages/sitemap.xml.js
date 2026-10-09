@@ -1,7 +1,8 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
-import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors } from '../lib/data.js';
+import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors, reviewRanking, reviews, floorReviewRankings } from '../lib/data.js';
+import { REVIEW_RANKING_MIN_ITEMS, REVIEW_RANKING_PATH, floorReviewRankingPath } from '../lib/reviews.js';
 import { FLOOR_COLLECTION_KINDS, FLOOR_HUB_SHOWN, floorEntityIndexable, floorEntityRankingPath, collectionIndexIndexable, collectionIndexable, floorCollectionIndexPath, floorSaleHistoryIndexable, floorSaleHistoryPath, floorSalePageIndexable, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorUpcoming } from '../lib/floors.js';
 import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
 import { EVENT_PATH } from '../lib/events.js';
@@ -48,6 +49,8 @@ export function GET() {
   rankingPages.push({ path: TEN_YEN_PATH, lastmod: tenLastmod });
   for (const k of tenYenFloors) if (tenYenIndexable(tenYen, k)) rankingPages.push({ path: tenYenPath(k), lastmod: tenLastmod });
   if (saleHistory.rows.some((r) => !isMinorTitle(r.title))) rankingPages.push({ path: SALE_HISTORY_PATH, lastmod: saleHistory.updated || today });
+  // 高評価ランキング（2026-10-10。ページの側と同じ決まり）
+  if (reviewRanking.length >= REVIEW_RANKING_MIN_ITEMS && listIndexable(reviewRanking)) rankingPages.push({ path: REVIEW_RANKING_PATH, lastmod: reviews.updated || today });
   // 女優のイベント情報（1件も無いあいだは、ページが noindex なので入れない）
   if (upcomingEventList.length > 0) rankingPages.push({ path: EVENT_PATH, lastmod: events.updated || today });
   const groupPages = (groups) => groups.filter((g) => listIndexable(g.items)).map((g) => ({ path: g.path, lastmod: listLastmod(g.items, today) }));
@@ -70,6 +73,7 @@ export function GET() {
     // セールごと（ゲーム）・割引ごと（同人）のページと「セールはいつ？」（2026-10-09）。ページの側と同じ決まり
     for (const p of floorSalePageGroups[k]) if (floorSalePageIndexable(p)) out.push({ path: p.path, lastmod });
     if (floorSaleHistoryIndexable(floorSaleHistory[k], fl.updated)) out.push({ path: floorSaleHistoryPath(k), lastmod: floorSaleHistory.updated || lastmod });
+    if (floorReviewRankings[k].length >= REVIEW_RANKING_MIN_ITEMS && listIndexable(floorReviewRankings[k])) out.push({ path: floorReviewRankingPath(k), lastmod });
     // コレクション（ジャンル・シリーズ・作家・発売月。2026-10-09）。ページの側と同じ決まり（collectionIndexable）
     for (const kind of FLOOR_COLLECTION_KINDS) {
       const groups = floorCollectionGroups[k][kind];

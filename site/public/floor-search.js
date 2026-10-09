@@ -49,7 +49,15 @@
     off: function (a, b) {
       return (b.o || 0) - (a.o || 0) || byPop(a, b);
     },
+    // 評価が高い順（索引の v: レビューの平均×100・vc: 件数。2026-10-10）: 3件以上の作品を、件数でならした評価の高い順（作品検索の search.js と同じ）
+    review: function (a, b) {
+      return reviewScore(b) - reviewScore(a) || byPop(a, b);
+    },
   };
+  function reviewScore(row) {
+    if (typeof row.v !== 'number' || typeof row.vc !== 'number' || row.vc < 3) return -1;
+    return (row.vc * row.v / 100 + 10 * 4.2) / (row.vc + 10);
+  }
 
   // 条件に合う作品（state: { q, sort, st, type, g: [ジャンルの番号], h: [特集の番号] }）
   function filterRows(index, state) {

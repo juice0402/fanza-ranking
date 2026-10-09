@@ -17,11 +17,12 @@ import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG
 import { genreTopLists, groupByEntry } from './insights.js';
 import { buildItemsIndex } from './search.js';
 import { TEN_YEN_PATH, normalizeTenYen, tenYenState } from './ten-yen.js';
+import { FLOOR_REVIEW_MIN, normalizeReviews, topRated } from './reviews.js';
 import { FLOOR_KEYS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -41,8 +42,11 @@ export const saleHistory = normalizeSaleHistory(optionalData('sale_history'));
 // きょうの数字・予約の人気順（毎日の更新が集めたもの。lib/topics.js）
 export const todayData = normalizeToday(optionalData('today'));
 const catalogRanks = optionalData('catalog_rank');
+// FANZAのレビューの評価（get_new_releases.py が毎日の取得で見かけた作品からためる。2026-10-10 から。lib/reviews.js）。cid → { avg, count }
+export const reviews = normalizeReviews(optionalData('reviews'));
+const reviewOfCid = (cid) => reviews.byCid.get(cid) ?? null;
 // 毎日の更新で載せた作品（新作・予約。コメントがある）。トップ・月ごと/ジャンルごとのページ・お気に入り・カレンダー・まとめ記事は、これだけを使う
-export const curated = normalizeItems(raw).map((i) => ({ ...i, popAll: popularity.allRank.get(i.cid) ?? null, popNew: popularity.newRank.get(i.cid) ?? null }));
+export const curated = normalizeItems(raw).map((i) => ({ ...i, popAll: popularity.allRank.get(i.cid) ?? null, popNew: popularity.newRank.get(i.cid) ?? null, review: reviewOfCid(i.cid) }));
 const curatedCids = new Set(curated.map((i) => i.cid));
 // （FANZAのURLが無い過去作品は、作品ページが無いときのリンク先が無いので、載せない）
 // rank: 作品ページを作る順の順位（全体の人気順と新着の人気順の、上のほう。data/catalog_rank.json・popularity.json）。作品ページ・コメントは、人気の高い作品から
@@ -51,12 +55,15 @@ export const catalog = normalizeItems(catalogRaw)
   .map((i) => {
     const popAll = catalogAllRank(catalogRanks, i.cid);
     const popNew = popularity.newRank.get(i.cid) ?? null;
-    return { ...i, catalog: true, popAll, popNew, rank: bestRank(popAll, popNew) };
+    return { ...i, catalog: true, popAll, popNew, rank: bestRank(popAll, popNew), review: reviewOfCid(i.cid) };
   });
 // すべての作品（毎日の更新で載せた作品＋過去作品）。作品ページ・過去の作品の一覧・出演者/メーカーのページ・「この作品のデータ」欄は、これを使う
 export const all = [...curated, ...catalog];
 export const { released, upcoming } = splitByRelease(curated, today);
 export const allReleased = splitByRelease(all, today).released;
+// 高評価ランキング（FANZAのレビューが10件以上の発売済みの作品を、ならした評価の高い順に100本。/ranking/review/。lib/reviews.js）
+export const reviewRanking = topRated(all, today);
+export const reviewRankOf = new Map(reviewRanking.map((i, n) => [i.cid, n + 1]));
 
 // 出演者・メーカーごとのページ（作品が ENTITY_MIN_ITEMS 本以上の人・メーカーだけ）
 export const actressGroups = groupByActress(all);
@@ -129,6 +136,9 @@ export const floorGachaPools = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floo
 export const floorSearchIndexes = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorSearchIndex(floors[k].items, k, floorCollectionGroups[k])]));
 /** ページのある売り場（作品が1本以上） */
 export const activeFloors = FLOOR_KEYS.filter((k) => floors[k].items.length > 0);
+/** 売り場ごとの高評価ランキング（レビュー FLOOR_REVIEW_MIN 件以上。/<売り場>/ranking/review/。2026-10-10） */
+export const floorReviewRankings = Object.fromEntries(FLOOR_KEYS.map((k) => [k, topRated(floors[k].items, today, { min: FLOOR_REVIEW_MIN })]));
+export const floorReviewRankOf = Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floorReviewRankings[k].map((i, n) => [i.cid, n + 1]))]));
 
 // 10円セール（動画・同人・ゲーム。scripts/ten_yen.py が毎日と、開催中は1日に数回確かめる。2026-10-09 から。まだ無ければ空。lib/ten-yen.js）
 export const tenYen = normalizeTenYen(optionalData('ten_yen'), {
@@ -153,7 +163,7 @@ export const pagePlan = planPages(all, {
   month: monthGroups.length,
   tag: tagGroups.length,
   weekly: roundups.length,
-  sale: saleCampaignPages.length + 1 + 1 + FLOOR_KEYS.length, // 特集ごとのページと「セールはいつ？」のページ・10円セールのページ（まとめ＋売り場ごと）
+  sale: saleCampaignPages.length + 1 + 1 + FLOOR_KEYS.length + 1 + FLOOR_KEYS.length, // 特集ごとのページと「セールはいつ？」のページ・10円セールのページ（まとめ＋売り場ごと）・高評価ランキング（動画＋売り場ごと）
   ics: calendarActressGroups.length + calendarMakerGroups.length,
   archiveItems: allReleased.length,
   floors: FLOOR_KEYS.reduce((n, k) => n + floorFileCount(floors[k], floorMakerGroups[k], floorCollectionGroups[k], floorSalePageGroups[k]), 0),

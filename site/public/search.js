@@ -193,8 +193,20 @@
     };
   }
 
-  // 並び順: new 新しい順 / old 古い順 / popnew 人気順（新着）/ pop 人気順（全体）
-  var SORTS = { new: newer, old: older, popnew: byRank('n'), pop: byRank('r') };
+  // 評価が高い順（索引の s: レビューの平均×100・sc: 件数。2026-10-10）: レビューが3件以上の作品を、件数でならした評価の高い順
+  // （lib/reviews.js の reviewScore と同じ考え方。全体の平均は 4.2 とみなす）。3件に満たない・評価の無い作品は、そのあとに新しい順
+  function reviewScore(row) {
+    if (typeof row.s !== 'number' || typeof row.sc !== 'number' || row.sc < 3) return -1;
+    return (row.sc * row.s / 100 + 10 * 4.2) / (row.sc + 10);
+  }
+  function byReview(a, b) {
+    var x = reviewScore(a);
+    var y = reviewScore(b);
+    return x > y ? -1 : x < y ? 1 : newer(a, b);
+  }
+
+  // 並び順: new 新しい順 / old 古い順 / popnew 人気順（新着）/ pop 人気順（全体）/ review 評価が高い順
+  var SORTS = { new: newer, old: older, popnew: byRank('n'), pop: byRank('r'), review: byReview };
   function sortOf(name) {
     return Object.prototype.hasOwnProperty.call(SORTS, name) ? name : 'new';
   }

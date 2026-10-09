@@ -60,6 +60,11 @@ export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT, popular
       if (item.solo) row.o = 1; // 単体作品（「単体作品のみ表示」スイッチ）
       if (item.popAll) row.r = item.popAll;
       if (item.popNew) row.n = item.popNew;
+      // FANZAのレビューの評価（並び順「評価が高い順」。平均×100・件数。2026-10-10）
+      if (item.review) {
+        row.s = Math.round(item.review.avg * 100);
+        row.sc = item.review.count;
+      }
       const code = productCode(item.cid);
       if (code) row.p = code;
       return row;

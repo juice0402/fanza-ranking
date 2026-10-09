@@ -6,6 +6,7 @@ import DaySection from '../../components/DaySection.astro';
 import FavButton from '../../components/FavButton.astro';
 import NextWorks from '../../components/NextWorks.astro';
 import OnSaleWorks from '../../components/OnSaleWorks.astro';
+import RatedShelf from '../../components/RatedShelf.astro';
 import CastFaces from '../../components/CastFaces.astro';
 import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
@@ -136,6 +137,7 @@ const trail = [
 
     <NextWorks items={upcomingWorks} shown={NEXT_SHOWN} />
     <OnSaleWorks items={saleWorks} shown={SALE_SHOWN} label="このメーカーの作品が入っているセール" />
+    <RatedShelf items={group.items} title={`${group.name}の評価の高い作品`} />
 
     {castFaces.length > 0 && (
       <section class="section" aria-labelledby="cast-title">

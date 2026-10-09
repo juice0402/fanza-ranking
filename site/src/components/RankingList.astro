@@ -6,8 +6,9 @@ import VrToggle from './VrToggle.astro';
 import ItemCard from './ItemCard.astro';
 import { formatDateJp, filterAttrs } from '../lib/items.js';
 import { NEW_RANK_DAYS } from '../lib/popularity.js';
-import { popularity, rankHistory } from '../lib/data.js';
+import { popularity, rankHistory, reviewRanking } from '../lib/data.js';
 import { rankNote } from '../lib/insights.js';
+import { REVIEW_RANKING_MIN_ITEMS, REVIEW_RANKING_PATH } from '../lib/reviews.js';
 
 // list: 並べる作品（順位の順）。date: 順位を取った日
 const { list, date, trail } = Astro.props;
@@ -21,6 +22,7 @@ const { list, date, trail } = Astro.props;
     <p class="hero-lead">
       {`最近${NEW_RANK_DAYS === 7 ? '1週間' : `${NEW_RANK_DAYS}日`}に発売された作品の、その日の人気順です（毎日入れかわります）。`}
     </p>
+    {reviewRanking.length >= REVIEW_RANKING_MIN_ITEMS && <p class="hero-links"><a class="spec-link" href={REVIEW_RANKING_PATH}>レビューの評価が高い作品は、高評価ランキングへ</a></p>}
   </section>
 
   <section class="section" aria-labelledby="ranking-title">

@@ -8,7 +8,8 @@ import MiniShelf from '../../components/MiniShelf.astro';
 import WorkRows from '../../components/WorkRows.astro';
 import GachaCorner from '../../components/GachaCorner.astro';
 import RankTrend from '../../components/RankTrend.astro';
-import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, today, rankHistory, seriesById, labelById, roundups, genreTops, contentGenres, tenYenInfo, campaignHrefOf } from '../../lib/data.js';
+import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, today, rankHistory, seriesById, labelById, roundups, genreTops, contentGenres, tenYenInfo, campaignHrefOf, reviewRankOf, reviews } from '../../lib/data.js';
+import { REVIEW_RANKING_PATH } from '../../lib/reviews.js';
 import { TEN_YEN_PATH } from '../../lib/ten-yen.js';
 import { popularInGenre, roundupFor, sameSeries } from '../../lib/insights.js';
 import { weekRangeShort, weeklyPath } from '../../lib/roundups.js';
@@ -189,6 +190,17 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
                     </ul>
                   </details>
                 )}
+              </dd>
+            </>
+          )}
+          {/* FANZAのレビューの評価（2026-10-10。lib/reviews.js）。高評価ランキングに入っていれば、その順位とリンク */}
+          {item.review && (
+            <>
+              <dt class="spec-term">評価</dt>
+              <dd class="spec-desc">
+                <span class="rate-star">★{item.review.avg.toFixed(2)}</span>（FANZAのレビュー{item.review.count.toLocaleString('ja-JP')}件）
+                {reviewRankOf.get(item.cid) && <a class="spec-link spec-sub" href={REVIEW_RANKING_PATH}>高評価ランキング{reviewRankOf.get(item.cid)}位</a>}
+                {reviews.updated && <span class="spec-sub">（{md(reviews.updated)}ごろの時点）</span>}
               </dd>
             </>
           )}

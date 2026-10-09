@@ -620,6 +620,26 @@ summary:focus-visible {
   white-space: nowrap;
 }
 
+/* FANZAのレビューの評価（★4.71（31件）。2026-10-10。lib/reviews.js）。星と平均は黄色、件数は控えめな色 */
+.item-rate {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--paper-dim);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rate-star {
+  color: var(--pop);
+  font-weight: 700;
+}
+
+.mini-rate .rate-star {
+  margin-right: 1px;
+}
+
 .item-comment {
   display: -webkit-box;
   flex: 1;

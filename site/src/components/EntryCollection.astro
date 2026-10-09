@@ -9,6 +9,7 @@ import NextWorks from './NextWorks.astro';
 import OnSaleWorks from './OnSaleWorks.astro';
 import CastFaces from './CastFaces.astro';
 import MiniShelf from './MiniShelf.astro';
+import RatedShelf from './RatedShelf.astro';
 import { isMinorTitle } from '../lib/gacha.js';
 import { actressByName, makerByName, contentGenres, sale, tagByName, today } from '../lib/data.js';
 import { campaignSummary, onSaleItems } from '../lib/sale.js';
@@ -85,6 +86,7 @@ const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 
   <NextWorks items={upcomingWorks} shown={6} />
   <OnSaleWorks items={saleWorks} shown={6} label={`この${kind}の作品が入っているセール`} />
+  <RatedShelf items={group.items} title={`この${kind}の評価の高い作品`} />
 
   {popular.length > 0 && (
     <section class="section" aria-labelledby="popular-title" data-vr-group>

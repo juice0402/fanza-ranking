@@ -1,0 +1,60 @@
+---
+// 同人・ゲームなどの売り場の高評価ランキング（/doujin/ranking/review/ など。2026-10-10。lib/reviews.js）。
+// FANZAのレビューが5件以上ある発売済みの作品を、ならした評価の高い順に100本。入る作品が10本に満たない売り場には作らない
+import Base from '../../../layouts/Base.astro';
+import Breadcrumb from '../../../components/Breadcrumb.astro';
+import FloorCard from '../../../components/FloorCard.astro';
+import FloorMoreNav from '../../../components/FloorMoreNav.astro';
+import { activeFloors, floorReviewRankings, floors } from '../../../lib/data.js';
+import { FLOORS, floorItemListLd, floorPath, floorRankingPath, priceNote } from '../../../lib/floors.js';
+import { FLOOR_REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, floorReviewRankingPath } from '../../../lib/reviews.js';
+import { listIndexable } from '../../../lib/plan.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, formatDateJp } from '../../../lib/items.js';
+
+export function getStaticPaths() {
+  return activeFloors.filter((k) => floorReviewRankings[k].length >= REVIEW_RANKING_MIN_ITEMS).map((floor) => ({ params: { floor } }));
+}
+
+const { floor: key } = Astro.params;
+const f = FLOORS[key];
+const data = floors[key];
+const list = floorReviewRankings[key];
+const ym = data.updated ? `${+data.updated.slice(0, 4)}年${+data.updated.slice(5, 7)}月` : '';
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: '人気ランキング', path: floorRankingPath(key) },
+  { name: '高評価ランキング', path: floorReviewRankingPath(key) },
+];
+const noindex = !listIndexable(list);
+---
+
+<Base
+  title={`${f.label}の高評価ランキングTOP${list.length}${ym && `【${ym}】`}レビューの評価が高い${f.kind}｜${SITE_NAME}`}
+  description={`${f.label}で、レビューが${FLOOR_REVIEW_MIN}件以上ある${f.kind}を、レビューの評価が高い順に${list.length}本並べたランキングです。件数の少ない満点が上に来すぎないよう、件数もふまえて並べています。価格・${f.maker}も。毎日更新。`}
+  path={floorReviewRankingPath(key)}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail), floorItemListLd(list, SITE_URL)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{f.label}の高評価ランキング</h1>
+      <p class="page-facts">レビュー{FLOOR_REVIEW_MIN}件以上・{list.length}本{data.updated && `・${formatDateJp(data.updated)}の時点`}</p>
+      <p class="hero-lead">FANZAのレビューの評価が高い順です（件数の少ない満点が上に来すぎないよう、件数もふまえて並べています）。</p>
+    </section>
+
+    <section class="section" aria-labelledby="fl-rv-title">
+      <div class="section-head">
+        <h2 id="fl-rv-title" class="section-title">高評価 TOP{list.length}</h2>
+        <p class="section-note">評価はFANZAのレビューのもの</p>
+      </div>
+      <ul class="shelf">
+        {list.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} /></li>)}
+      </ul>
+    </section>
+
+    <FloorMoreNav floorKey={key} current="review" />
+  </div>
+</Base>

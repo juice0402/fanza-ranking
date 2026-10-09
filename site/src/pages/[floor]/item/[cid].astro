@@ -9,7 +9,8 @@ import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorMiniShelf from '../../../components/FloorMiniShelf.astro';
 import RankTrend from '../../../components/RankTrend.astro';
 import GachaCorner from '../../../components/GachaCorner.astro';
-import { activeFloors, floorCollectionGroups, floorMakerById, floorRankHistory, floorSalePageBySlug, floorSalePageGroups, floors, tenYenInfo } from '../../../lib/data.js';
+import { activeFloors, floorCollectionGroups, floorMakerById, floorRankHistory, floorSalePageBySlug, floorSalePageGroups, floors, tenYenInfo, floorReviewRankOf } from '../../../lib/data.js';
+import { floorReviewRankingPath } from '../../../lib/reviews.js';
 import { tenYenPath } from '../../../lib/ten-yen.js';
 import { endIso, endLabel } from '../../../lib/sale.js';
 import { inlineScript } from '../../../lib/assets.js';
@@ -134,6 +135,17 @@ const tenNow = tenYenInfo(key, item.cid);
                 <ul class="chips">
                   {item.genres.map((g) => (links.genres.get(g) ? <li class="chip"><a class="chip-tag" href={links.genres.get(g)}>{g}</a></li> : <li class="chip chip-plain">{g}</li>))}
                 </ul>
+              </dd>
+            </>
+          )}
+          {/* FANZAのレビューの評価（2026-10-10）。高評価ランキングに入っていれば、その順位とリンク */}
+          {item.review && (
+            <>
+              <dt class="spec-term">評価</dt>
+              <dd class="spec-desc">
+                <span class="rate-star">★{item.review.avg.toFixed(2)}</span>（FANZAのレビュー{item.review.count.toLocaleString('ja-JP')}件）
+                {floorReviewRankOf[key].get(item.cid) && <a class="spec-link spec-sub" href={floorReviewRankingPath(key)}>高評価ランキング{floorReviewRankOf[key].get(item.cid)}位</a>}
+                <span class="spec-sub">（{formatDateJp(floors[key].updated || item.dateKey)}の時点）</span>
               </dd>
             </>
           )}
