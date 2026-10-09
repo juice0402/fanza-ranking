@@ -1,0 +1,28 @@
+---
+// 同人・ゲームの「きょうの話題」（売り場のトップ。動画の TopicList.astro と同じ見た目・同じ CSS。lib/floors.js の floorTopics。2026-10-09）。
+// 1つずつ、表紙・札（急上昇・新作で人気・セールで人気・予約で人気）・タイトル・データで決まった1行
+import Thumb from './Thumb.astro';
+import { THUMB_MEDIA } from '../lib/items.js';
+import { DOUJIN_THUMB_ONERROR, doujinThumb, floorItemPath } from '../lib/floors.js';
+
+const { topics } = Astro.props;
+---
+
+<ul class="topics">
+  {topics.map((t) => (
+    <li class={`topic topic-${t.kind}`}>
+      <a class="topic-link" href={floorItemPath(t.item.floor, t.item.cid)}>
+        <span class:list={['topic-thumb', { 'is-wide': t.item.floor === 'doujin' }]}>
+          {t.item.image_url && (t.item.floor === 'doujin'
+            ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(t.item.image_url, 'tiny').small} /><img class="floor-img" src={t.item.image_url} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
+            : <Thumb src={t.item.image_url} kind="tiny" class="item-img is-small" />)}
+        </span>
+        <span class="topic-body">
+          <span class="topic-tag">{t.label}</span>
+          <span class="topic-title">{t.item.title}</span>
+          <span class="topic-text">{t.text}</span>
+        </span>
+      </a>
+    </li>
+  ))}
+</ul>

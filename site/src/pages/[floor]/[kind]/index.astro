@@ -3,9 +3,8 @@
 // ページのある名前を、作品の多い順（発売月は新しい月から）に並べる
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
-import FloorTabs from '../../../components/FloorTabs.astro';
 import { activeFloors, floorCollectionGroups, floors } from '../../../lib/data.js';
-import { FLOORS, FLOOR_COLLECTIONS, FLOOR_COLLECTION_KINDS, collectionIndexIndexable, floorCollectionIndexPath, floorPath } from '../../../lib/floors.js';
+import { FLOORS, FLOOR_COLLECTIONS, FLOOR_COLLECTION_KINDS, collectionIndexIndexable, floorCollectionIndexPath, floorPath, floorSearchPath } from '../../../lib/floors.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../../../lib/items.js';
 
 export function getStaticPaths() {
@@ -44,8 +43,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 
     <section class="hero">
       <h1 class="hero-title">{c.find}</h1>
-      <p class="hero-lead">{f.label}の{c.label}ごとの作品{kind === 'month' ? '（新しい月から）' : ordered ? '' : '（作品の多い順）'}。</p>
-      <FloorTabs floorKey={key} current={kind === 'genre' ? 'genre' : kind === 'type' ? 'ranking' : ''} />
+      <p class="hero-lead">{kind === 'month' ? '新しい月から並べています。' : ordered ? `${f.label}ならではの${c.label}です。` : '作品数の多い順です。'}ほかの言葉では<a class="spec-link" href={floorSearchPath(key)}>作品検索</a>で探せます。</p>
     </section>
 
     <section class="section" aria-labelledby="fl-col-index-title">
@@ -61,6 +59,6 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
         ))}
       </ul>
     </section>
-    <p class="section-note">本数は、このサイトに載っている{f.label}の作品（{data.items.length}本）から数えています。</p>
+    <p class="section-note">本数は、このサイトに載っている作品から数えています。</p>
   </div>
 </Base>

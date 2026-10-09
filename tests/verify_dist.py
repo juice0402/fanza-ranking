@@ -2648,11 +2648,11 @@ for _fk in _FD.FLOORS:
     _hub = read(os.path.join(DIST, _fk, "index.html"))
     if _fk == "doujin":
         # 同人の横長の表紙の札（順位・割引）は、表紙の左下のふちに半分かける（顔に重ねない。運営者の指摘。2026-10-09）
-        check("同人: 札（順位・割引・セール中）は、表紙の上ではなく左下のふちに半分かける（枠で切らず、画像の角を丸める）・札のあるカードはタイトルを下げる",
+        check("同人: 札（順位・割引・セール中）は、表紙の上ではなく左下のふちに半分かける（枠で切らず、画像の角を丸める）・札のある棚は、どのカードもタイトルを同じだけ下げる（高さをそろえる）",
               css_has(".item-cover.is-wide .rank-badge", r"(?<![-\w])top\s*:\s*auto") and css_has(".item-cover.is-wide .rank-badge", r"bottom\s*:\s*-\d+px")
               and css_has(".item-cover.is-wide", r"overflow\s*:\s*visible") and css_has(".item-cover.is-wide .floor-img", r"border-radius\s*:\s*var\(--r-media\)")
-              and (css_has(".item-cover.is-wide:has(.rank-badge)+.item-title", r"margin-top\s*:\s*1\dpx") or css_has(".item-cover.is-wide:has(.rank-badge) + .item-title", r"margin-top\s*:\s*1\dpx"))
-              and 'class="rank-badge"' in _hub)
+              and (css_has("item-cover.is-wide+.item-title", r"margin-top\s*:\s*1\dpx") or css_has("item-cover.is-wide + .item-title", r"margin-top\s*:\s*1\dpx"))
+              and 'rank-badge' in _hub)
     check(f"{_flabel}: トップに「○日の時点」と「FANZAで確かめて」の注記がある（価格・セールは変わるため）", "の時点の情報です" in _hub and "FANZAで確かめて" in _hub)
     _commented = {x["cid"] for x in _fshow if x["comment_kind"] == "claude" and x["comment"]}
     _sm_floor_items = {p_[len(f"/{_fk}/item/"):-1] for p_ in sm_paths if p_.startswith(f"/{_fk}/item/")}
@@ -2724,7 +2724,7 @@ for _fk in _FD.FLOORS:
     check(f"{_flabel}: コレクションのページ・一覧: sitemap に入っている ⇔ noindex でない・コメントのある作品が1本も無いページは noindex",
           not _col_sm and not _col_noidx, (_col_sm[:3], _col_noidx[:3]))
     if _col_n["genre"]:
-        check(f"{_flabel}: 売り場のトップと、案内のタブから「ジャンルから探す」へリンクしている", f'href="/{_fk}/genre/"' in read_raw(os.path.join(DIST, _fk, "index.html")) and f'href="/{_fk}/genre/"' in read_raw(os.path.join(DIST, _fk, "ranking", "index.html")))
+        check(f"{_flabel}: 売り場のトップの「作品を探す」から「ジャンル検索」へリンクしている", f'href="/{_fk}/genre/"' in read_raw(os.path.join(DIST, _fk, "index.html")))
     # 人気サークル/ブランド・作家ランキング・作品検索・運命の作品・パソコン用の2列（運営者の希望。2026-10-09）
     _released = [x for x in _fshow if str(x["date"])[:10] <= JST_TODAY]
     _show_cids = {x["cid"] for x in _fshow}
@@ -2756,9 +2756,11 @@ for _fk in _FD.FLOORS:
           len(_gpool) >= 3 and all(re.match(rf"^/{_fk}/item/[A-Za-z0-9_-]+/$", r_["h"]) and r_["c"] in _show_cids for r_ in _gpool)
           and 'id="gacha-data"' in _hub_raw and "data-nofilter" in _hub_raw
           and all(f'data-src="/data/{_fk}-gacha.json"' in read_raw(p_) for p_ in _item_pages[:20]))
-    check(f"{_flabel}: トップは、パソコンで2列（左に作品の棚・右の欄に 作品を探す・ランキング・特集）",
-          'class="fhome"' in _hub_raw and 'class="fhome-side"' in _hub_raw and f'action="/{_fk}/search/"' in _hub_raw
-          and css_has(".fhome", r"grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s*clamp"))
+    # 動画のトップと同じ形・同じ CSS（運営者の希望「動画のページと、ほぼ同じ要領で」。2026-10-09）。ボタンを並べた案内（タブ）は、どのページにも出さない（運営者の指摘「ボタンが大量に並んで見づらい」）
+    _tabs = [os.path.relpath(p_, DIST) for p_ in glob.glob(os.path.join(DIST, _fk, "**", "index.html"), recursive=True) if 'class="floor-tabs' in read_raw(p_)]
+    check(f"{_flabel}: トップは動画のトップと同じ形（見出し・きょうの人気TOP3・作品を探す・パソコンは右の欄）・ボタンを並べた案内（タブ）はどのページにも無い",
+          'class="home has-side"' in _hub_raw and 'class="home-side"' in _hub_raw and 'class="today-title"' in _hub_raw and 'class="medals' in _hub_raw
+          and f'action="/{_fk}/search/"' in _hub_raw and not _tabs, _tabs[:3])
     # セールごと（ゲーム）・割引ごと（同人）のページ（運営者の希望「セールの充実」。2026-10-09）: 対象が3本以上のものだけ
     _released = [x for x in _fshow if str(x["date"])[:10] <= JST_TODAY]
     if _fk == "game":

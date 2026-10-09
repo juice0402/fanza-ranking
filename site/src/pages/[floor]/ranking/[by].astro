@@ -6,8 +6,7 @@
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorRow from '../../../components/FloorRow.astro';
-import FloorTabs from '../../../components/FloorTabs.astro';
-import RankingNav from '../../../components/FloorRankingNav.astro';
+import FloorMoreNav from '../../../components/FloorMoreNav.astro';
 import { activeFloors, floorEntityRankings, floors } from '../../../lib/data.js';
 import { FLOORS, FLOOR_ENTITY_TOP, floorEntityIndexable, floorEntityLabel, floorEntityRankingPath, floorPath, floorRankingPath, moveLabel } from '../../../lib/floors.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../../lib/items.js';
@@ -42,7 +41,7 @@ const rows = list.map((r) => {
       img: top.image_url,
       wide: key === 'doujin',
       line: `上位${FLOOR_ENTITY_TOP}本に${r.count}本・最高${r.best}位`,
-      meta: `いちばん人気: ${top.title.length > 28 ? `${top.title.slice(0, 28)}…` : top.title}`,
+      meta: '',
       upcoming: false,
     },
   };
@@ -68,18 +67,19 @@ const listLd = {
 
     <section class="hero">
       <h1 class="hero-title">{f.label}の人気{label}ランキング</h1>
-      <p class="hero-lead">人気ランキングの上位{FLOOR_ENTITY_TOP}本の順位から点数（1位＝{FLOOR_ENTITY_TOP}点）を付けて、{label}ごとに足した順です{data.updated && `（${formatDateJp(data.updated)}の時点）`}。</p>
-      <FloorTabs floorKey={key} current="ranking" />
+      <p class="hero-lead">人気ランキングの上位{FLOOR_ENTITY_TOP}本の順位を点数にして、{label}ごとに足した順です。</p>
     </section>
 
-    <RankingNav floorKey={key} current={by} />
-
     <section class="section" aria-labelledby="fl-erank-title">
-      <h2 id="fl-erank-title" class="section-title">人気{label} TOP{list.length}</h2>
+      <div class="section-head">
+        <h2 id="fl-erank-title" class="section-title">人気{label} TOP{list.length}</h2>
+        {data.updated && <p class="section-note">{formatDateJp(data.updated)}の時点{hasMove && '（▲▼は前の日から）'}</p>}
+      </div>
       <ol class="ws-list erank-list">
         {rows.map(({ r, row }) => <FloorRow row={row} no={r.rank} move={moveLabel(r.move)} titleJs={false} />)}
       </ol>
     </section>
-    <p class="section-note">点数は、このサイトに載っている{f.label}の作品（{data.items.length}本）のうち、人気ランキングの上位{FLOOR_ENTITY_TOP}本から数えています。{by === 'author' && '作家は、FANZAの作品ページの「作家」の欄（原画・シナリオなど）です。'}</p>
+
+    <FloorMoreNav floorKey={key} current={by} />
   </div>
 </Base>

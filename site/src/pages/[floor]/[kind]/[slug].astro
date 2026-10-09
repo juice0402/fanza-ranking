@@ -6,8 +6,7 @@
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorCard from '../../../components/FloorCard.astro';
-import FloorTabs from '../../../components/FloorTabs.astro';
-import RankingNav from '../../../components/FloorRankingNav.astro';
+import FloorMoreNav from '../../../components/FloorMoreNav.astro';
 import { activeFloors, floorCollectionGroups, floorMakerById, floors, today } from '../../../lib/data.js';
 import {
   FLOORS, FLOOR_COLLECTIONS, FLOOR_COLLECTION_KINDS, FLOOR_COLLECTION_LIST, collectionDescription, collectionFacts, collectionHeading, collectionIndexable, collectionTitle,
@@ -68,23 +67,40 @@ const pageLd = {
     <Breadcrumb trail={trail} />
 
     <section class="hero">
-      <h1 class="hero-title">{collectionHeading(f, group)} <span class="hero-kind">{f.label}の{c.label}</span></h1>
-      <p class="hero-lead">{facts.total}本{facts.sale > 0 && `・セール中${facts.sale}本`}{facts.maxOff > 0 && `（最大${facts.maxOff}%OFF）`}{facts.upcoming > 0 && `・予約${facts.upcoming}本`}・人気の高い順（{day.m}月{day.d}日の時点）</p>
-      {genres.length > 0 && (
-        <ul class="chips entity-genres" aria-label={group.kind === 'genre' ? 'いっしょに付いていることが多いジャンル' : '多いジャンル'}>
-          {genres.map((g) => (g.path
-            ? <li class="chip"><a class="chip-tag" href={g.path}>{g.name} {g.count}本</a></li>
-            : <li class="chip chip-plain">{g.name} {g.count}本</li>))}
-        </ul>
-      )}
-      <FloorTabs floorKey={key} current={group.kind === 'genre' ? 'genre' : group.kind === 'type' ? 'ranking' : ''} />
+      <h1 class="hero-title">{collectionHeading(f, group)}</h1>
+      <p class="page-facts">{facts.total}本{facts.sale > 0 && `・セール中${facts.sale}本`}{facts.maxOff > 0 && `（最大${facts.maxOff}%OFF）`}{facts.upcoming > 0 && `・予約${facts.upcoming}本`}</p>
+      {data.updated && <p class="page-updated">{day.m}月{day.d}日更新</p>}
     </section>
 
-    {group.kind === 'type' && <RankingNav floorKey={key} current={group.slug} />}
+    {makers.length > 0 && (
+      <section class="section" aria-labelledby="fl-col-makers-title">
+        <div class="section-head">
+          <h2 id="fl-col-makers-title" class="section-title">おもな{f.maker}</h2>
+        </div>
+        <nav class="sale-jump genre-chips" aria-label={`おもな${f.maker}`}>
+          {makers.map((m) => (m.path
+            ? <a class="chip-link" href={m.path}>{m.name}<span class="chip-count">{m.count}本</span></a>
+            : <span class="chip-link chip-static">{m.name}<span class="chip-count">{m.count}本</span></span>))}
+        </nav>
+      </section>
+    )}
+
+    {genres.length > 0 && (
+      <section class="section" aria-labelledby="fl-col-genres-title">
+        <div class="section-head">
+          <h2 id="fl-col-genres-title" class="section-title">{group.kind === 'genre' ? 'いっしょに付いていることが多いジャンル' : '多いジャンル'}</h2>
+        </div>
+        <nav class="sale-jump genre-chips" aria-label="ジャンル">
+          {genres.map((g) => (g.path
+            ? <a class="chip-link" href={g.path}>{g.name}<span class="chip-count">{g.count}本</span></a>
+            : <span class="chip-link chip-static">{g.name}<span class="chip-count">{g.count}本</span></span>))}
+        </nav>
+      </section>
+    )}
 
     <section class="section" aria-labelledby="fl-col-works-title">
       <div class="section-head">
-        <h2 id="fl-col-works-title" class="section-title">{group.kind === 'type' ? `人気順 TOP${shown.filter((i) => i.rank).length}` : '人気の作品'}</h2>
+        <h2 id="fl-col-works-title" class="section-title">{group.kind === 'type' ? `人気順 TOP${shown.filter((i) => i.rank).length}` : `作品（${group.total}本）`}</h2>
         <p class="section-note">人気の高い順{group.total > shown.length && `（上位${shown.length}本）`}</p>
       </div>
       <ul class="shelf">
@@ -92,25 +108,16 @@ const pageLd = {
       </ul>
     </section>
 
-    {makers.length > 0 && (
-      <section class="section" aria-labelledby="fl-col-makers-title">
-        <h2 id="fl-col-makers-title" class="section-title">おもな{f.maker}</h2>
-        <ul class="chips">
-          {makers.map((m) => (m.path
-            ? <li class="chip"><a class="chip-tag" href={m.path}>{m.name} {m.count}本</a></li>
-            : <li class="chip chip-plain">{m.name} {m.count}本</li>))}
-        </ul>
-      </section>
-    )}
-
-    {group.kind === 'month' ? (
+    {group.kind === 'month' && (
       <nav class="month-nav" aria-label="ほかの月">
         {older ? <a class="month-nav-link" href={older.path}>← {older.name}</a> : <span></span>}
         <a class="month-nav-link" href={floorCollectionIndexPath(key, 'month')}>月の一覧</a>
         {newer ? <a class="month-nav-link" href={newer.path}>{newer.name} →</a> : <span></span>}
       </nav>
-    ) : (
-      <p class="section-note"><a class="spec-link" href={floorCollectionIndexPath(key, group.kind)}>ほかの{c.label}も見る（{c.find}）</a></p>
+    )}
+    {group.kind === 'type' && <FloorMoreNav floorKey={key} current={group.slug} />}
+    {group.kind !== 'month' && group.kind !== 'type' && (
+      <p class="more"><a class="btn btn-quiet" href={floorCollectionIndexPath(key, group.kind)}>ほかの{c.label}を見る</a></p>
     )}
   </div>
 </Base>

@@ -5,7 +5,6 @@
 //   よくある質問（答えの数字を先に大きく）→ 毎日のセール中の本数（棒のグラフ）→ ゲーム: セールの記録（帯のグラフ。components/SaleBars.astro）／同人: いまの割引ごとの本数 → 注記
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
-import FloorTabs from '../../../components/FloorTabs.astro';
 import SaleBars from '../../../components/SaleBars.astro';
 import { activeFloors, floorSaleHistory, floorSalePageBySlug, floors } from '../../../lib/data.js';
 import {
@@ -79,9 +78,8 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'WebPage', name: `${
 
     <section class="hero">
       <h1 class="hero-title">{f.label}のセールはいつ？</h1>
-      <p class="hero-lead">このサイトが毎日記録している、{f.label}のセールの記録です（{facts.first ? `${formatDateJp(facts.first)}から${facts.days}日分` : '記録はこれから'}）。</p>
+      <p class="hero-lead">このサイトが毎日記録している、セールの記録です{facts.first && `（${formatDateJp(facts.first)}から）`}。</p>
       {last && <p class="page-updated">{formatDateJp(last)}更新</p>}
-      <FloorTabs floorKey={key} current="sale" />
     </section>
 
     <section class="section" aria-labelledby="faq-title">

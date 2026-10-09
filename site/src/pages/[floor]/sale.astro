@@ -1,15 +1,15 @@
 ---
 // FANZA同人・FANZAゲームのセール中の作品（/doujin/sale/・/game/sale/。運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報」。2026-10-09。lib/floors.js）。
 // 同人: 値引きの分かる作品（いまの価格と通常の価格。FANZAのAPIの prices）を、人気の高い順に。終わりの日はAPIに無い（空）ので書かない。
-// ゲーム: FANZAが作品に付けた「セール・クーポンの対象」の札ごとに、人気の高い順に（値引きの額はAPIに無い。いまの価格だけ）。
+// ゲーム: FANZAが作品に付けた「セール・クーポンの対象」の札（値引きの額はAPIに無い。いまの価格だけ）。
+// 形は動画のトップの「セール中の特集」と同じ（運営者の希望「動画のページと、ほぼ同じ要領で」。2026-10-09）: セールごと（ゲーム）・割引ごと（同人）のカード → セール中の人気作品 → クーポン（ゲーム）。
 // どちらも、毎日の更新のときの情報なので「○日の時点」「くわしくはFANZAで」を必ず添える
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
-import FloorTabs from '../../components/FloorTabs.astro';
-import { activeFloors, floorSalePageBySlug, floorSalePageGroups, floors } from '../../lib/data.js';
-import { FLOORS, FLOOR_SALE_LIMIT, couponTags, floorItemListLd, floorMaxOff, floorPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, priceNote, saleBadgeOf, saleTagAnchor, saleTagGroups } from '../../lib/floors.js';
-import { entitySlug } from '../../lib/items.js';
+import FloorSaleCards from '../../components/FloorSaleCards.astro';
+import { activeFloors, floorSaleHistory, floorSalePageGroups, floors } from '../../lib/data.js';
+import { FLOORS, FLOOR_SALE_LIMIT, couponTags, floorItemListLd, floorMaxOff, floorPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, isSaleTag, offInTitle, priceNote, saleBadgeOf, saleTagGroups } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SALE_PATH } from '../../lib/sale.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
@@ -23,14 +23,15 @@ const f = FLOORS[key];
 const data = floors[key];
 const sale = floorSaleItems(data.items);
 const maxOff = floorMaxOff(sale);
-const groups = key === 'game' ? saleTagGroups(data.items) : [];
+const groups = key === 'game' ? saleTagGroups(data.items, 0) : [];
+// ゲームの最大の割引は、セールの名前の「最大○%OFF」から（APIに値引きの額が無いため）
+const topOff = key === 'game' ? Math.max(0, ...groups.map((g) => offInTitle(g.title))) : maxOff;
 // クーポン・ポイント還元（ゲーム。ほぼ全部の作品に付くので、作品は並べず、名前と本数だけ）
 const coupons = key === 'game' ? couponTags(data.items) : [];
-const list = key === 'game' ? [] : sale.slice(0, FLOOR_SALE_LIMIT);
-const shown = key === 'game' ? groups.flatMap((g) => g.items) : list;
+const list = sale.slice(0, FLOOR_SALE_LIMIT);
+const shown = list;
 // セールごと（ゲーム）・割引ごと（同人）のページ（2026-10-09）
 const salePages = floorSalePageGroups[key];
-const pageOf = (title) => floorSalePageBySlug[key].get(entitySlug(title));
 const day = data.updated ? dateParts(data.updated) : null;
 const dayLabel = day ? `${day.m}月${day.d}日` : '毎日';
 const trail = [
@@ -54,60 +55,42 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 
     <section class="hero">
       <h1 class="hero-title">{f.label}のセール</h1>
-      <p class="hero-lead">
-        {key === 'game' ? 'セール中の人気作品を、セールごとに。' : `いまセール中の人気作品を、人気の高い順に${maxOff ? `（最大${maxOff}%OFF）` : ''}。`}
-        {data.updated && `${formatDateJp(data.updated)}の時点の情報です（終わる日・くわしい条件は、FANZAの作品ページで確かめてください）。`}
-      </p>
-      <p class="hero-links"><a class="spec-link" href={floorSaleHistoryPath(key)}>{f.label}のセールはいつ？（毎日の記録）</a><a class="spec-link" href={SALE_PATH}>FANZA動画のセールはこちら</a></p>
-      {key !== 'game' && salePages.length > 0 && (
-        <ul class="chips find-more" aria-label="割引ごと">
-          {salePages.map((p) => <li class="chip"><a class="chip-tag" href={p.path}>{p.name}（{p.total}本）</a></li>)}
-        </ul>
-      )}
-      <FloorTabs floorKey={key} current="sale" />
+      <p class="page-facts">{sale.length}本{topOff > 0 && `・最大${topOff}%OFF`}{data.updated && `・${dayLabel}時点`}</p>
+      <p class="hero-links"><a class="spec-link" href={floorSaleHistoryPath(key)}>{f.label}のセールはいつ？</a><a class="spec-link" href={SALE_PATH}>FANZA動画のセール</a></p>
     </section>
 
-    {key === 'game'
-      ? (
-        <>
-          <nav class="sale-jump" aria-label="セール">
-            {groups.map((g) => <a class="chip-link" href={`#${saleTagAnchor(g.title)}`}>{g.title}（{g.total}本）</a>)}
-          </nav>
-          {groups.map((g, gi) => (
-            <section class="section" aria-labelledby={saleTagAnchor(g.title)}>
-              <div class="section-head">
-                <h2 id={saleTagAnchor(g.title)} class="section-title">{g.title}</h2>
-                {pageOf(g.title)
-                  ? <a class="subsection-more" href={pageOf(g.title).path}>対象の{g.total}本を見る</a>
-                  : <p class="section-note">対象 {g.total}本</p>}
-              </div>
-              <ul class="shelf">
-                {g.items.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge="セール中" note={priceNote(item)} eager={gi === 0 && i < 4} /></li>)}
-              </ul>
-            </section>
-          ))}
-          {coupons.length > 0 && (
-            <section id="coupons" class="section" aria-labelledby="coupons-title">
-              <h2 id="coupons-title" class="section-title">クーポン・ポイント還元</h2>
-              <p class="section-note">このサイトに載っているゲームのうち、対象になっている本数です（対象の作品は、それぞれの作品ページで分かります）。</p>
-              <ul class="facts">
-                {coupons.map((c) => <li class="facts-row"><span class="facts-label">{c.total}本</span><span class="facts-text">{c.title}</span></li>)}
-              </ul>
-            </section>
-          )}
-        </>
-      )
-      : (
-        <section class="section" aria-labelledby="fl-sale-list-title">
-          <div class="section-head">
-            <h2 id="fl-sale-list-title" class="section-title">セール中の人気作品</h2>
-            <p class="section-note">{sale.length}本{sale.length > list.length && `（人気の高い${list.length}本）`}</p>
-          </div>
-          <ul class="shelf">
-            {list.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} eager={i < 4} /></li>)}
-          </ul>
-        </section>
-      )}
-    <p class="section-note">本数は、このサイトに載っている{f.label}の作品（{data.items.length}本）から数えています。</p>
+    {salePages.length > 0 && (
+      <section class="section" aria-labelledby="fl-sale-kinds-title">
+        <div class="section-head">
+          <h2 id="fl-sale-kinds-title" class="section-title">{key === 'game' ? 'セールごと' : '割引ごと'}</h2>
+          <p class="section-note">{key === 'game' ? 'FANZAのセールの名前' : '通常の価格からの割引'}</p>
+        </div>
+        <FloorSaleCards pages={salePages} key={key} />
+      </section>
+    )}
+
+    <section class="section" aria-labelledby="fl-sale-list-title">
+      <div class="section-head">
+        <h2 id="fl-sale-list-title" class="section-title">セール中の人気作品</h2>
+        <p class="section-note">人気の高い順{sale.length > list.length && `（上位${list.length}本）`}</p>
+      </div>
+      <ul class="shelf">
+        {list.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} eager={i < 4} /></li>)}
+      </ul>
+    </section>
+
+    {coupons.length > 0 && (
+      <section id="coupons" class="section" aria-labelledby="coupons-title">
+        <div class="section-head">
+          <h2 id="coupons-title" class="section-title">クーポン・ポイント還元</h2>
+          <p class="section-note">対象の本数</p>
+        </div>
+        <ul class="facts">
+          {coupons.map((c) => <li class="facts-row"><span class="facts-label">{c.total}本</span><span class="facts-text">{c.title}</span></li>)}
+        </ul>
+      </section>
+    )}
+
+    <p class="section-note run-note">価格・セールは{dayLabel}の時点の情報です。終わる日・くわしい条件は、FANZAの作品ページで確かめてください。</p>
   </div>
 </Base>

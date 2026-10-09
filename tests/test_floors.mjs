@@ -98,8 +98,7 @@ check('値下げのセールの札だけをセール中と数える（クーポ�
 const groups = L.saleTagGroups(g.items);
 check('セールの札ごと（対象の多い順・人気の高い順）', groups.map((x) => `${x.title}:${x.items.map((i) => i.cid).join('+')}`).join() === '最大90%OFFセール【感謝祭オータム2026】:g_1+g_3,500円セール【感謝祭オータム2026】:g_3', groups);
 check('クーポン・ポイント還元は名前と本数だけ', JSON.stringify(L.couponTags(g.items)) === JSON.stringify([{ title: '3点以上で5%OFFクーポン／感謝祭オータム2026対象', total: 2 }, { title: '秋の最大16%ポイント還元キャンペーン 第5弾', total: 1 }]));
-check('作品ページの札の行き先: セールはその見出し・クーポンはクーポンの欄', L.saleTagHref('game', '500円セール【感謝祭オータム2026】') === `/game/sale/#${L.saleTagAnchor('500円セール【感謝祭オータム2026】')}` && L.saleTagHref('game', '3点以上で5%OFFクーポン／感謝祭オータム2026対象') === '/game/sale/#coupons');
-check('見出しの id は名前から決まる・英数字だけ', /^tag-[0-9a-z]+$/.test(L.saleTagAnchor('最大90%OFFセール【感謝祭オータム2026】')) && L.saleTagAnchor('a') === L.saleTagAnchor('a') && L.saleTagAnchor('a') !== L.saleTagAnchor('b'));
+check('作品ページの札の行き先: セールはセールのページ・クーポンはクーポンの欄', L.saleTagHref('game', '500円セール【感謝祭オータム2026】') === '/game/sale/' && L.saleTagHref('game', '3点以上で5%OFFクーポン／感謝祭オータム2026対象') === '/game/sale/#coupons');
 check('カードの1行: ゲームは作家も1人', L.makerLine(g.items[0]) === 'サークル1｜作家 作った原画家' && L.makerLine(i1) === 'サークル1');
 
 console.log('\n■ サークル・ブランド・ジャンル・関連の作品');
@@ -215,7 +214,7 @@ const gp = L.floorSalePages(gs.items, 'game');
 check('ゲーム: 値下げのセールの札ごとのページ（3本以上。クーポンは作らない）・場所は名前から決まる印', gp.length === 1 && gp[0].name === '最大90%OFFセール【秋】' && gp[0].total === 3 && gp[0].off === 90 && gp[0].path === `/game/sale/${gp[0].slug}/` && /^[0-9a-f]{10}$/.test(gp[0].slug), gp.map((p) => [p.name, p.total]));
 const gpBy = new Map(gp.map((p) => [p.slug, p]));
 check('作品ページの札の行き先: ページがあればそのページ・無ければセールのページの見出し・クーポンはクーポンの欄',
-  L.saleTagLink('game', '最大90%OFFセール【秋】', gpBy) === gp[0].path && L.saleTagLink('game', '500円セール【秋】', gpBy) === `/game/sale/#${L.saleTagAnchor('500円セール【秋】')}` && L.saleTagLink('game', '3点以上で5%OFFクーポン', gpBy) === '/game/sale/#coupons');
+  L.saleTagLink('game', '最大90%OFFセール【秋】', gpBy) === gp[0].path && L.saleTagLink('game', '500円セール【秋】', gpBy) === '/game/sale/' && L.saleTagLink('game', '3点以上で5%OFFクーポン', gpBy) === '/game/sale/#coupons');
 const ds = L.normalizeFloor({ items: [95, 92, 91, 75, 72, 55, 50, 30, 10].map((off, n) => row(n + 1, { cid: `d_${400 + n}`, price: 100 - off, list_price: 100 })) }, 'doujin', today);
 const dp = L.floorSalePages(ds.items, 'doujin');
 check('同人: 割引ごとのページ（90%OFF以上・70%OFF以上・半額以上。3本以上）', dp.map((p) => `${p.slug}:${p.total}`).join() === 'off90:3,off70:5,off50:7' && dp[2].name === '半額以上（50%OFF〜）' && dp[2].path === '/doujin/sale/off50/', dp.map((p) => [p.slug, p.total]));
@@ -316,6 +315,14 @@ const idx = { genres: SI.genres, themes: SI.themes, items: SI.items.map((r) => (
 const pick = (st) => FS.filterRows(idx, { q: '', sort: 'pop', st: '', type: '', g: [], h: [], ...st }).sort(FS.SORTS[st.sort || 'pop']).map((r) => r.c.slice(-1)).join('');
 check('検索の絞り込み: 形式・特集（複数は全部）・キーワード（全角・半角をそろえる）・並び順', pick({ type: 'voice' }) === '123' && pick({ h: [0, 3] }) === '123' && pick({ g: [0], h: [0] }) === '1' && pick({ q: 'ＳＡＫＵ' }) === '' && pick({ q: 'その1' }) === '1' && pick({ sort: 'cheap' }).startsWith('312'), [pick({ type: 'voice' }), pick({ h: [0, 3] }), pick({ sort: 'cheap' })]);
 check('検索のスマホの表紙: 同人は縮めた版（幅240）・ゲームは表紙（…ps.jpg）', FS.thumbUrl('doujin', 'https://pics.dmm.co.jp/digital/voice/x/xpl.jpg', true) === 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/voice/x/xpl.jpg?w=240&q=75' && FS.thumbUrl('doujin', 'https://pics.dmm.co.jp/digital/voice/x/xpl.jpg', false).startsWith('https://pics.') && FS.thumbUrl('game', 'https://pics.dmm.co.jp/digital/pcgame/x/xpl.jpg', true).endsWith('xps.jpg') && FS.PAGE === L.FLOOR_SEARCH_PAGE);
+
+// 運営者の希望「動画のページと、ほぼ同じ要領で同人とゲームも」（2026-10-09）: 売り場のトップの TOP3 の動き・きょうの話題
+console.log('\n■ 売り場のトップ（TOP3 の動き・きょうの話題）');
+check('TOP3 の前の日からの動き（動画の rankMove と同じ形）: ▲・▼・→・初登場・記録が無ければ出さない',
+  JSON.stringify(['d_1', 'd_2', 'd_5', 'd_3', 'd_4'].map((c) => L.floorMove(RH.doujin.get(c), '2026-10-09', RH.since.doujin)?.text ?? null)) === JSON.stringify(['▲3', '▼5', '→', '初登場', '初登場'])
+  && L.floorMove(undefined, '2026-10-09') === null && L.floorMove(RH.doujin.get('d_3'), '2026-10-09', '2026-10-09') === null);
+const tp = L.floorTopics([...rItems.map((x) => ({ ...cfl.items[0], ...x, upcoming: false })), ...g.items], RH.doujin, '2026-10-09');
+check('きょうの話題: 急上昇 → 新作で人気 → セールで人気（同じ作品は1回だけ・データで決まった文）', tp[0]?.label === '急上昇' && tp[0].text === '人気ランキング5位（前日から▲3）' && new Set(tp.map((t) => t.item.cid)).size === tp.length && tp.every((t) => t.kind && t.text), tp.map((t) => [t.label, t.text]));
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

@@ -4,11 +4,10 @@
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorCard from '../../../components/FloorCard.astro';
-import FloorTabs from '../../../components/FloorTabs.astro';
 import { activeFloors, floorCollectionGroups, floorMakerGroups, floors, today } from '../../../lib/data.js';
 import { FLOORS, FLOOR_MAKER_LIST, floorItemListLd, floorMakerIndexPath, floorMaxOff, floorPath, onSale, priceNote, saleBadgeOf, topGenres } from '../../../lib/floors.js';
 import { listIndexable } from '../../../lib/plan.js';
-import { SITE_NAME, SITE_URL, breadcrumbLd, listLastmod } from '../../../lib/items.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, listLastmod, shortSpan } from '../../../lib/items.js';
 
 export function getStaticPaths() {
   return activeFloors.flatMap((floor) => floorMakerGroups[floor].map((group) => ({ params: { floor, id: String(group.id) }, props: { group, floor } })));
@@ -22,6 +21,10 @@ const maxOff = floorMaxOff(group.items);
 const genreByName = new Map(floorCollectionGroups[key].genre.map((g) => [g.name, g]));
 const genres = topGenres(group.items, 8).map((g) => ({ ...g, path: genreByName.get(g.name)?.path }));
 const ym = `${+today.slice(0, 4)}年${+today.slice(5, 7)}月`;
+// シリーズ・作家（ゲーム）のページへのチップ（そのサークル/ブランドの作品にあるもの）
+const cols = floorCollectionGroups[key];
+const seriesChips = cols.series.filter((g) => g.items.some((i) => i.maker?.id === group.id)).map((g) => ({ name: g.name, path: g.path, count: g.items.filter((i) => i.maker?.id === group.id).length })).slice(0, 8);
+const authorChips = cols.author.filter((g) => g.items.some((i) => i.maker?.id === group.id)).map((g) => ({ name: g.name, path: g.path, count: g.items.filter((i) => i.maker?.id === group.id).length })).sort((a, b) => b.count - a.count).slice(0, 8);
 const trail = [
   { name: 'トップ', path: '/' },
   { name: f.label, path: floorPath(key) },
@@ -44,19 +47,38 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
     <Breadcrumb trail={trail} />
 
     <section class="hero">
-      <h1 class="hero-title">{group.name} <span class="hero-kind">{f.label}の{f.maker}</span></h1>
-      <p class="hero-lead">{group.total}本{saleCount > 0 && `・セール中${saleCount}本`}（このサイトに載っている作品から）</p>
-      {genres.length > 0 && (
-        <ul class="chips entity-genres">
-          {genres.map((g) => (g.path ? <li class="chip"><a class="chip-tag" href={g.path}>{g.name} {g.count}本</a></li> : <li class="chip chip-plain">{g.name} {g.count}本</li>))}
-        </ul>
-      )}
-      <FloorTabs floorKey={key} current="" />
+      <h1 class="hero-title">{group.name}の{f.kind}</h1>
+      <p class="page-facts">{group.total}本・{shortSpan(group.items)}発売{saleCount > 0 && `・セール中${saleCount}本`}</p>
+      {updated && <p class="page-updated">{+updated.slice(5, 7)}月{+updated.slice(8, 10)}日更新</p>}
     </section>
+
+    {genres.length > 0 && (
+      <section class="section" aria-labelledby="fl-maker-genre-title">
+        <div class="section-head">
+          <h2 id="fl-maker-genre-title" class="section-title">多いジャンル</h2>
+        </div>
+        <nav class="sale-jump genre-chips" aria-label={`${group.name}の多いジャンル`}>
+          {genres.map((g) => (g.path
+            ? <a class="chip-link" href={g.path}>{g.name}<span class="chip-count">{g.count}本</span></a>
+            : <span class="chip-link chip-static">{g.name}<span class="chip-count">{g.count}本</span></span>))}
+        </nav>
+      </section>
+    )}
+
+    {[['シリーズ', seriesChips], ['作家', authorChips]].filter(([, chips]) => chips.length > 0).map(([label, chips]) => (
+      <section class="section" aria-labelledby={`fl-maker-${label}`}>
+        <div class="section-head">
+          <h2 id={`fl-maker-${label}`} class="section-title">{label}</h2>
+        </div>
+        <nav class="sale-jump genre-chips" aria-label={`${group.name}の${label}`}>
+          {chips.map((g) => <a class="chip-link" href={g.path}>{g.name}<span class="chip-count">{g.count}本</span></a>)}
+        </nav>
+      </section>
+    ))}
 
     <section class="section" aria-labelledby="fl-maker-works-title">
       <div class="section-head">
-        <h2 id="fl-maker-works-title" class="section-title">人気の作品</h2>
+        <h2 id="fl-maker-works-title" class="section-title">作品（{group.total}本）</h2>
         <p class="section-note">人気の高い順{group.total > shown.length && `（上位${shown.length}本）`}</p>
       </div>
       <ul class="shelf">

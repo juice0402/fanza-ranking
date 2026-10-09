@@ -23,7 +23,7 @@ export const floorMakerPath = (key, id) => `/${key}/maker/${id}/`;
 
 export const FLOOR_RANKING_LIMIT = 100; // 人気ランキングのページに並べる本数
 export const FLOOR_HUB_SHOWN = 12; // 売り場のトップの、それぞれの棚に並べる本数
-export const FLOOR_SALE_LIMIT = 120; // セールのページに並べる本数（同人。人気の高い順）
+export const FLOOR_SALE_LIMIT = 48; // セールのページに並べる本数（人気の高い順。ほかは、セールごと・割引ごとのページ・作品検索で）
 export const FLOOR_SALE_GROUP_LIMIT = 24; // セールのページの、セールごとの本数（ゲーム）
 export const FLOOR_NEW_DAYS = 30; // 「新作で人気」に入れる、発売からの日数
 export const FLOOR_MAKER_MIN = 2; // サークル・ブランドのページを作る、作品の数
@@ -181,15 +181,8 @@ export function couponTags(items) {
   return [...counts].map(([title, total]) => ({ title, total })).sort((a, b) => b.total - a.total || (a.title < b.title ? -1 : 1));
 }
 
-/** ゲームの作品ページの札から、セールのページの中の行き先（セールなら、その見出し。クーポン・ポイント還元なら、その欄） */
-export const saleTagHref = (key, t) => `${floorSalePath(key)}#${isSaleTag(t) ? saleTagAnchor(t) : 'coupons'}`;
-
-/** セールの札の、ページの中の見出しの id（ゲームのセールのページ。札の名前から決まる短い印） */
-export function saleTagAnchor(title) {
-  let h = 0;
-  for (const ch of String(title)) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-  return `tag-${h.toString(36)}`;
-}
+/** ゲームの作品ページの札から、セールのページへ（セールのページが無い小さなセールは、セールのページ。クーポン・ポイント還元は、その欄） */
+export const saleTagHref = (key, t) => (isSaleTag(t) ? floorSalePath(key) : `${floorSalePath(key)}#coupons`);
 
 /** サークル・ブランドごとのまとまり（作品が min 本以上）: [{ id, name, path, items（人気の高い順）, total }]。作品の多い順・名前の順 */
 export function floorMakers(items, key, min = FLOOR_MAKER_MIN) {
@@ -695,6 +688,47 @@ export function offBands(items) {
   const bands = [[90, 100, '90%OFF以上'], [70, 89, '70〜89%OFF'], [50, 69, '50〜69%OFF'], [30, 49, '30〜49%OFF'], [1, 29, '30%OFF未満']];
   const sale = floorSaleItems(items);
   return bands.map(([lo, hi, name]) => ({ name, count: sale.filter((i) => i.off >= lo && i.off <= hi).length })).filter((b) => b.count > 0);
+}
+
+// ---------- 売り場のトップ（動画のトップと同じ形。運営者の希望「動画のページがよくできているので、ほぼ同じ要領で」。2026-10-09） ----------
+
+/** 前の日からの順位の動き（TOP3 の表紙の右上の札。動画の topics.js の rankMove と同じ形）: { kind: 'up'|'down'|'same'|'new', text, label } か null（記録が無い） */
+export function floorMove(hist, day, since = '') {
+  const cur = floorRankOn(hist, day);
+  if (!cur) return null;
+  const prev = floorRankOn(hist, addDays(day, -1));
+  if (prev > 0) {
+    if (prev === cur) return { kind: 'same', text: '→', label: 'きのうと同じ順位' };
+    const n = Math.abs(prev - cur);
+    return prev > cur ? { kind: 'up', text: `▲${n}`, label: `きのう${prev}位から${n}つ上がった` } : { kind: 'down', text: `▼${n}`, label: `きのう${prev}位から${n}つ下がった` };
+  }
+  if (prev === 0 || (hist.start === day && since && since < day)) return { kind: 'new', text: '初登場', label: 'きのうは圏外' };
+  return null;
+}
+
+/**
+ * きょうの話題（売り場のトップの右の欄。動画の「きょうの話題」と同じ見た目）: 急上昇（3本まで）・新作で人気・セールで人気・予約で人気（ゲーム）。
+ * [{ kind（動画の topic-○○ と同じ色の札）, label, item, text }]。文はデータで決まった形だけ
+ */
+export function floorTopics(items, histMap, day, limit = 6) {
+  const pos = new Map(floorRanking(items, Infinity).map((i, n) => [i.cid, n + 1]));
+  const md = (d) => `${+d.slice(5, 7)}月${+d.slice(8, 10)}日`;
+  const used = new Set();
+  const rows = [];
+  const push = (row) => {
+    if (row.item && !used.has(row.item.cid)) {
+      used.add(row.item.cid);
+      rows.push(row);
+    }
+  };
+  if (isDay(day)) for (const r of floorRisers(items, histMap, day, 3)) push({ kind: 'rise', label: '急上昇', item: r.item, text: `人気ランキング${r.cur}位（前日から▲${r.rise}）` });
+  const fresh = isDay(day) ? floorNewPopular(items, day, 3).find((i) => !used.has(i.cid)) : null;
+  if (fresh) push({ kind: 'today', label: '新作で人気', item: fresh, text: `${md(fresh.dateKey)}発売・人気ランキング${pos.get(fresh.cid)}位` });
+  const sale = floorSaleItems(items).find((i) => !used.has(i.cid));
+  if (sale) push({ kind: 'salehot', label: 'セールで人気', item: sale, text: [sale.off ? `${sale.off}%OFF` : 'セール中', priceNote(sale)].filter(Boolean).join(' ') });
+  const wait = items.filter((i) => i.upcoming && i.rank).sort(byRank)[0] ?? floorUpcoming(items)[0];
+  if (wait) push({ kind: 'entry', label: '予約で人気', item: wait, text: `${md(wait.dateKey)}発売予定` });
+  return rows.slice(0, limit);
 }
 
 // ---------- 人気サークル・ブランド・作家ランキング（運営者の希望「同人とかゲームも、人気の作家さんとか独自のランキングを」。2026-10-09） ----------

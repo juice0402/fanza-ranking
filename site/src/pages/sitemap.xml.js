@@ -2,7 +2,7 @@
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
 import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorSaleHistory, floorSalePageGroups } from '../lib/data.js';
-import { FLOOR_COLLECTION_KINDS, FLOOR_HUB_SHOWN, floorEntityIndexable, floorEntityRankingPath, collectionIndexIndexable, collectionIndexable, floorCollectionIndexPath, floorSaleHistoryIndexable, floorSaleHistoryPath, floorSalePageIndexable, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorUpcoming, saleTagGroups } from '../lib/floors.js';
+import { FLOOR_COLLECTION_KINDS, FLOOR_HUB_SHOWN, floorEntityIndexable, floorEntityRankingPath, collectionIndexIndexable, collectionIndexable, floorCollectionIndexPath, floorSaleHistoryIndexable, floorSaleHistoryPath, floorSalePageIndexable, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorUpcoming } from '../lib/floors.js';
 import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemIndexable, listIndexable } from '../lib/plan.js';
@@ -55,7 +55,7 @@ export function GET() {
     const hub = [...floorRanking(fl.items, FLOOR_HUB_SHOWN), ...floorSaleItems(fl.items, FLOOR_HUB_SHOWN), ...floorNewPopular(fl.items, today), ...floorUpcoming(fl.items)];
     if (commented(hub)) out.push({ path: floorPath(k), lastmod });
     if (commented(floorRanking(fl.items, FLOOR_RANKING_LIMIT))) out.push({ path: floorRankingPath(k), lastmod });
-    const saleShown = k === 'game' ? saleTagGroups(fl.items).flatMap((g) => g.items) : floorSaleItems(fl.items, FLOOR_SALE_LIMIT);
+    const saleShown = floorSaleItems(fl.items, FLOOR_SALE_LIMIT);
     if (commented(saleShown)) out.push({ path: floorSalePath(k), lastmod });
     const makers = floorMakerGroups[k].filter((g) => commented(g.items.slice(0, 60)));
     if (floorMakerGroups[k].some((g) => commented(g.items))) out.push({ path: floorMakerIndexPath(k), lastmod });

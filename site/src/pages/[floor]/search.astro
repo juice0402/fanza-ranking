@@ -7,7 +7,6 @@
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorRow from '../../components/FloorRow.astro';
-import FloorTabs from '../../components/FloorTabs.astro';
 import { activeFloors, floorCollectionGroups, floorMakerGroups, floorSearchIndexes, floors } from '../../lib/data.js';
 import { FLOORS, FLOOR_SEARCH_PAGE, floorCollectionIndexPath, floorMakerIndexPath, floorPath, floorRankingPath, floorSearchIndexPath, floorSearchPath, floorSearchRow } from '../../lib/floors.js';
 import { SITE_NAME, breadcrumbLd } from '../../lib/items.js';
@@ -46,7 +45,6 @@ const trail = [
 
     <section class="hero search-hero">
       <h1 class="hero-title">{f.label}の作品を探す</h1>
-      <FloorTabs floorKey={key} current="search" />
     </section>
 
     <section id="floor-search" class="work-search section search-layout" data-index={floorSearchIndexPath(key)} data-floor={key} aria-labelledby="fs-title">

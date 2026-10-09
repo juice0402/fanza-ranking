@@ -86,7 +86,7 @@ const trendLines = floorTrendLines(hist, f);
 
         <dl class="spec">
           <dt class="spec-term">{item.upcoming ? '発売予定日' : '発売日'}</dt>
-          <dd class="spec-desc">{formatDateJp(item.dateKey)}{links.month && <> <a class="spec-link spec-sub" href={links.month.path}>{links.month.name}発売の{f.kind}</a></>}</dd>
+          <dd class="spec-desc">{formatDateJp(item.dateKey)}{links.month && <> <a class="spec-link spec-sub" href={links.month.path}>{+item.dateKey.slice(5, 7)}月の作品</a></>}</dd>
           {item.maker && (
             <>
               <dt class="spec-term">{f.maker}</dt>
@@ -108,7 +108,7 @@ const trendLines = floorTrendLines(hist, f);
           {links.type && (
             <>
               <dt class="spec-term">形式</dt>
-              <dd class="spec-desc"><a class="spec-link" href={links.type.path}>{links.type.name}</a><span class="spec-sub">（{links.type.name}の人気ランキング{typePos > 0 && `で${typePos}位`}）</span></dd>
+              <dd class="spec-desc"><a class="spec-link" href={links.type.path}>{links.type.name}</a>{typePos > 0 && <span class="spec-sub">人気{typePos}位</span>}</dd>
             </>
           )}
           {links.themes.length > 0 && (
@@ -150,7 +150,7 @@ const trendLines = floorTrendLines(hist, f);
           {item.off > 0 && item.campaign && item.sales.length === 0 && (
             <>
               <dt class="spec-term">セール</dt>
-              <dd class="spec-desc"><a class="spec-link" href={floorSalePath(key)}>{item.campaign.title}</a>{item.campaign.begin && `（${formatDateJp(item.campaign.begin)}から）`}{bandPage && <> <a class="spec-link spec-sub" href={bandPage.path}>{bandPage.name}の{f.kind}</a></>}</dd>
+              <dd class="spec-desc"><a class="spec-link" href={floorSalePath(key)}>{item.campaign.title}</a>{item.campaign.begin && `（${formatDateJp(item.campaign.begin)}から）`}{bandPage && <> <a class="spec-link spec-sub" href={bandPage.path}>{bandPage.name}</a></>}</dd>
             </>
           )}
         </dl>
