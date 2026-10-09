@@ -7,7 +7,6 @@
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
-import FloorMiniShelf from '../../components/FloorMiniShelf.astro';
 import FloorTop3 from '../../components/FloorTop3.astro';
 import FloorTopics from '../../components/FloorTopics.astro';
 import FloorHotSquares from '../../components/FloorHotSquares.astro';
@@ -185,15 +184,18 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
           <div class="section-head">
             <h2 id="fl-type-title" class="section-title">形式別ランキング</h2>
           </div>
-          {types.map((g) => (
-            <div class="type-block">
-              <div class="subsection-head">
-                <h3 class="subsection-title">{DOUJIN_TYPES.find((t) => t.slug === g.slug)?.short ?? g.name}</h3>
-                <a class="subsection-more" href={g.path}>TOPを見る</a>
+          {/* 形式ごとの上位3本は、きょうの人気TOP3と同じメダルの3つ並び（画面の幅に合わせて大きさが変わる。運営者の指摘「端末によってはものすごく小さく見える」。2026-10-09） */}
+          <div class="type-grid">
+            {types.map((g) => (
+              <div class="type-block">
+                <div class="subsection-head">
+                  <h3 class="subsection-title">{DOUJIN_TYPES.find((t) => t.slug === g.slug)?.short ?? g.name}</h3>
+                  <a class="subsection-more" href={g.path}>TOPを見る</a>
+                </div>
+                <FloorTop3 items={g.items.slice(0, 3)} eager={false} />
               </div>
-              <FloorMiniShelf items={g.items.slice(0, 3)} level="h4" />
-            </div>
-          ))}
+            ))}
+          </div>
         </section>
       )}
 

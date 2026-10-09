@@ -2761,6 +2761,12 @@ for _fk in _FD.FLOORS:
     check(f"{_flabel}: トップは動画のトップと同じ形（見出し・きょうの人気TOP3・作品を探す・パソコンは右の欄）・ボタンを並べた案内（タブ）はどのページにも無い",
           'class="home has-side"' in _hub_raw and 'class="home-side"' in _hub_raw and 'class="today-title"' in _hub_raw and 'class="medals' in _hub_raw
           and f'action="/{_fk}/search/"' in _hub_raw and not _tabs, _tabs[:3])
+    # 形式別ランキング（同人）: 形式ごとの上位3本は、TOP3と同じメダルの3つ並び（画面の幅に合わせて大きさが変わる。運営者の指摘「端末によってはものすごく小さく見える」。2026-10-09）
+    _tblocks = re.findall(r'<div class="type-block">(.*?)</ol>', _hub_raw, re.S)
+    if _fk == "doujin" and 'id="fl-type-title"' in _hub_raw:
+        check(f"{_flabel}: 形式別ランキング（{len(_tblocks)}形式）は、TOP3と同じメダルの3つ並び（小さな表紙の棚にしない・画像は遅れて読む）",
+              _tblocks and all('class="medals' in b_ and 'mini-shelf' not in b_ and 'fetchpriority' not in b_ and 'loading="lazy"' in b_ for b_ in _tblocks)
+              and not css_has(".type-block .medals", r"max-width"))
     # セールごと（ゲーム）・割引ごと（同人）のページ（運営者の希望「セールの充実」。2026-10-09）: 対象が3本以上のものだけ
     _released = [x for x in _fshow if str(x["date"])[:10] <= JST_TODAY]
     if _fk == "game":

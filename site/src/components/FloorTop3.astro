@@ -6,8 +6,9 @@ import Thumb from './Thumb.astro';
 import { THUMB_MEDIA, dateParts } from '../lib/items.js';
 import { DOUJIN_THUMB_ONERROR, doujinThumb, floorItemPath, floorMove, makerLine } from '../lib/floors.js';
 
-// items: 人気ランキングの上から3本、hist: 人気の動きの記録（cid → 記録）、day: データの日、since: 記録の始まり
-const { items, hist, day, since = '' } = Astro.props;
+// items: 人気ランキングの上から3本、hist: 人気の動きの記録（cid → 記録）、day: データの日（無ければ動きの札を出さない）、since: 記録の始まり
+// eager: 画像をすぐ読む（ページのいちばん上の TOP3 だけ。形式別ランキングでは遅れて読む）
+const { items, hist = null, day = '', since = '', eager = true } = Astro.props;
 const wide = items[0]?.floor === 'doujin';
 ---
 
@@ -21,8 +22,8 @@ const wide = items[0]?.floor === 'doujin';
           <span class="medal-art">
             <span class="medal-cover">
               {item.image_url && (wide
-                ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(item.image_url, 'card').small} /><img class="floor-img" src={item.image_url} alt="" width="560" height="420" loading="eager" fetchpriority={i === 0 ? 'high' : undefined} decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
-                : <Thumb src={item.image_url} kind="card" loading="eager" fetchpriority={i === 0 ? 'high' : undefined} />)}
+                ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(item.image_url, 'card').small} /><img class="floor-img" src={item.image_url} alt="" width="560" height="420" loading={eager ? 'eager' : 'lazy'} fetchpriority={eager && i === 0 ? 'high' : undefined} decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
+                : <Thumb src={item.image_url} kind="card" loading={eager ? 'eager' : 'lazy'} fetchpriority={eager && i === 0 ? 'high' : undefined} />)}
             </span>
             <span class="medal rank-badge">{i + 1}位</span>
             {move && <span class={`medal-move move-${move.kind}`} title={move.label}><span class="visually-hidden">{move.label}</span><span aria-hidden="true">{move.text}</span></span>}
