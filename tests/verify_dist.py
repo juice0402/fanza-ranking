@@ -2646,6 +2646,13 @@ for _fk in _FD.FLOORS:
     check(f"{_flabel}: FANZAへのリンクは、すべて広告の印（sponsored・nofollow）つき・新しいタブ", not _bad_links, _bad_links[:3])
     check(f"{_flabel}: 表紙の画像は DMM の https だけ・同人の画像は pics.dmm.co.jp から読み、どのページから読んだかを送らない（referrerpolicy=no-referrer）", not _bad_covers, _bad_covers[:3])
     _hub = read(os.path.join(DIST, _fk, "index.html"))
+    if _fk == "doujin":
+        # 同人の横長の表紙の札（順位・割引）は、表紙の左下のふちに半分かける（顔に重ねない。運営者の指摘。2026-10-09）
+        check("同人: 札（順位・割引・セール中）は、表紙の上ではなく左下のふちに半分かける（枠で切らず、画像の角を丸める）・札のあるカードはタイトルを下げる",
+              css_has(".item-cover.is-wide .rank-badge", r"(?<![-\w])top\s*:\s*auto") and css_has(".item-cover.is-wide .rank-badge", r"bottom\s*:\s*-\d+px")
+              and css_has(".item-cover.is-wide", r"overflow\s*:\s*visible") and css_has(".item-cover.is-wide .floor-img", r"border-radius\s*:\s*inherit")
+              and (css_has(".item-cover.is-wide:has(.rank-badge)+.item-title", r"margin-top\s*:\s*1\dpx") or css_has(".item-cover.is-wide:has(.rank-badge) + .item-title", r"margin-top\s*:\s*1\dpx"))
+              and 'class="rank-badge"' in _hub)
     check(f"{_flabel}: トップに「○日の時点」と「FANZAで確かめて」の注記がある（価格・セールは変わるため）", "の時点の情報です" in _hub and "FANZAで確かめて" in _hub)
     _commented = {x["cid"] for x in _fshow if x["comment_kind"] == "claude" and x["comment"]}
     _sm_floor_items = {p_[len(f"/{_fk}/item/"):-1] for p_ in sm_paths if p_.startswith(f"/{_fk}/item/")}
