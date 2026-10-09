@@ -48,7 +48,9 @@ const cols = floorCollectionGroups[key];
 const types = cols.type;
 const themes = hubThemes(cols.theme);
 const hot = ['maker', 'author'].filter((by) => floorEntityRankings[key][by]?.length >= 3).map((by) => ({ by, label: floorEntityLabel(f, by), path: floorEntityRankingPath(key, by), rows: floorEntityRankings[key][by].slice(0, 3) }));
-const other = activeFloors.find((k) => k !== key);
+// ほかの売り場（2026-10-10 から8つ。2つより多いときは、短い名前で4つずつ。トップの「作品を探す」の下と同じ）
+const others = activeFloors.filter((k) => k !== key);
+const many = others.length > 1;
 const gacha = floorGachaPools[key];
 const hasGacha = gacha.length >= 3;
 // 運命の作品のスマホの置き場所（新作で人気の下。無ければ人気ランキングの下）
@@ -108,9 +110,9 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
             {floorMakerGroups[key].length > 0 && <a class="chip-link" href={floorMakerIndexPath(key)}>{f.maker}検索</a>}
             {sale.length > 0 && <a class="chip-link" href={floorSalePath(key)}>セール</a>}
           </nav>
-          <nav class="hero-jump floor-jump" aria-label="ほかの売り場">
-            <a class="chip-link" href="/">FANZA動画</a>
-            {other && <a class="chip-link" href={floorPath(other)}>{FLOORS[other].label}</a>}
+          <nav class:list={['hero-jump', 'floor-jump', { 'is-many': many }]} aria-label="ほかの売り場">
+            <a class="chip-link" href="/">{many ? '動画' : 'FANZA動画'}</a>
+            {others.map((k) => <a class="chip-link" href={floorPath(k)}>{many ? FLOORS[k].short : FLOORS[k].label}</a>)}
           </nav>
         </section>
 

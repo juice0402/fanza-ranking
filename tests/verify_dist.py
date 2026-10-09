@@ -2408,6 +2408,22 @@ check("50音で探す: 行へのボタンの飛び先がページにある・名
 print(f"     （50音で探すのあるページ: {len(_kana_pages)}）")
 check("見出しの下の読みがな（.hero-ruby）は、ひらがなの読み（漢字・カタカナが無い・空でない）", not _ruby_bad, _ruby_bad[:3])
 
+# FANZAのレビューの評価（2026-10-10）: 高評価ランキングは noindex ⇔ sitemap に無い・10本に満たなければ noindex。
+# 評価は検索結果の星マーク（AggregateRating）に使わない（Googleの決まりで、ほかのサイトの評価を集めたものは使えない）
+_rv_bad = []
+for p_ in [page_file("/ranking/review/")] + glob.glob(os.path.join(DIST, "*", "ranking", "review", "index.html")):
+    if not os.path.isfile(p_):
+        continue
+    h_ = read_raw(p_)
+    path_ = "/" + os.path.relpath(os.path.dirname(p_), DIST).replace(os.sep, "/") + "/"
+    n_ = len(re.findall(r'<li class="shelf-cell"[^>]*>\s*<article class="item">', h_.split('aria-labelledby="rv-recent-title"')[0]))
+    if ('name="robots" content="noindex' in h_) == (path_ in sm_paths) or (n_ < 10 and path_ in sm_paths):
+        _rv_bad.append((path_, n_))
+check("高評価ランキング: sitemap に入っている ⇔ noindex でない・10本に満たなければ検索エンジンに出さない", not _rv_bad, _rv_bad[:3])
+_ar_pages = [p_ for p_ in (glob.glob(os.path.join(DIST, "item", "*", "index.html"))[:400] + glob.glob(os.path.join(DIST, "*", "item", "*", "index.html"))[:400]
+                           + [page_file("/ranking/review/")]) if os.path.isfile(p_) and "AggregateRating" in read_raw(p_)]
+check("レビューの評価を、構造化データの星マーク（AggregateRating）に使っていない", not _ar_pages, [rel(p_) for p_ in _ar_pages[:3]])
+
 # ジャンルの「FANZA全体で人気の作品 TOP20」（scripts/genre_tops.py。2026-10-10）: データのあるジャンルのページに、順位つきの棚・
 # このサイトの作品は作品ページへ（実在する）・ほかはFANZAへ（広告のリンクの属性）・未成年を連想させるタイトルは無い・タイトルに「人気ランキング」
 _gt_path = os.path.join(ROOT, "site", "src", "data", "genre_tops.json")

@@ -25,7 +25,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 ---
 
 <Base
-  title={`FANZA動画の高評価ランキングTOP${list.length}【${ym}】レビューの評価が高い作品｜${SITE_NAME}`}
+  title={`FANZA動画の高評価ランキング${list.length > 0 ? `TOP${list.length}` : ''}【${ym}】レビューの評価が高い作品｜${SITE_NAME}`}
   description={`FANZA動画で、レビューが${REVIEW_MIN}件以上ある作品を、レビューの評価が高い順に${list.length}本並べたランキングです。件数の少ない満点が上に来すぎないよう、件数もふまえて並べています。最近${REVIEW_RECENT_DAYS}日の発売で評価が高い作品も。毎日更新。`}
   path={REVIEW_RANKING_PATH}
   noindex={noindex}
@@ -36,13 +36,13 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 
     <section class="hero">
       <h1 class="hero-title">高評価ランキング</h1>
-      <p class="page-facts">レビュー{REVIEW_MIN}件以上・{list.length}本{reviews.updated && `・${formatDateJp(reviews.updated)}ごろの時点`}</p>
+      {list.length > 0 && <p class="page-facts">レビュー{REVIEW_MIN}件以上・{list.length}本{reviews.updated && `・${formatDateJp(reviews.updated)}ごろの時点`}</p>}
       <p class="hero-lead">FANZAのレビューの評価が高い順です（件数の少ない満点が上に来すぎないよう、件数もふまえて並べています）。</p>
     </section>
 
     <section class="section" aria-labelledby="rv-title">
       <div class="section-head">
-        <h2 id="rv-title" class="section-title">高評価 TOP{list.length}</h2>
+        <h2 id="rv-title" class="section-title">高評価{list.length > 0 ? ` TOP${list.length}` : 'ランキング'}</h2>
         <p class="section-note">評価はFANZAのレビューのもの</p>
       </div>
       {list.length > 0
@@ -56,7 +56,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
             </ul>
           </>
         )
-        : <p class="empty">レビューの評価は、毎日の更新のたびに集まっていきます。</p>}
+        : <p class="empty">レビューの評価は、毎日の更新のたびに集まっていきます（レビューが{REVIEW_MIN}件以上の作品が出てきたら、ここに並びます）。</p>}
     </section>
 
     {recent.length > 0 && (
