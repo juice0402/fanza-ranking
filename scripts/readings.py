@@ -19,6 +19,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timedelta
@@ -44,9 +45,14 @@ API = {"genre": ("GenreSearch", "genre", "genre_id"), "maker": ("MakerSearch", "
        "series": ("SeriesSearch", "series", "series_id"), "author": ("AuthorSearch", "author", "author_id")}
 
 
+KANJI = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+
+
 def clean_ruby(text):
-    """読みがな（ひらがな・カタカナ・英数字・記号）。空白はつめる。60文字まで"""
-    return "".join(str(text or "").split())[:60]
+    """読みがな（ひらがな・カタカナ・英数字・記号）。空白はつめる。60文字まで。
+    漢字の入った読みは使わない（FANZAの一覧には、読みの欄に漢字の名前がそのまま入っているものがある。2026-10-10 に本物で確かめた）"""
+    ruby = "".join(str(text or "").split())[:60]
+    return "" if KANJI.search(ruby) else ruby
 
 
 def wanted(data_dir=DATA):

@@ -34,7 +34,7 @@ const jumps = index.show ? kanaJumps(index.rows, prefix) : [];
         </nav>
         {index.rows.map((r) => (
           <div class="kana-block">
-            <h3 id={r.id} class="kana-head">{r.head}<span class="kana-head-n">{r.entries.length}件</span></h3>
+            <h3 id={`${prefix}-${r.key}`} class="kana-head">{r.head}<span class="kana-head-n">{r.entries.length}件</span></h3>
             <ul class="kana-list">
               {r.entries.map((e) => (
                 <li><a href={e.path}>{e.name}</a><span class="kana-n">{e.count}</span></li>

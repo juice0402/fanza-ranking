@@ -33,7 +33,9 @@ export function kanaRow(reading) {
   return KANA_ROWS.find((r) => first && r.chars.includes(first)) ?? KANA_OTHER;
 }
 
-const isRuby = (v) => typeof v === 'string' && v.trim() !== '' && v.length <= 60;
+// 読みは、ひらがな・カタカナ・英数字・記号だけ（FANZAの一覧には、読みの欄に漢字の名前がそのまま入っているものがある。2026-10-10 に本物で確かめた）
+const KANJI = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
+const isRuby = (v) => typeof v === 'string' && v.trim() !== '' && v.length <= 60 && !KANJI.test(v);
 const READING_KINDS = ['genre', 'maker', 'series', 'author'];
 
 /**
@@ -97,5 +99,5 @@ export function kanaJumps(rows, prefix = 'kana') {
 export function readingLine(name, reading) {
   const norm = (t) => toHiragana(t).toLowerCase().replace(/[\s　・·.\-]/g, '');
   const r = String(reading ?? '').trim();
-  return r && norm(r) !== norm(name) ? toHiragana(r) : '';
+  return r && !KANJI.test(r) && norm(r) !== norm(name) ? toHiragana(r) : '';
 }

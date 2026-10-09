@@ -23,6 +23,8 @@ check('売り場・種類・キーで引ける（カタカナはひらがなに�
   R.updated === '2026-10-10' && R.of('video', 'maker', 'ムーディーズ') === 'むーでぃーず' && R.of('video', 'series', 12) === 'しりーず'
   && R.of('doujin', 'maker', '500') === 'さーくる' && R.of('video', 'maker', '空') === '' && R.of('video', 'maker', '長い') === '' && R.of('game', 'maker', '1') === '');
 check('無い・壊れていても空', [null, 'x', [], {}].every((v) => K.normalizeReadings(v).of('video', 'maker', 'a') === ''));
+check('漢字の入った読み（FANZAの一覧に、名前がそのまま入っているもの）は使わない', K.normalizeReadings({ video: { maker: { 桃: '桃太郎映像', S: 'えすわん' } } }).of('video', 'maker', '桃') === ''
+  && K.readingLine('桃太郎映像', '桃太郎映像') === '' && K.readingLine('名前', '名まえ') === '');
 check('見出しの下の読み: 名前と同じ読み（ひらがなの名前・カタカナの名前）は出さない',
   K.readingLine('三上悠亜', 'みかみゆあ') === 'みかみゆあ' && K.readingLine('あやみ旬果', 'あやみしゅんか') === 'あやみしゅんか'
   && K.readingLine('つぼみ', 'つぼみ') === '' && K.readingLine('ムーディーズ', 'むーでぃーず') === '' && K.readingLine('名前', '') === '');

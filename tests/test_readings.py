@@ -96,6 +96,7 @@ check("読めなかった一覧は前の読みのまま。載らなくなった�
 text = open(R.PATH, encoding="utf-8").read()
 check("1つの読みを1行に（読み直しても同じ）", R.dump(R.load(R.PATH)) == text and text.count("\n") >= 6)
 open(R.PATH, "w").write("{壊れた")
+check("漢字の入った読み（FANZAの一覧に、名前がそのまま入っているもの）は使わない", R.clean_ruby("桃太郎 映像") == "" and R.clean_ruby("えす わん") == "えすわん")
 check("壊れたファイルは空から（読みは、また集まる）", R.load(R.PATH)["video"]["maker"] == {} and R.load(R.PATH)["next"] == {})
 
 print("\n■ このサイトに載っている名前")
