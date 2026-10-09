@@ -1,0 +1,113 @@
+---
+// FANZA同人・FANZAゲームのコレクションのページ（運営者の希望「動画のページと同じレベルのコレクションを同人とゲームにも。SEO対策も徹底的に」。2026-10-09）。
+//   /doujin/genre/<印>/（ジャンル。おだやかなジャンルだけ）・/doujin/series/<FANZAの id>/（シリーズ）・/game/author/<印>/（作家）・/doujin/month/2026-10/（発売月）
+// 中身: 見出し・数字（本数・セール中・最大○%OFF）・ジャンルのチップ → 人気の作品（人気の高い順に60本）→ おもなサークル/ブランド → ほかの月（発売月だけ）。
+// コメントのある作品が無いあいだは、検索エンジンに出さない（FANZAの情報を並べただけのページにしない。ほかのページと同じ決まり）
+import Base from '../../../layouts/Base.astro';
+import Breadcrumb from '../../../components/Breadcrumb.astro';
+import FloorCard from '../../../components/FloorCard.astro';
+import FloorTabs from '../../../components/FloorTabs.astro';
+import { activeFloors, floorCollectionGroups, floorMakerById, floors, today } from '../../../lib/data.js';
+import {
+  FLOORS, FLOOR_COLLECTIONS, FLOOR_COLLECTION_KINDS, FLOOR_COLLECTION_LIST, collectionDescription, collectionFacts, collectionHeading, collectionIndexable, collectionTitle,
+  floorCollectionIndexPath, floorItemListLd, floorPath, priceNote, relatedFloorGenres, saleBadgeOf, topGenres, topMakersIn,
+} from '../../../lib/floors.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../../../lib/items.js';
+
+export function getStaticPaths() {
+  return activeFloors.flatMap((floor) => FLOOR_COLLECTION_KINDS.flatMap((kind) => floorCollectionGroups[floor][kind].map((group) => ({
+    params: { floor, kind, slug: group.slug },
+    props: { group, floor },
+  }))));
+}
+
+const { group, floor: key } = Astro.props;
+const f = FLOORS[key];
+const c = FLOOR_COLLECTIONS[group.kind];
+const data = floors[key];
+const shown = group.items.slice(0, FLOOR_COLLECTION_LIST);
+const facts = collectionFacts(group.items, today);
+const genreByName = new Map(floorCollectionGroups[key].genre.map((g) => [g.name, g]));
+const genres = (group.kind === 'genre' ? relatedFloorGenres(group.items, group.name, 8) : topGenres(group.items, 8)).map((g) => ({ ...g, path: genreByName.get(g.name)?.path }));
+const makers = group.kind === 'series' && topMakersIn(group.items, 2).length <= 1 ? [] : topMakersIn(group.items, 8).map((m) => ({ ...m, path: floorMakerById[key].get(m.id)?.path }));
+const months = floorCollectionGroups[key].month;
+const at = group.kind === 'month' ? months.findIndex((g) => g.slug === group.slug) : -1;
+const older = at >= 0 ? months[at + 1] ?? null : null;
+const newer = at > 0 ? months[at - 1] : null;
+const day = data.updated ? dateParts(data.updated) : dateParts(today);
+const ym = `${day.y}年${day.m}月`;
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: c.find, path: floorCollectionIndexPath(key, group.kind) },
+  { name: group.name, path: group.path },
+];
+const noindex = !collectionIndexable(group);
+const about = group.kind === 'series' ? { '@type': 'CreativeWorkSeries', name: group.name }
+  : group.kind === 'author' ? { '@type': 'Person', name: group.name }
+    : group.kind === 'genre' ? { '@type': 'Thing', name: group.name } : undefined;
+const pageLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: collectionHeading(f, group),
+  url: SITE_URL + group.path,
+  ...(about ? { about } : {}),
+  ...(data.updated ? { dateModified: data.updated } : {}),
+};
+---
+
+<Base
+  title={collectionTitle(f, group, ym, SITE_NAME)}
+  description={collectionDescription(f, group, facts)}
+  path={group.path}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail), pageLd, floorItemListLd(shown, SITE_URL)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{collectionHeading(f, group)} <span class="hero-kind">{f.label}の{c.label}</span></h1>
+      <p class="hero-lead">{facts.total}本{facts.sale > 0 && `・セール中${facts.sale}本`}{facts.maxOff > 0 && `（最大${facts.maxOff}%OFF）`}{facts.upcoming > 0 && `・予約${facts.upcoming}本`}・人気の高い順（{day.m}月{day.d}日の時点）</p>
+      {genres.length > 0 && (
+        <ul class="chips entity-genres" aria-label={group.kind === 'genre' ? 'いっしょに付いていることが多いジャンル' : '多いジャンル'}>
+          {genres.map((g) => (g.path
+            ? <li class="chip"><a class="chip-tag" href={g.path}>{g.name} {g.count}本</a></li>
+            : <li class="chip chip-plain">{g.name} {g.count}本</li>))}
+        </ul>
+      )}
+      <FloorTabs floorKey={key} current={group.kind === 'genre' ? 'genre' : ''} />
+    </section>
+
+    <section class="section" aria-labelledby="fl-col-works-title">
+      <div class="section-head">
+        <h2 id="fl-col-works-title" class="section-title">人気の作品</h2>
+        <p class="section-note">人気の高い順{group.total > shown.length && `（上位${shown.length}本）`}</p>
+      </div>
+      <ul class="shelf">
+        {shown.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} eager={i < 4} /></li>)}
+      </ul>
+    </section>
+
+    {makers.length > 0 && (
+      <section class="section" aria-labelledby="fl-col-makers-title">
+        <h2 id="fl-col-makers-title" class="section-title">おもな{f.maker}</h2>
+        <ul class="chips">
+          {makers.map((m) => (m.path
+            ? <li class="chip"><a class="chip-tag" href={m.path}>{m.name} {m.count}本</a></li>
+            : <li class="chip chip-plain">{m.name} {m.count}本</li>))}
+        </ul>
+      </section>
+    )}
+
+    {group.kind === 'month' ? (
+      <nav class="month-nav" aria-label="ほかの月">
+        {older ? <a class="month-nav-link" href={older.path}>← {older.name}</a> : <span></span>}
+        <a class="month-nav-link" href={floorCollectionIndexPath(key, 'month')}>月の一覧</a>
+        {newer ? <a class="month-nav-link" href={newer.path}>{newer.name} →</a> : <span></span>}
+      </nav>
+    ) : (
+      <p class="section-note"><a class="spec-link" href={floorCollectionIndexPath(key, group.kind)}>ほかの{c.label}も見る（{c.find}）</a></p>
+    )}
+  </div>
+</Base>

@@ -113,5 +113,56 @@ check('ファイルの数: 作品ページ＋サークル/ブランドのペー�
 check('サイト全体の計画に、同人・ゲームのページの数を足せる（動画の作品ページより先に枠を取る）', nonItemFileCount({ floors: 100 }, 0, 30) - nonItemFileCount({}, 0, 30) === 100);
 check('本数の決まり: 同人の作品ページは、そのまま全部（動画の作品ページの枠から先に引く）', L.FLOOR_RANKING_LIMIT === 100 && L.FLOOR_SAMPLES === 8);
 
+// 運営者の希望「動画のページと同じレベルのコレクションを同人とゲームにも。SEO対策も徹底的に」（2026-10-09）
+console.log('\n■ コレクション（ジャンル・シリーズ・作家・発売月のページ）');
+const crow = (n, extra) => row(n, { cid: `d_${300000 + n}`, price: 1100, list_price: 1100, campaign: null, genres: [], authors: [], ...extra });
+const cfl = L.normalizeFloor({
+  ranks: { d_300001: 1, d_300002: 2, d_300003: 3, d_300005: 5, d_300007: 7 },
+  items: [
+    crow(1, { genres: ['巨乳', 'ファンタジー'], series: 'さくぶんシリーズ', series_id: 7, authors: ['作家A'], date: '2026-09-20 00:00:00', comment: 'Claudeが書いたコメント', comment_kind: 'claude' }),
+    crow(2, { genres: ['巨乳'], series: 'さくぶんシリーズ', series_id: 7, authors: ['作家A', '作家B'], date: '2026-09-10 00:00:00' }),
+    crow(3, { genres: ['巨乳', '中出し'], series: 'さくぶんシリーズ', series_id: 7, date: '2026-09-05 00:00:00', price: 550 }),
+    crow(4, { genres: ['ファンタジー'], date: '2026-08-01 00:00:00' }),
+    crow(5, { genres: ['ファンタジー'], date: '2026-09-01 00:00:00' }),
+    crow(6, { genres: ['中出し'], authors: ['作家B'], date: '2026-11-01 00:00:00' }),
+    crow(7, { date: '2026-09-25 00:00:00' }),
+    crow(8, { genres: ['巨乳'], series: '放課後シリーズ', series_id: 9, date: '2026-09-02 00:00:00' }),
+  ],
+}, 'doujin', today);
+const cols = L.floorCollections(cfl.items, 'doujin');
+const colNames = (kind) => cols[kind].map((x) => `${x.name}:${x.items.map((i) => i.cid.slice(-1)).join('')}`).join();
+check('ジャンル: おだやかなジャンルだけ・3本以上・作品の多い順（同じなら名前の順）・中は人気の高い順', colNames('genre') === 'ファンタジー:154,巨乳:123', colNames('genre'));
+check('ジャンルのページの場所は、名前から決まる印（動画の出演者・メーカーと同じ entitySlug）', cols.genre[1].path === `/doujin/genre/${cols.genre[1].slug}/` && /^[0-9a-f]{10}$/.test(cols.genre[1].slug));
+check('シリーズ: FANZAの id ごと・3本以上（未成年を連想させる名前のシリーズは、作品ごと出さない）', colNames('series') === 'さくぶんシリーズ:123' && cols.series[0].path === '/doujin/series/7/' && !cfl.items.some((i) => i.cid === 'd_300008'), colNames('series'));
+check('作家: 2本以上・作品の多い順（同じなら名前の順）', colNames('author') === '作家A:12,作家B:26', colNames('author'));
+check('発売月: 5本以上の月だけ・新しい月から・名前は「2026年9月」', colNames('month') === '2026年9月:12357' && cols.month[0].path === '/doujin/month/2026-09/' && L.monthName('2026-10') === '2026年10月', colNames('month'));
+check('一覧の場所: /doujin/genre/・/game/author/', L.floorCollectionIndexPath('doujin', 'genre') === '/doujin/genre/' && L.floorCollectionIndexPath('game', 'author') === '/game/author/' && L.FLOOR_COLLECTION_KINDS.join() === 'genre,series,author,month');
+const big = cols.genre[1];
+const facts = L.collectionFacts(big.items, today);
+check('数字: 本数・セール中・最大の割引・新作（30日）・予約', JSON.stringify(facts) === JSON.stringify({ total: 3, sale: 1, maxOff: 50, fresh: 2, upcoming: 0 }), facts);
+check('検索エンジンに出すのは、並べる作品（60本）にコメントのある作品があるページだけ・一覧は1つでもあれば',
+  L.collectionIndexable(big) && !L.collectionIndexable(cols.author[1]) && L.collectionIndexIndexable(cols.author) && !L.collectionIndexIndexable([cols.author[1]]) && !L.collectionIndexIndexable([]));
+const f = L.FLOORS.doujin;
+check('タイトル: ジャンル「FANZA同人「巨乳」の人気作品一覧【2026年10月】（3本）｜サイト」',
+  L.collectionTitle(f, big, '2026年10月', 'サイト') === 'FANZA同人「巨乳」の人気作品一覧【2026年10月】（3本）｜サイト', L.collectionTitle(f, big, '2026年10月', 'サイト'));
+check('タイトル: シリーズ・作家・発売月',
+  L.collectionTitle(f, cols.series[0], '2026年10月', 'サイト') === 'さくぶんシリーズ｜FANZA同人のシリーズ作品一覧【2026年10月】（3本）｜サイト'
+  && L.collectionTitle(L.FLOORS.game, { ...cols.author[0], kind: 'author' }, '2026年10月', 'サイト') === '作家AのPCゲーム一覧（FANZAゲーム）【2026年10月】（2本）｜サイト'
+  && L.collectionTitle(f, cols.month[0], '2026年10月', 'サイト') === 'FANZA同人 2026年9月発売の同人作品・人気順（5本）｜サイト');
+check('見出し', L.collectionHeading(f, big) === 'FANZA同人の「巨乳」作品' && L.collectionHeading(f, cols.month[0]) === '2026年9月発売の同人作品');
+const desc = L.collectionDescription(f, big, facts);
+check('説明文: 数えた事実だけ（本数・セール中・最大の割引）', desc === 'FANZA同人の「巨乳」のジャンルの同人作品3本を、FANZAの人気順でまとめています。いまセール中の作品が1本（最大50%OFF）。毎日、日付が変わったあとに更新します。', desc);
+check('いっしょに付いていることが多いジャンル: そのジャンル自身・行為のジャンルは出さない', L.relatedFloorGenres(big.items, '巨乳').map((x) => x.name).join() === 'ファンタジー');
+const c2 = cfl.items.find((i) => i.cid === 'd_300002');
+const links = L.collectionLinksFor(c2, cols);
+check('作品ページから: ジャンル・シリーズ・作家・発売月のページへ（ページのあるものだけ）',
+  links.genres.get('巨乳') === big.path && links.series.path === '/doujin/series/7/' && links.authors.size === 2 && links.month.path === '/doujin/month/2026-09/', [...links.genres, links.series?.path, [...links.authors], links.month?.path]);
+const l6 = L.collectionLinksFor(cfl.items.find((i) => i.cid === 'd_300006'), cols);
+check('ページの無いジャンル（行為のジャンル）・月にはリンクしない', l6.genres.size === 0 && l6.series === null && l6.authors.get('作家B') === cols.author[1].path && l6.month === null);
+const ld = L.floorItemListLd(big.items, 'https://example.pages.dev', 2);
+check('一覧の構造化データ（ItemList）: 作品ページへのリンクを並びの順に', ld['@type'] === 'ItemList' && ld.numberOfItems === 2 && ld.itemListElement[1].position === 2 && ld.itemListElement[1].url === 'https://example.pages.dev/doujin/item/d_300002/', ld);
+check('ファイルの数: コレクションのページ＋種類ごとの一覧（ページが無い種類は一覧も無し）',
+  L.floorFileCount(cfl, [], cols) === cfl.items.length + 4 + (2 + 1) + (1 + 1) + (2 + 1) + (1 + 1) && L.floorFileCount(cfl, [], { genre: [], series: [], author: [], month: [] }) === cfl.items.length + 4);
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

@@ -2,7 +2,7 @@
 // 運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも」→「同人 1,000本・ゲーム 500本」（2026-10-09）。
 // データは毎日の更新が集める site/src/data/doujin.json・game.json（scripts/doujin_game.py。形は scripts/floor_data.py）。
 // 未成年を連想させる作品は、集めるときに入れていない。ここでも、タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前を調べて、念のため外す（二重の備え）。
-import { FANZA_HOSTS, FANZA_LINK_HOSTS, isDay, resizedImage, safeHttpsUrl } from './items.js';
+import { FANZA_HOSTS, FANZA_LINK_HOSTS, addDays, entitySlug, isDay, resizedImage, safeHttpsUrl } from './items.js';
 import { isMinorTitle } from './gacha.js';
 
 /** 売り場の設定。label: 正式な名前・short: 短い名前・maker: サークル/ブランドの呼び方・kind: 作品の呼び方 */
@@ -266,5 +266,138 @@ export function floorItemDescription(item) {
   return (item.comment ? `${item.comment} ` : '') + base;
 }
 
-/** 売り場ごとのファイルの数（作品ページ・サークル/ブランドのページ・一覧・トップ・ランキング・セール）。サイト全体の計画（lib/plan.js）に足す */
-export const floorFileCount = (floor, makers) => (floor.items.length > 0 ? floor.items.length + makers.length + 4 : 0);
+// ---------- コレクション（ジャンル・シリーズ・作家・発売月ごとのページ） ----------
+// 運営者の希望「動画のページと同じレベルのコレクションを同人とゲームにも。SEO対策も徹底的に」（2026-10-09）。
+// /doujin/genre/<印>/・/doujin/series/<FANZAの id>/・/game/author/<印>/・/doujin/month/2026-10/ と、それぞれの一覧（/doujin/genre/ など）。
+// ジャンルは、おだやかなもの（FLOOR_GENRE_OK）だけ。作品が min 本以上のものだけ作る。どのページも、作品は人気の高い順
+
+/** コレクションの種類。label: 呼び方・find: 一覧の見出し・min: ページを作る作品の数 */
+export const FLOOR_COLLECTIONS = {
+  genre: { label: 'ジャンル', find: 'ジャンルから探す', min: 3 },
+  series: { label: 'シリーズ', find: 'シリーズから探す', min: 3 },
+  author: { label: '作家', find: '作家から探す', min: 2 },
+  month: { label: '発売月', find: '発売月から探す', min: 5 },
+};
+export const FLOOR_COLLECTION_KINDS = Object.keys(FLOOR_COLLECTIONS);
+export const FLOOR_COLLECTION_LIST = 60; // 1ページに並べる本数（人気の高い順）
+export const floorCollectionIndexPath = (key, kind) => `/${key}/${kind}/`;
+export const floorCollectionPath = (key, kind, slug) => `/${key}/${kind}/${slug}/`;
+/** 「2026-10」→「2026年10月」 */
+export const monthName = (ym) => `${Number(ym.slice(0, 4))}年${Number(ym.slice(5, 7))}月`;
+
+/**
+ * 売り場の作品 → { genre: [グループ], series: […], author: […], month: […] }。
+ * グループ: { kind, slug, name, path, items（人気の高い順）, total }。ジャンル・シリーズ・作家は作品の多い順（同じなら名前の順）、発売月は新しい月から
+ */
+export function floorCollections(items, key) {
+  const maps = Object.fromEntries(FLOOR_COLLECTION_KINDS.map((k) => [k, new Map()]));
+  const add = (kind, slug, name, item) => {
+    const m = maps[kind];
+    if (!m.has(slug)) m.set(slug, { kind, slug, name, items: [] });
+    const g = m.get(slug);
+    // シリーズは FANZA の id ごと（名前は、人気のいちばん高い作品のもの）。ジャンル・作家は、別の名前が同じ印になったとき（ほぼ起きない）は、はじめの名前だけ
+    if (kind === 'series' || g.name === name) g.items.push(item);
+  };
+  for (const i of items) {
+    for (const g of new Set(i.genres)) if (GENRE_OK.has(g)) add('genre', entitySlug(g), g, i);
+    if (i.series) add('series', String(i.series.id), i.series.name, i);
+    for (const a of new Set(i.authors)) add('author', entitySlug(a), a, i);
+    add('month', i.dateKey.slice(0, 7), monthName(i.dateKey.slice(0, 7)), i);
+  }
+  const out = {};
+  for (const kind of FLOOR_COLLECTION_KINDS) {
+    const groups = [...maps[kind].values()]
+      .filter((g) => g.items.length >= FLOOR_COLLECTIONS[kind].min)
+      .map((g) => ({ ...g, path: floorCollectionPath(key, kind, g.slug), total: g.items.length, items: [...g.items].sort(byRank) }));
+    groups.sort(kind === 'month'
+      ? (a, b) => (a.slug < b.slug ? 1 : -1)
+      : (a, b) => b.total - a.total || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    out[kind] = groups;
+  }
+  return out;
+}
+
+/** コレクションのページを検索エンジンに出してよいか: ページに並べる作品（人気の高い順に60本）に、コメントのある作品があるとき（sitemap も同じ） */
+export const collectionIndexable = (group) => group.items.slice(0, FLOOR_COLLECTION_LIST).some((i) => i.comment);
+/** コレクションの一覧のページ: 検索エンジンに出すページが1つでもあるとき */
+export const collectionIndexIndexable = (groups) => groups.some(collectionIndexable);
+
+/** コレクションの数字（見出しの下・説明文に使う）: セール中の本数・最大の割引・新作（発売から30日）・予約の本数 */
+export function collectionFacts(items, today) {
+  const sale = floorSaleItems(items);
+  const from = addDays(today, -FLOOR_NEW_DAYS);
+  return {
+    total: items.length,
+    sale: sale.length,
+    maxOff: floorMaxOff(sale),
+    fresh: items.filter((i) => !i.upcoming && i.dateKey >= from).length,
+    upcoming: items.filter((i) => i.upcoming).length,
+  };
+}
+
+/** まとまりの中で多いサークル/ブランド（作品の多い順に limit 個）: [{ id, name, count }] */
+export function topMakersIn(items, limit = 8) {
+  const counts = new Map();
+  for (const i of items) if (i.maker) counts.set(i.maker.id, { ...i.maker, count: (counts.get(i.maker.id)?.count ?? 0) + 1 });
+  return [...counts.values()].sort((a, b) => b.count - a.count || (a.name < b.name ? -1 : 1)).slice(0, limit);
+}
+
+/** いっしょに付いていることが多いジャンル（そのジャンル自身は除く。おだやかなジャンルだけ） */
+export const relatedFloorGenres = (items, self, limit = 8) => topGenres(items, limit + 1).filter((g) => g.name !== self).slice(0, limit);
+
+/** コレクションのページのタイトル（検索に出る名前）。updatedYm: 「2026年10月」 */
+export function collectionTitle(f, group, updatedYm, siteName) {
+  if (group.kind === 'genre') return `${f.label}「${group.name}」の人気作品一覧【${updatedYm}】（${group.total}本）｜${siteName}`;
+  if (group.kind === 'series') return `${group.name}｜${f.label}のシリーズ作品一覧【${updatedYm}】（${group.total}本）｜${siteName}`;
+  if (group.kind === 'author') return `${group.name}の${f.kind}一覧（${f.label}）【${updatedYm}】（${group.total}本）｜${siteName}`;
+  return `${f.label} ${group.name}発売の${f.kind}・人気順（${group.total}本）｜${siteName}`;
+}
+
+/** コレクションのページの見出し */
+export function collectionHeading(f, group) {
+  if (group.kind === 'genre') return `${f.label}の「${group.name}」作品`;
+  if (group.kind === 'series') return `${group.name}（シリーズ）`;
+  if (group.kind === 'author') return `${group.name}の${f.kind}`;
+  return `${group.name}発売の${f.kind}`;
+}
+
+/** コレクションのページの説明文（数えた事実だけ） */
+export function collectionDescription(f, group, facts) {
+  const what = group.kind === 'genre' ? `「${group.name}」のジャンルの${f.kind}`
+    : group.kind === 'series' ? `シリーズ「${group.name}」の${f.kind}`
+      : group.kind === 'author' ? `作家「${group.name}」の${f.kind}`
+        : `${group.name}発売の${f.kind}`;
+  const parts = [`${f.label}の${what}${facts.total}本を、FANZAの人気順でまとめています。`];
+  if (facts.sale > 0) parts.push(`いまセール中の作品が${facts.sale}本${facts.maxOff ? `（最大${facts.maxOff}%OFF）` : ''}。`);
+  if (facts.upcoming > 0) parts.push(`予約受付中の作品が${facts.upcoming}本。`);
+  parts.push('毎日、日付が変わったあとに更新します。');
+  return parts.join('');
+}
+
+/** 作品ページから、その作品のコレクションへのリンク（ページのあるものだけ）: { genre: Map(名前→path), series, authors: Map, month } */
+export function collectionLinksFor(item, groups) {
+  const bySlug = (kind) => new Map((groups[kind] ?? []).map((g) => [g.slug, g]));
+  const genre = bySlug('genre');
+  const author = bySlug('author');
+  return {
+    genres: new Map(item.genres.map((g) => [g, GENRE_OK.has(g) ? genre.get(entitySlug(g))?.path : undefined]).filter(([, p]) => p)),
+    series: item.series ? bySlug('series').get(String(item.series.id)) ?? null : null,
+    authors: new Map(item.authors.map((a) => [a, author.get(entitySlug(a))?.path]).filter(([, p]) => p)),
+    month: bySlug('month').get(item.dateKey.slice(0, 7)) ?? null,
+  };
+}
+
+/** 一覧のページの構造化データ（ItemList。作品ページへのリンクを、並びの順に limit 本） */
+export function floorItemListLd(items, siteUrl, limit = 20) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    numberOfItems: Math.min(items.length, limit),
+    itemListElement: items.slice(0, limit).map((i, n) => ({ '@type': 'ListItem', position: n + 1, url: siteUrl + floorItemPath(i.floor, i.cid), name: i.title.slice(0, 100) })),
+  };
+}
+
+/** 売り場ごとのファイルの数（作品ページ・サークル/ブランドのページ・一覧・トップ・ランキング・セール・コレクションのページとその一覧）。サイト全体の計画（lib/plan.js）に足す */
+export const floorFileCount = (floor, makers, collections = {}) => (floor.items.length > 0
+  ? floor.items.length + makers.length + 4 + FLOOR_COLLECTION_KINDS.reduce((n, k) => n + (collections[k]?.length ? collections[k].length + 1 : 0), 0)
+  : 0);

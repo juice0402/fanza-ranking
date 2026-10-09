@@ -6,9 +6,9 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
 import FloorTabs from '../../components/FloorTabs.astro';
-import { activeFloors, floorMakerGroups, floors, today } from '../../lib/data.js';
+import { activeFloors, floorCollectionGroups, floorMakerGroups, floors, today } from '../../lib/data.js';
 import {
-  FLOORS, FLOOR_HUB_SHOWN, floorMakerIndexPath, floorMaxOff, floorNewPopular, floorPath, floorRanking, floorRankingPath,
+  FLOORS, FLOOR_COLLECTIONS, FLOOR_HUB_SHOWN, floorCollectionIndexPath, floorItemListLd, floorMakerIndexPath, floorMaxOff, floorNewPopular, floorPath, floorRanking, floorRankingPath,
   floorSaleItems, floorSalePath, floorUpcoming, priceNote, saleBadgeOf,
 } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
@@ -28,6 +28,10 @@ const saleShown = sale.slice(0, FLOOR_HUB_SHOWN);
 const newPop = floorNewPopular(items, today);
 const upcomingList = floorUpcoming(items);
 const makers = floorMakerGroups[key].slice(0, 24);
+// ジャンル・シリーズ・作家・発売月から探す（コレクションのページ。2026-10-09）
+const cols = floorCollectionGroups[key];
+const genreChips = cols.genre.slice(0, 16);
+const findLinks = ['series', 'author', 'month'].filter((k) => cols[k].length > 0).map((k) => ({ name: FLOOR_COLLECTIONS[k].find, href: floorCollectionIndexPath(key, k), count: cols[k].length, unit: k === 'month' ? 'か月' : '件' }));
 const maxOff = floorMaxOff(sale);
 const day = data.updated ? dateParts(data.updated) : null;
 const dayLabel = day ? `${day.m}月${day.d}日` : '毎日';
@@ -42,7 +46,7 @@ const description = `${f.label}の人気作品${items.length}本を、毎日のF
 const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${f.label}の人気作品・セール情報`, url: SITE_URL + floorPath(key), ...(data.updated ? { dateModified: data.updated } : {}) };
 ---
 
-<Base title={title} description={description} path={floorPath(key)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd]}>
+<Base title={title} description={description} path={floorPath(key)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd, floorItemListLd(ranking, SITE_URL, 12)]}>
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
@@ -96,6 +100,25 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
         <ul class="shelf">
           {upcomingList.map((item) => <li class="shelf-cell"><FloorCard item={item} note={`${formatDateJp(item.dateKey)}発売予定`} /></li>)}
         </ul>
+      </section>
+    )}
+
+    {(genreChips.length > 0 || findLinks.length > 0) && (
+      <section class="section" aria-labelledby="fl-find-title">
+        <div class="section-head">
+          <h2 id="fl-find-title" class="section-title">{genreChips.length > 0 ? 'ジャンルから探す' : 'ほかの探し方'}</h2>
+          {cols.genre.length > 0 && <a class="subsection-more" href={floorCollectionIndexPath(key, 'genre')}>ジャンルの一覧（{cols.genre.length}件）</a>}
+        </div>
+        {genreChips.length > 0 && (
+          <ul class="chips">
+            {genreChips.map((g) => <li class="chip"><a class="chip-tag" href={g.path}>{g.name} {g.total}本</a></li>)}
+          </ul>
+        )}
+        {findLinks.length > 0 && (
+          <ul class="chips find-more">
+            {findLinks.map((l) => <li class="chip"><a class="chip-tag" href={l.href}>{l.name}（{l.count}{l.unit}）</a></li>)}
+          </ul>
+        )}
       </section>
     )}
 

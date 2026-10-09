@@ -5,8 +5,8 @@ import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorCard from '../../../components/FloorCard.astro';
 import FloorTabs from '../../../components/FloorTabs.astro';
-import { activeFloors, floorMakerGroups, floors, today } from '../../../lib/data.js';
-import { FLOORS, FLOOR_MAKER_LIST, floorMakerIndexPath, floorMaxOff, floorPath, onSale, priceNote, saleBadgeOf, topGenres } from '../../../lib/floors.js';
+import { activeFloors, floorCollectionGroups, floorMakerGroups, floors, today } from '../../../lib/data.js';
+import { FLOORS, FLOOR_MAKER_LIST, floorItemListLd, floorMakerIndexPath, floorMaxOff, floorPath, onSale, priceNote, saleBadgeOf, topGenres } from '../../../lib/floors.js';
 import { listIndexable } from '../../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, listLastmod } from '../../../lib/items.js';
 
@@ -19,7 +19,8 @@ const f = FLOORS[key];
 const shown = group.items.slice(0, FLOOR_MAKER_LIST);
 const saleCount = group.items.filter((i) => !i.upcoming && onSale(i)).length;
 const maxOff = floorMaxOff(group.items);
-const genres = topGenres(group.items, 8);
+const genreByName = new Map(floorCollectionGroups[key].genre.map((g) => [g.name, g]));
+const genres = topGenres(group.items, 8).map((g) => ({ ...g, path: genreByName.get(g.name)?.path }));
 const ym = `${+today.slice(0, 4)}年${+today.slice(5, 7)}月`;
 const trail = [
   { name: 'トップ', path: '/' },
@@ -37,7 +38,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
   description={`${f.label}の${f.maker}「${group.name}」の人気作品${group.total}本を、人気の高い順にまとめています。${saleCount ? `いまセール中の作品が${saleCount}本${maxOff ? `（最大${maxOff}%OFF）` : ''}。` : ''}${genres.length ? `多いジャンルは${genres.slice(0, 3).map((g) => g.name).join('・')}。` : ''}毎日更新。`}
   path={group.path}
   noindex={noindex}
-  jsonLd={[breadcrumbLd(trail), pageLd]}
+  jsonLd={[breadcrumbLd(trail), pageLd, floorItemListLd(shown, SITE_URL)]}
 >
   <div class="wrap">
     <Breadcrumb trail={trail} />
@@ -47,7 +48,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
       <p class="hero-lead">{group.total}本{saleCount > 0 && `・セール中${saleCount}本`}（このサイトに載っている作品から）</p>
       {genres.length > 0 && (
         <ul class="chips entity-genres">
-          {genres.map((g) => <li class="chip chip-plain">{g.name} {g.count}本</li>)}
+          {genres.map((g) => (g.path ? <li class="chip"><a class="chip-tag" href={g.path}>{g.name} {g.count}本</a></li> : <li class="chip chip-plain">{g.name} {g.count}本</li>))}
         </ul>
       )}
       <FloorTabs floorKey={key} current="" />

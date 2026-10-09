@@ -2659,6 +2659,46 @@ for _fk in _FD.FLOORS:
     check(f"{_flabel}: sitemap の作品ページ = コメントのある作品（{len(_commented)}本）・コメントの無い作品ページは noindex",
           _sm_floor_items == _commented and all(('name="robots" content="noindex' in read_raw(os.path.join(DIST, _fk, "item", c_, "index.html"))) != (c_ in _commented) for c_ in list(_fdata["items"])[:200] if c_ in {x["cid"] for x in _fshow}),
           (sorted(_commented - _sm_floor_items)[:3], sorted(_sm_floor_items - _commented)[:3]))
+    # コレクション（ジャンル・シリーズ・作家・発売月のページ。運営者の希望「動画と同じレベルのコレクションを。SEO対策も徹底的に」。2026-10-09）
+    # ページのある名前 = ここで数えた、決まった本数以上の名前（ジャンルはおだやかなものだけ）。ページがあれば一覧もある
+    _ok_genres = set(re.findall(r"'([^']+)'", re.search(r"FLOOR_GENRE_OK = \[([\s\S]*?)\];", _floor_src).group(1)))
+    _cslug = lambda s_: _hl.sha1(_ud.normalize("NFC", s_).encode("utf-8")).hexdigest()[:10]  # noqa: E731  items.js の entitySlug と同じ
+    _cnames = lambda v_, n_: [t_ for t_ in (str(u_).strip() for u_ in (v_ or [])) if t_][:n_]  # noqa: E731  floors.js の names と同じ
+    _cwant = {"genre": {}, "series": {}, "author": {}, "month": {}}
+    for x in _fshow:
+        for g_ in set(_cnames(x["genres"], 30)) & _ok_genres:
+            _cwant["genre"].setdefault(_cslug(g_), []).append(x)
+        if isinstance(x["series_id"], int) and x["series_id"] > 0 and str(x["series"]).strip():
+            _cwant["series"].setdefault(str(x["series_id"]), []).append(x)
+        for a_ in set(_cnames(x["authors"], 4)):
+            _cwant["author"].setdefault(_cslug(a_), []).append(x)
+        _cwant["month"].setdefault(str(x["date"])[:7], []).append(x)
+    _cmin = {"genre": 3, "series": 3, "author": 2, "month": 5}
+    _col_bad, _col_sm, _col_noidx, _col_n = [], [], [], {}
+    for kind_, groups_ in _cwant.items():
+        want_ = {s_ for s_, xs_ in groups_.items() if len(xs_) >= _cmin[kind_]}
+        got_ = {os.path.basename(os.path.dirname(p_)) for p_ in glob.glob(os.path.join(DIST, _fk, kind_, "*", "index.html"))}
+        _col_n[kind_] = len(got_)
+        if want_ != got_:
+            _col_bad.append((kind_, sorted(want_ - got_)[:3], sorted(got_ - want_)[:3]))
+        if bool(want_) != os.path.isfile(os.path.join(DIST, _fk, kind_, "index.html")):
+            _col_bad.append((kind_, "一覧のページ"))
+        for s_ in got_ & want_:
+            path_ = f"/{_fk}/{kind_}/{s_}/"
+            noidx_ = 'name="robots" content="noindex' in read_raw(os.path.join(DIST, _fk, kind_, s_, "index.html"))
+            if noidx_ == (path_ in sm_paths):
+                _col_sm.append(path_)
+            if not noidx_ and not any(x["comment_kind"] == "claude" and x["comment"] for x in groups_[s_]):
+                _col_noidx.append(path_)
+        idx_ = os.path.join(DIST, _fk, kind_, "index.html")
+        if os.path.isfile(idx_) and ('name="robots" content="noindex' in read_raw(idx_)) == (f"/{_fk}/{kind_}/" in sm_paths):
+            _col_sm.append(f"/{_fk}/{kind_}/")
+    check(f"{_flabel}: コレクションのページは、決まった本数以上の名前だけ（ジャンル{_col_n['genre']}・シリーズ{_col_n['series']}・作家{_col_n['author']}・発売月{_col_n['month']}）・ページがあれば一覧もある",
+          not _col_bad, _col_bad[:3])
+    check(f"{_flabel}: コレクションのページ・一覧: sitemap に入っている ⇔ noindex でない・コメントのある作品が1本も無いページは noindex",
+          not _col_sm and not _col_noidx, (_col_sm[:3], _col_noidx[:3]))
+    if _col_n["genre"]:
+        check(f"{_flabel}: 売り場のトップと、案内のタブから「ジャンルから探す」へリンクしている", f'href="/{_fk}/genre/"' in read_raw(os.path.join(DIST, _fk, "index.html")) and f'href="/{_fk}/genre/"' in read_raw(os.path.join(DIST, _fk, "ranking", "index.html")))
     _sale_page = os.path.join(DIST, _fk, "sale", "index.html")
     if os.path.isfile(_sale_page):
         _sh = read(_sale_page)

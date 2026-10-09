@@ -7,9 +7,9 @@
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorMiniShelf from '../../../components/FloorMiniShelf.astro';
-import { activeFloors, floorMakerById, floors } from '../../../lib/data.js';
+import { activeFloors, floorCollectionGroups, floorMakerById, floors } from '../../../lib/data.js';
 import {
-  DOUJIN_IMG_ONERROR, FLOORS, FLOOR_SAMPLES, floorItemDescription, floorItemPath, floorItemTitle, floorPath, floorSaleItems, floorSalePath, popularInFloorGenre, priceNote, sameMaker, saleTagHref,
+  DOUJIN_IMG_ONERROR, FLOORS, FLOOR_SAMPLES, collectionLinksFor, floorItemDescription, floorItemPath, floorItemTitle, floorPath, floorSaleItems, floorSalePath, popularInFloorGenre, priceNote, sameMaker, saleTagHref,
 } from '../../../lib/floors.js';
 import { breadcrumbLd, formatDateJp, SITE_NAME, truncate } from '../../../lib/items.js';
 import { assetUrl } from '../../../lib/assets.js';
@@ -35,6 +35,8 @@ const trail = [
   { name: truncate(item.title, 30), path: floorItemPath(key, item.cid) },
 ];
 const price = priceNote(item);
+// ジャンル・シリーズ・作家・発売月のページへのリンク（ページのあるものだけ。2026-10-09）
+const links = collectionLinksFor(item, floorCollectionGroups[key]);
 // セールのページがある売り場だけ、セールの札からセールのページへリンクする（リンク切れを作らない）
 const hasSalePage = floorSaleItems(items).length > 0;
 ---
@@ -75,7 +77,7 @@ const hasSalePage = floorSaleItems(items).length > 0;
 
         <dl class="spec">
           <dt class="spec-term">{item.upcoming ? '発売予定日' : '発売日'}</dt>
-          <dd class="spec-desc">{formatDateJp(item.dateKey)}</dd>
+          <dd class="spec-desc">{formatDateJp(item.dateKey)}{links.month && <> <a class="spec-link spec-sub" href={links.month.path}>{links.month.name}発売の{f.kind}</a></>}</dd>
           {item.maker && (
             <>
               <dt class="spec-term">{f.maker}</dt>
@@ -85,13 +87,13 @@ const hasSalePage = floorSaleItems(items).length > 0;
           {item.authors.length > 0 && (
             <>
               <dt class="spec-term">作家</dt>
-              <dd class="spec-desc">{item.authors.join('、')}</dd>
+              <dd class="spec-desc">{item.authors.map((a, n) => <>{n > 0 && '、'}{links.authors.get(a) ? <a class="spec-link" href={links.authors.get(a)}>{a}</a> : a}</>)}</dd>
             </>
           )}
           {item.series && (
             <>
               <dt class="spec-term">シリーズ</dt>
-              <dd class="spec-desc">{item.series.name}</dd>
+              <dd class="spec-desc">{links.series ? <a class="spec-link" href={links.series.path}>{item.series.name}</a> : item.series.name}</dd>
             </>
           )}
           {item.genres.length > 0 && (
@@ -99,7 +101,7 @@ const hasSalePage = floorSaleItems(items).length > 0;
               <dt class="spec-term">ジャンル</dt>
               <dd class="spec-desc">
                 <ul class="chips">
-                  {item.genres.map((g) => <li class="chip chip-plain">{g}</li>)}
+                  {item.genres.map((g) => (links.genres.get(g) ? <li class="chip"><a class="chip-tag" href={links.genres.get(g)}>{g}</a></li> : <li class="chip chip-plain">{g}</li>))}
                 </ul>
               </dd>
             </>

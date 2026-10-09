@@ -16,7 +16,7 @@ import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
 import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG_PAGE_GENRES } from '../config.js';
 import { genreTopLists, groupByEntry } from './insights.js';
 import { buildItemsIndex } from './search.js';
-import { FLOOR_KEYS, floorFileCount, floorMakers, normalizeFloor } from './floors.js';
+import { FLOOR_KEYS, floorCollections, floorFileCount, floorMakers, normalizeFloor } from './floors.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
@@ -97,6 +97,8 @@ const floorShards = import.meta.glob('../data/{doujin,game}.json', { eager: true
 export const floors = Object.fromEntries(FLOOR_KEYS.map((k) => [k, normalizeFloor(floorShards[`../data/${k}.json`] ?? null, k, today)]));
 export const floorMakerGroups = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorMakers(floors[k].items, k)]));
 export const floorMakerById = Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floorMakerGroups[k].map((g) => [g.id, g]))]));
+/** 売り場ごとのコレクション（ジャンル・シリーズ・作家・発売月。lib/floors.js の floorCollections。2026-10-09） */
+export const floorCollectionGroups = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorCollections(floors[k].items, k)]));
 /** ページのある売り場（作品が1本以上） */
 export const activeFloors = FLOOR_KEYS.filter((k) => floors[k].items.length > 0);
 
@@ -112,7 +114,7 @@ export const pagePlan = planPages(all, {
   sale: saleCampaignPages.length + 1, // 特集ごとのページと「セールはいつ？」のページ
   ics: calendarActressGroups.length + calendarMakerGroups.length,
   archiveItems: allReleased.length,
-  floors: FLOOR_KEYS.reduce((n, k) => n + floorFileCount(floors[k], floorMakerGroups[k]), 0),
+  floors: FLOOR_KEYS.reduce((n, k) => n + floorFileCount(floors[k], floorMakerGroups[k], floorCollectionGroups[k]), 0),
 });
 export const paged = pagePlan.paged;
 
