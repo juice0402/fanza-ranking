@@ -38,12 +38,12 @@
 5. `bash scripts/check.sh` を実行して全部成功することを確認する
 6. `git status` で、変わったのが **`site/src/data/monthly.json` だけ**であることを確認する。他のファイルが変わっていたらコミットしない
 7. コミット → ブランチをpush → PRを作る（`gh api repos/juice0402/fanza-ranking/pulls`。CLAUDE.md の守ること1・2）
-   - コミットメッセージ: `月のまとめ記事を追加（Claude）: 2026年10月 [CI Skip]`（プレビューは作らない: ブランチのコミットメッセージの最後に必ず `[CI Skip]` を付ける。Cloudflare のビルドの回数を節約するため。PRの「Cloudflare Pages」のチェックは出ないので待たない）
+   - コミットメッセージ: `月のまとめ記事を追加（Claude）: 2026年10月 [CI Skip]`（ブランチのコミットメッセージの最後に `[CI Skip]` を付ける。運営者が Cloudflare の自動ビルドを止めるまで、Cloudflare 側のプレビューを動かさないための保険。データだけのPRなので、CI もプレビューを作らない。待つのは CI（check）だけ）
    - PRのタイトル: `月のまとめ記事を追加（Claude）: 2026年10月`（`[CI Skip]` を入れない）
 8. CIが終わるまで待つ（`gh api repos/juice0402/fanza-ranking/commits/<ブランチの先頭>/check-runs` で `conclusion` を見る）
-   - **緑ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: 月のまとめ記事を追加（Claude）: 2026年10月" -f commit_message=""`。**Merge のメッセージに `[CI Skip]` を入れない**。入れると本番がビルドされない）
+   - **緑ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: 月のまとめ記事を追加（Claude）: 2026年10月" -f commit_message=""`。Merge すると、公開（`deploy.yml`）が自動で動く）
    - 赤・時間切れ・衝突のときは**Mergeしない**。PRを開いたまま、理由を報告して終了する。衝突のときは、ブランチを捨てて手順1からやり直してよい（1回だけ）
-9. Merge したら、数分待って本番の `https://fanza-ranking.pages.dev/month/<YYYY-MM>/?cb=日時` を WebFetch で見て、記事が出ているかを確認する。見られなかったら「未確認」と書く
+9. Merge したら、公開（Deploy）が終わるのを待ってから（ビルド・点検・アップロードで10〜15分。`gh api "repos/juice0402/fanza-ranking/actions/workflows/deploy.yml/runs?branch=main&per_page=3" --jq '.workflow_runs[] | .status + " " + (.conclusion // "") + " " + .head_sha[0:7]'` が、Merge のコミット（かそれより新しいもの）で `completed success`。`cancelled` は、あとの公開に含まれたということ）、本番の `https://fanza-ranking.pages.dev/month/<YYYY-MM>/?cb=日時` を WebFetch で見て、記事が出ているかを確認する。見られなかったら「未確認」と書く
 10. 最後に報告する: どの月の記事か／PR番号／CIの結果／Mergeしたか／本番で確認できたか
 
 Mergeしてよいのは、**この月のまとめ記事のPR（`monthly.json` だけを変えるもの）で、CIが緑のとき**だけです（CLAUDE.md の守ること1）。

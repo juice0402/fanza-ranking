@@ -5,7 +5,7 @@ FANZAの新作・予約作品を毎日自動で集め、AIのひとことコメ�
 
 運営者はコードに詳しくない。説明は専門用語を避けた平易な日本語で、手順は1手ずつ示す。
 開発は「Claude に頼む → ブランチ+プルリクエスト → CI（check。ビルドと全ページの点検）で確認 → 運営者が Merge」の1本道（ターミナル操作は不要）。
-**Cloudflare のプレビューは作らない**（ビルドは月500回を「あそびトーク」と共有。2026-10-09 から）: ブランチのコミットメッセージには `[CI Skip]` を入れる。Merge するときは `commit_title`・`commit_message` を自分で書き、`[CI Skip]` を入れない（入れると本番がビルドされない）。PRのタイトルにも `[CI Skip]` を入れない（Merge のメッセージに入りこむため）。見た目の確認が要るときは、ローカルでビルドして確かめる。
+**公開は GitHub Actions が行う**（`deploy.yml`。ビルド → 全ページの点検 → Cloudflare Pages に直接アップロード＝Direct Upload。Cloudflare のビルド（月500回を「あそびトーク」と共有）を使わない。2026-10-09 から）: main に入ると本番に公開される（毎日の更新・取り直しは、データを保存したあとに `deploy.yml` を動かす）。点検に落ちたら公開しない（前の公開のまま）。コード・デザインを変えるPRは、CI が**プレビュー**（`<ブランチ名>.fanza-ranking.pages.dev`。URL は check の注釈と要約）を作る。データだけのPRには作らない。**運営者が Cloudflare の自動ビルド（ダッシュボードのブランチコントロール）を止めるまでは**、Cloudflare 側のプレビューが動かないよう、ブランチのコミットメッセージに `[CI Skip]` を入れる（PRのタイトルには入れない。Merge のメッセージは何でもよい）。
 
 ## 仕組み（データの流れ）
 
@@ -41,7 +41,7 @@ GitHub Actions（毎日 0:05 JST。日付が変わった直後）
       FANZA同人（service=doujin・floor=digital_doujin）1,000本・FANZAゲーム（PCゲーム・DL版。service=pcgame・floor=digital_pcgame）500本＋予約を、人気順の上から毎日集め直す。
       未成年を連想させる作品（タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前）は入れない（同人の約半分・ゲームの約7割が当たるので、上位2,000本・1,300本ほどまで見る）
       → site/src/data/doujin.json・game.json（1作品1行。順位は ranks に分ける。Geminiは使わない。Claude がコメントを書いた作品は、上位から外れても残す）
-  → main に commit → Cloudflare Pages が自動ビルド（Astro, 静的サイト）→ 公開
+  → main に commit → 公開のワークフロー（deploy.yml）を動かす → GitHub Actions でビルド（Astro, 静的サイト）・全ページの点検 → Cloudflare Pages に直接アップロード → 公開
 
 Claude の予約タスク（毎日 0:20 JST。手順は docs/claude-comments.md）
   → まず、今日の更新が済んでいるかを確かめる（scripts/already_updated.sh。GitHubの定時実行は数時間遅れることがある。
@@ -74,7 +74,8 @@ Claude の予約タスク（毎月1日 1:25 JST。手順は docs/claude-monthly.
 | `scripts/already_updated.sh` | 今日（日本時間）の「データ更新」が、もう記録に入っているかを調べる（済んでいれば 0）。毎日の更新の定時実行（遅れて来たときに二重に動かない）と、0:20 の予約タスク（更新が遅れていたら先に動かす）が使う |
 | `scripts/claude_roundups.py` | Claude が週のまとめ記事を書くための道具（`list` で週の作品データと**傾向の数字**（前の週との本数の比べ・ジャンルの本数・新着の人気順の最高順位。`week_trend`・`period_trend`。人気の動きは `rank_history.json`、過去作品も引く）を出し、`apply` で点検して `roundups.json` に書き込む。傾向の文 `trend` は必須で、確かめられない評価（`TREND_HYPE_WORDS`）・一覧にない数字は断る。書いたときの数字を `facts` に保存。傾向の無い前の記事には `add-trend`）。標準ライブラリだけ |
 | `scripts/claude_monthly.py` | Claude が**月のまとめ記事**を書くための道具（2026-10-07 から。`list`（前の月の作品データ・月の集計・傾向の数字）→ `apply`（点検して `monthly.json` に書き込む）。点検・傾向の数字は `claude_roundups.py` と共通。30本に満たない月は作らない）。標準ライブラリだけ。`tests/test_claude_monthly.py` |
-| `site/` | サイト本体（Astro 7 / 静的出力）。Cloudflare Pages のビルド対象 |
+| `site/` | サイト本体（Astro 7 / 静的出力）。GitHub Actions（`deploy.yml`）でビルドして、できあがった `site/dist` を Cloudflare Pages に直接アップロードする |
+| `.github/workflows/deploy.yml` / `scripts/deploy_pages.sh` | **公開**（2026-10-09。運営者の「Cloudflare のビルド回数が上限に近い」→ 調べて提案 →「Direct Upload」。Cloudflare のビルドを使わない）。`deploy.yml` は main に入ったとき・手動実行（main なら本番、ほかのブランチならプレビュー）・毎日の更新と取り直しが保存したあと（`gh workflow run deploy.yml`。ワークフローが保存したコミットでは、ほかのワークフローが自動では動かないため）に動き、ビルド → `tests/verify_dist.py` → `deploy_pages.sh production`。続けて Merge したら新しいほうだけ公開。`deploy_pages.sh` は wrangler（`npx wrangler@4 pages deploy`）で送り、本番は sitemap.xml が新しくなったかを確かめる（ならなくても注意だけ）。`preview <ブランチ名> HEAD^1` は CI から。データ（`site/src/data/`）だけのPRには作らない。鍵は Secrets の `CLOUDFLARE_API_TOKEN`（Cloudflare Pages の編集だけ・期限なし）・`CLOUDFLARE_ACCOUNT_ID`。プロジェクトは、Git 連携で作った今の `fanza-ranking` のまま（URL・Search Console はそのまま。Git 連携のプロジェクトでも wrangler で送れる。公式の説明）。`tests/test_deploy.py` |
 | `site/src/config.js` | **サイト名・URL・表示件数の設定はここだけ**（独自ドメイン化もここ）。月・ジャンルのページの最低本数と、ページを作るジャンルの一覧（`TAG_PAGE_GENRES`）もここ。サイト全体のファイル数の上限（`FILE_BUDGET`。Cloudflare Pages の無料プランは2万ファイルまで）と、出演者・メーカーのページ・一覧に並べる最大数（`ENTITY_LIST_LIMIT`・`INDEX_LIST_LIMIT`。女優検索の、JavaScriptが使えないとき用の一覧は `ACTRESS_FALLBACK_LIMIT`＝150人。ふだんは隠れるので少なめ）もここ。一覧のカードに出す出演者は3名まで（`CAST_LIMIT`。オムニバスなどは「ほか○名」。`items.js` の `castLine`。作品検索・お気に入りの画面も同じ3名） |
 | `site/src/lib/floors.js` / `site/src/pages/[floor]/` / `site/src/components/FloorCard.astro`・`FloorMiniShelf.astro`・`FloorTabs.astro` | **FANZA同人（`/doujin/`）・FANZAゲーム（`/game/`）のページ**（2026-10-09。部品は `tests/test_floors.mjs`）。売り場のトップ（人気ランキング12本・セール中12本・新作で人気（最近30日）・予約（ゲーム）・サークル/ブランド）、人気ランキング（`/…/ranking/`。TOP100）、セール（`/…/sale/`。同人は値引きの分かる作品を人気順に120本・最大○%OFF。ゲームは「値下げのセール」の札（`isSaleTag`）ごとに24本、クーポン・ポイント還元はほぼ全部に付くので名前と本数だけ）、作品ページ（`/…/item/<品番>/`。表紙・ひとこと・発売日・サークル/ブランド・作家・シリーズ・ジャンル・価格（○日の時点）・セールの札・サンプル画像・同じサークル/ブランドの作品・「○○で人気の同人作品」）、サークル/ブランドのページ（`/…/maker/<id>/`。2本以上）と一覧。データが無い売り場はページを作らない（`activeFloors`）。同人の表紙は横長（560×420）なので横長の枠（`is-wide`・`.floor-img`。小さい版が無いので `<picture>` は使わない）、ゲームは動画と同じ縦長の枠（スマホは表紙だけの軽い画像）。未成年を連想させる作品は、画面でも念のため外す（`normalizeFloor`）。見出し・「多いジャンル」に出すジャンルは、おだやかなものだけ（`FLOOR_GENRE_OK`＝`claude_comments.py` の `FLOOR_COMMENT_GENRES`）。コメントの無いページは noindex・sitemap なし（動画と同じ決まり）。入り口は、トップの「作品を探す」の下の2つのボタン・フッター・`/sale/`・このサイトについて。作品ページ・サークル/ブランドのページは、ファイル数の計画で動画の作品ページより先に枠を取る（`floorFileCount`）。`tests/verify_dist.py` が、ページの数・タイトルと見出しに未成年を連想させる言葉が無いこと・FANZAへのリンクの属性・sitemap を検査 |
 | `site/src/lib/plan.js` | **サイトのファイル数の計画**（画面に依存しない。`tests/test_plan.mjs`）。過去作品（カタログ）が増えても2万ファイルをこえないよう、作品ページは「①毎日の更新で載せた作品 ②コメントのある過去作品 ③そのほかの過去作品、同じ中では、過去作品は人気順の順位が上の作品から（`catalog_rank.json`。順位が分からなければ新しい順）」に、残りの枠の数だけ作る（`planPages`）。**作品ページの無い作品は、一覧からFANZAへ直接リンクする**（`itemHref`）。コメントの無い作品ページ・コメントのある作品が1本も無い一覧は noindex で sitemap にも入れない（`itemIndexable`・`listIndexable`。FANZAの情報を並べただけのページを検索エンジンに出さないため）。出演者・メーカーの発売日カレンダー（.ics）は、新作・予約が載っている人だけ（`hasCalendar`） |
@@ -119,7 +120,7 @@ Claude の予約タスク（毎月1日 1:25 JST。手順は docs/claude-monthly.
 | `site/src/data/monthly.json` | **Claude が毎月書き足す記事のデータ。手で編集しない**（`claude_monthly.py apply` だけが書く。新しい月が先頭。`{month, lead, trend, picks, written, facts}`。`facts` は週のまとめと同じ形） |
 | `tests/` | テスト一式。`fixtures/` は固定データ（本番データには依存しない） |
 | `scripts/check.sh` | テストをまとめて実行（`--build` でビルドと点検まで） |
-| `.github/workflows/` | `update.yml`（毎日の更新）、`ci.yml`（PRごとの自動確認）、`refresh-data.yml`（取り直しだけを手動で動かす。Geminiは使わない。女優のイベント情報も毎回集め直す。ブランチを選んで実行すると、本物のAPIでの確認に使える。「名簿の一覧を取る回数」を増やすと、女優検索の名簿を、「過去作品の一覧を取る回数」（上位1,000本より下を取る回数。最大500。1万本なら90回で一回り）を増やすと、過去作品を一気に集められる。「同人・ゲームだけ」を 1 にすると、ほかのデータには触らずに、同人・ゲームだけを集める（新しい機能のブランチで本物のデータを入れるとき））、`probe-api.yml`（APIの応答の形を調べる道具。`scripts/probe_api.py`。結果は個人情報を伏せて注釈に出す） |
+| `.github/workflows/` | `update.yml`（毎日の更新。保存したら `deploy.yml` で公開）、`ci.yml`（PRごとの自動確認。コード・デザインのPRはプレビューも）、`deploy.yml`（公開。上の行）、`refresh-data.yml`（取り直しだけを手動で動かす。保存したら `deploy.yml`（main なら本番、ブランチならプレビュー）。Geminiは使わない。女優のイベント情報も毎回集め直す。ブランチを選んで実行すると、本物のAPIでの確認に使える。「名簿の一覧を取る回数」を増やすと、女優検索の名簿を、「過去作品の一覧を取る回数」（上位1,000本より下を取る回数。最大500。1万本なら90回で一回り）を増やすと、過去作品を一気に集められる。「同人・ゲームだけ」を 1 にすると、ほかのデータには触らずに、同人・ゲームだけを集める（新しい機能のブランチで本物のデータを入れるとき））、`probe-api.yml`（APIの応答の形を調べる道具。`scripts/probe_api.py`。結果は個人情報を伏せて注釈に出す） |
 | `docs/claude-comments.md` | 毎日の予約タスク（Claude がコメントを書く）の手順書と書き方のルール |
 | `docs/claude-roundups.md` | 毎週月曜の予約タスク（Claude が週のまとめ記事を書く）の手順書と書き方のルール |
 | `docs/claude-monthly.md` | 毎月1日の予約タスク（Claude が月のまとめ記事を書く）の手順書と書き方のルール |
@@ -136,13 +137,14 @@ cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
 - `get_new_releases.py` を本物のAPIで動かすのは、運営者に頼まれたときだけ（`API_ID`/`GEMINI_API_KEY` が要る。`DATA_PATH` で書き込み先を変えられる）。
   - **Geminiを使わずに、取り直しだけ**したいときは `python get_new_releases.py --refresh-only`（Actions では「Refresh FANZA Data」）。新しい作品の追加もAIコメントもしないので、Geminiの無料枠を使わない。`ACTRESSES_PATH` / `RANKING_PATH` で出演者データ・ランキングの書き込み先も変えられる。
 - 本番サイトを WebFetch で確認するときは、URLの末尾に `?cb=日時` を付ける（付けないと、前に取得した古い内容が返ってきて、更新されていないように見えることがある。2026-10-03 の仮運転で確認）。
-- Claude のクラウド環境では npm が使えない/ビルドが動かないことがある。その場合は `bash scripts/check.sh`（ビルドなし）で確認し、**PRのCIが最初のビルド**になる（プレビューは作らない）。見ていないものを「確認した」と書かない。
+- Claude のクラウド環境では npm が使えない/ビルドが動かないことがある。その場合は `bash scripts/check.sh`（ビルドなし）で確認し、**PRのCIが最初のビルド**になる。コード・デザインのPRなら、CI がプレビュー（`<ブランチ名>.fanza-ranking.pages.dev`）も作るので、運営者にスマホで見てもらえる（URL は check の注釈。クラウド環境からは pages.dev が見えない）。見ていないものを「確認した」と書かない。
+- 本番に公開されたかは、`deploy.yml` の実行で見る: `gh api "repos/juice0402/fanza-ranking/actions/workflows/deploy.yml/runs?branch=main&per_page=3" --jq '.workflow_runs[] | .status + " " + (.conclusion // "") + " " + .head_sha[0:7]'`（ビルドと点検とアップロードで10〜15分。`cancelled` は、あとの Merge の公開に含まれたということ）
 
 ## 守ること
 
 1. **main へ直接 push しない。** ブランチ（`claude/...`）→ PR。PRの作成は `gh api repos/juice0402/fanza-ranking/pulls`（REST）を使う（Claude Code環境では GraphQL が使えず `gh pr create` は失敗する）。毎日更新の GitHub Actions（`update.yml`）だけは、データファイルだけを main に直接 commit する。
    - 例外の許可: 予約タスクの**コメント更新PR（`new_releases.json` と、過去作品の `site/src/data/catalog/` の中のファイルと、同人・ゲームの `doujin.json`・`game.json` だけを変えるもの）は、CIが緑なら Claude 自身が Merge してよい**（運営者の許可済み。過去作品のコメントは、2026-10-04 夜に、運営者の「5万件くらい網羅したい」に合わせて加え、報告した。同人・ゲームのコメントは、2026-10-09 に、運営者の「動画35・同人4・ゲーム1の割合で執筆を」に合わせて加えた）。同じく、**週のまとめ記事のPR（`roundups.json` だけを変えるもの）も、CIが緑なら Claude 自身が Merge してよい**（運営者の「そっち側でできることは極力やっていい」という包括的な許可にもとづき、2026-10-03 に追加して運営者へ報告した。やめてほしいと言われたら、この文を消す）。**月のまとめ記事のPR（`monthly.json` だけを変えるもの）も同じ**（運営者の希望「月のまとめ記事＋予約タスク」にもとづき、2026-10-07 に追加して運営者へ報告した）。コード・デザインを変えるPRは、運営者に知らせてからMergeする。
-2. **秘密情報をコードやログに書かない。** 使うのは GitHub Secrets の `API_ID` / `AFFILIATE_ID` / `GEMINI_API_KEY` のみ。リポジトリは公開なので、一度でも書くと履歴に残る。Geminiのキーは URL ではなくヘッダ（`x-goog-api-key`）で渡す。
+2. **秘密情報をコードやログに書かない。** 使うのは GitHub Secrets の `API_ID` / `AFFILIATE_ID` / `GEMINI_API_KEY` と、公開用の `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`（`deploy.yml` と CI のプレビューだけに渡す）のみ。リポジトリは公開なので、一度でも書くと履歴に残る。Geminiのキーは URL ではなくヘッダ（`x-goog-api-key`）で渡す。
 3. **規約の表記を消さない。** 全ページに「広告（アフィリエイト）表記」「18歳確認」「RTAラベル」「Powered by FANZA Webサービス」。AIコメントの注記も残す。`tests/verify_dist.py` が全ページを検査する。
    - **FANZA のクレジットは、DMMの規定のHTMLを1文字も変えない**（DMMアフィリエイト公式の「クレジット表示」の FANZA クレジット・テキスト形式 `Powered by <a href="https://affiliate.dmm.com/api/">FANZA Webサービス</a>`。改変すると API の利用を止められることがある。運営者が公式のページで確かめた。2026-10-07）。`items.js` の `DMM_CREDIT_HTML` を、フッターの `<p class="foot-credit">` に `set:html` でそのまま入れる。class・target・rel を足さない。文節の区切りも入れない（`lib/phrase.js` が `foot-credit` の中を飛ばす）。見た目は CSS の `.foot-credit a` で整える。`tests/verify_dist.py` が全ページで1文字ずつ突き合わせる
    - 「広告」のラベルは、**最初に見える画面（ヘッダーの `pr-chip`）に残す**。くわしい文はフッター。フッターだけにしない（ASPの案内で「ファーストビューに表示」「下部やフッターだけは不適切」とされているため。ステマ規制への対応）。

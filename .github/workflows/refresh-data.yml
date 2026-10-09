@@ -36,6 +36,7 @@ on:
 
 permissions:
   contents: write
+  actions: write  # 保存したあと、公開（deploy.yml）を動かすため
 
 # 毎日の更新と重ならないように、順番に1つずつ動かす
 concurrency:
@@ -96,6 +97,8 @@ jobs:
         run: python scripts/doujin_game.py --update
 
       - name: Commit and push if changed
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -108,3 +111,13 @@ jobs:
           git commit -m "データの取り直し: $(TZ=Asia/Tokyo date +%Y-%m-%d)"
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
+          # 公開を頼む（deploy.yml。main なら本番、ほかのブランチならプレビュー）。ワークフローが保存したコミットでは、
+          # ほかのワークフローが自動では動かないため（GitHub の決まり）。deploy.yml が無い古いブランチでは頼めないので、注意だけ出す
+          if gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}"; then
+            echo "### 🚀 公開を頼みました（Deploy）" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "::error title=公開を頼めませんでした::Actions の画面から Deploy を手動で動かしてください"
+            exit 1
+          else
+            echo "::warning title=公開を頼めませんでした::このブランチには deploy.yml が無いようです"
+          fi

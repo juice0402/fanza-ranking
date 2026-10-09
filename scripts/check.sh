@@ -26,6 +26,9 @@ python3 tests/test_claude_monthly.py || failed=1
 step "FANZA同人・FANZAゲームを集める道具 (Python)"
 python3 tests/test_doujin_game.py || failed=1
 
+step "公開のしくみ（Cloudflare Pages への直接アップロード）"
+python3 tests/test_deploy.py || failed=1
+
 step "保存データの形式"
 python3 tests/test_data.py || failed=1
 

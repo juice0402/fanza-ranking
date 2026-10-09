@@ -19,7 +19,7 @@
 
 ```
  0:05  GitHub Actions（get_new_releases.py）… 新作を取得 → Gemini が下書き（書けなかった作品は定型文）→ 公開
- 0:20  Claude の予約タスク … （0:05 の更新が遅れていたら、先に更新を動かして待つ）→ 下書き・定型文を、Claude が書き上げる → PR → CIが緑ならMerge → 公開（下書きが出ているのは十数分だけ）
+ 0:20  Claude の予約タスク … （0:05 の更新が遅れていたら、先に更新を動かして待つ）→ 下書き・定型文を、Claude が書き上げる → PR → CIが緑ならMerge → 公開（GitHub Actions の Deploy。10〜15分。下書きが出ているのは30分ほど）
 ```
 
 Claude が書き上げたコメントは `comment_kind: "claude"` にします（画面ではGeminiの下書きと同じ見た目。フッターの「ひとことコメントは…自動で作成」の注記の対象）。書き込んだ作品の `updated`（更新日。sitemap の `lastmod` に使う）は、`apply` が今日の日付に自動で更新します。
@@ -47,12 +47,15 @@ Claude が書き上げたコメントは `comment_kind: "claude"` にします�
 5. `bash scripts/check.sh` を実行して全部成功することを確認する
 6. `git status` で、変わったのが **`site/src/data/new_releases.json`・`site/src/data/catalog/` の中のファイル・`site/src/data/doujin.json`・`site/src/data/game.json` だけ**であることを確認する。他のファイルが変わっていたらコミットしない
 7. コミット → ブランチをpush → PRを作る（`gh api repos/juice0402/fanza-ranking/pulls`。CLAUDE.md の守ること1・2）
-   - コミットメッセージ: `コメントの仕上げ（Claude）: N件 [CI Skip]`（プレビューは作らない: ブランチのコミットメッセージの最後に必ず `[CI Skip]` を付ける。Cloudflare のビルドの回数を節約するため。PRの「Cloudflare Pages」のチェックは出ないので待たない）
+   - コミットメッセージ: `コメントの仕上げ（Claude）: N件 [CI Skip]`（ブランチのコミットメッセージの最後に `[CI Skip]` を付ける。運営者が Cloudflare の自動ビルドを止めるまで、Cloudflare 側のプレビューを動かさないための保険。データだけのPRなので、CI もプレビューを作らない。待つのは CI（check）だけ）
    - PRのタイトル: `コメントの仕上げ（Claude）: N件`（`[CI Skip]` を入れない）
 8. CIが終わるまで待つ（`gh api repos/juice0402/fanza-ranking/commits/<ブランチの先頭>/check-runs` で `conclusion` を見る。数分）
-   - **緑ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: コメントの仕上げ（Claude）: N件" -f commit_message=""`。**Merge のメッセージに `[CI Skip]` を入れない**。入れると本番がビルドされない）
+   - **緑ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: コメントの仕上げ（Claude）: N件" -f commit_message=""`。Merge すると、公開（`deploy.yml`）が自動で動く）
    - 赤・時間切れ・衝突（Mergeできない）のときは**Mergeしない**。PRを開いたまま、理由を報告して終了する。衝突のときは、ブランチを捨てて手順1からやり直してよい（1回だけ）
-9. 最後に報告する: 何件書いたか（下書きの仕上げ・定型文・予約の言い方の書き直し・過去作品・同人・ゲーム、それぞれ）／PR番号／CIの結果／Mergeしたか／残りの件数（毎日の更新の作品・過去作品・同人・ゲーム）
+9. Merge したら、公開（Deploy）が終わるのを待つ（ビルド・点検・アップロードで10〜15分）: `gh api "repos/juice0402/fanza-ranking/actions/workflows/deploy.yml/runs?branch=main&per_page=3" --jq '.workflow_runs[] | .status + " " + (.conclusion // "") + " " + .head_sha[0:7]'`
+   - Merge のコミットの実行が `completed success` なら公開済み。`cancelled` は、あとの公開（いちばん新しい実行）に含まれたということなので、そちらを見る
+   - `failure` なら、理由を注釈で見て報告する（`gh api repos/juice0402/fanza-ranking/check-runs/<id>/annotations`。サイトは前の公開のまま）。30分たっても終わらなければ「公開を確認できず」と報告する
+10. 最後に報告する: 何件書いたか（下書きの仕上げ・定型文・予約の言い方の書き直し・過去作品・同人・ゲーム、それぞれ）／PR番号／CIの結果／Mergeしたか／公開（Deploy）の結果／残りの件数（毎日の更新の作品・過去作品・同人・ゲーム）
 
 Mergeしてよいのは、**このコメント更新のPR（データファイルだけを変えるもの）で、CIが緑のとき**だけです（運営者の許可済み）。
 
