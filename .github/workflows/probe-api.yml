@@ -4,6 +4,11 @@ name: Probe FANZA API
 # 新しい機能を作る前の下調べに使う。結果は実行ページの「結果の要約」に出る。
 on:
   workflow_dispatch:
+    inputs:
+      only:
+        description: '調べる項目の番号（空なら全部。13＝10円セールの安い順・14＝ブックスの価格の形・15＝日中のセールの読み直し（保存しない））'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -21,4 +26,5 @@ jobs:
         env:
           API_ID: ${{ secrets.API_ID }}
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+          PROBE_ONLY: ${{ inputs.only }}
         run: python scripts/probe_api.py

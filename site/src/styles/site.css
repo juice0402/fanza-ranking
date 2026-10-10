@@ -5948,26 +5948,6 @@ a.tf-name {
   grid-template-columns: 88px minmax(0, 1fr);
 }
 
-/* トップの「作品を探す」の、同人・ゲームの2つ（横に2つ並べる） */
-.hero-jump.floor-jump {
-  margin-top: 8px;
-}
-
-.hero-jump.floor-jump .chip-link {
-  flex: 1 1 calc((100% - 8px) / 2);
-}
-
-/* 売り場が3つ以上（2026-10-10 から8つ）: 短い名前で、4つずつ同じ幅に */
-.hero-jump.floor-jump.is-many {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.hero-jump.floor-jump.is-many .chip-link {
-  padding: 0 4px;
-  font-size: 12px;
-}
-
 .entity-genres {
   margin-top: 12px;
 }

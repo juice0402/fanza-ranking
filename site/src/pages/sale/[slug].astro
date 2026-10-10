@@ -29,7 +29,7 @@ const md = (d) => {
 const left = g ? daysBetween(g.end.slice(0, 10), today) : null;
 const others = saleCampaignPages.filter((p) => p.active && p.slug !== page.slug);
 const lastRun = page.runs[0];
-// 10円セールの特集は、10円セールのページ（/sale/10yen/。動画・同人・ゲームの全部の10円の作品）を検索エンジンに出す（同じ検索で2つ並ばないように）
+// 10円セールの特集は、10円セールのページ（/sale/10yen/。全部の売り場の10円の作品）を検索エンジンに出す（同じ検索で2つ並ばないように）
 const tenYenCamp = isTenYenCampaign(page.title);
 const noindex = tenYenCamp || !g || g.items.length === 0 || !listIndexable(g.items);
 // 名前に同じ割引が入っているとき（「妄想族30％OFF」）は、タイトルに「最大30%OFF」を重ねない
@@ -71,7 +71,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
       <p class="hero-lead">
         {sale.date && `${formatDateJp(sale.date)}の時点の情報です。`}くわしくはFANZAの作品ページで確かめてください。
       </p>
-      {tenYenCamp && <p class="hero-links"><a class="spec-link" href={TEN_YEN_PATH}>10円セールの作品は、まとめのページへ（動画・同人・ゲーム）</a></p>}
+      {tenYenCamp && <p class="hero-links"><a class="spec-link" href={TEN_YEN_PATH}>10円セールの作品は、まとめのページへ（動画・同人・ゲームなど）</a></p>}
     </section>
 
     {g && (

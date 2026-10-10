@@ -1,5 +1,5 @@
 ---
-// 10円セールのページ（/sale/10yen/ ＝動画・同人・ゲームのまとめ、/doujin/sale/10yen/・/game/sale/10yen/ ＝売り場ごと）。
+// 10円セールのページ（/sale/10yen/ ＝全部の売り場のまとめ、/doujin/sale/10yen/・/game/sale/10yen/ など＝売り場ごと）。
 // 運営者の希望「10円セールは大イベント。開催中はものすごく訴求したいし、SEOもかなり上位に来るように」（2026-10-09）。
 // いつも同じURLにあり（開催していないあいだも消さない。検索エンジンに覚えてもらうため）、開催中は、いま10円の作品をすべて並べる。
 // 開催していないあいだは、「いまは開催していません」・このサイトが見かけた前回・いま割引の大きい作品・ほかのセールへの道。
@@ -16,6 +16,7 @@ import { isMinorTitle } from '../lib/gacha.js';
 import { inlineScript } from '../lib/assets.js';
 import {
   TEN_YEN_DEALS,
+  TEN_YEN_DEAL_KEYS,
   TEN_YEN_KEYS,
   TEN_YEN_NAMES,
   TEN_YEN_PATH,
@@ -37,7 +38,7 @@ import {
   untilText,
 } from '../lib/ten-yen.js';
 
-// key: 'video' ＝まとめのページ（動画・同人・ゲームの全部）、'doujin'・'game' ＝その売り場のページ
+// key: 'video' ＝まとめのページ（全部の売り場）、'doujin'・'game' など＝その売り場のページ
 const { key = 'video' } = Astro.props;
 const hub = key === 'video';
 const keys = hub ? TEN_YEN_KEYS : [key];
@@ -53,12 +54,12 @@ const runs = tenYen.runs.filter((r) => keys.includes(r.floor));
 const prev = hub ? latestRun(tenYen) : latestRun(tenYen, key);
 // まとめのページから、同人・ゲームのページへ（その売り場のページがあるときだけ）／売り場のページから、まとめのページ・ほかの売り場へ
 const otherPages = [
-  ...(hub ? [] : [{ path: TEN_YEN_PATH, label: 'FANZAの10円セール（動画・同人・ゲーム）' }]),
+  ...(hub ? [] : [{ path: TEN_YEN_PATH, label: 'FANZAの10円セール（動画・同人・ゲームなど）' }]),
   ...tenYenFloors.filter((k) => k !== key).map((k) => ({ path: tenYenPath(k), label: `${TEN_YEN_NAMES[k]}の10円セール` })),
 ];
 
 // 開催していないあいだの「いま割引の大きい作品」（売り場ごとに6本。割引の大きい順・同じなら人気の高い順。こちらから案内する欄なので、未成年を連想させるタイトルは出さない）
-const deals = live ? [] : keys.map((k) => {
+const deals = live ? [] : keys.filter((k) => !hub || TEN_YEN_DEAL_KEYS.includes(k)).map((k) => {
   if (k === 'video') {
     const list = onSaleItems(all, sale, today)
       .filter((i) => i.sale.price && !isMinorTitle(i.title))

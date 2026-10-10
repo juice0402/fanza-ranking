@@ -2903,7 +2903,8 @@ _ty = json.load(open(_ty_path, encoding="utf-8")) if os.path.isfile(_ty_path) el
 _ty_checked = str(_ty.get("checked") or "")
 _ty_floor_texts = lambda x: [x.get("title") or "", *(x.get("genres") or []), *(x.get("formats") or []), *(x.get("sales") or []), *(x.get("authors") or []), x.get("maker") or "", x.get("series") or ""]  # noqa: E731
 _ty_want = {}
-for _k in ("video", "doujin", "game"):
+import ten_yen as _TY  # noqa: E402
+for _k in _TY.FLOOR_KEYS:
     _ty_want[_k] = [x["cid"] for x in (_ty.get(_k) or []) if isinstance(x, dict) and x.get("price") == 10
                     and not (re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$", str(x.get("sale_end") or "")) and _ty_checked and x["sale_end"] < _ty_checked)
                     and str(x.get("date") or "")[:10] <= JST_TODAY and str(x.get("url") or "").startswith("https://")
@@ -2936,20 +2937,21 @@ if _ty_total:
 else:
     check("開催していないあいだ: 帯も大きな案内も出さない・10円セールのページは「いまは開催していません」・タイトルは「はいつ？」",
           not _bar_pages and not _hero_pages and "いまは開催していません" in _ty_html and "10円セールはいつ？" in _ty_raw.split("</title>")[0], (_bar_pages[:2], _hero_pages[:2]))
-# 同人・ゲームの10円セールのページ: 売り場のページがある売り場だけ・開催中か開催を見かけたことがあるときだけ検索エンジンに出す
+# 売り場ごとの10円セールのページ: 売り場のページがある売り場だけ（同人・ゲームはいつも、ほかの売り場は10円の作品を見かけたことがあるときだけ）・
+# 開催中か開催を見かけたことがあるときだけ検索エンジンに出す
 _ty_runs = {r_.get("floor") for r_ in (_ty.get("runs") or []) if isinstance(r_, dict)}
 _ty_floor_bad = []
-for _k in ("doujin", "game"):
+for _k in _TY.FLOOR_KEYS[1:]:
     _f = page_file(f"/{_k}/sale/10yen/")
     _exists = os.path.isfile(_f)
-    if _exists != os.path.isfile(page_file(f"/{_k}/")):
+    _idx = bool(_ty_want[_k]) or _k in _ty_runs
+    if _exists != (os.path.isfile(page_file(f"/{_k}/")) and (_k in ("doujin", "game") or _idx)):
         _ty_floor_bad.append((_k, "ページの有無"))
         continue
     if _exists:
-        _idx = bool(_ty_want[_k]) or _k in _ty_runs
         if ('name="robots" content="noindex' in read_raw(_f)) == _idx or (f"/{_k}/sale/10yen/" in sm_paths) != _idx:
             _ty_floor_bad.append((_k, "noindex・sitemap"))
-check("同人・ゲームの10円セールのページ: 売り場のページがある売り場だけ・開催中か開催を見かけたことがあるときだけ検索エンジンに出す（sitemap も同じ）", not _ty_floor_bad, _ty_floor_bad)
+check("売り場ごとの10円セールのページ: 売り場のページがある売り場だけ（同人・ゲームのほかは見かけたことがあるときだけ）・開催中か開催を見かけたことがあるときだけ検索エンジンに出す（sitemap も同じ）", not _ty_floor_bad, _ty_floor_bad)
 # 10円セールの特集（キャンペーンの名前に「10円」）の特集ごとのページは、検索エンジンに出さない（同じ検索で2つ並ばないように）
 _ten_camp_bad = [p_ for p_ in glob.glob(os.path.join(DIST, "sale", "*", "index.html")) if os.path.basename(os.path.dirname(p_)) != "10yen" and re.search(r"<h1[^>]*>[^<]*(?<![0-9,])10円", read(p_))
                  and ('name="robots" content="noindex' not in read_raw(p_) or 'href="/sale/10yen/"' not in read_raw(p_).split("<footer")[0])]

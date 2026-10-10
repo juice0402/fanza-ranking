@@ -1,8 +1,9 @@
 ---
 // 10円セールの大きな案内（トップ・同人/ゲームの売り場のトップ・セールのページのいちばん上。開催中だけ。2026-10-09）。
 // 10円玉の印・「10円セール開催中」・本数と終わり・10円の作品の表紙（人気の高い順に、売り場から1本ずつ順番に6枚）・10円の作品をすべて見るボタン。
-// 表紙は四角く切り出す（動画は表紙だけの画像、同人は横長の表紙、ゲームは表紙だけの画像）。タップで、その作品のページ（無ければFANZAの作品ページ）。
+// 表紙は四角く切り出す（動画は表紙だけの画像、同人は横長の表紙、ゲームは表紙だけの画像、ほかの売り場は売り場の一覧と同じ表紙）。タップで、その作品のページ（無ければFANZAの作品ページ）。
 // 全部の作品の終わりが分かるときは、終わったらブラウザで隠す（data-sale-end。ページの先頭の public/sale.js）
+import FloorImg from './FloorImg.astro';
 import Thumb from './Thumb.astro';
 import { SMALL_IMG_ONERROR, THUMB_MEDIA, smallImage } from '../lib/items.js';
 import { DOUJIN_THUMB_ONERROR, doujinThumb } from '../lib/floors.js';
@@ -42,7 +43,9 @@ const end = hideAt(s);
                     ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(item.image_url, 'tiny').small} /><img class="floor-img" src={item.image_url} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
                     : item.floor === 'game'
                       ? <img class="floor-img is-small" src={smallImage(item.image_url)} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={SMALL_IMG_ONERROR} />
-                      : <Thumb src={item.image_url} kind="tiny" class="item-img is-small" />}
+                      : item.floor
+                        ? <FloorImg floor={item.floor} url={item.image_url} kind="tiny" />
+                        : <Thumb src={item.image_url} kind="tiny" class="item-img is-small" />}
                 </span>
                 <span class="ten-tag" aria-hidden="true">10円</span>
                 <span class="visually-hidden">10円：{item.title}</span>

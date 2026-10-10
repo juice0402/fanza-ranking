@@ -80,6 +80,17 @@ check('10円セールの特集の見分け（全角の「１０円」も。「11
   names.map(isTenYenCampaign).join() === 'true,true,true,false,false,false,false'
   && JSON.parse(execFileSync('python3', ['-c', `import sys,json; sys.path.insert(0,"scripts"); import ten_yen as T; print(json.dumps([T.has_ten_yen(n) for n in json.loads(sys.argv[1])]))`, JSON.stringify(names)], { encoding: 'utf-8' })).join() === names.map(isTenYenCampaign).join());
 
+console.log('\n■ ほかの売り場（アニメ・素人・成人映画・コミック・写真集。2026-10-10）');
+check('どの売り場にも、正式な名前と短い名前', T.TEN_YEN_KEYS.every((k) => T.TEN_YEN_NAMES[k] && T.TEN_YEN_SHORT[k]) && !T.TEN_YEN_KEYS.includes('vr'));
+const amateurRow = (n, extra = {}) => ({ ...floor(n, 'amateur', { list_price: null, ...extra }), cid: `am${n}`, image_url: `https://pics.dmm.co.jp/digital/amateur/am${n}/am${n}jp.jpg` });
+const ty2 = T.normalizeTenYen({ checked: '2026-10-10 12:12', amateur: [amateurRow(2), amateurRow(1), amateurRow(3, { title: '制服のなにか' })], runs: [{ floor: 'amateur', first: '2026-10-10', last: '2026-10-10', count: 2, end: '', titles: [] }] },
+  { today: '2026-10-10', floorByCid: { amateur: new Map([['am1', { cid: 'am1', floor: 'amateur', title: '作った作品1', comment: 'ひとこと' }]]) } });
+check('素人の10円の作品も読む（人気順・作品ページの有無・未成年を連想させる作品は入れない）',
+  ty2.items.amateur.map((i) => i.cid).join() === 'am1,am2' && ty2.items.amateur[0].hasPage === true && ty2.items.amateur[1].hasPage === false, ty2.items.amateur.map((i) => i.cid).join());
+const st2 = T.tenYenState(ty2);
+check('まとめのページの本数・売り場のページ（見かけたことがあれば検索エンジンに出す）', st2.total === 2 && st2.live.join() === 'amateur' && T.tenYenDescription(ty2).includes('素人2本')
+  && T.tenYenIndexable(ty2, 'amateur') && !T.tenYenIndexable(ty2, 'anime') && T.tenYenPath('amateur') === '/amateur/sale/10yen/', T.tenYenDescription(ty2));
+
 console.log('\n■ 集める道具（scripts/ten_yen.py）との突き合わせ');
 const py = JSON.parse(execFileSync('python3', ['-c', 'import sys,json; sys.path.insert(0,"scripts"); import ten_yen as T; print(json.dumps({"price": T.PRICE, "keys": list(T.FLOOR_KEYS)}))'], { encoding: 'utf-8' }));
 check('10円・売り場の並びが同じ', py.price === T.TEN_YEN_PRICE && py.keys.join() === T.TEN_YEN_KEYS.join());

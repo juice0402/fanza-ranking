@@ -73,9 +73,170 @@ def mask_url(url):
     return text
 
 
+
+def probe_ten_yen():
+    """13) 10円セール: 安い順（sort=-price）の中で、10円の作品がどこから始まり、何本あるか
+    （運営者の「同人の10円セールは71本あるのに、サイトは18本。期間中は全部載せたい」。2026-10-10。
+    人気順の上から3,000本しか見ていないので、安い順の中の10円の場所を、二分探索で探せるかを確かめる）"""
+    import time
+    from collections import Counter
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import ten_yen as T
+    import doujin_game as D
+    try:
+        have = json.load(open(T.PATH, encoding="utf-8"))
+    except (OSError, ValueError):
+        have = {}
+    import floor_data as F
+    targets = [("video", "動画", "digital", "videoa")] + [(k, c["label"], c["service"], c["floor"]) for k, c in F.FLOORS.items() if k != "vr"]
+    for key, label, svc, flr in targets:
+        say(f"## 13-{key}) 10円セール: {label}の安い順")
+        base = {"site": "FANZA", "service": svc, "floor": flr, "sort": "-price"}
+        calls = [0]
+
+        def page(off, hits):
+            calls[0] += 1
+            time.sleep(0.4)
+            res, err = call("ItemList", dict(base, offset=off, hits=hits))
+            if err:
+                raise RuntimeError(err)
+            return res
+
+        try:
+            first = page(1, 1)
+        except RuntimeError as e:
+            say(f"- ❌ {e}")
+            continue
+        total = int(first.get("total_count") or 0)
+        top = min(total, 50000)
+        price = lambda raw: T.price_pair(raw)[0]  # noqa: E731
+        p1 = price((first.get("items") or [{}])[0])
+        say(f"- 全体 {total}本・先頭の価格 {p1}")
+        lo, hi, unknown = 1, top + 1, 0  # 価格が10円以上の、いちばん前の位置を探す
+        try:
+            while lo < hi:
+                mid = (lo + hi) // 2
+                got = page(mid, 1).get("items") or []
+                pr = price(got[0]) if got else None
+                if pr is None:
+                    unknown += 1
+                if pr is None or pr >= T.PRICE:
+                    hi = mid
+                else:
+                    lo = mid + 1
+        except RuntimeError as e:
+            say(f"- ❌ 二分探索の途中: {e}")
+            continue
+        say(f"- 10円以上が始まる位置 {lo}（呼んだ回数 {calls[0]}・価格が読めない {unknown}）")
+        start = max(1, lo - 5)
+        tens, prices, drops, last = [], [], 0, None
+        off = start
+        try:
+            for _ in range(30):
+                got = page(off, 100).get("items") or []
+                stop = False
+                for raw in got:
+                    pr = price(raw)
+                    prices.append(pr)
+                    if pr is not None and last is not None and pr < last:
+                        drops += 1
+                    if pr is not None:
+                        last = pr
+                    if pr == T.PRICE:
+                        tens.append(raw)
+                    elif pr is not None and pr > T.PRICE:
+                        stop = True
+                if stop or len(got) < 100:
+                    break
+                off += 100
+        except RuntimeError as e:
+            say(f"- ❌ 読み進める途中: {e}")
+        say(f"- はじめの価格 {prices[:8]}・終わりの価格 {prices[-3:]}・前より安くなった所 {drops}・読んだ位置 {start}〜{off + 99}")
+        blocked = Counter()
+        rows, list_prices, names = [], Counter(), Counter()
+        for raw in tens:
+            reason = D.blocked_reason(raw)
+            if reason:
+                blocked[reason] += 1
+            _, lp = T.price_pair(raw)
+            list_prices["定価なし" if lp is None else ("300円以上" if lp >= 300 else "300円未満")] += 1
+            for c in T.campaigns(raw):
+                names[c[0]] += 1
+            row = T.video_row(raw) if key == "video" else T.floor_row(raw, key)
+            if row:
+                rows.append(row)
+        cur = {r.get("cid") for r in have.get(key) or []}
+        got_c = {r["cid"] for r in rows}
+        say(f"- 価格がちょうど10円 {len(tens)}本 / うち未成年を連想させる {sum(blocked.values())}本（{dict(blocked)}） / 定価 {dict(list_prices)}")
+        say(f"- 10円セールの対象として載せられる {len(rows)}本 / いまのデータ {len(cur)}本 / いまのデータにもある {len(cur & got_c)}本 / いまのデータにだけある {len(cur - got_c)}本")
+        say(f"- キャンペーンの名前: {dict(names.most_common(6))}")
+        say(f"- 発売日が未来（予約） {sum(1 for r in rows if str(r.get('date'))[:10] > datetime.now(JST).strftime('%Y-%m-%d'))}本")
+
+
+
+def probe_book_prices():
+    """14) FANZAコミック・写真集の価格の形（安い順が価格の順に並ばないので、prices の中身の形を見る）。2026-10-10"""
+    import time
+    for label, svc, flr in (("コミック", "ebook", "comic"), ("写真集", "ebook", "photo")):
+        for sort in ("-price", "price"):
+            say(f"## 14-{flr}-{sort}) {label}の価格の形（sort={sort}）")
+            time.sleep(0.4)
+            res, err = call("ItemList", {"site": "FANZA", "service": svc, "floor": flr, "sort": sort, "hits": 12, "offset": 1})
+            if err:
+                say(f"- ❌ {err}")
+                continue
+            for x in res.get("items") or []:
+                pr = x.get("prices") or {}
+                dl = pr.get("deliveries") or {}
+                dls = dl.get("delivery") if isinstance(dl, dict) else dl
+                dls = dls if isinstance(dls, list) else ([dls] if dls else [])
+                say(f"- price={pr.get('price')} list={pr.get('list_price')} keys={sorted(pr.keys())} deliveries=" + ",".join(f"{d.get('type')}:{d.get('price')}/{d.get('list_price')}" for d in dls if isinstance(d, dict))
+                    + f" volume={str(x.get('volume') or '')[:10]} camp={len(x.get('campaign') or [])}")
+
+
+
+def probe_sales_refresh():
+    """15) 日中のセールの読み直し（get_new_releases.py --sales-only）を、保存せずに試す（2026-10-10）。
+    いまの sale.json（0:05 ごろ）と比べて、10時に始まったセールが入るか・終わったセールが外れるかを見る"""
+    import shutil
+    import tempfile
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import get_new_releases as G
+    now = datetime.now(JST).replace(second=0, microsecond=0)
+    say(f"## 15) 日中のセールの読み直し（{now.strftime('%H:%M')}の時点・保存しない）")
+    with tempfile.TemporaryDirectory() as tmp:
+        sp, hp = os.path.join(tmp, "sale.json"), os.path.join(tmp, "sale_history.json")
+        shutil.copy(G.SALE_PATH, sp)
+        shutil.copy(G.SALE_HISTORY_PATH, hp)
+        before = G.load_sale_file(sp)
+        saved, lines = G.refresh_sales(now, sale_path=sp, history_path=hp)
+        after = G.load_sale_file(sp)
+    count = lambda d: {t: sum(1 for v in d.values() if v[0]["title"] == t) for t in sorted({v[0]["title"] for v in d.values()})}  # noqa: E731
+    b, a = count(before), count(after)
+    for line in lines:
+        say(line)
+    say(f"- 0:05 ごろのデータ: {len(before)}本・{b}")
+    say(f"- 読み直したあと: {len(after)}本・{a}")
+    say(f"- 新しく入った特集: {[t for t in a if t not in b]} / 外れた特集: {[t for t in b if t not in a]}")
+    ends = sorted({v[0]["begin"] + '〜' + v[0]["end"] + ' ' + v[0]["title"] for v in after.values()})
+    say("- 期間: " + " / ".join(ends[:12]))
+
+
 def main():
     if not API_ID:
         sys.exit("❌ API_ID が設定されていません")
+    if os.environ.get("PROBE_ONLY") == "13":
+        probe_ten_yen()
+        finish()
+        return
+    if os.environ.get("PROBE_ONLY") == "15":
+        probe_sales_refresh()
+        finish()
+        return
+    if os.environ.get("PROBE_ONLY") == "14":
+        probe_book_prices()
+        finish()
+        return
     today = datetime.now(JST).replace(hour=0, minute=0, second=0, microsecond=0)
     fmt = "%Y-%m-%dT%H:%M:%S"
     try:
@@ -429,6 +590,11 @@ def main():
         except Exception as e:  # noqa: BLE001
             say(f"- 取得できませんでした: {type(e).__name__}: {str(e)[:150]}")
 
+    finish()
+
+
+def finish():
+    """結果を注釈と要約に出す"""
     # ログの取得が制限される環境でも読めるように、見出しごとに「注釈（notice）」としても出す（GitHub の check-run の注釈として読める）
     if os.environ.get("GITHUB_ACTIONS"):
         sections = []
