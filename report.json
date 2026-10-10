@@ -1,0 +1,50 @@
+[
+ {
+  "path": "/sale/56d5e7edbc/",
+  "width": 390,
+  "issues": [
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 433,
+    "text": "RION、明日花キララ、早乙女美々 ほか1名"
+   }
+  ]
+ },
+ {
+  "path": "/",
+  "width": 390,
+  "issues": [
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 418,
+    "text": "きのう22位から19つ上がった"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 451,
+    "text": "西元めいさ、望月りんね、皆月ひかる ほか1名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 405,
+    "text": "皆月ひかる"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 417,
+    "text": "羽月乃蒼、小梅えな、似鳥（似鳥日菜）"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 417,
+    "text": "似鳥（似鳥日菜）"
+   }
+  ]
+ }
+]
