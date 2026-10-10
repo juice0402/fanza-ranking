@@ -1,6 +1,6 @@
 ---
 // 「FANZA同人・FANZAゲームのセールはいつ？」（/doujin/sale/history/・/game/sale/history/。運営者の希望「動画と同じレベルの仕組みを同人とゲームにも。SEO対策も徹底的に」→「セールの充実」。2026-10-09）。
-// このサイトが毎日0時すぎに記録している、セール中の作品の数・最大の割引・セールの名前（data/floor_sale_history.json。scripts/floor_history.py）から、毎日自動で作る。
+// このサイトが毎日（0時すぎと10時すぎ。あとのほう）に記録している、セール中の作品の数・最大の割引・セールの名前（data/floor_sale_history.json。scripts/floor_history.py）から、毎日自動で作る。
 // データから数えた事実だけを書き、予想はしない（記録は 2026-10-09 から）。記録が FLOOR_SALE_HISTORY_MIN_DAYS 日に満たないあいだは、検索エンジンに出さない。
 //   よくある質問（答えの数字を先に大きく）→ 毎日のセール中の本数（棒のグラフ）→ ゲーム: セールの記録（帯のグラフ。components/SaleBars.astro）／同人: いまの割引ごとの本数 → 注記
 import Base from '../../../layouts/Base.astro';
@@ -138,7 +138,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'WebPage', name: `${
             ))}
             {chart.ticks.map((t) => <text class="trend-day" x={t.x} y={chart.h - 6} text-anchor="middle">{t.label}</text>)}
           </svg>
-          <figcaption id="daybars-cap" class="fine">このサイトに載っている{f.label}の作品のうち、毎日0時すぎの時点でセール中だった本数。</figcaption>
+          <figcaption id="daybars-cap" class="fine">このサイトに載っている{f.label}の作品のうち、毎日10時すぎ（確かめられなかった日は0時すぎ）の時点でセール中だった本数。</figcaption>
           <ol class="visually-hidden">
             {facts.list.slice(-chart.bars.length).map((d) => <li>{md(d.d)}: {d.n}本（最大{d.max}%OFF）</li>)}
           </ol>

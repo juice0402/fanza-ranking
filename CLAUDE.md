@@ -40,7 +40,7 @@ GitHub Actions（毎日 0:05 JST。日付が変わった直後）
       女優のイベント情報（4つの事務所の公式サイトのイベントの一覧（RSS）を1ページずつ。robots.txt を守る。所属の名前を使うので、所属事務所のあと）
       → site/src/data/events.json（きょうから60日先まで。FANZAの名前と完全に同じ1人に結びつくイベントだけ。Geminiは使わない）
   → scripts/doujin_game.py --update（毎日。失敗しても更新は止めない。2026-10-09 から。アニメ・素人・成人映画・コミック・写真集・VR見放題は 2026-10-10 から）
-      FANZA同人（service=doujin・floor=digital_doujin）1,000本・FANZAゲーム（PCゲーム・DL版。service=pcgame・floor=digital_pcgame）500本＋予約を、人気順の上から毎日集め直す。
+      FANZA同人（service=doujin・floor=digital_doujin）1,000本・FANZAゲーム（PCゲーム・DL版。service=pcgame・floor=digital_pcgame）500本＋予約を、人気順の上から毎日集め直す（0:05 と、10時のセールの入れかわりに合わせて 10:17 にも＝sale-refresh.yml）。
       未成年を連想させる作品（タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前）は入れない（同人の約半分・ゲームの約7割が当たるので、上位2,000本・1,300本ほどまで見る）
       → site/src/data/doujin.json・game.json（1作品1行。順位は ranks に分ける。Geminiは使わない。Claude がコメントを書いた作品は、上位から外れても残す）
       → site/src/data/floor_rank_history.json（人気の動き。売り場ごとの人気ランキングの順位を、上位300本・30日分）・floor_sale_history.json（セールの記録。1日ごとのセール中の本数・最大の割引と、セールの名前ごとの期間・本数。400日分）（scripts/floor_history.py。2026-10-09 から）
@@ -62,9 +62,11 @@ GitHub Actions（毎日 0:05 JST。日付が変わった直後）
 GitHub Actions（10:12・12:12・16:12・20:12 JST。ten-yen.yml）
   → scripts/ten_yen.py --update --if-changed（10円の作品が変わったときだけ保存 → main に commit → deploy.yml。変わらなければ何もしない）
 
-GitHub Actions（10:17 JST。sale-refresh.yml。2026-10-10 から）
-  → get_new_releases.py --sales-only（運営者の「FANZAの動画は、だいたい10時にいつもセールの更新が入る」。人気順の上位1,000本と新着の人気順の上位500本を読み直し、
+GitHub Actions（10:17 JST。sale-refresh.yml。2026-10-10 から。運営者の「FANZAの動画は、だいたい10時にいつもセールの更新が入る」→「動画基準で全ての売り場はもう10時更新で統一」）
+  → get_new_releases.py --sales-only（動画: 人気順の上位1,000本と新着の人気順の上位500本を読み直し、
     セール中の作品 sale.json とセールの履歴 sale_history.json だけを新しくする。見かけなかった作品は、まだ期間中のセールを残す。時刻まで見る。Geminiは使わない）
+  → scripts/doujin_game.py --update（同人・ゲーム・アニメ・素人・成人映画・コミック・写真集・VR見放題: 0:05 と同じ集め直し。価格・セールの札・順位・
+    人気の動き・セールの記録。同じ日に2回動いても、その日の記録はあとのほうで上書きするだけ。失敗した売り場は前のまま）
   → 変わったときだけ main に commit → deploy.yml（0:05 の更新だけだと、10時に始まったセールが次の日までサイトに出なかった）
 
 Claude の予約タスク（毎日 0:20 JST。手順は docs/claude-comments.md）
@@ -155,7 +157,7 @@ Claude の予約タスク（毎月1日 1:25 JST。手順は docs/claude-monthly.
 | `site/src/data/monthly.json` | **Claude が毎月書き足す記事のデータ。手で編集しない**（`claude_monthly.py apply` だけが書く。新しい月が先頭。`{month, lead, trend, picks, written, facts}`。`facts` は週のまとめと同じ形） |
 | `tests/` | テスト一式。`fixtures/` は固定データ（本番データには依存しない） |
 | `scripts/check.sh` | テストをまとめて実行（`--build` でビルドと点検まで） |
-| `.github/workflows/` | `update.yml`（毎日の更新。保存したら `deploy.yml` で公開）、`ten-yen.yml`（10円セールの確認。1日に4回。変わったときだけ保存して公開）、`sale-refresh.yml`（動画のセールの読み直し。10:17。`get_new_releases.py --sales-only`＝`refresh_sales`。変わったときだけ保存して公開）、`ci.yml`（PRごとの自動確認。コード・デザインのPRはプレビューも）、`deploy.yml`（公開。上の行）、`refresh-data.yml`（取り直しだけを手動で動かす。保存したら `deploy.yml`（main なら本番、ブランチならプレビュー）。Geminiは使わない。女優のイベント情報も毎回集め直す。ブランチを選んで実行すると、本物のAPIでの確認に使える。「名簿の一覧を取る回数」を増やすと、女優検索の名簿を、「過去作品の一覧を取る回数」（上位1,000本より下を取る回数。最大500。1万本なら90回で一回り）を増やすと、過去作品を一気に集められる。「同人・ゲームだけ」を 1 にすると、ほかのデータには触らずに、同人・ゲームだけを集める（新しい機能のブランチで本物のデータを入れるとき））、`probe-api.yml`（APIの応答の形を調べる道具。`scripts/probe_api.py`。結果は個人情報を伏せて注釈に出す） |
+| `.github/workflows/` | `update.yml`（毎日の更新。保存したら `deploy.yml` で公開）、`ten-yen.yml`（10円セールの確認。1日に4回。変わったときだけ保存して公開）、`sale-refresh.yml`（10時のセールの入れかわりに合わせた読み直し。10:17。動画は `get_new_releases.py --sales-only`＝`refresh_sales`、ほかの売り場は `scripts/doujin_game.py --update`。変わったときだけ保存して公開）、`ci.yml`（PRごとの自動確認。コード・デザインのPRはプレビューも）、`deploy.yml`（公開。上の行）、`refresh-data.yml`（取り直しだけを手動で動かす。保存したら `deploy.yml`（main なら本番、ブランチならプレビュー）。Geminiは使わない。女優のイベント情報も毎回集め直す。ブランチを選んで実行すると、本物のAPIでの確認に使える。「名簿の一覧を取る回数」を増やすと、女優検索の名簿を、「過去作品の一覧を取る回数」（上位1,000本より下を取る回数。最大500。1万本なら90回で一回り）を増やすと、過去作品を一気に集められる。「同人・ゲームだけ」を 1 にすると、ほかのデータには触らずに、同人・ゲームだけを集める（新しい機能のブランチで本物のデータを入れるとき））、`probe-api.yml`（APIの応答の形を調べる道具。`scripts/probe_api.py`。結果は個人情報を伏せて注釈に出す） |
 | `docs/claude-comments.md` | 毎日の予約タスク（Claude がコメントを書く）の手順書と書き方のルール |
 | `docs/claude-roundups.md` | 毎週月曜の予約タスク（Claude が週のまとめ記事を書く）の手順書と書き方のルール |
 | `docs/claude-monthly.md` | 毎月1日の予約タスク（Claude が月のまとめ記事を書く）の手順書と書き方のルール |

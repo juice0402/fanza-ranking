@@ -199,10 +199,19 @@ check("ten-yen.yml: 毎日の更新と同じ順番待ち（データが混ざら
 # 日中のセールの読み直し（運営者の「FANZAの動画は、だいたい10時にいつもセールの更新が入る」。2026-10-10）
 sr = read(".github", "workflows", "sale-refresh.yml")
 sstep = sr[sr.index("Commit and deploy if changed"):]
-check("sale-refresh.yml: 10時すぎにセールだけを読み直し、変わったときだけ保存（push）してから公開を頼む・保存するのはセールのデータだけ",
-      "python get_new_releases.py --sales-only" in sr and "- cron: '17 1 * * *'" in sr and "steps.sales.outputs.saved == '1'" in sstep
+check("sale-refresh.yml: 10時すぎに動画のセールを読み直し、変わったときだけ保存（push）してから公開を頼む",
+      "python get_new_releases.py --sales-only" in sr and "- cron: '17 1 * * *'" in sr
       and sstep.index('git push origin "HEAD:${GITHUB_REF_NAME}"') < sstep.index('gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}"')
       and "git add -- site/src/data/sale.json site/src/data/sale_history.json" in sstep and "git add -A" not in sstep and sstep.index("exit 0") < sstep.index("gh workflow run deploy.yml"))
+# 運営者の「動画基準で全ての売り場はもう10時更新で統一しちゃおう」（2026-10-10）: 売り場も同じ時刻に集め直す。保存するのは売り場のデータ・人気の動き・セールの記録だけ
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import floor_data as _FD  # noqa: E402
+_sr_files = re.findall(r"site/src/data/[a-z_]+\.json", sstep[:sstep.index("git diff --staged")])
+check("sale-refresh.yml: 全部の売り場も10時すぎに集め直す（失敗しても止めない）・保存するのは、どの売り場のデータと、人気の動き・セールの記録",
+      "python scripts/doujin_game.py --update" in sr and sr.index("python get_new_releases.py --sales-only") < sr.index("python scripts/doujin_game.py")
+      and "continue-on-error: true" in sr[sr.rindex("- name:", 0, sr.index("python scripts/doujin_game.py")):sr.index("python scripts/doujin_game.py")]
+      and set(_sr_files) == {"site/src/data/sale.json", "site/src/data/sale_history.json", "site/src/data/floor_rank_history.json", "site/src/data/floor_sale_history.json",
+                             *(f"site/src/data/{k}.json" for k in _FD.FLOORS)}, _sr_files)
 check("sale-refresh.yml: 毎日の更新と同じ順番待ち・Gemini の鍵は渡さない",
       "group: daily-update" in sr and "GEMINI" not in sr and re.search(r"permissions:\s*\n\s*contents: write\s*\n\s*actions: write", sr))
 for name in ("update.yml", "refresh-data.yml"):

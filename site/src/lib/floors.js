@@ -569,7 +569,7 @@ export function floorTrendLines(hist, f) {
 }
 
 /** 作品ページの「人気の動き」のグラフの下の注記 */
-export const floorTrendCaption = (f) => `このサイトの${f.label}の人気ランキング（FANZAの人気順）の毎日の順位。毎日0時すぎの時点で、上位${FLOOR_TREND_TRACK}本まで記録しています。`;
+export const floorTrendCaption = (f) => `このサイトの${f.label}の人気ランキング（FANZAの人気順）の毎日の順位。毎日0時すぎと10時すぎに確かめ、あとのほうの時点で、上位${FLOOR_TREND_TRACK}本まで記録しています。`;
 
 /**
  * きのうから人気が上がった作品（売り場のトップ）: 発売済みで、きのうもきょうも上位300本に入っていて、3つ以上・1.25倍以上上がった作品を、
