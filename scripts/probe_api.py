@@ -173,11 +173,36 @@ def probe_ten_yen():
         say(f"- 発売日が未来（予約） {sum(1 for r in rows if str(r.get('date'))[:10] > datetime.now(JST).strftime('%Y-%m-%d'))}本")
 
 
+
+def probe_book_prices():
+    """14) FANZAコミック・写真集の価格の形（安い順が価格の順に並ばないので、prices の中身の形を見る）。2026-10-10"""
+    import time
+    for label, svc, flr in (("コミック", "ebook", "comic"), ("写真集", "ebook", "photo")):
+        for sort in ("-price", "price"):
+            say(f"## 14-{flr}-{sort}) {label}の価格の形（sort={sort}）")
+            time.sleep(0.4)
+            res, err = call("ItemList", {"site": "FANZA", "service": svc, "floor": flr, "sort": sort, "hits": 12, "offset": 1})
+            if err:
+                say(f"- ❌ {err}")
+                continue
+            for x in res.get("items") or []:
+                pr = x.get("prices") or {}
+                dl = pr.get("deliveries") or {}
+                dls = dl.get("delivery") if isinstance(dl, dict) else dl
+                dls = dls if isinstance(dls, list) else ([dls] if dls else [])
+                say(f"- price={pr.get('price')} list={pr.get('list_price')} keys={sorted(pr.keys())} deliveries=" + ",".join(f"{d.get('type')}:{d.get('price')}/{d.get('list_price')}" for d in dls if isinstance(d, dict))
+                    + f" volume={str(x.get('volume') or '')[:10]} camp={len(x.get('campaign') or [])}")
+
+
 def main():
     if not API_ID:
         sys.exit("❌ API_ID が設定されていません")
     if os.environ.get("PROBE_ONLY") == "13":
         probe_ten_yen()
+        finish()
+        return
+    if os.environ.get("PROBE_ONLY") == "14":
+        probe_book_prices()
         finish()
         return
     today = datetime.now(JST).replace(hour=0, minute=0, second=0, microsecond=0)
