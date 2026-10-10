@@ -196,6 +196,15 @@ check("ten-yen.yml: 10円の作品が変わったときだけ、保存（push）
 check("ten-yen.yml: 毎日の更新と同じ順番待ち（データが混ざらない）・Gemini の鍵は渡さない・1日に数回の定時実行",
       "group: daily-update" in ten and "GEMINI" not in ten and len(re.findall(r"- cron: '\d+ \d+ \* \* \*'", ten)) >= 3
       and re.search(r"permissions:\s*\n\s*contents: write\s*\n\s*actions: write", ten))
+# 日中のセールの読み直し（運営者の「FANZAの動画は、だいたい10時にいつもセールの更新が入る」。2026-10-10）
+sr = read(".github", "workflows", "sale-refresh.yml")
+sstep = sr[sr.index("Commit and deploy if changed"):]
+check("sale-refresh.yml: 10時すぎにセールだけを読み直し、変わったときだけ保存（push）してから公開を頼む・保存するのはセールのデータだけ",
+      "python get_new_releases.py --sales-only" in sr and "- cron: '17 1 * * *'" in sr and "steps.sales.outputs.saved == '1'" in sstep
+      and sstep.index('git push origin "HEAD:${GITHUB_REF_NAME}"') < sstep.index('gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}"')
+      and "git add -- site/src/data/sale.json site/src/data/sale_history.json" in sstep and "git add -A" not in sstep and sstep.index("exit 0") < sstep.index("gh workflow run deploy.yml"))
+check("sale-refresh.yml: 毎日の更新と同じ順番待ち・Gemini の鍵は渡さない",
+      "group: daily-update" in sr and "GEMINI" not in sr and re.search(r"permissions:\s*\n\s*contents: write\s*\n\s*actions: write", sr))
 for name in ("update.yml", "refresh-data.yml"):
     wf = read(".github", "workflows", name)
     check(f"{name}: 10円セールも集める（失敗しても、ほかの更新は止めない）・保存の前",

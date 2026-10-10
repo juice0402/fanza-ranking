@@ -1,6 +1,6 @@
 // セール・キャンペーン（/sale/ とトップの「セール中」）の部品（画面に依存しない。tests/test_sale.mjs）。
 // データは data/sale.json（毎日の更新が、FANZA公式のAPIの campaign・prices から、その日に見かけたセール中の作品を保存したもの）。
-// 価格・期間は、その日の 0:05 ごろの情報。変わることがあるので、画面には「○日時点」と「最新はFANZAで」を必ず添える。
+// 価格・期間は、その日の 0:05 ごろの情報（動画のセールが入れかわる10時のすぐあと＝10:17 にも読み直す。sale-refresh.yml）。変わることがあるので、画面には「○日時点」と「最新はFANZAで」を必ず添える。
 import { bestRank } from './popularity.js';
 import { addDays, daysBetween, entitySlug, isDay } from './items.js';
 import { isMinorTitle } from './gacha.js';

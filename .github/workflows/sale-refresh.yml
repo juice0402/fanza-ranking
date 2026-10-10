@@ -1,0 +1,55 @@
+name: Sale Refresh (daytime)
+
+# FANZA動画のセールの入れかわりに合わせて、セール中の作品（sale.json）とセールの履歴（sale_history.json）だけを読み直す。
+# 運営者の「FANZAの動画は、だいたい10時にいつもセールの更新が入る」（2026-10-10）。毎日の更新（0:05）だけだと、
+# 10時に始まったセールが、次の日の0時すぎまでサイトに出なかった（9:59に終わったセールは、ブラウザで隠れるので、その日の昼からはセールが少なく見えた）。
+# 人気順の上位1,000本と新着の人気順の上位500本を読み直す（get_new_releases.py --sales-only。Gemini は使わない・ほかのデータには触らない）。
+# 変わったときだけ保存して、公開（deploy.yml）を頼む。手動でも動かせる（Actions の画面の「Run workflow」）
+on:
+  schedule:
+    - cron: '17 1 * * *'  # 日本時間 10:17（10時の入れかわりのすぐあと。10円セールの確認 10:12 のあと）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+# 毎日の更新・取り直し・10円セールの確認と重ならないように、同じ順番待ちに並ぶ（データが混ざらないように）
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Refresh sales
+        id: sales
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python get_new_releases.py --sales-only
+      - name: Commit and deploy if changed
+        if: steps.sales.outputs.saved == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 保存するのはセールのデータだけ
+          git add -- site/src/data/sale.json site/src/data/sale_history.json
+          if git diff --staged --quiet; then
+            echo "データに変更なし。保存しません。"
+            exit 0
+          fi
+          git commit -m "セールの読み直し: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          # 公開を頼む（ワークフローが保存したコミットでは、ほかのワークフローが自動では動かないため）
+          gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}"
+          echo "### 🚀 セールが変わったので、公開を頼みました（Deploy）" >> "$GITHUB_STEP_SUMMARY"

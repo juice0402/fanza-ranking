@@ -1408,6 +1408,53 @@ with tempfile.TemporaryDirectory() as tmp_h:
     text_h = open(ok_h, encoding="utf-8").read()
     check("保存は1行に1つ・読み直せる", json.loads(text_h)["campaigns"][0]["title"] == "週末セール" and text_h.count("\n") == 4, text_h)
 
+print("\n■ 日中のセールの読み直し（--sales-only。運営者の「FANZAの動画は、だいたい10時にいつもセールの更新が入る」）")
+camp_c = {"date_begin": day(1) + " 10:00:00", "date_end": day(3) + " 09:59:59", "title": "10時からのセール30％OFF"}
+with tempfile.TemporaryDirectory() as tmp_r:
+    r_sale, r_hist = os.path.join(tmp_r, "sale.json"), os.path.join(tmp_r, "sale_history.json")
+    shutil.copy(os.path.join(s_dir, "sale.json"), r_sale)
+    shutil.copy(os.path.join(s_dir, "sale_history.json"), r_hist)
+    r_calls = []
+
+    def r_call(params, rows=None):
+        r_calls.append(dict(params))
+        if "gte_date" in params:
+            return []
+        other = dict(make_api_item("notonsite01", -50, actress=("だれか",), maker="どこか", title="このサイトに無い作品"), campaign=[camp_c])  # このサイトに無い作品
+        return [on_sale(3, [camp_a, camp_c], price="1500~", list_price="2500~"), on_sale(6, [camp_a]), other, past_item(5)] if params["offset"] == 1 else []
+
+    now_r = (TODAY + timedelta(days=1)).replace(hour=10, minute=17)
+    with contextlib.redirect_stdout(io.StringIO()):
+        saved_r, lines_r = m_s.refresh_sales(now_r, call=r_call, sale_path=r_sale, history_path=r_hist)
+    rs = json.load(open(r_sale, encoding="utf-8"))
+    rby = {r["c"]: rs["campaigns"][r["k"]]["title"] for r in rs["items"]}
+    check("10時すぎに読み直すと、10時に始まったセールが入り、9:59に終わったセールは外れる（時刻まで見る）・読み直さなかった作品は、まだ期間中のセールを残す・このサイトに無い作品は入れない",
+          saved_r and rs["date"] == day(1) and rby == {"cat00003": "10時からのセール30％OFF", "cat00007": "日替わりセール★"}, (rby, lines_r))
+    check("人気順の上位1,000本と、新着の人気順の上位500本を読み直す（人気順・100本ずつ・発売済みだけ）",
+          [c["offset"] for c in r_calls if "gte_date" not in c] == [1] and any("gte_date" in c for c in r_calls) and all(c["sort"] == "rank" and c["hits"] == 100 and c.get("lte_date") for c in r_calls)
+          and m_s.SALE_REFRESH_TOP_CALLS == 10 and m_s.SALE_REFRESH_NEW_CALLS == 5, r_calls[:2])
+    rh = {r["title"]: r for r in json.load(open(r_hist, encoding="utf-8"))["campaigns"]}
+    check("セールの履歴: 10時に始まったセールを、その日に見かけたことになる", rh["10時からのセール30％OFF"]["first"] == day(1) and rh["10時からのセール30％OFF"]["max_off"] == 40, rh.get("10時からのセール30％OFF"))
+    before_r = open(r_sale, encoding="utf-8").read()
+    with contextlib.redirect_stdout(io.StringIO()):
+        saved_r2, lines_r2 = m_s.refresh_sales(now_r, call=r_call, sale_path=r_sale, history_path=r_hist)
+    check("変わっていなければ保存しない", not saved_r2 and open(r_sale, encoding="utf-8").read() == before_r and "変わりなし" in lines_r2[-1], lines_r2)
+
+    def r_down(params):
+        raise RuntimeError("テストの失敗")
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        saved_r3, lines_r3 = m_s.refresh_sales(now_r.replace(hour=12), call=r_down, sale_path=r_sale, history_path=r_hist)
+    check("人気順を読めなかったら、保存しない（前のまま）", not saved_r3 and open(r_sale, encoding="utf-8").read() == before_r, lines_r3)
+    open(r_sale, "w").write("{壊れている")
+    saved_r4, _ = m_s.refresh_sales(now_r, call=r_call, sale_path=r_sale, history_path=r_hist)
+    check("前のセールのデータが壊れていたら、上書きしない", not saved_r4 and open(r_sale).read() == "{壊れている")
+check("時刻の比べ方: 終わりの分まで（日付だけなら、その日の 23:59 まで）",
+      m_s.sale_active("2026-10-10 09:59", "2026-10-10 09:59") and not m_s.sale_active("2026-10-10 09:59", "2026-10-10 10:00")
+      and m_s.sale_active("2026-10-10", "2026-10-10 23:59") and not m_s.sale_active("", "2026-10-10 00:00"))
+check("毎日の更新のセールの読み方は、いままでどおり日付で（時刻は見ない）", m_s.sale_of(on_sale(1, [camp_a]), day(1)) is not None
+      and m_s.sale_of(on_sale(1, [camp_a]), day(1), day(1) + " 10:00") is None and m_s.sale_of(on_sale(1, [camp_c]), day(1), day(1) + " 09:00") is None)
+
 print("\n■ きょうの数字（FANZA動画の日ごとの発売本数・予約受付中の本数）と、予約の人気順")
 t_dir = scenario_dir("today")
 t_path = write_archive(t_dir, c_seed)
