@@ -222,11 +222,60 @@ def probe_sales_refresh():
     say("- 期間: " + " / ".join(ends[:12]))
 
 
+
+def probe_daily_sale():
+    """16) 動画の「日替わりセール」の作品が、人気順のどこにあるか（運営者の「FANZAでは51本なのに、サイトは1本」。2026-10-10）。
+    人気順（発売済み）を上から最後（5万本）まで読み、セールの名前ごとの本数と、日替わりセールの作品の順位・このサイトにあるかを数える"""
+    import time
+    from collections import Counter
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import get_new_releases as G
+    now = datetime.now(JST)
+    today_s, now_s = now.strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d %H:%M")
+    archive = G.load_archive()
+    catalog = G.load_catalog(today_s) or {"items": {}}
+    site = set(archive) | set(catalog["items"])
+    say(f"## 16) 日替わりセール（{now.strftime('%H:%M')}の時点）")
+    lte = now.strftime("%Y-%m-%dT23:59:59")
+    camps, daily, calls, fails, total, t0 = Counter(), [], 0, 0, None, time.time()
+    off = 1
+    while off <= 50000 and fails < 3:
+        time.sleep(0.25)
+        res, err = call("ItemList", {"site": "FANZA", "service": "digital", "floor": "videoa", "sort": "rank", "hits": 100, "offset": off, "lte_date": lte})
+        calls += 1
+        if err:
+            fails += 1
+            continue
+        fails = 0
+        total = total or res.get("total_count")
+        items = res.get("items") or []
+        for pos, x in enumerate(items):
+            sale = G.sale_of(x, today_s, now_s)
+            if not sale:
+                continue
+            camps[sale[0]["title"]] += 1
+            for c in x.get("campaign") or []:
+                if "日替" in str(c.get("title") or ""):
+                    daily.append((off + pos, str(x.get("content_id") or "") in site, str(c.get("title"))[:20], str(c.get("date_begin"))[:16], str(c.get("date_end"))[:16]))
+        if len(items) < 100:
+            break
+        off += 100
+    say(f"- 読んだ回数 {calls}・最後の位置 {off}・全体 {total}・かかった時間 {int(time.time() - t0)}秒・失敗で止まった {fails >= 3}")
+    say(f"- セール中（名前ごと・上位15）: {dict(camps.most_common(15))}")
+    say(f"- 日替わりセールの作品 {len(daily)}本・このサイトにある {sum(1 for d in daily if d[1])}本")
+    say(f"- 日替わりの名前と期間: {sorted({(d[2], d[3], d[4]) for d in daily})}")
+    say(f"- 日替わりの順位: {sorted(d[0] for d in daily)}")
+
+
 def main():
     if not API_ID:
         sys.exit("❌ API_ID が設定されていません")
     if os.environ.get("PROBE_ONLY") == "13":
         probe_ten_yen()
+        finish()
+        return
+    if os.environ.get("PROBE_ONLY") == "16":
+        probe_daily_sale()
         finish()
         return
     if os.environ.get("PROBE_ONLY") == "15":
