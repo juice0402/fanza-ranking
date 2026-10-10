@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: '調べる項目の番号（空なら全部。13＝10円セールの安い順・14＝ブックスの価格の形）'
+        description: '調べる項目の番号（空なら全部。13＝10円セールの安い順・14＝ブックスの価格の形・15＝日中のセールの読み直し（保存しない））'
         required: false
         default: ''
 

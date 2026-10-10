@@ -194,11 +194,43 @@ def probe_book_prices():
                     + f" volume={str(x.get('volume') or '')[:10]} camp={len(x.get('campaign') or [])}")
 
 
+
+def probe_sales_refresh():
+    """15) 日中のセールの読み直し（get_new_releases.py --sales-only）を、保存せずに試す（2026-10-10）。
+    いまの sale.json（0:05 ごろ）と比べて、10時に始まったセールが入るか・終わったセールが外れるかを見る"""
+    import shutil
+    import tempfile
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import get_new_releases as G
+    now = datetime.now(JST).replace(second=0, microsecond=0)
+    say(f"## 15) 日中のセールの読み直し（{now.strftime('%H:%M')}の時点・保存しない）")
+    with tempfile.TemporaryDirectory() as tmp:
+        sp, hp = os.path.join(tmp, "sale.json"), os.path.join(tmp, "sale_history.json")
+        shutil.copy(G.SALE_PATH, sp)
+        shutil.copy(G.SALE_HISTORY_PATH, hp)
+        before = G.load_sale_file(sp)
+        saved, lines = G.refresh_sales(now, sale_path=sp, history_path=hp)
+        after = G.load_sale_file(sp)
+    count = lambda d: {t: sum(1 for v in d.values() if v[0]["title"] == t) for t in sorted({v[0]["title"] for v in d.values()})}  # noqa: E731
+    b, a = count(before), count(after)
+    for line in lines:
+        say(line)
+    say(f"- 0:05 ごろのデータ: {len(before)}本・{b}")
+    say(f"- 読み直したあと: {len(after)}本・{a}")
+    say(f"- 新しく入った特集: {[t for t in a if t not in b]} / 外れた特集: {[t for t in b if t not in a]}")
+    ends = sorted({v[0]["begin"] + '〜' + v[0]["end"] + ' ' + v[0]["title"] for v in after.values()})
+    say("- 期間: " + " / ".join(ends[:12]))
+
+
 def main():
     if not API_ID:
         sys.exit("❌ API_ID が設定されていません")
     if os.environ.get("PROBE_ONLY") == "13":
         probe_ten_yen()
+        finish()
+        return
+    if os.environ.get("PROBE_ONLY") == "15":
+        probe_sales_refresh()
         finish()
         return
     if os.environ.get("PROBE_ONLY") == "14":
