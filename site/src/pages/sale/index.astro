@@ -11,13 +11,13 @@ import ItemCard from '../../components/ItemCard.astro';
 import CampaignFacts from '../../components/CampaignFacts.astro';
 import TenYenHero from '../../components/TenYenHero.astro';
 import { TEN_YEN_PATH } from '../../lib/ten-yen.js';
-import { all, today, sale, contentGenres, saleCampaignBySlug, activeFloors, floors, tenYenNow } from '../../lib/data.js';
+import { all, today, sale, saleWorks, contentGenres, saleCampaignBySlug, activeFloors, floors, tenYenNow } from '../../lib/data.js';
 import { FLOORS, floorSaleItems, floorSalePath } from '../../lib/floors.js';
 import { SALE_HISTORY_PATH, SALE_PATH, isTenYenCampaign, campaignSlug, endIso, endLabel, endSoonTag, saleAnchor, saleBadge, saleGroups, salePriceNote } from '../../lib/sale.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp, filterAttrs } from '../../lib/items.js';
 
-const groups = saleGroups(all, sale, today, undefined, { genres: contentGenres });
+const groups = saleGroups(saleWorks, sale, today, undefined, { genres: contentGenres });
 // 特集ごとのページ（未成年を連想させる名前の特集には作らない）
 const pageOfCamp = (g) => (isTenYenCampaign(g.title) ? TEN_YEN_PATH : saleCampaignBySlug.get(campaignSlug(g.title))?.path ?? '');
 const maxOff = Math.max(0, ...groups.map((g) => g.maxOff ?? 0));

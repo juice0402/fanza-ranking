@@ -318,6 +318,14 @@ else:
               and all(isinstance(r, dict) and str(r.get("c", "")).strip() and isinstance(r.get("k"), int) and 0 <= r["k"] < len(camps)
                       and (("p" not in r and "l" not in r) or (isinstance(r.get("p"), int) and isinstance(r.get("l"), int) and 0 < r["p"] < r["l"])) for r in rows),
               str(salej)[:80])
+        extra = salej.get("extra", []) if isinstance(salej, dict) else None
+        check("sale.json: このサイトに無いセール中の作品（extra。順位 r・タイトル t・FANZAのURL u・画像 i・発売日 d・メーカー m・出演者 a・ジャンル g）・特集の本数 n（数字）",
+              isinstance(extra, list) and isinstance(camps, list)
+              and all(isinstance(r, dict) and str(r.get("c", "")).strip() and isinstance(r.get("k"), int) and 0 <= r["k"] < len(camps) and isinstance(r.get("r"), int) and r["r"] >= 1
+                      and str(r.get("t", "")).strip() and str(r.get("u", "")).startswith("https://") and str(r.get("i", "")).startswith("https://")
+                      and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("d", ""))) and isinstance(r.get("m"), str) and isinstance(r.get("a"), list) and isinstance(r.get("g"), list)
+                      and (("p" not in r and "l" not in r) or (isinstance(r.get("p"), int) and isinstance(r.get("l"), int) and 0 < r["p"] < r["l"])) for r in extra)
+              and all(isinstance(c.get("n", 1), int) and c.get("n", 1) > 0 for c in camps if isinstance(c, dict)), str(extra)[:80])
 
 SALE_HISTORY = os.path.join(ROOT, "site", "src", "data", "sale_history.json")
 if not os.path.exists(SALE_HISTORY):

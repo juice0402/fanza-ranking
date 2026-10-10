@@ -2037,10 +2037,25 @@ except (OSError, ValueError):
     _sale = {}
 _camps = _sale.get("campaigns") if isinstance(_sale, dict) and isinstance(_sale.get("campaigns"), list) else []
 _sale_rows = [r for r in (_sale.get("items") if isinstance(_sale, dict) and isinstance(_sale.get("items"), list) else []) if isinstance(r, dict) and isinstance(r.get("k"), int) and 0 <= r["k"] < len(_camps)]
-want_camps = sorted({r["k"] for r in _sale_rows if r.get("c") in everything and str(_camps[r["k"]].get("title", "")).strip() and str(_camps[r["k"]].get("end", ""))[:10] >= JST_DAY})
-# 特集（キャンペーン）ごとの作品（このサイトの作品だけ。作品は、いちばん早く終わるキャンペーン1つに入っている）
-_camp_works = {k: [everything[r["c"]] for r in _sale_rows if r["k"] == k and r.get("c") in everything] for k in want_camps}
-_camp_order = sorted(want_camps, key=lambda k: (str(_camps[k]["end"]), -len(_camp_works[k]), str(_camps[k]["title"])))
+# このサイトに無いセール中の作品（日中のセールの読み直しが、人気順の上位5万本から特集ごとに集めたもの。2026-10-10。
+# site/src/lib/sale.js の normalizeSale・data.js の saleWorks と同じ決まり: 順位があり・FANZAのURLで・未成年を連想させないもの。このサイトの作品と同じなら、このサイトのほう）
+_item_cids = {r.get("c") for r in _sale_rows}
+_extra_rows, _extra_seen = [], set()
+for _r in (_sale.get("extra") if isinstance(_sale, dict) and isinstance(_sale.get("extra"), list) else []):
+    if (isinstance(_r, dict) and isinstance(_r.get("k"), int) and 0 <= _r["k"] < len(_camps) and isinstance(_r.get("r"), int) and _r["r"] >= 1
+            and isinstance(_r.get("c"), str) and _r["c"] not in _item_cids and _r["c"] not in _extra_seen and str(_camps[_r["k"]].get("title", "")).strip()
+            and re.match(r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$", str(_camps[_r["k"]].get("end", ""))) and str(_r.get("t") or "").strip() and re.match(r"^\d{4}-\d{2}-\d{2}", str(_r.get("d") or ""))
+            and re.match(r"^https://([a-z0-9-]+\.)*(dmm\.co\.jp|dmm\.com|fanza\.co\.jp)/", str(_r.get("u") or "")) and not is_minor_title(str(_r.get("t")))):
+        _extra_seen.add(_r["c"])
+        _extra_rows.append(_r)
+_works_rows = [(r, everything[r["c"]]) for r in _sale_rows + _extra_rows if r.get("c") in everything] + [
+    (r, {"title": r["t"], "maker": str(r.get("m") or "") or "不明", "actress": list(r.get("a") or []), "genres": list(r.get("g") or [])}) for r in _extra_rows if r["c"] not in everything]
+want_camps = sorted({r["k"] for r, _ in _works_rows if str(_camps[r["k"]].get("title", "")).strip() and str(_camps[r["k"]].get("end", ""))[:10] >= JST_DAY})
+# 特集（キャンペーン）ごとの作品（このサイトの作品＋このサイトに無い作品。作品は、いちばん早く終わるキャンペーン1つに入っている）
+_camp_works = {k: [x for r, x in _works_rows if r["k"] == k] for k in want_camps}
+# 本数: 人気順の上位5万本で数えた本数（n）があれば、そちら（lib/sale.js の saleGroups の total と同じ）
+_camp_count = {k: max(len(_camp_works[k]), _camps[k]["n"] if isinstance(_camps[k].get("n"), int) and _camps[k]["n"] > 0 else 0) for k in want_camps}
+_camp_order = sorted(want_camps, key=lambda k: (str(_camps[k]["end"]), -_camp_count[k], str(_camps[k]["title"])))
 _content_genres = set(_tag_genres) - {"ベスト・総集編"}
 
 
@@ -2086,7 +2101,7 @@ def camp_slug(title):
 
 def camp_max_off(k):
     """特集のいちばん大きい割引（このサイトの作品で、値引きの分かるもの。site/src/lib/sale.js の maxOff と同じ）"""
-    offs = [int((1 - r["p"] / r["l"]) * 100 + 0.5) for r in _sale_rows if r["k"] == k and r.get("c") in everything
+    offs = [int((1 - r["p"] / r["l"]) * 100 + 0.5) for r, _ in _works_rows if r["k"] == k
             and isinstance(r.get("p"), int) and isinstance(r.get("l"), int) and 0 < r["p"] < r["l"]]
     return max(offs) if offs else None
 
@@ -2120,7 +2135,7 @@ if os.path.isfile(sale_page):
             tag_ = soon_tag(str(_camps[k]["end"]))
             mo_ = camp_max_off(k)
             if not note or (tag_ and f'<span class="camp-soon">{tag_}</span>' not in note.group(1)) or (not tag_ and "camp-soon" in note.group(1)) \
-                    or f"{end_label(str(_camps[k]['end']))}まで{f'・最大{mo_}%OFF' if mo_ else ''}・{len(_camp_works[k])}本" not in strip_tags(note.group(1)):
+                    or f"{end_label(str(_camps[k]['end']))}まで{f'・最大{mo_}%OFF' if mo_ else ''}・{_camp_count[k]}本" not in strip_tags(note.group(1)):
                 bad_facts.append((_camps[k]["title"], "終わり・本数"))
         check("特集ごとに、おもなメーカー・よく出ている女優（2本以上・出演者4人までの作品）・多いジャンル（ジャンルのページの一覧）と本数・いつまで（きょう・あすなら札）",
               not bad_facts, bad_facts[:2])
@@ -2148,7 +2163,7 @@ if want_camps:
         covers_ = re.findall(r'<span class="camp-cover"( data-vr="true")?>\s*(?:<picture class="pic"><source [^>]*>)?<img ([^>]*)>', inner)
         off_ = re.search(r"(\d{1,2})\s*[％%]\s*OFF", str(camp["title"]), re.I)
         sticker = re.search(r'<span class="camp-off">([^<]*)</span>', inner)
-        want_maker = "・".join(n_ for n_, _ in makers_) + (" など" if sum(c_ for _, c_ in makers_) < len(works_) else "")
+        want_maker = "・".join(n_ for n_, _ in makers_) + (" など" if sum(c_ for _, c_ in makers_) < _camp_count[k] else "")
         tag_ = soon_tag(str(camp["end"]))
         vr_flags = [bool(v) for v, _ in covers_]
         card_problems = []  # （前は problems という名前で、全体の失敗の一覧を上書きして消していた。2026-10-07 に直した）
@@ -2156,7 +2171,7 @@ if want_camps:
         if a_.get("href") != (f"/sale/{camp_slug(camp['title'])}/" if not camp_minor(camp["title"]) else f"/sale/#sale-{k}"): card_problems.append(a_.get("href"))
         if end_ != end_iso(str(camp["end"])): card_problems.append("終わりの印")
         if not title_ or strip_tags(title_.group(1)) != str(camp["title"]).strip(): card_problems.append("名前")
-        if f"{end_label(str(camp['end']))}まで・{len(works_):,}本" not in strip_tags(inner): card_problems.append("いつまで・本数")
+        if f"{end_label(str(camp['end']))}まで・{_camp_count[k]:,}本" not in strip_tags(inner): card_problems.append("いつまで・本数")
         if (f'<span class="camp-soon">{tag_}</span>' in inner) != bool(tag_) or (not tag_ and "camp-soon" in inner): card_problems.append("きょう・あすの札")
         if (strip_tags(maker_line.group(1)) if maker_line else "") != (f"メーカー：{want_maker}" if makers_ else ""): card_problems.append(("メーカー", strip_tags(maker_line.group(1)) if maker_line else ""))
         if not 1 <= len(covers_) <= 3 or vr_flags != sorted(vr_flags) or any(not fanza_https(dict(re.findall(r'(\w+)="([^"]*)"', img)).get("src", ""), ["dmm.co.jp", "fanza.co.jp"]) for _, img in covers_): card_problems.append("表紙")

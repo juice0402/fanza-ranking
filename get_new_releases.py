@@ -95,8 +95,9 @@ CATALOG_LIMIT = min(CATALOG_MAX_OFFSET, int(os.environ.get("CATALOG_LIMIT", "100
 # 新着の人気順（最近 NEW_RANK_DAYS 日に発売された作品の、その日の人気順の上位 NEW_RANK_CALLS×100本）。「新着の人気順」のランキングに使う
 NEW_RANK_CALLS = int(os.environ.get("NEW_RANK_CALLS", "5"))
 NEW_RANK_DAYS = 7  # 運営者の希望で1週間（毎日たくさん発売されるので、30日では新着らしさが薄い。2026-10-04 夜）
-SALE_REFRESH_TOP_CALLS = 10  # 日中のセールの読み直し（--sales-only）: 人気順の上位1,000本
-SALE_REFRESH_NEW_CALLS = 5   # と、新着の人気順の上位500本（どちらも、毎日の更新でいつも読み直している範囲）
+SALE_REFRESH_TOP_CALLS = int(os.environ.get("SALE_REFRESH_TOP_CALLS", "500"))  # セールの読み直し（--sales-only）: 人気順の上位5万本（APIの offset の上限まで）
+SALE_REFRESH_NEW_CALLS = 5   # と、新着の人気順の上位500本
+SALE_EXTRA_PER_CAMPAIGN = 48  # このサイトに無い作品を、特集ごとに人気の高い順にこの本数まで保存する（特集ごとのページに並べる本数＝lib/sale.js の CAMPAIGN_ITEM_LIMIT）
 POPULAR_PREV_KEEP = 200  # 前の日の新着の人気順は、上位このくらいまで残す（「急上昇」を見つける用）
 POPULARITY_PATH = os.environ.get("POPULARITY_PATH", os.path.join(os.path.dirname(DATA_PATH), "popularity.json"))  # 新着の人気順と、毎日の更新の作品の全体の順位
 SALE_PATH = os.environ.get("SALE_PATH", os.path.join(os.path.dirname(DATA_PATH), "sale.json"))  # その日に見かけたセール・キャンペーン（FANZA公式のAPIの campaign・prices）
@@ -1291,9 +1292,16 @@ def sale_active(end, now_str):
     return (end[:16] if len(end) >= 16 else end[:10] + " 23:59") >= now_str
 
 
-def dump_sale_file(sales, date):
-    """セール中の作品 {cid: (キャンペーン, 価格, 定価)} → sale.json の文字（1作品1行・品番の順。キャンペーンは見かけた順に番号）"""
-    camps, rows = [], []
+def camp_key(camp):
+    """キャンペーンを見分ける印（名前・始まり・終わり）"""
+    return (camp["title"], camp.get("begin") or "", camp["end"])
+
+
+def dump_sale_file(sales, date, extras=None, counts=None):
+    """セール中の作品 {cid: (キャンペーン, 価格, 定価)} → sale.json の文字（1作品1行・品番の順。キャンペーンは見かけた順に番号）。
+    extras: このサイトに無いセール中の作品 {cid: (キャンペーン, 価格, 定価, 作品の情報)}（"extra" に。人気順の順位 r・タイトル t・URL u・画像 i・発売日 d・メーカー m・出演者 a・ジャンル g）。
+    counts: {キャンペーンの印: FANZAの人気順の上位5万本のうちの本数}（キャンペーンの "n" に）"""
+    camps, rows, extra_rows = [], [], []
     for cid, (camp, price, list_price) in sorted(sales.items()):
         if camp not in camps:
             camps.append(camp)
@@ -1301,8 +1309,58 @@ def dump_sale_file(sales, date):
         if price:
             row.update(p=price, l=list_price)
         rows.append(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
-    return (f'{{"date":{json.dumps(date)},\n"campaigns":{json.dumps(camps, ensure_ascii=False)},\n"items":[\n'
-            + ",\n".join(rows) + "\n]}\n")
+    for cid, (camp, price, list_price, info) in sorted((extras or {}).items(), key=lambda kv: (camp_key(kv[1][0]), kv[1][3]["r"], kv[0])):
+        if camp not in camps:
+            camps.append(camp)
+        row = {"c": cid, "k": camps.index(camp)}
+        if price:
+            row.update(p=price, l=list_price)
+        row.update(info)
+        extra_rows.append(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+    out_camps = [dict(c, n=counts[camp_key(c)]) if counts and counts.get(camp_key(c)) else c for c in camps]
+    text = (f'{{"date":{json.dumps(date)},\n"campaigns":{json.dumps(out_camps, ensure_ascii=False)},\n"items":[\n'
+            + ",\n".join(rows) + "\n]")
+    if extra_rows:
+        text += ',\n"extra":[\n' + ",\n".join(extra_rows) + "\n]"
+    return text + "}\n"
+
+
+EXTRA_INFO_KEYS = ("r", "t", "u", "i", "d", "m", "a", "g")
+
+
+def extra_info(fresh, rank):
+    """このサイトに無いセール中の作品の、画面に出す情報（作品の形 parse_api_item から）"""
+    return {"r": rank, "t": fresh["title"][:120], "u": fresh["url"], "i": fresh["image_url"], "d": str(fresh["date"])[:10],
+            "m": fresh.get("maker") or "", "a": list(fresh.get("actress") or [])[:8], "g": list(fresh.get("genres") or [])[:20]}
+
+
+def load_sale_extras(path=None):
+    """sale.json の、このサイトに無いセール中の作品と、キャンペーンごとの本数 → ({cid: (キャンペーン, 価格, 定価, 作品の情報)}, {キャンペーンの印: 本数})。
+    無い・読めないときは空（毎日の更新は止めない）"""
+    try:
+        raw = read_json_file(path or SALE_PATH)
+    except ValueError:
+        return {}, {}
+    if not isinstance(raw, dict) or not isinstance(raw.get("campaigns"), list):
+        return {}, {}
+    camps = [{"title": str(c.get("title") or ""), "begin": str(c.get("begin") or ""), "end": str(c.get("end") or "")} if isinstance(c, dict) else None for c in raw["campaigns"]]
+    counts = {camp_key(c): raw["campaigns"][n]["n"] for n, c in enumerate(camps) if c and isinstance(raw["campaigns"][n].get("n"), int)}
+    extras = {}
+    for row in raw.get("extra") or []:
+        k = row.get("k") if isinstance(row, dict) else None
+        if not isinstance(k, int) or not 0 <= k < len(camps) or not camps[k] or not row.get("c") or not isinstance(row.get("r"), int):
+            continue
+        price, list_price = row.get("p"), row.get("l")
+        extras[str(row["c"])] = (camps[k], price if isinstance(price, int) else None, list_price if isinstance(list_price, int) else None,
+                                 {key: row.get(key) for key in EXTRA_INFO_KEYS})
+    return extras, counts
+
+
+def active_extras(now_str, site, path=None):
+    """前の sale.json の、このサイトに無い作品と本数のうち、いまも期間中のもの（毎日の更新が sale.json を書き直すときに残す）"""
+    extras, counts = load_sale_extras(path)
+    return ({c: v for c, v in extras.items() if c not in site and sale_active(v[0]["end"], now_str)},
+            {k: n for k, n in counts.items() if sale_active(k[2], now_str)})
 
 
 def load_sale_file(path=None):
@@ -1328,11 +1386,14 @@ def refresh_sales(now, call=None, sale_path=None, history_path=None):
     """日中のセールの入れかわりに合わせて、セール中の作品（sale.json）とセールの履歴だけを新しくする（--sales-only）。
     運営者の「FANZAの動画は、だいたい10時にいつもセールの更新が入る」（2026-10-10）。毎日の更新（0:05）だけだと、
     10時に始まったセールが、次の日の0時すぎまでサイトに出なかった（sale_history.json で、10時に始まるセールの first が次の日になっていた）。
-    ・人気順の上位 SALE_REFRESH_TOP_CALLS×100本と、新着の人気順の上位 SALE_REFRESH_NEW_CALLS×100本を読み直し、見かけた作品はいまのセールにする
-      （終わったセールは外す。時刻まで見る）
+    ・人気順の上位 SALE_REFRESH_TOP_CALLS×100本（5万本＝APIの上限まで）と、新着の人気順の上位 SALE_REFRESH_NEW_CALLS×100本を読み直し、
+      見かけた作品はいまのセールにする（終わったセールは外す。時刻まで見る）
+    ・このサイトに無い作品も、特集ごとに人気の高い順に SALE_EXTRA_PER_CAMPAIGN 本まで "extra" に保存する（運営者の「日替わりセールはFANZAで51本なのに、
+      サイトは1本」。2026-10-10。日替わりセールの作品は、ふだんは人気の上位に入らない昔の作品で、このサイトの過去作品（上位1万本）に無かった）。
+      未成年を連想させる作品は入れない。特集ごとの本数（人気順の上位5万本のうち）も "n" に
     ・見かけなかった作品は、前のセールのうち、いまも期間中（終わりの時刻がまだ来ていない）のものだけ残す
-    ・このサイトに載っている作品（毎日の更新・過去作品）だけ。Gemini は使わない。ほかのデータには触らない
-    → (保存したか, 要約の行)。上位を読めなかったとき・前のデータが壊れていたときは、保存しない"""
+    ・Gemini は使わない。ほかのデータには触らない
+    → (保存したか, 要約の行)。上位を最後まで読めなかったとき・前のデータが壊れていたときは、保存しない"""
     call = call or call_item_list
     sale_path = sale_path or SALE_PATH
     today_str, now_str = now.strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d %H:%M")
@@ -1345,15 +1406,17 @@ def refresh_sales(now, call=None, sale_path=None, history_path=None):
     if catalog is None:
         return False, ["- 過去作品を読めなかったので、保存しませんでした"]
     site = set(archive) | set(catalog["items"])
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts"))
+    import doujin_game as D  # 未成年を連想させる作品の見分け（タイトル・ジャンル・シリーズ・メーカー・レーベル・出演者）
     lte = iso(now.replace(hour=23, minute=59, second=59, microsecond=0))
-    seen, sales = set(), {}
+    seen, sales, candidates, counts = set(), {}, {}, {}
     fails = 0
 
-    def read(extra, n_calls):
-        """人気順の上から n_calls×100本。最後まで読めたか"""
+    def read(extra, n_calls, ranked):
+        """人気順の上から n_calls×100本。最後まで読めたか。ranked: 全体の人気順（このサイトに無い作品を集める・本数を数える）"""
         nonlocal fails
         off = 1
-        while off <= n_calls * CATALOG_PAGE:
+        while off <= n_calls * CATALOG_PAGE and off <= CATALOG_MAX_OFFSET:
             if fails >= MAX_API_FAILS_IN_ROW:
                 return False
             try:
@@ -1364,36 +1427,42 @@ def refresh_sales(now, call=None, sale_path=None, history_path=None):
                 print(f"  ⚠️ 人気順（{off}本目から）を取れませんでした: {e}")
                 continue
             time.sleep(DMM_INTERVAL_SEC)
-            for raw in rows:
+            for pos, raw in enumerate(rows):
                 fresh = parse_api_item(raw) if isinstance(raw, dict) else None
-                if not fresh:
+                if not fresh or fresh["cid"] in seen:
                     continue
                 seen.add(fresh["cid"])
                 sale = sale_of(raw, today_str, now_str)
-                if sale:
+                if not sale:
+                    continue
+                if fresh["cid"] in site:
                     sales[fresh["cid"]] = sale
+                if ranked:
+                    counts[camp_key(sale[0])] = counts.get(camp_key(sale[0]), 0) + 1
+                    if fresh["cid"] not in site and fresh["url"] and fresh["image_url"] and not D.blocked_reason(raw):
+                        candidates.setdefault(camp_key(sale[0]), []).append((fresh["cid"], (*sale, extra_info(fresh, off + pos))))
             if len(rows) < CATALOG_PAGE:
                 return True
             off += CATALOG_PAGE
         return True
 
-    if not read({}, SALE_REFRESH_TOP_CALLS):
+    if not read({}, SALE_REFRESH_TOP_CALLS, True):
         return False, ["- 人気順を最後まで読めなかったので、保存しませんでした（前のまま）"]
-    read({"gte_date": iso(now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=NEW_RANK_DAYS))}, SALE_REFRESH_NEW_CALLS)
+    read({"gte_date": iso(now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=NEW_RANK_DAYS))}, SALE_REFRESH_NEW_CALLS, False)
     kept = 0
     for cid, value in old.items():
-        if cid not in seen and cid not in sales and sale_active(value[0]["end"], now_str):
+        if cid not in seen and cid not in sales and cid in site and sale_active(value[0]["end"], now_str):
             sales[cid] = value
             kept += 1
-    sales = {c: v for c, v in sales.items() if c in site}
-    text = dump_sale_file(sales, today_str)
+    extras = {cid: v for rows_ in candidates.values() for cid, v in rows_[:SALE_EXTRA_PER_CAMPAIGN]}
+    text = dump_sale_file(sales, today_str, extras, counts)
     try:
         with open(sale_path, encoding="utf-8") as f:
             same = f.read() == text
     except OSError:
         same = False
-    camps = sorted({v[0]["title"] for v in sales.values()})
-    lines = [f"- 読み直した作品 {len(seen)}本・セール中 {len(sales)}本（前のデータから残した {kept}本）・特集 {len(camps)}件"]
+    camps = sorted({k[0] for k in counts} | {v[0]["title"] for v in sales.values()})
+    lines = [f"- 読み直した作品 {len(seen)}本・セール中（このサイトの作品） {len(sales)}本（前のデータから残した {kept}本）・このサイトに無い作品 {len(extras)}本・特集 {len(camps)}件"]
     if same:
         return False, lines + ["- 変わりなし（保存しません）"]
     with open(sale_path + ".tmp", "w", encoding="utf-8") as f:
@@ -1601,7 +1670,9 @@ def save_catalog(state):
             f.write(text)
         os.replace(POPULARITY_PATH + ".tmp", POPULARITY_PATH)
     if "sales" in state:
-        text = dump_sale_file(state["sales"], state.get("sales_date", ""))
+        # このサイトに無いセール中の作品（日中のセールの読み直しが、人気順の上位5万本から集めたもの）は、まだ期間中なら残す
+        extras, counts = active_extras(datetime.now(JST).strftime("%Y-%m-%d %H:%M"), set(state["items"]) | set(state.get("archive_cids", ())))
+        text = dump_sale_file(state["sales"], state.get("sales_date", ""), extras, counts)
         with open(SALE_PATH + ".tmp", "w", encoding="utf-8") as f:
             f.write(text)
         os.replace(SALE_PATH + ".tmp", SALE_PATH)
@@ -1866,6 +1937,7 @@ def update_catalog(state, archive, today, top_calls=None, calls=None, new_calls=
     if stats["calls"] > fails:  # 少しでも取れたら、今日のセールとして書く（取れなかった日は、前の日のまま）
         state["sales"] = {c: v for c, v in sales.items() if c in items or c in archive}
         state["sales_date"] = today_str
+        state["archive_cids"] = set(archive)
     stats["sales"] = len(state.get("sales", {}))
     return stats
 

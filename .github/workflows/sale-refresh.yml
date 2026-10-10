@@ -6,10 +6,13 @@ name: Sale Refresh (daytime)
 # ・動画: 人気順の上位1,000本と新着の人気順の上位500本を読み直し、セール中の作品（sale.json）とセールの履歴（sale_history.json）だけを新しくする（get_new_releases.py --sales-only）
 # ・同人・ゲーム・アニメ・素人・成人映画・コミック・写真集・VR見放題: 0:05 と同じく集め直す（scripts/doujin_game.py --update。価格・セールの札・人気の順位・
 #   人気の動き・セールの記録。同じ日に2回動いても、その日の記録はあとのほうで上書きするだけ）
+# ・動画は、人気順の上位5万本まで読み、このサイトに無いセール中の作品も特集ごとに48本まで保存する（運営者の「日替わりセールはFANZAで51本なのに、サイトは1本」。2026-10-10。
+#   日替わりセールは0時に入れかわるので、0:35 にも動画のセールだけ読み直す。5万本を読むのに20分ほど）
 # Gemini は使わない。変わったときだけ保存して、公開（deploy.yml）を頼む。手動でも動かせる（Actions の画面の「Run workflow」）
 on:
   schedule:
     - cron: '17 1 * * *'  # 日本時間 10:17（10時の入れかわりのすぐあと。10円セールの確認 10:12 のあと）
+    - cron: '35 15 * * *' # 日本時間 0:35（0時に入れかわる日替わりセールなど。動画のセールだけ。売り場は 0:05 の毎日の更新が集める）
   workflow_dispatch:
 
 permissions:
@@ -24,7 +27,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 40  # 売り場の集め直しが、多くて140回ほどAPIを読む
+    timeout-minutes: 70  # 動画の5万本で20分ほど・売り場の集め直しで数分
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,13 +36,14 @@ jobs:
       # 動画のセール（失敗しても、売り場の読み直しは続ける。前のデータを残す）
       - name: Refresh sales (video)
         continue-on-error: true
-        timeout-minutes: 10
+        timeout-minutes: 35
         env:
           API_ID: ${{ secrets.API_ID }}
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
         run: python get_new_releases.py --sales-only
       # 同人・ゲームなどの売り場（0:05 と同じ集め直し。失敗した売り場は前のデータのまま）
       - name: Refresh floors (doujin, games and others)
+        if: github.event.schedule != '35 15 * * *'
         continue-on-error: true
         timeout-minutes: 25
         env:

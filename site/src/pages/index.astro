@@ -8,7 +8,7 @@ import HotGenres from '../components/HotGenres.astro';
 import VrToggle from '../components/VrToggle.astro';
 import SaleCampaigns from '../components/SaleCampaigns.astro';
 import TenYenHero from '../components/TenYenHero.astro';
-import { all, sale, today, released, upcoming, roundups, ranking, monthGroups, tagGroups, paged, popularity, todayData, faceOfName, birthOfName, coverOfName, contentGenres, events, upcomingEventList, tenYenNow, campaignHrefOf } from '../lib/data.js';
+import { all, sale, saleWorks, today, released, upcoming, roundups, ranking, monthGroups, tagGroups, paged, popularity, todayData, faceOfName, birthOfName, coverOfName, contentGenres, events, upcomingEventList, tenYenNow, campaignHrefOf } from '../lib/data.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemHref } from '../lib/plan.js';
 import { RANKING_PATH } from '../lib/popularity.js';
@@ -88,7 +88,7 @@ const hasCorner = debuts.length > 0 || birthdays.length > 0;
 const hasGacha = gacha.length >= 3 && released.length > 0;
 
 // セール中の特集（FANZAのキャンペーンごとのカード。終わりが近い順。終わった時刻をすぎたものは、ブラウザで隠して次を繰り上げる /sale.js）
-const saleCamps = saleGroups(all, sale, today, 0, { genres: contentGenres });
+const saleCamps = saleGroups(saleWorks, sale, today, 0, { genres: contentGenres });
 const saleTotal = saleCamps.reduce((n, g) => n + g.total, 0);
 const saleDay = sale.date ? dateParts(sale.date) : null;
 import { assetUrl, inlineScript } from '../lib/assets.js';

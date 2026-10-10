@@ -1,7 +1,7 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
-import { all, allReleased, events, paged, popularity, sale, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors, reviewRanking, reviews, floorReviewRankings } from '../lib/data.js';
+import { all, allReleased, events, paged, popularity, sale, saleWorks, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors, reviewRanking, reviews, floorReviewRankings } from '../lib/data.js';
 import { REVIEW_RANKING_MIN_ITEMS, REVIEW_RANKING_PATH, floorReviewRankingPath } from '../lib/reviews.js';
 import { FLOORS, FLOOR_COLLECTION_KINDS, FLOOR_HUB_SHOWN, floorEntityIndexable, floorEntityRankingPath, collectionIndexIndexable, collectionIndexable, floorCollectionIndexPath, floorSaleHistoryIndexable, floorSaleHistoryPath, floorSalePageIndexable, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorUpcoming } from '../lib/floors.js';
 import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
@@ -38,7 +38,7 @@ export function GET() {
     [RANKING_PATH, newRanking(all, today)],
   ].filter(([, list]) => list.length > 0 && listIndexable(list)).map(([path]) => ({ path, lastmod: popularity.date || today }));
   // セール・キャンペーン（作品が無い・コメントのある作品が1本も無いあいだは、ページが noindex なので入れない）
-  const saleItems = saleGroups(all, sale, today).flatMap((g) => g.items);
+  const saleItems = saleGroups(saleWorks, sale, today).flatMap((g) => g.items);
   if (saleItems.length > 0 && listIndexable(saleItems)) rankingPages.push({ path: SALE_PATH, lastmod: sale.date || today });
   // 特集ごとのページ（開催中で、コメントのある作品があるものだけ。開催していないあいだは noindex）と「FANZAのセールはいつ？」
   for (const p of saleCampaignPages) {

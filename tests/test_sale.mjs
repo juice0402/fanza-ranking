@@ -46,6 +46,29 @@ check('1つのキャンペーンの本数の上限（本数・表紙・まとめ
 check('セール中の作品の数（終わったキャンペーンは除く）', S.saleCount(items, sale, '2026-10-05') === 3);
 check('空でも落ちない', S.saleGroups([], sale, '2026-10-05').length === 0 && S.saleGroups(items, S.normalizeSale(null), '2026-10-05').length === 0 && S.saleCount(items, S.normalizeSale(null), '2026-10-05') === 0);
 
+console.log('\n■ このサイトに無いセール中の作品（日替わりセールなど。2026-10-10）');
+const rawX = {
+  date: '2026-10-10',
+  campaigns: [{ title: '日替わりセール◇', begin: '2026-10-10 00:00', end: '2026-10-10 23:59', n: 56 }, { title: 'メーカーB30％OFF', begin: '2026-10-07 00:10', end: '2026-10-13 23:59' }],
+  items: [{ c: 'site1', k: 1, p: 700, l: 1000 }],
+  extra: [
+    { c: 'x1', k: 0, p: 300, l: 980, r: 371, t: '昔の作品その1', u: 'https://al.fanza.co.jp/?x1', i: 'https://pics.dmm.co.jp/digital/video/x1/x1pl.jpg', d: '2018-01-01', m: 'メーカーC', a: ['女優A'], g: ['単体作品'] },
+    { c: 'x2', k: 0, r: 415, t: '制服のなにか', u: 'https://al.fanza.co.jp/?x2', i: 'https://pics.dmm.co.jp/x2.jpg', d: '2018-01-01', m: 'メーカーC', a: [], g: [] },
+    { c: 'x3', k: 0, r: 448, t: 'あやしいURL', u: 'javascript:alert(1)', i: 'https://pics.dmm.co.jp/x3.jpg', d: '2018-01-01', m: 'メーカーC', a: [], g: [] },
+    { c: 'site1', k: 0, r: 1, t: '同じ作品', u: 'https://al.fanza.co.jp/?s', i: 'https://pics.dmm.co.jp/s.jpg', d: '2018-01-01', m: 'M', a: [], g: [] },
+    { c: 'x4', k: 0, t: '順位なし', u: 'https://al.fanza.co.jp/?x4', i: 'https://pics.dmm.co.jp/x4.jpg', d: '2018-01-01', m: 'M', a: [], g: [] },
+  ],
+};
+const saleX = S.normalizeSale(rawX);
+check('このサイトに無い作品は、作品の形で extras に（人気順の順位・作品ページが無い印）。未成年を連想させる作品・あやしいURL・順位の無い行・このサイトの作品と同じ作品は入れない',
+  saleX.extras.map((i) => i.cid).join() === 'x1' && saleX.extras[0].popAll === 371 && saleX.extras[0].offsite === true && saleX.extras[0].maker === 'メーカーC'
+  && saleX.byCid.get('x1').price === 300 && !saleX.byCid.has('x2') && !saleX.byCid.has('x3') && saleX.byCid.get('site1').k === 1, JSON.stringify(saleX.extras.map((i) => i.cid)));
+const gX = S.saleGroups([it('site1', '2020-01-01', 900), ...saleX.extras], saleX, '2026-10-10');
+check('特集の本数は、人気順の上位5万本で数えた本数（n）があれば、そちら・作品はこのサイトの作品と一緒に人気の高い順',
+  saleX.campaigns[0].count === 56 && saleX.campaigns[1].count === 0 && gX.find((g) => g.k === 0).total === 56 && gX.find((g) => g.k === 0).items.map((i) => i.cid).join() === 'x1'
+  && gX.find((g) => g.k === 1).total === 1, JSON.stringify(gX.map((g) => [g.title, g.total])));
+
+
 console.log('\n■ 特集の中身（おもなメーカー・よく出ている女優・多いジャンル・表紙）');
 const works = [
   it('w1', '2026-01-01', 1, null, { maker: 'S社', actress: ['星子'], genres: ['巨乳', 'ハイビジョン'] }),
