@@ -69,7 +69,7 @@ class FakeAPI:
             raise RuntimeError("テストの失敗")
         rows = self.lists.get(key, [])
         off = int(params["offset"])
-        return {"items": rows[off - 1: off - 1 + params["hits"]]}
+        return {"total_count": str(min(len(rows), 50000)), "items": rows[off - 1: off - 1 + params["hits"]]}
 
 
 cheap_video = [
@@ -106,7 +106,8 @@ print("\n■ 集める（作ったAPIの答えで）")
 api = FakeAPI(LISTS)
 rows, ok = T.fetch_video(api, NOW)
 check("動画: 安い順の先頭から、10円の作品だけ（値引きでない10円・未成年を連想させる作品は入れない）", ok and [r["cid"] for r in rows] == ["abc00001", "abc00002"], rows)
-check("動画: 10円より高い作品が出てきたら、そこでやめる（1回だけ読む）", sum(1 for c in api.calls if c["service"] == "digital") == 1)
+check("動画: 先頭がもう10円なら探さず、10円以下が1本も無い100本が出たらやめる（位置を1回・100本ずつを2回）",
+      [(c["offset"], c["hits"]) for c in api.calls if c["service"] == "digital"] == [(1, 1), (1, 100), (101, 100)], api.calls)
 check("動画: キャンペーンの名前・終わり・定価・価格を持つ（作品の項目は new_releases.json と同じ名前）",
       rows[0]["sale_title"] == "10円セール第1弾" and rows[0]["sale_end"] == "2026-10-11 09:59" and rows[0]["price"] == 10 and rows[0]["list_price"] == 2980
       and rows[0]["actress"] == ["作った女優"] and rows[0]["maker"] == "作ったメーカー" and rows[0]["url"].startswith("https://al.fanza.co.jp/"))
@@ -116,12 +117,36 @@ check("同人: 人気順の上から、定価300円以上の10円か、名前に
       ok and [r["cid"] for r in rows] == ["d_200001", "d_200003"], [r["cid"] for r in rows])
 check("同人: 人気順の順位・キャンペーンの名前を持ち、Z の付いた終わりは使わない",
       rows[0]["rank"] == 1 and rows[1]["rank"] == 3 and rows[1]["sale_title"] == "10円セール" and rows[1]["sale_end"] == "" and rows[0]["list_price"] == 1100)
-check("同人: 人気順を最後まで読む（作品が尽きたらやめる。安い順は読まない）",
-      [c["offset"] for c in api.calls if c["service"] == "doujin"] == [1, 101, 201] and all(c["sort"] == "rank" and c.get("lte_date") for c in api.calls))
+check("同人: 人気順を最後まで読む（作品が尽きたらやめる）→ 安い順も読む",
+      [c["offset"] for c in api.calls if c["sort"] == "rank"] == [1, 101, 201] and all(c.get("lte_date") for c in api.calls if c["sort"] == "rank")
+      and any(c["sort"] == "-price" for c in api.calls))
 api = FakeAPI(LISTS)
 rows, ok = T.fetch_floor("game", api, NOW)
 check("ゲーム: 人気順と、安い順の先頭も読む。セールの札に「10円」がある10円の作品だけ（定価の分からない10円は入れない）",
       ok and [r["cid"] for r in rows] == ["brand_0501"] and rows[0]["sale_title"] == "10円セール【秋の大感謝祭】" and rows[0]["rank"] is None, rows)
+print("\n■ 10円の作品を、人気順の外まで全部（運営者の希望「期間中だけ、いつもの枠をこえて全部載せたい」）")
+cheap_doujin = ([floor(9000 + i, price="0", list_price="770") for i in range(2600)] + [floor(12000 + i, price="5", list_price="110") for i in range(300)]
+                + [floor(1), floor(20000, list_price="1320"), floor(20001, list_price="1650", title="制服のなにか"), floor(20002, list_price="110"),
+                   *[floor(20100 + i, list_price="1320") for i in range(130)]]
+                + [floor(30000 + i, price="11", list_price="110") for i in range(400)])
+cheap_doujin.insert(2850, floor(19999, list_price="2200"))  # 安い順で、少し前に入りこんだ10円（順番が前後する所）
+api = FakeAPI({**LISTS, ("doujin", "-price"): cheap_doujin})
+rows, ok = T.fetch_floor("doujin", api, NOW)
+cids = [r["cid"] for r in rows]
+check("人気順の外の10円の作品も、すべて入る（未成年を連想させる作品・ふだんの安売りは入れない・人気順で見つけた作品は二重にしない）",
+      ok and cids[:2] == ["d_200001", "d_200003"] and "d_220000" in cids and "d_219999" in cids and "d_220001" not in cids and "d_220002" not in cids
+      and {f"d_{220100 + i}" for i in range(130)} <= set(cids) and len(cids) == len(set(cids)) == 2 + 1 + 1 + 130, len(cids))
+check("人気順の外の作品は、順位なし", next(r for r in rows if r["cid"] == "d_220000")["rank"] is None and rows[0]["rank"] == 1)
+cheap_calls = [c for c in api.calls if c["sort"] == "-price"]
+probes = [c for c in cheap_calls if c["hits"] == 1]
+pages = [c["offset"] for c in cheap_calls if c["hits"] == 100]
+start = T.ten_yen_start({"service": "doujin"}, FakeAPI({("doujin", "-price"): cheap_doujin}))
+check("10円がはじまる位置は二分探索で（1本ずつ・20回まで）、その100本前から、10円以下が無い100本が出るまで読む",
+      2 <= len(probes) <= 20 and start in (2851, 2902) and pages[0] == start - 100 and pages[-1] > 3032 and pages[-1] < 3500
+      and pages == list(range(pages[0], pages[-1] + 1, 100)), (len(probes), start, pages))
+check("位置を探す途中で読めなければ「最後まで読めなかった」", not T.fetch_floor("doujin", FakeAPI({**LISTS, ("doujin", "-price"): cheap_doujin}, fail={("doujin", "-price")}), NOW)[1])
+check("先頭から10円以上なら、探さない（位置は1）", T.ten_yen_start({"service": "digital"}, FakeAPI(LISTS)) == 1)
+
 rows, ok = T.fetch_floor("doujin", FakeAPI(LISTS, fail={("doujin", "rank")}), NOW)
 check("続けて失敗したら「最後まで読めなかった」", not ok)
 
