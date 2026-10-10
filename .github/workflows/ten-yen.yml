@@ -24,7 +24,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25  # 8つの売り場を確かめるのに5〜6分（2026-10-10）
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

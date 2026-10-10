@@ -151,9 +151,10 @@ print("\n■ ほかの売り場も（運営者の希望「同人以外の、ゲ�
 check("集める売り場: 動画・同人・ゲーム・アニメ・素人・成人映画・コミック・写真集（VR見放題は月額なので入れない）",
       T.FLOOR_KEYS == ("video", "doujin", "game", "anime", "amateur", "cinema", "comic", "photo") and "vr" not in T.FLOOR_KEYS
       and all(k in T.F.FLOORS for k in T.FLOOR_KEYS[1:]))
-check("同人・ゲームのほかの売り場は、定価が10円より高いか分からない10円を10円セールとみる（ふだん10円の作品が無いので）",
-      T.is_ten_yen("amateur", 10, None, []) and T.is_ten_yen("comic", 10, None, []) and T.is_ten_yen("anime", 10, 550, [])
-      and not T.is_ten_yen("photo", 10, 10, []) and not T.is_ten_yen("cinema", 11, None, []))
+check("アニメ・素人・成人映画は、定価が10円より高いか分からない10円を10円セールとみる（ふだん10円の作品が無いので）",
+      T.is_ten_yen("amateur", 10, None, []) and T.is_ten_yen("anime", 10, 550, []) and not T.is_ten_yen("cinema", 10, 10, []) and not T.is_ten_yen("cinema", 11, None, []))
+check("ブックス（コミック・写真集）は定価が分からないので、キャンペーン・セールの札のある10円だけ（ふだんから10円の単話があるため）",
+      not T.is_ten_yen("comic", 10, None, []) and T.is_ten_yen("comic", 10, None, ["99%OFF"]) and not T.is_ten_yen("photo", 10, None, []) and T.is_ten_yen("photo", 10, None, ["10円セール"]))
 
 
 def amateur(n, price="10", list_price=None, title=None):
