@@ -12,8 +12,9 @@ Gemini が書けなかった作品は、定型文（comment_kind: template）の
         ・Gemini の下書きのままの作品（reason: 下書きを仕上げる。draft に下書きが入る）
         ・発売日をすぎたのに、コメントに「予約」「発売予定」「発売前」などの言い方が残っている作品（reason: 予約の言い方が残っている）
         ・枠が余ったら、過去作品（site/src/data/catalog/YYYY-MM.json）のコメントがまだ無い作品を、FANZAの人気順の順位が上の作品から（reason: 過去作品・catalog: true）
-        ・FANZA同人（site/src/data/doujin.json）・FANZAゲーム（game.json）のコメントがまだ無い作品を、人気順の順位が上の作品から（reason: 同人 / ゲーム・floor: doujin / game）。
-          1日40件のうち、同人4件・ゲーム1件（運営者の希望。2026-10-09。FLOOR_QUOTA。対象が足りない日は、残りを動画に回す）
+        ・FANZA同人（site/src/data/doujin.json）・FANZAゲーム（game.json）などの売り場のコメントがまだ無い作品を、人気順の順位が上の作品から（reason: 同人 / ゲーム…・floor: doujin / game…）。
+          1日40件のうち、同人4件・ゲーム1件・アニメ・素人・成人映画・コミック・写真集・VR見放題は各1件（運営者の希望。2026-10-09・2026-10-10。FLOOR_QUOTA。
+          対象が足りない日は、残りを動画に回す）
   python3 scripts/claude_comments.py apply コメント.json [--dry-run]
       {"cid": "コメント", ...} を点検して、問題が無ければ new_releases.json（過去作品なら、その発売月のファイル。同人・ゲームなら doujin.json・game.json）に書き込む
       （1件でも問題があれば何も書き込まない）
@@ -50,7 +51,10 @@ DEFAULT_LIMIT = 30      # list で一度に出す件数
 DAILY_LIMIT = 40        # 1日に仕上げる件数の上限（試運転で、1回の予約タスクが40件を2回続けて書いたため。--rewrite は数えない）
 # 1日40件のうち、FANZA同人・FANZAゲームに回す件数（運営者の希望「動画35本・同人4本・ゲーム1本」。2026-10-09）。
 # list の --limit が40でないときは、同じ割合（四捨五入）。対象が足りない日は、残りを動画（毎日の更新の作品・過去作品）に回す
-FLOOR_QUOTA = {"doujin": 4, "game": 1}  # 新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題。2026-10-10）は、運営者が件数を決めるまで 0
+# 1日40件のうち、売り場に回す件数（運営者の希望「動画35・同人4・ゲーム1」。2026-10-09。
+# 新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題）は、運営者の判断「上限は40のまま、1件ずつ」で各1件＝動画は29件。2026-10-10。
+# 対象が足りない日は、残りを動画に回す）
+FLOOR_QUOTA = {"doujin": 4, "game": 1, "anime": 1, "amateur": 1, "cinema": 1, "comic": 1, "photo": 1, "vr": 1}
 FLOOR_REASON = {"doujin": "同人", "game": "ゲーム", "anime": "アニメ", "amateur": "素人", "cinema": "成人映画", "comic": "コミック", "photo": "写真集", "vr": "VR見放題"}
 # 作り手の呼び方（list の出力の項目名）: 同人はサークル・ゲームはブランド・ブックスは出版社・ほかはメーカー
 FLOOR_MAKER_FIELD = {"doujin": "circle", "game": "brand", "comic": "publisher", "photo": "publisher"}
@@ -717,10 +721,10 @@ def cmd_apply(args):
     kinds = [x.get("comment_kind") for x in pending_items(check, stamp)]
     catalog_left = len(pending_items([x for _, x in catalog_index(check_shards, {x["cid"] for x in check}).values()], stamp))
     floor_left = {k: len(floor_pending(d, stamp)) for k, d in check_floors.items()}
-    print(f"✅ {len(texts)}件のコメントを書き込みました（うち過去作品 {sum(1 for c in texts if c in catalog)}件・同人 {sum(1 for c in texts if floor_of.get(c) == 'doujin')}件・"
-          f"ゲーム {sum(1 for c in texts if floor_of.get(c) == 'game')}件。まだ仕上げていない作品: 残り{left}件。"
-          f"うち定型文 {kinds.count('template')}件・Gemini の下書き {kinds.count(DRAFT_KIND)}件。コメントがまだ無い過去作品: {catalog_left}本・"
-          f"同人: {floor_left.get('doujin', 0)}本・ゲーム: {floor_left.get('game', 0)}本）")
+    written = "".join(f"・{FLOOR_REASON.get(k, k)} {sum(1 for c in texts if floor_of.get(c) == k)}件" for k in F.FLOORS if any(floor_of.get(c) == k for c in texts) or k in ("doujin", "game"))
+    remain = "・".join(f"{FLOOR_REASON.get(k, k)}: {floor_left.get(k, 0)}本" for k in F.FLOORS if k in floor_left or k in ("doujin", "game"))
+    print(f"✅ {len(texts)}件のコメントを書き込みました（うち過去作品 {sum(1 for c in texts if c in catalog)}件{written}。まだ仕上げていない作品: 残り{left}件。"
+          f"うち定型文 {kinds.count('template')}件・Gemini の下書き {kinds.count(DRAFT_KIND)}件。コメントがまだ無い過去作品: {catalog_left}本・{remain}）")
 
 
 def main():

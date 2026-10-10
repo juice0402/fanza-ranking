@@ -68,7 +68,7 @@ Claude の予約タスク（毎日 0:20 JST。手順は docs/claude-comments.md�
   → Gemini の下書き・定型文のままの作品と、発売日をすぎたのに「予約」「発売されます」などの言い方が残る作品と、仕上げたあとに出演者・収録時間・ジャンルが増えた作品（info_added）を、Claude が読み直して完成した文章（2〜3文・100〜160文字。内容にさらっと触れる）に書き上げる。
     枠（1日40件）が余ったら、コメントがまだ無い過去作品（catalog/）を、人気順の順位が上の作品から書く（コメントが付くと、その作品ページが検索エンジンに出る）
     40件のうち、同人4件・ゲーム1件は、FANZA同人・FANZAゲーム（doujin.json・game.json）の作品（運営者の希望「動画35・同人4・ゲーム1」。2026-10-09。
-    新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題）は、運営者が件数を決めるまで 0（claude_comments.py の FLOOR_QUOTA。2026-10-10）。足りない日は動画に回す）
+    新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題）は各1件＝動画は29件（運営者の判断「上限は40のまま、1件ずつ」。claude_comments.py の FLOOR_QUOTA。2026-10-10）。足りない日は動画に回す）
     （comment_kind: claude。scripts/claude_comments.py。1回40件まで）
   → ブランチ+PR → CIが緑ならMerge → 公開
 
@@ -173,7 +173,7 @@ cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
 ## 守ること
 
 1. **main へ直接 push しない。** ブランチ（`claude/...`）→ PR。PRの作成は `gh api repos/juice0402/fanza-ranking/pulls`（REST）を使う（Claude Code環境では GraphQL が使えず `gh pr create` は失敗する）。毎日更新の GitHub Actions（`update.yml`）だけは、データファイルだけを main に直接 commit する。
-   - 例外の許可: 予約タスクの**コメント更新PR（`new_releases.json` と、過去作品の `site/src/data/catalog/` の中のファイルと、同人・ゲームの `doujin.json`・`game.json` だけを変えるもの）は、CIが緑なら Claude 自身が Merge してよい**（運営者の許可済み。過去作品のコメントは、2026-10-04 夜に、運営者の「5万件くらい網羅したい」に合わせて加え、報告した。同人・ゲームのコメントは、2026-10-09 に、運営者の「動画35・同人4・ゲーム1の割合で執筆を」に合わせて加えた）。同じく、**週のまとめ記事のPR（`roundups.json` だけを変えるもの）も、CIが緑なら Claude 自身が Merge してよい**（運営者の「そっち側でできることは極力やっていい」という包括的な許可にもとづき、2026-10-03 に追加して運営者へ報告した。やめてほしいと言われたら、この文を消す）。**月のまとめ記事のPR（`monthly.json` だけを変えるもの）も同じ**（運営者の希望「月のまとめ記事＋予約タスク」にもとづき、2026-10-07 に追加して運営者へ報告した）。コード・デザインを変えるPRは、運営者に知らせてからMergeする。
+   - 例外の許可: 予約タスクの**コメント更新PR（`new_releases.json` と、過去作品の `site/src/data/catalog/` の中のファイルと、売り場の `doujin.json`・`game.json`・`anime.json`・`amateur.json`・`cinema.json`・`comic.json`・`photo.json`・`vr.json` だけを変えるもの）は、CIが緑なら Claude 自身が Merge してよい**（運営者の許可済み。過去作品のコメントは、2026-10-04 夜に、運営者の「5万件くらい網羅したい」に合わせて加え、報告した。同人・ゲームのコメントは、2026-10-09 に、運営者の「動画35・同人4・ゲーム1の割合で執筆を」に合わせて加えた。新しい売り場のコメントは、2026-10-10 に、運営者の「上限は40のまま、1件ずつ」に合わせて加えた）。同じく、**週のまとめ記事のPR（`roundups.json` だけを変えるもの）も、CIが緑なら Claude 自身が Merge してよい**（運営者の「そっち側でできることは極力やっていい」という包括的な許可にもとづき、2026-10-03 に追加して運営者へ報告した。やめてほしいと言われたら、この文を消す）。**月のまとめ記事のPR（`monthly.json` だけを変えるもの）も同じ**（運営者の希望「月のまとめ記事＋予約タスク」にもとづき、2026-10-07 に追加して運営者へ報告した）。コード・デザインを変えるPRは、運営者に知らせてからMergeする。
 2. **秘密情報をコードやログに書かない。** 使うのは GitHub Secrets の `API_ID` / `AFFILIATE_ID` / `GEMINI_API_KEY` と、公開用の `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`（`deploy.yml` と CI のプレビューだけに渡す）のみ。リポジトリは公開なので、一度でも書くと履歴に残る。Geminiのキーは URL ではなくヘッダ（`x-goog-api-key`）で渡す。
 3. **規約の表記を消さない。** 全ページに「広告（アフィリエイト）表記」「18歳確認」「RTAラベル」「Powered by FANZA Webサービス」。AIコメントの注記も残す。`tests/verify_dist.py` が全ページを検査する。
    - **FANZA のクレジットは、DMMの規定のHTMLを1文字も変えない**（DMMアフィリエイト公式の「クレジット表示」の FANZA クレジット・テキスト形式 `Powered by <a href="https://affiliate.dmm.com/api/">FANZA Webサービス</a>`。改変すると API の利用を止められることがある。運営者が公式のページで確かめた。2026-10-07）。`items.js` の `DMM_CREDIT_HTML` を、フッターの `<p class="foot-credit">` に `set:html` でそのまま入れる。class・target・rel を足さない。文節の区切りも入れない（`lib/phrase.js` が `foot-credit` の中を飛ばす）。見た目は CSS の `.foot-credit a` で整える。`tests/verify_dist.py` が全ページで1文字ずつ突き合わせる
