@@ -87,7 +87,9 @@ def probe_ten_yen():
         have = json.load(open(T.PATH, encoding="utf-8"))
     except (OSError, ValueError):
         have = {}
-    for key, label, svc, flr in (("doujin", "同人", "doujin", "digital_doujin"), ("game", "ゲーム", "pcgame", "digital_pcgame"), ("video", "動画", "digital", "videoa")):
+    import floor_data as F
+    targets = [("video", "動画", "digital", "videoa")] + [(k, c["label"], c["service"], c["floor"]) for k, c in F.FLOORS.items() if k != "vr"]
+    for key, label, svc, flr in targets:
         say(f"## 13-{key}) 10円セール: {label}の安い順")
         base = {"site": "FANZA", "service": svc, "floor": flr, "sort": "-price"}
         calls = [0]
