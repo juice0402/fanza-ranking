@@ -39,7 +39,6 @@ const rows = list.map((r) => {
       href: r.path || `/${key}/item/${top.cid}/`,
       title: r.name,
       img: top.image_url,
-      wide: key === 'doujin',
       line: `上位${FLOOR_ENTITY_TOP}本に${r.count}本・最高${r.best}位`,
       meta: '',
       upcoming: false,
@@ -76,7 +75,7 @@ const listLd = {
         {data.updated && <p class="section-note">{formatDateJp(data.updated)}の時点{hasMove && '（▲▼は前の日から）'}</p>}
       </div>
       <ol class="ws-list erank-list">
-        {rows.map(({ r, row }) => <FloorRow row={row} no={r.rank} move={moveLabel(r.move)} titleJs={false} />)}
+        {rows.map(({ r, row }) => <FloorRow row={row} floor={key} no={r.rank} move={moveLabel(r.move)} titleJs={false} />)}
       </ol>
     </section>
 

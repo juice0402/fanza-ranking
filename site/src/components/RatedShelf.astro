@@ -1,0 +1,23 @@
+---
+// 「評価の高い作品」の棚（ジャンル・女優・メーカー・シリーズ・レーベルのページ。運営者の希望「APIで使えるものは全部」。2026-10-10）。
+// FANZAのレビューが REVIEW_SHELF_MIN 件以上ある発売済みの作品を、ならした評価（件数の少ない満点が上に来すぎないように）の高い順に6本。3本に満たなければ出さない。
+// こちらから案内する欄なので、未成年を連想させるタイトルの作品は入れない
+import MiniShelf from './MiniShelf.astro';
+import { today } from '../lib/data.js';
+import { isMinorTitle } from '../lib/gacha.js';
+import { REVIEW_SHELF_MIN, ratedShelf } from '../lib/reviews.js';
+
+// items: そのページの作品 / id: 見出しの id / title: 見出し
+const { items, id = 'rated-title', title = '評価の高い作品' } = Astro.props;
+const list = ratedShelf(items, today, { skip: (i) => isMinorTitle(i.title) });
+---
+
+{list.length > 0 && (
+  <section class="section" aria-labelledby={id} data-vr-group>
+    <div class="section-head">
+      <h2 id={id} class="section-title">{title}</h2>
+      <p class="section-note">FANZAのレビュー（{REVIEW_SHELF_MIN}件以上）の評価から</p>
+    </div>
+    <MiniShelf items={list} rate />
+  </section>
+)}

@@ -2,7 +2,10 @@
 // シリーズ・レーベルの一覧（/series/・/label/。2026-10-07）。作品数の多い順のタイル（メーカーの一覧と同じ形）
 import Base from '../layouts/Base.astro';
 import Breadcrumb from './Breadcrumb.astro';
+import NameIndex from './NameIndex.astro';
 import { SITE_NAME, breadcrumbLd } from '../lib/items.js';
+import { kanaIndex } from '../lib/kana.js';
+import { readings } from '../lib/data.js';
 import { listIndexable } from '../lib/plan.js';
 
 // groups: groupByEntry のまとまり（作品数の多い順）。kind: 'series' か 'label'。path: この一覧のページ
@@ -14,6 +17,8 @@ const trail = [
   { name: `${word}から探す`, path },
 ];
 const noindex = groups.length === 0 || !listIndexable(groups.flatMap((g) => g.items));
+// 作品数の多い順のタイル → 50音で探す（シリーズの読みがなは FANZA公式のAPIから。レーベルの読みはAPIに無いので、タイルだけ）
+const index = kanaIndex(groups.map((g) => ({ name: g.name, path: g.path, count: g.items.length, reading: kind === 'series' ? readings.of('video', 'series', g.id) : '' })));
 ---
 
 <Base
@@ -28,25 +33,9 @@ const noindex = groups.length === 0 || !listIndexable(groups.flatMap((g) => g.it
 
     <section class="hero">
       <h1 class="hero-title">{word}から探す</h1>
-      <p class="hero-lead">掲載している作品が3本以上ある{word}を、作品数の多い順に並べています。</p>
+      <p class="hero-lead">掲載している作品が3本以上ある{word}を、{index.show ? '作品数の多い順と50音順' : '作品数の多い順'}で探せます。</p>
     </section>
 
-    <section class="section" aria-labelledby="entry-list-title">
-      <h2 id="entry-list-title" class="visually-hidden">{word}の一覧</h2>
-      {groups.length > 0
-        ? (
-          <ul class="name-grid">
-            {groups.map((g) => (
-              <li>
-                <a class="name-link" href={g.path} title={g.name}>
-                  <span class="name-link-name">{g.name}</span>
-                  <span class="name-link-count">{g.items.length}本</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        )
-        : <p class="empty">まだ一覧に載せられる{word}がありません。毎日の更新をお待ちください。</p>}
-    </section>
+    <NameIndex index={index} label={word} prefix={`${kind}-kana`} empty={`まだ一覧に載せられる${word}がありません。毎日の更新をお待ちください。`} />
   </div>
 </Base>

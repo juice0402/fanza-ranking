@@ -1,13 +1,17 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
-import { makerGroups, today } from '../../lib/data.js';
+import NameIndex from '../../components/NameIndex.astro';
+import { makerGroups, readings, today } from '../../lib/data.js';
+import { kanaIndex } from '../../lib/kana.js';
 import { MAKER_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
 import { INDEX_LIST_LIMIT } from '../../config.js';
 
 // 並べるのは作品数の多い順に INDEX_LIST_LIMIT 件まで（過去作品が増えて、メーカーが多くなっても、ページが重くなりすぎないように）
 const shown = makerGroups.slice(0, INDEX_LIST_LIMIT);
 const more = makerGroups.length - shown.length;
+// 作品数の多い順のタイル → 50音で探す（読みがなは FANZA公式のAPIから。lib/kana.js）
+const index = kanaIndex(shown.map((g) => ({ name: g.name, path: g.path, count: g.items.length, reading: readings.of('video', 'maker', g.name) })));
 
 // タイトル: 「FANZAのメーカー一覧（○社）新作・予約作品【2026年10月】」（2026-10-06。メーカーのページと同じく、年月を入れる）
 const ym = `${+today.slice(0, 4)}年${+today.slice(5, 7)}月`;
@@ -28,25 +32,9 @@ const trail = [
 
     <section class="hero">
       <h1 class="hero-title">メーカーから探す</h1>
-      <p class="hero-lead">掲載している作品が{ENTITY_MIN_ITEMS}本以上あるメーカーの一覧です。作品数の多い順に並べています。{more > 0 && `（上位${shown.length}社。ほかの${more}社のページは、作品ページのメーカー名から開けます）`}</p>
+      <p class="hero-lead">掲載している作品が{ENTITY_MIN_ITEMS}本以上あるメーカーを、{index.show ? '作品数の多い順と50音順' : '作品数の多い順'}で探せます。{more > 0 && `（上位${shown.length}社。ほかの${more}社のページは、作品ページのメーカー名から開けます）`}</p>
     </section>
 
-    <section class="section" aria-labelledby="maker-list-title">
-      <h2 id="maker-list-title" class="visually-hidden">メーカーの一覧</h2>
-      {makerGroups.length > 0
-        ? (
-          <ul class="name-grid">
-            {shown.map((g) => (
-              <li>
-                <a class="name-link" href={g.path} title={g.name}>
-                  <span class="name-link-name">{g.name}</span>
-                  <span class="name-link-count">{g.items.length}本</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        )
-        : <p class="empty">まだ一覧に載せられるメーカーがありません。毎日の更新をお待ちください。</p>}
-    </section>
+    <NameIndex index={index} label="メーカー" prefix="maker-kana" empty="まだ一覧に載せられるメーカーがありません。毎日の更新をお待ちください。" />
   </div>
 </Base>

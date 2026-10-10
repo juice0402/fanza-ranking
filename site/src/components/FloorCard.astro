@@ -1,33 +1,34 @@
 ---
-// FANZA同人・FANZAゲームの作品カード（一覧の1マス。動画の ItemCard と同じ形・同じ見た目。2026-10-09。lib/floors.js）。
+// FANZA同人・FANZAゲームなどの売り場の作品カード（一覧の1マス。動画の ItemCard と同じ形・同じ見た目。2026-10-09。lib/floors.js）。
+// 表紙は components/FloorImg.astro（枠の形は売り場ごと。素人は正方形。2026-10-10）。
 // 表紙: ゲームは、動画と同じく FANZA のパッケージ画像（スマホはパッケージを幅300に縮めた版。components/Thumb.astro）。
 // 同人は、表紙の画像が横長（560×420 前後。2026-10-09 に本物で確かめた）なので、横長の枠（is-wide）にまるごと入れる。
 // 同人のスマホ版は、FANZA の「縮めて返す版」の幅300（lib/floors.js の doujinThumb。運営者の「同じしくみを同人にも」。2026-10-09）。
 // 同人の画像は pics.dmm.co.jp から読む（lib/floors.js の picsUrl。doujin-assets.dmm.co.jp は、運営者のiPhoneで、ページの中では出なかった。2026-10-09）。
 // スマホ版が読めなければ元の画像に、元の画像も読めなければ doujin-assets に1回だけ戻す（DOUJIN_THUMB_ONERROR）。どのページから読んだかも送らない（referrerpolicy="no-referrer"）
-import Thumb from './Thumb.astro';
-import { THUMB_MEDIA } from '../lib/items.js';
-import { DOUJIN_THUMB_ONERROR, doujinThumb, floorItemPath, makerLine } from '../lib/floors.js';
+import FloorImg from './FloorImg.astro';
+import { floorItemPath, frameClass, makerLine } from '../lib/floors.js';
+import { OUTBOUND_ATTRS } from '../lib/plan.js';
 
 // level: 見出しの階層 / eager: 最初の画面に入る作品だけ、画像をすぐ読む / badge: 表紙の左上の札（順位・割引）/ note: 価格などの1行
 // rankNote: 人気ランキングの1行（「前日から▲3｜最高2位」。ふつうの文字の色。動画の ItemCard の noteKind="rank" と同じ見た目。2026-10-09）
-const { item, level = 'h3', eager = false, badge = '', note = '', rankNote = '' } = Astro.props;
+// external: このサイトに作品ページが無い作品（10円セールの作品で、人気の上位に入っていないもの）。表紙・タイトルからFANZAの作品ページへ直接
+const { item, level = 'h3', eager = false, badge = '', note = '', rankNote = '', external = false } = Astro.props;
 const Heading = level;
-const href = floorItemPath(item.floor, item.cid);
-const wide = item.floor === 'doujin';
+const href = external ? item.url : floorItemPath(item.floor, item.cid);
+const outbound = external ? OUTBOUND_ATTRS : {};
 const line = makerLine(item);
 ---
 
 <article class="item">
-  <a class:list={['item-cover', { 'is-wide': wide }]} href={href} tabindex="-1" aria-hidden="true">
-    {item.image_url && (wide
-      ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(item.image_url, 'card').small} /><img class="floor-img" src={item.image_url} alt="" width="560" height="420" loading={eager ? 'eager' : 'lazy'} decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
-      : <Thumb src={item.image_url} kind="card" loading={eager ? 'eager' : 'lazy'} />)}
+  <a class:list={['item-cover', frameClass(item.floor)]} href={href} tabindex="-1" aria-hidden="true" {...outbound}>
+    <FloorImg floor={item.floor} url={item.image_url} kind="card" loading={eager ? 'eager' : 'lazy'} />
     {badge && <span class="rank-badge">{badge}</span>}
     {item.upcoming && <span class="pop pop-wait">予約</span>}
   </a>
-  <Heading class="item-title">{badge && <span class="visually-hidden">{badge}：</span>}{item.upcoming && <span class="visually-hidden">予約：</span>}<a class="item-title-link" href={href}>{item.title}</a></Heading>
+  <Heading class="item-title">{badge && <span class="visually-hidden">{badge}：</span>}{item.upcoming && <span class="visually-hidden">予約：</span>}<a class="item-title-link" href={href} {...outbound}>{item.title}</a></Heading>
   {line && <p class="item-cast">{line}</p>}
+  {item.review && <p class="item-rate"><span class="rate-star">★{item.review.avg.toFixed(2)}</span><span class="rate-count">（{item.review.count.toLocaleString('ja-JP')}件）</span></p>}
   {rankNote && <p class="item-note is-rank">{rankNote}</p>}
   {note && <p class="item-note">{note}</p>}
   {item.comment && <p class="item-comment">{item.comment}</p>}

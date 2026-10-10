@@ -148,8 +148,8 @@
   function land(reel, row) {
     reel.textContent = '';
     var card = el('a', 'reel-card is-landed');
-    // 同人・ゲームの作品は、候補に作品ページの場所（h）が入っている（/doujin/item/…/・/game/item/…/）
-    card.href = typeof row.h === 'string' && /^\/(doujin|game)\/item\/[A-Za-z0-9_-]+\/$/.test(row.h) ? row.h : '/item/' + row.c + '/';
+    // 同人・ゲームなどの売り場の作品は、候補に作品ページの場所（h）が入っている（/doujin/item/…/・/game/item/…/・/amateur/item/…/ など）
+    card.href = typeof row.h === 'string' && /^\/[a-z]{2,10}\/item\/[A-Za-z0-9_-]+\/$/.test(row.h) ? row.h : '/item/' + row.c + '/';
     card.appendChild(windowWith(row.i));
     card.appendChild(el('span', 'reel-title ph-js', row.t));
     if (row.a) card.appendChild(el('span', 'reel-cast', row.a));

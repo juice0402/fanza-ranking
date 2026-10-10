@@ -118,6 +118,12 @@ RANK_ALL_DAYS = 30    # 全体の人気順（毎日取り直す上位 CATALOG_TO
 RANK_KEEP_DAYS = 400  # 記録を残す日数（作品が毎日の更新・過去作品のどちらからも消えたら、RANK_ALL_DAYS をすぎたところで消す）
 # シリーズ・レーベル（APIの iteminfo.series・iteminfo.label。2026-10-07 に本物のAPIで、人気の上位400本の約6割にシリーズ・全部にレーベルがあることを確かめた）。
 # レーベルが無い作品は id 99999・名前「----」で返ってくるので、無いものとして扱う
+# FANZAのレビュー（★の平均と件数。運営者の希望「APIで使えるものは全部。SEO対策も徹底」→ 高評価ランキング・作品の評価。2026-10-10）。
+# APIのどの一覧にも review が入っている（人気の上位300本の約7割にある。2026-10-10 に本物で確かめた）ので、毎日の取得で見かけた作品の評価をためる。
+# 毎日変わるので、作品の行（new_releases.json・catalog/）ではなく、小さな別のファイルに1作品1行で持つ（catalog_rank.json と同じ考え方）
+REVIEWS_PATH = os.environ.get("REVIEWS_PATH", os.path.join(os.path.dirname(DATA_PATH), "reviews.json"))
+REVIEW_REFETCH_PER_RUN = int(os.environ.get("REVIEW_REFETCH_PER_RUN", "30"))  # 毎日の更新の作品で、きょうの取得に出てこなかったものを、品番で少しずつ取り直す
+REVIEWS_SEEN = {}  # その回の取得で見かけた動画の作品の評価 {cid: [平均×100, 件数] か None（レビューなし）}
 LABEL_NONE_IDS = {99999}
 LABEL_NONE_NAMES = {"----", "---", "-", ""}
 
@@ -566,11 +572,99 @@ def call_api(endpoint, params):
             status = result.get("status")
             if status is not None and str(status) != "200":
                 raise RuntimeError(f"APIがエラーを返しました: status={status} message={result.get('message')}")
+            if endpoint == "ItemList":
+                note_reviews(result.get("items"))
             return result
         except Exception as e:
             last_error = e
             time.sleep(3 * (attempt + 1))
     raise RuntimeError(f"FANZA APIから取得できませんでした: {last_error}")
+
+
+def parse_review(raw):
+    """APIの review（{"count": 31, "average": "4.71"}）→ [平均×100, 件数]（無い・読めなければ None）"""
+    rv = raw.get("review") if isinstance(raw, dict) else None
+    if not isinstance(rv, dict):
+        return None
+    try:
+        count, avg = int(rv.get("count")), float(rv.get("average"))
+    except (TypeError, ValueError):
+        return None
+    if count < 1 or not 1 <= avg <= 5:
+        return None
+    return [int(round(avg * 100)), count]
+
+
+def note_reviews(items):
+    """APIの一覧で見かけた動画（FANZA動画のビデオの売り場）の作品の評価を、REVIEWS_SEEN にためる（どの取得でも）"""
+    for raw in items or []:
+        if isinstance(raw, dict) and raw.get("content_id") and raw.get("service_code") in (None, "digital") and raw.get("floor_code") in (None, "videoa"):
+            REVIEWS_SEEN[str(raw["content_id"])] = parse_review(raw)
+
+
+def load_reviews():
+    """reviews.json → {"updated", "cursor", "items": {cid: [平均×100, 件数]}}。無い・壊れているときは空から（評価は、また集まる）"""
+    try:
+        raw = read_json_file(REVIEWS_PATH)
+    except ValueError as e:
+        print(f"⚠️ 評価のファイル（reviews.json）を読めませんでした（{e}）。空から集め直します")
+        raw = None
+    items = {}
+    for cid, v in ((raw or {}).get("items") or {}).items() if isinstance(raw, dict) and isinstance(raw.get("items"), dict) else []:
+        if re.match(r"^[A-Za-z0-9_\-]{1,40}$", str(cid)) and isinstance(v, list) and len(v) == 2 and all(isinstance(n, int) for n in v) and 100 <= v[0] <= 500 and v[1] >= 1:
+            items[str(cid)] = v
+    return {"updated": day_key((raw or {}).get("updated")) if isinstance(raw, dict) else "", "cursor": str((raw or {}).get("cursor") or "") if isinstance(raw, dict) else "", "items": items}
+
+
+def save_reviews(state):
+    """1作品1行（cid の順）"""
+    rows = ",\n".join(f"{json.dumps(c)}:{json.dumps(v, separators=(',', ':'))}" for c, v in sorted(state["items"].items()))
+    text = f'{{"updated":{json.dumps(state.get("updated", ""))},"cursor":{json.dumps(state.get("cursor", ""))},\n"items":{{\n{rows}\n}}}}\n'
+    with open(REVIEWS_PATH + ".tmp", "w", encoding="utf-8") as f:
+        f.write(text)
+    os.replace(REVIEWS_PATH + ".tmp", REVIEWS_PATH)
+
+
+def update_reviews(state, keep, curated_released, today_str, call=None):
+    """きょう見かけた評価を足し、毎日の更新の作品（発売済み）で、きょう見かけなかったものを品番で REFRESH 本ずつ順番に取り直す。
+    keep: このサイトの作品の cid（それ以外の評価は持たない。None なら消さない）。{"seen", "refetched", "rated"} を返す"""
+    call = call or call_item_list
+    todo = sorted(c for c in curated_released if c not in REVIEWS_SEEN)
+    start = next((i for i, c in enumerate(todo) if c > state.get("cursor", "")), 0)
+    picked = (todo[start:] + todo[:start])[:REVIEW_REFETCH_PER_RUN]
+    fails = refetched = 0
+    for cid in picked:
+        try:
+            rows = call({"cid": cid, "hits": 1})
+            fails = 0
+        except RuntimeError:
+            fails += 1
+            if fails >= MAX_API_FAILS_IN_ROW:
+                break
+            continue
+        refetched += 1
+        state["cursor"] = cid
+        if not any(isinstance(r, dict) and str(r.get("content_id")) == cid for r in rows):
+            continue
+        if call is not call_item_list:  # テストのときは、作った答えから評価をためる
+            note_reviews(rows)
+        time.sleep(DMM_INTERVAL_SEC)
+    prune = keep is not None
+    if keep is None:  # 過去作品を読めなかった日は、前から持っている作品と毎日の更新の作品だけ（消さない）
+        keep = set(state["items"]) | set(curated_released)
+    seen = 0
+    for cid, v in REVIEWS_SEEN.items():
+        if cid not in keep:
+            continue
+        seen += 1
+        if v:
+            state["items"][cid] = v
+        else:
+            state["items"].pop(cid, None)
+    for cid in [c for c in state["items"] if prune and c not in keep]:
+        del state["items"][cid]
+    state["updated"] = today_str
+    return {"seen": seen, "refetched": refetched, "rated": len(state["items"])}
 
 
 def call_item_list(extra_params):
@@ -1930,6 +2024,18 @@ def main():
             r_ = catalog_result["ranks"]
             print(f"📈 人気の動き: 記録中 {r_['tracked']}本（新着の人気順 {'○' if r_['new_ok'] else '×（取れなかった日）'}・全体の人気順 {'○' if r_['all_ok'] else '×（取れなかった日）'}・消した {r_['removed']}本）")
 
+    # ---- FANZAのレビューの評価（きょうの取得で見かけた作品・毎日の更新の作品を少しずつ取り直す。失敗しても、ほかの更新は止めない）----
+    def reviews_stage():
+        state = load_reviews()
+        keep = (set(archive) | set(catalog["items"])) if catalog else None
+        result = update_reviews(state, keep, {c for c, it in archive.items() if day_key(it.get("date")) <= today_str}, today_str)
+        save_reviews(state)
+        return result
+
+    reviews_result = run_stage("レビューの評価の取得", reviews_stage)
+    if reviews_result:
+        print(f"⭐ レビューの評価: きょう見かけた {reviews_result['seen']}本 / 品番で取り直した {reviews_result['refetched']}本 / 評価のある作品 {reviews_result['rated']}本")
+
     # ---- きょうの数字・予約の人気順（トップの「きょうの数字」「きょうの話題」用。失敗しても、ほかの更新は止めない）----
     def today_stage():
         data = update_today_stats(today, load_today())
@@ -1979,6 +2085,8 @@ def main():
             summary.append(f"- 人気の動き（rank_history.json）: 記録中 {r_['tracked']}本" + ("" if r_["new_ok"] and r_["all_ok"] else "（きょうの順位を一部取れなかったので、その日は「分からない」にしました）"))
     elif catalog_on and catalog is None:
         summary.append("- 過去作品: ファイル（site/src/data/catalog）が壊れているため、更新をスキップ（ファイルは変更していません）")
+    if reviews_result:
+        summary.append(f"- レビューの評価（reviews.json）: 評価のある作品 {reviews_result['rated']}本（きょう見かけた {reviews_result['seen']}本・品番で取り直した {reviews_result['refetched']}本）")
     if today_result:
         summary.append(f"- きょうの数字: きょうの発売 {today_result['daily'][-1]['n']}本・この{DAILY_COUNT_DAYS}日で {sum(d['n'] for d in today_result['daily'])}本・予約受付中 {today_result['upcoming_total']}本・予約の人気順 {len(today_result['upcoming'])}本")
     elif TODAY_STATS:

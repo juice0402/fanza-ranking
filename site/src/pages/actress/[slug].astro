@@ -8,9 +8,11 @@ import Face from '../../components/Face.astro';
 import EventList from '../../components/EventList.astro';
 import NextWorks from '../../components/NextWorks.astro';
 import OnSaleWorks from '../../components/OnSaleWorks.astro';
+import RatedShelf from '../../components/RatedShelf.astro';
 import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
-import { actressByName, actressGroups, agencyOfName, events, eventsOfName, makerByName, profilesByName, sale, today, seriesById } from '../../lib/data.js';
+import { actressByName, actressGroups, actressReading, agencyOfName, events, eventsOfName, makerByName, profilesByName, sale, today, seriesById } from '../../lib/data.js';
+import { readingLine } from '../../lib/kana.js';
 import { entryChips } from '../../lib/insights.js';
 import EntryChips from '../../components/EntryChips.astro';
 import { offPercent, onSaleItems } from '../../lib/sale.js';
@@ -72,6 +74,8 @@ const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 // 最後に変わった日（sitemap の lastmod と同じ）。画面の「○月○日更新」と、構造化データの dateModified に使う
 const modified = listLastmod(group.items, today);
 const description = entityDescription(summary, { next: upcomingWorks[0] ?? null, saleCount: saleWorks.length, maxOff: saleMaxOff });
+// 読みがな（FANZAのプロフィール・名簿から。見出しの下と、構造化データの alternateName に。2026-10-10）
+const ruby = readingLine(group.name, actressReading(group.name));
 const sameAs = agency ? [agency.x && `https://x.com/${agency.x}`, agency.instagram && `https://www.instagram.com/${agency.instagram}/`].filter(Boolean) : [];
 const profileLd = {
   '@context': 'https://schema.org',
@@ -81,6 +85,7 @@ const profileLd = {
   mainEntity: {
     '@type': 'Person',
     name: group.name,
+    ...(ruby ? { alternateName: ruby } : {}),
     ...(faceUrl(profile, true) ? { image: faceUrl(profile, true) } : {}),
     ...(sameAs.length ? { sameAs } : {}),
   },
@@ -109,6 +114,7 @@ const trail = [
         <Face name={group.name} src={faceUrl(profile, true)} size="lg" eager />
         <div class="profile-body">
           <h1 class="hero-title"><span class="phrase">{group.name}の</span><span class="phrase">新作・出演作品</span></h1>
+          {ruby && <p class="hero-ruby">{ruby}</p>}
         </div>
       </div>
       {modified && <p class="page-updated">{md(modified)}更新</p>}
@@ -177,6 +183,7 @@ const trail = [
 
     <NextWorks items={upcomingWorks} shown={NEXT_SHOWN} />
     <OnSaleWorks items={saleWorks} shown={SALE_SHOWN} label="出演作品が入っているセール" />
+    <RatedShelf items={group.items} title={`${group.name}さんの評価の高い作品`} />
 
     {myEvents.length > 0 && (
       <section class="section" aria-labelledby="events-title">

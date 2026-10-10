@@ -222,3 +222,49 @@ export function roundupFor(item, roundups) {
 /** 月のページの「この月の週のまとめ」（週の月曜日がその月に入る記事。古い順） */
 export const roundupsInMonth = (roundups, ym) => roundups.filter((r) => r.week_start.slice(0, 7) === ym).sort((a, b) => a.week_start.localeCompare(b.week_start));
 
+
+// ---- ジャンルの「FANZA全体で人気の作品」（data/genre_tops.json。scripts/genre_tops.py が毎日。2026-10-10） ----
+const FANZA_HOST = /^https:\/\/([a-z0-9-]+\.)*(dmm\.co\.jp|fanza\.co\.jp)\//;
+const GT_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * genre_tops.json → Map(ジャンルの名前 → { date, items })。items は人気の順。
+ * このサイトに載っている作品は、そのまま（作品ページへ）。ほかは保存した形から作る（作品ページが無いので、FANZAへ直接）。
+ * 未成年を連想させるタイトル・FANZA以外のURL・画像の無い行は捨てる。byCid: このサイトの作品（cid → 作品）
+ */
+export function normalizeGenreTops(raw, byCid = new Map()) {
+  const out = new Map();
+  const genres = raw && typeof raw === 'object' && raw.genres && typeof raw.genres === 'object' && !Array.isArray(raw.genres) ? raw.genres : {};
+  for (const [name, g] of Object.entries(genres)) {
+    if (!g || !Array.isArray(g.items) || !GT_DAY.test(String(g.date ?? ''))) continue;
+    const items = [];
+    const seen = new Set();
+    for (const r of g.items) {
+      if (!r || typeof r !== 'object' || typeof r.c !== 'string' || !/^[A-Za-z0-9_-]{1,40}$/.test(r.c) || seen.has(r.c)) continue;
+      const own = byCid.get(r.c);
+      if (own) {
+        if (!isMinorTitle(own.title)) items.push(own);
+        seen.add(r.c);
+        continue;
+      }
+      const title = String(r.t ?? '').trim();
+      if (!title || isMinorTitle(title) || !FANZA_HOST.test(String(r.u ?? '')) || !FANZA_HOST.test(String(r.i ?? '')) || !GT_DAY.test(String(r.d ?? ''))) continue;
+      seen.add(r.c);
+      items.push({
+        cid: r.c,
+        title,
+        dateKey: r.d,
+        actress: Array.isArray(r.a) ? r.a.filter((a) => typeof a === 'string' && a).slice(0, 4) : [],
+        maker: typeof r.m === 'string' && r.m ? r.m : '不明',
+        image_url: r.i,
+        url: r.u,
+        vr: r.v === 1,
+        genres: [name],
+        comment: '',
+        fanzaOnly: true,
+      });
+    }
+    if (items.length) out.set(name, { date: g.date, items });
+  }
+  return out;
+}

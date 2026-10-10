@@ -7,7 +7,8 @@ import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorCard from '../../../components/FloorCard.astro';
 import FloorMoreNav from '../../../components/FloorMoreNav.astro';
-import { activeFloors, floorCollectionGroups, floorMakerById, floors, today } from '../../../lib/data.js';
+import { activeFloors, floorCollectionGroups, floorMakerById, floors, readings, today } from '../../../lib/data.js';
+import { readingLine } from '../../../lib/kana.js';
 import {
   FLOORS, FLOOR_COLLECTIONS, FLOOR_COLLECTION_KINDS, FLOOR_COLLECTION_LIST, collectionDescription, collectionFacts, collectionHeading, collectionIndexable, collectionTitle,
   floorCollectionIndexPath, floorItemListLd, floorPath, priceNote, relatedFloorGenres, saleBadgeOf, topGenres, topMakersIn,
@@ -43,9 +44,12 @@ const trail = [
   { name: group.name, path: group.path },
 ];
 const noindex = !collectionIndexable(group);
-const about = group.kind === 'series' ? { '@type': 'CreativeWorkSeries', name: group.name }
-  : group.kind === 'author' ? { '@type': 'Person', name: group.name }
-    : group.kind === 'genre' ? { '@type': 'Thing', name: group.name } : undefined;
+// 読みがな（ジャンル・シリーズ・作家。FANZA公式のAPIから。見出しの下と、構造化データの alternateName に。2026-10-10）
+const ruby = ['genre', 'series', 'author'].includes(group.kind) ? readingLine(group.name, readings.of(key, group.kind, group.kind === 'series' ? group.slug : group.name)) : '';
+const alt = ruby ? { alternateName: ruby } : {};
+const about = group.kind === 'series' ? { '@type': 'CreativeWorkSeries', name: group.name, ...alt }
+  : group.kind === 'author' ? { '@type': 'Person', name: group.name, ...alt }
+    : group.kind === 'genre' ? { '@type': 'Thing', name: group.name, ...alt } : undefined;
 const pageLd = {
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
@@ -68,6 +72,7 @@ const pageLd = {
 
     <section class="hero">
       <h1 class="hero-title">{collectionHeading(f, group)}</h1>
+      {ruby && <p class="hero-ruby">{ruby}</p>}
       <p class="page-facts">{facts.total}本{facts.sale > 0 && `・セール中${facts.sale}本`}{facts.maxOff > 0 && `（最大${facts.maxOff}%OFF）`}{facts.upcoming > 0 && `・予約${facts.upcoming}本`}</p>
       {data.updated && <p class="page-updated">{day.m}月{day.d}日更新</p>}
     </section>

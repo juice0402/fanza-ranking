@@ -282,6 +282,7 @@ def load_module(data_path, api_id="fake", gemini="fake", max_calls=None, directo
     os.environ["CATALOG_TOP_CALLS"] = str(catalog_top)  # 過去作品: その日の人気順の上位を取り直す回数
     os.environ["NEW_RANK_CALLS"] = str(new_rank)  # 新着の人気順を取る回数
     os.environ["TODAY_STATS"] = "1" if today_stats else "0"  # きょうの数字（専用のシナリオで試す）
+    os.environ["REVIEW_REFETCH_PER_RUN"] = "0"  # レビューの評価の取り直し（品番で取り直す回数に数えないよう、ふだんのシナリオでは呼ばない。tests/test_reviews.py で試す）
     if catalog_limit is None:
         os.environ.pop("CATALOG_LIMIT", None)  # 集める深さ（既定の3万本）
     else:
@@ -1059,9 +1060,13 @@ check("今日の「データ更新」があれば、済んでいる（0）", gua
 check("前の日の更新・取り直し・似た件名だけなら、まだ（1）",
       guard_in_temp_repo(["データ更新: 2026-10-03", "データの取り直し: 2026-10-04", "データ更新: 2026-10-04（テスト）"], "2026-10-04") == 1)
 check("記録を読めないとき（無い名前）は、まだとして扱う（1）", guard_in_temp_repo(["データ更新: 2026-10-04"], "2026-10-04", ref="no-such-ref") == 1)
-check("update.yml: 定時実行のときだけ調べ、済んでいたら更新と保存をしない（Python の準備・更新・所属事務所・イベント・同人とゲーム・保存の6つ）",
+check("update.yml: 定時実行のときだけ調べ、済んでいたら更新と保存をしない（Python の準備・更新・所属事務所・イベント・同人とゲーム・読みがな・ジャンルの人気・10円セール・保存の9つ）",
       "if: github.event_name == 'schedule'" in yml_update and "already_updated.sh FETCH_HEAD" in yml_update
-      and yml_update.count("if: steps.guard.outputs.skip != '1'") == 6 and 'git commit -m "データ更新: $(TZ=Asia/Tokyo date +%Y-%m-%d)"' in yml_update)
+      and yml_update.count("if: steps.guard.outputs.skip != '1'") == 9 and 'git commit -m "データ更新: $(TZ=Asia/Tokyo date +%Y-%m-%d)"' in yml_update)
+check("update.yml: 読みがなは、週1回（--update は7日ごと）・同人とゲームのあと・失敗しても更新を止めない・保存の前",
+      "python scripts/readings.py --update\n" in yml_update and yml_update.index("doujin_game.py") < yml_update.index("readings.py") < yml_update.index("git add -A -- site/src/data"))
+check("update.yml: ジャンルの「FANZA全体で人気の作品」は毎日・保存の前",
+      "python scripts/genre_tops.py --update\n" in yml_update and yml_update.index("genre_tops.py") < yml_update.index("git add -A -- site/src/data"))
 check("update.yml: 所属事務所は、週1回（--update は7日ごと）・失敗しても更新を止めない・保存の前",
       "python scripts/agency_links.py --update" in yml_update and "--force" not in yml_update and "continue-on-error: true" in yml_update
       and yml_update.index("agency_links.py") < yml_update.index("git add -A -- site/src/data"))

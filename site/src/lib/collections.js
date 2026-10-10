@@ -85,4 +85,5 @@ export function groupByTag(items, genres = TAG_PAGE_GENRES, minItems = TAG_MIN_I
 }
 
 export const tagSummary = (group) => listSummary(group.name === VR_TAG_NAME ? 'VR作品' : `「${group.name}」のジャンルの作品`, group.items);
-export const tagPageTitle = (g) => `${truncate(g.name, 30)}の新作・予約作品一覧（${g.items.length}本）｜${SITE_NAME}`;
+// ranked: FANZA全体で人気の作品のランキングがあるとき（「…・人気ランキング」を足す。2026-10-10）
+export const tagPageTitle = (g, ranked = false) => `${truncate(g.name, 30)}の新作・予約作品一覧${ranked ? '・人気ランキング' : ''}（${g.items.length}本）｜${SITE_NAME}`;

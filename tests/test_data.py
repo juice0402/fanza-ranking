@@ -342,7 +342,10 @@ else:
               and [(r["begin"] or r["first"]) for r in rows_h] == sorted([(r["begin"] or r["first"]) for r in rows_h], reverse=True),
               str(sh)[:120])
 
-# ---- FANZA同人・FANZAゲームの人気の動き・セールの記録（scripts/floor_history.py。2026-10-09 から）----
+# ---- FANZA同人・FANZAゲームなどの売り場の人気の動き・セールの記録（scripts/floor_history.py。2026-10-09 から。新しい売り場は 2026-10-10 から）----
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import floor_history as _FH  # noqa: E402
+_FKEYS = set(_FH.FLOOR_KEYS)
 FLOOR_RH = os.path.join(ROOT, "site", "src", "data", "floor_rank_history.json")
 if not os.path.exists(FLOOR_RH):
     print("  （floor_rank_history.json はまだありません。毎日の更新で作られます）")
@@ -355,11 +358,11 @@ else:
     if frh is not None:
         _fv = lambda v: v is None or (isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 100000)
         check("同人・ゲームの人気の動き（floor_rank_history.json）: 更新日・売り場ごとに {cid: {d: 最初の日, r: 順位（30日分まで。0＝圏外・null＝分からない日）}}・未来の日付でない",
-              isinstance(frh, dict) and set(frh) == {"updated", "doujin", "game"} and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(frh.get("updated", ""))) is not None
+              isinstance(frh, dict) and {"updated", "doujin", "game"} <= set(frh) <= {"updated", *_FKEYS} and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", str(frh.get("updated", ""))) is not None
               and all(isinstance(frh[k], dict) and all(re.fullmatch(r"[A-Za-z0-9_\-]+", c) and isinstance(r, dict) and set(r) == {"d", "r"}
                                                        and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r["d"])) and r["d"] <= jst_tomorrow
                                                        and isinstance(r["r"], list) and len(r["r"]) <= 30 and all(_fv(v) for v in r["r"]) and any(v for v in r["r"])
-                                                       for c, r in frh[k].items()) for k in ("doujin", "game")),
+                                                       for c, r in frh[k].items()) for k in set(frh) - {"updated"}),
               str(frh)[:120])
 FLOOR_SH = os.path.join(ROOT, "site", "src", "data", "floor_sale_history.json")
 if not os.path.exists(FLOOR_SH):
@@ -373,13 +376,13 @@ else:
     if fsh is not None:
         _d = lambda v: re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(v or "")) is not None
         check("同人・ゲームのセールの記録（floor_sale_history.json）: 売り場ごとに days（1日1行・本数・最大の割引）と tags（名前・始まり・最初と最後に見かけた日・本数・割引）だけ",
-              isinstance(fsh, dict) and set(fsh) == {"updated", "doujin", "game"}
+              isinstance(fsh, dict) and {"updated", "doujin", "game"} <= set(fsh) <= {"updated", *_FKEYS}
               and all(isinstance(fsh[k], dict) and set(fsh[k]) == {"days", "tags"}
                       and all(isinstance(d, dict) and set(d) == {"d", "n", "max"} and _d(d["d"]) and isinstance(d["n"], int) and 0 <= d["max"] < 100 for d in fsh[k]["days"])
                       and len({d["d"] for d in fsh[k]["days"]}) == len(fsh[k]["days"])
                       and all(isinstance(t, dict) and set(t) == {"title", "begin", "first", "last", "count", "off"} and str(t["title"]).strip()
                               and _d(t["first"]) and _d(t["last"]) and t["first"] <= t["last"] and isinstance(t["count"], int) and 0 <= t["off"] < 100 for t in fsh[k]["tags"])
-                      for k in ("doujin", "game")),
+                      for k in set(fsh) - {"updated"}),
               str(fsh)[:120])
 
 # ---- 週のまとめ記事（roundups.json）。Claude が毎週書き足すので、壊れていないかを見張る ----
@@ -511,6 +514,92 @@ for key in FD.FLOORS:
     check(f"{label}: 本数が決めた数の範囲（コメントのある作品と予約の分だけ、多くてもよい）", len(fitems) <= FD.FLOORS[key]["target"] + FD.FLOORS[key]["upcoming"] + sum(1 for x in fitems if x["comment_kind"] == "claude"), len(fitems))
     check(f"{label}: APIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}|api_id=", ftext))
     check(f"{label}: 画像は pics.dmm.co.jp から（doujin-assets はページの中で出ないことがあるため。2026-10-09）", "doujin-assets.dmm.co.jp" not in ftext)
+
+# ---- FANZAのレビューの評価（reviews.json。get_new_releases.py が毎日ためる。2026-10-10 から） ----
+print("\n■ レビューの評価（reviews.json）")
+REVIEWS = os.path.join(ROOT, "site", "src", "data", "reviews.json")
+if not os.path.exists(REVIEWS):
+    print("  （reviews.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        rvtext = open(REVIEWS, encoding="utf-8").read()
+        rv = json.loads(rvtext)
+    except (OSError, json.JSONDecodeError) as e:
+        rv = None
+        check("reviews.json を読める", False, str(e))
+    if rv is not None:
+        check("reviews.json: 更新日・続きの場所・作品ごとの [平均×100, 件数] だけ（1作品1行）",
+              isinstance(rv, dict) and set(rv) == {"updated", "cursor", "items"} and isinstance(rv["items"], dict)
+              and all(re.fullmatch(r"[A-Za-z0-9_\-]{1,40}", c) and isinstance(v, list) and len(v) == 2 and all(isinstance(n, int) for n in v) and 100 <= v[0] <= 500 and v[1] >= 1 for c, v in rv["items"].items())
+              and (not rv["items"] or rvtext.count("\n") == len(rv["items"]) + 3))
+
+# ---- 読みがな（readings.json。scripts/readings.py が週1回。2026-10-10 から） ----
+print("\n■ 読みがな（readings.json）")
+READINGS = os.path.join(ROOT, "site", "src", "data", "readings.json")
+if not os.path.exists(READINGS):
+    print("  （readings.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        rdtext = open(READINGS, encoding="utf-8").read()
+        rd = json.loads(rdtext)
+    except (OSError, ValueError) as e:
+        rd = None
+        check("readings.json を読める", False, str(e))
+    if rd is not None:
+        _kinds = {"genre", "maker", "series", "author"}
+        _floors = [k for k in rd if k not in ("updated", "next")]
+        check("readings.json: 更新日・続きの場所と、売り場ごとの {種類: {キー: 読み}} だけ（1つの読みを1行に）",
+              isinstance(rd, dict) and "video" in _floors and isinstance(rd.get("next"), dict)
+              and all(isinstance(rd[k], dict) and set(rd[k]) == _kinds and all(isinstance(m, dict) and all(isinstance(a, str) and isinstance(b, str) and 0 < len(b) <= 60 for a, b in m.items()) for m in rd[k].values()) for k in _floors)
+              and rdtext.count("\n") >= sum(len(m) for k in _floors for m in rd[k].values()))
+
+# ---- ジャンルの「FANZA全体で人気の作品」（genre_tops.json。scripts/genre_tops.py が毎日。2026-10-10 から） ----
+print("\n■ ジャンルの「FANZA全体で人気の作品」（genre_tops.json）")
+GENRE_TOPS = os.path.join(ROOT, "site", "src", "data", "genre_tops.json")
+if not os.path.exists(GENRE_TOPS):
+    print("  （genre_tops.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        gttext = open(GENRE_TOPS, encoding="utf-8").read()
+        gt = json.loads(gttext)
+    except (OSError, ValueError) as e:
+        gt = None
+        check("genre_tops.json を読める", False, str(e))
+    if gt is not None:
+        _gt_rows = [r for g in gt.get("genres", {}).values() for r in g.get("items", [])] if isinstance(gt, dict) and isinstance(gt.get("genres"), dict) else None
+        check("genre_tops.json: ジャンルごとに id・集めた日・作品（20本まで・c t d a m i u）だけ（1作品1行）",
+              _gt_rows is not None and set(gt) == {"updated", "genres"}
+              and all(set(g) == {"id", "date", "items"} and isinstance(g["id"], int) and re.match(r"^\d{4}-\d{2}-\d{2}$", g["date"]) and len(g["items"]) <= 20 for g in gt["genres"].values())
+              and all({"c", "t", "d", "a", "m", "i", "u"} <= set(r) and set(r) <= {"c", "t", "d", "a", "m", "i", "u", "v"} for r in _gt_rows)
+              and (not _gt_rows or gttext.count("\n") == len(_gt_rows) + 2 + 2 * len(gt["genres"])))
+        check("genre_tops.json: 未成年を連想させるタイトルの作品は無い", _gt_rows is not None and not [r["t"] for r in _gt_rows if cc.title_block_reason({"title": r["t"]}) == "minor"])
+
+# ---- 10円セール（ten_yen.json。scripts/ten_yen.py が毎日と、開催中は1日に数回。2026-10-09 から） ----
+print("\n■ 10円セール（ten_yen.json）")
+import ten_yen as TY  # noqa: E402
+TEN = os.path.join(ROOT, "site", "src", "data", "ten_yen.json")
+if not os.path.exists(TEN):
+    print("  （ten_yen.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        ten = TY.load(TEN)
+        ten_text = open(TEN, encoding="utf-8").read()
+    except ValueError as e:
+        ten = None
+        check("ten_yen.json を読める", False, str(e))
+    if ten is not None:
+        raw_ten = json.loads(ten_text)
+        check("ten_yen.json: 確かめた日時・売り場ごとの10円の作品・開催の記録だけ（書き直しても1文字も変わらない）",
+              set(raw_ten) == {"checked", *TY.FLOOR_KEYS, "runs"} and (raw_ten["checked"] == "" or re.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}", raw_ten["checked"]))
+              and TY.dump(ten) == ten_text and len(ten["runs"]) == len(raw_ten["runs"]))
+        ten_items = [(k, x) for k in TY.FLOOR_KEYS for x in raw_ten[k]]
+        check("ten_yen.json: どの作品も10円・FANZAのURL・決まった項目（動画は作品データと同じ名前・同人とゲームは doujin.json と同じ名前）",
+              all(x.get("price") == TY.PRICE and re.match(r"^https://al\.fanza\.co\.jp/", str(x.get("url") or ""))
+                  and set(x) == ({*TY.VIDEO_KEYS, "price", "list_price", "sale_title", "sale_end"} if k == "video" else {*TY.FLOOR_ITEM_KEYS, "price", "list_price", "sale_title", "sale_end", "rank"})
+                  for k, x in ten_items), [x.get("cid") for _, x in ten_items][:5])
+        check("ten_yen.json: 未成年を連想させる作品が入っていない", not any(
+            cc.title_block_reason({"title": t}) == "minor" for _, x in ten_items for t in [x["title"], *x.get("genres", []), x.get("series") or "", x.get("maker") or "", *x.get("authors", [])] if t))
+        check("ten_yen.json: APIキーらしき文字列が入っていない", not re.search(r"AIza[0-9A-Za-z_\-]{20,}|api_id=", ten_text))
 
 print(f"\n  （{len(items)}件の作品データ・{len(rounds)}本の週のまとめ記事・{len(months)}本の月のまとめ記事・同人{floor_counts.get('doujin', 0)}本・ゲーム{floor_counts.get('game', 0)}本を確認）")
 if problems:

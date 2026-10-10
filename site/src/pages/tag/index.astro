@@ -1,7 +1,9 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
-import { tagGroups } from '../../lib/data.js';
+import NameIndex from '../../components/NameIndex.astro';
+import { readings, tagGroups } from '../../lib/data.js';
+import { kanaIndex } from '../../lib/kana.js';
 import { TAG_INDEX_PATH } from '../../lib/collections.js';
 import { breadcrumbLd, SITE_NAME } from '../../lib/items.js';
 
@@ -9,6 +11,8 @@ const trail = [
   { name: 'トップ', path: '/' },
   { name: 'ジャンルから探す', path: TAG_INDEX_PATH },
 ];
+// ジャンルの数が多くなれば、50音で探す（読みがなは FANZA公式のAPIから。lib/kana.js）
+const index = kanaIndex(tagGroups.map((g) => ({ name: g.name, path: g.path, count: g.items.length, reading: readings.of('video', 'genre', g.name) })));
 ---
 
 <Base
@@ -25,22 +29,6 @@ const trail = [
       <p class="hero-lead">作品数の多い順です。ほかの言葉では<a class="spec-link" href="/search/">作品検索</a>で探せます。</p>
     </section>
 
-    <section class="section" aria-labelledby="tag-list-title">
-      <h2 id="tag-list-title" class="visually-hidden">ジャンルの一覧</h2>
-      {tagGroups.length > 0
-        ? (
-          <ul class="name-grid">
-            {tagGroups.map((g) => (
-              <li>
-                <a class="name-link" href={g.path}>
-                  <span class="name-link-name">{g.name}</span>
-                  <span class="name-link-count">{g.items.length}本</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        )
-        : <p class="empty">まだ一覧に載せられるジャンルがありません。毎日の更新をお待ちください。</p>}
-    </section>
+    <NameIndex index={index} label="ジャンル" prefix="tag-kana" empty="まだ一覧に載せられるジャンルがありません。毎日の更新をお待ちください。" />
   </div>
 </Base>

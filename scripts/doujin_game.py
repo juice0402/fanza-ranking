@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""FANZA同人・FANZAゲーム（PCゲーム・DL版）の人気作品を、毎日集め直す道具（Python標準ライブラリだけ。Gemini は使わない）。
+"""FANZA同人・FANZAゲーム（PCゲーム・DL版）などの売り場の人気作品を、毎日集め直す道具（Python標準ライブラリだけ。Gemini は使わない）。
 
 運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも作りたい」→「同人 1,000本・ゲーム 500本」（2026-10-09）。
+運営者の希望「アニメ動画・素人・成人映画・FANZAブックス（コミック・写真集）・VR見放題も。各100、素人は500」（2026-10-10）。売り場は scripts/floor_data.py の FLOORS。
 
-  python3 scripts/doujin_game.py --update [--only doujin|game]
+  python3 scripts/doujin_game.py --update [--only doujin|game|anime|amateur|cinema|comic|photo|vr]
 
 ・FANZA(DMM) アフィリエイトAPI の ItemList（site=FANZA、同人は service=doujin・floor=digital_doujin、
   ゲームは service=pcgame・floor=digital_pcgame）を、人気順（sort=rank・発売済み）に100本ずつ上から読み、
   決めた本数（scripts/floor_data.py の FLOORS の target）がそろうまで集める（1日 max_calls 回まで）。ゲームは予約の人気順も少し（upcoming 本）
-・未成年を連想させる作品は入れない（タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前のどれかに、
+・未成年を連想させる作品は入れない（タイトル・ジャンル・シリーズ・サークル/ブランド・メーカー・レーベル・出版社・作家・出演者・監督の名前のどれかに、
   claude_comments.py の title_block_reason が "minor" と見る言葉があるもの）。同人の約半分・ゲームの約7割が当たる（2026-10-09 に本物のAPIで確認）
 ・前の日にあって今日の上位に無い作品は外す（Claude がコメントを書いた作品は残す）。途中で取れなくなった日は、前の作品を外さない
 ・ファイルの形は scripts/floor_data.py。失敗しても、ほかの毎日の更新は止めない（ワークフローは continue-on-error）
@@ -34,16 +35,20 @@ SHRINK_GUARD = 0.5  # 今日そろった本数が、前の日の半分より少�
 
 # ジャンルの札の分け方（中身のジャンル・形式・セールの札）
 SALE_TAG = re.compile(r"セール|OFF|ＯＦＦ|クーポン|キャンペーン|還元|対象|特価|半額|割引|ポイント")
-FORMAT_TAG = re.compile(r"^(男性向け|女性向け|成人向け|専売|単話|新作|準新作|旧作|日本語作品|英語作品|中国語作品|韓国語作品|翻訳作品)$|"
+FORMAT_TAG = re.compile(r"^(男性向け|女性向け|成人向け|専売|単話|単行本|新作|準新作|旧作|日本語作品|英語作品|中国語作品|韓国語作品|翻訳作品|"
+                        r"ハイビジョン|4K|8KVR|VR専用|ハイクオリティVR|単体作品|4時間以上作品|複数話|ベスト・総集編|サンプル動画|配信専用|期間限定配信|"
+                        r"デジタルモザイク|カラー|モノクロ|オールカラー|分冊版|フルカラー版)$|"
                         r"^コミケ|^コミティア|^C\d|即売会|イベント|Windows|Mac|Android|iOS|対応|体験版|独占|セット|DL版|ダウンロード|パッケージ版")
 EVAL_TAG = re.compile(r"がいい$|に定評|おすすめ|オススメ|人気|ランキング")  # 「CGがいい」「エロに定評」のような評価の札は持たない
 
 
 def blocked_reason(raw):
-    """入れない理由（"" なら入れる）。タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前を、未成年を連想させる言葉で調べる"""
+    """入れない理由（"" なら入れる）。タイトル・ジャンル・シリーズ・サークル/ブランド/メーカー・レーベル・出版社・作家・出演者・監督の名前を、
+    未成年を連想させる言葉で調べる"""
     info = raw.get("iteminfo") or {}
     texts = [("タイトル", raw.get("title"))]
-    for key, label in (("genre", "ジャンル"), ("series", "シリーズ"), ("maker", "サークル・ブランド"), ("author", "作家")):
+    for key, label in (("genre", "ジャンル"), ("series", "シリーズ"), ("maker", "サークル・ブランド"), ("label", "レーベル"), ("manufacture", "出版社"),
+                       ("author", "作家"), ("actress", "出演者"), ("director", "監督")):
         for e in info.get(key) or []:
             if isinstance(e, dict):
                 texts.append((label, e.get("name")))
@@ -100,7 +105,10 @@ def parse_floor_item(raw, key):
     if not F.CID.match(cid) or not title or not F.DAY.match(date[:10]) or not url:
         return None
     images = raw.get("imageURL") or {}
+    # メーカー（同人はサークル・ゲームはブランド）。ブックスは出版社（manufacture）
     maker_id, maker = G.first_entry(info.get("maker"))
+    if not maker:
+        maker_id, maker = G.first_entry(info.get("manufacture"))
     series_id, series = G.first_entry(info.get("series"))
     genres, formats, sales = split_genres([g.get("name") for g in info.get("genre") or [] if isinstance(g, dict)])
     prices = raw.get("prices") if isinstance(raw.get("prices"), dict) else {}
@@ -116,12 +124,16 @@ def parse_floor_item(raw, key):
         "cid": cid,
         "title": title,
         "url": url,
-        "image_url": G.safe_https_url(pics_url(images.get("large") or images.get("list") or ""), G.IMAGE_HOSTS),
+        # 表紙: 大きい版。無ければ（素人・成人映画の一部）、小さい版（素人は 1200×1200 の四角）、一覧の版
+        "image_url": G.safe_https_url(pics_url(images.get("large") or images.get("small") or images.get("list") or ""), G.IMAGE_HOSTS),
         "sample_images": sample_images(raw, F.FLOORS[key]["samples"]),
+        "sample_movie": G.pick_sample_movie(raw),
+        "trial_url": G.safe_https_url((raw.get("tachiyomi") or {}).get("affiliateURL") if isinstance(raw.get("tachiyomi"), dict) else "", G.LIST_HOSTS),
         "date": date[:19],
         "maker": maker,
         "maker_id": maker_id,
         "authors": [a.get("name") for a in info.get("author") or [] if isinstance(a, dict)],
+        "actress": [a.get("name") for a in info.get("actress") or [] if isinstance(a, dict) and a.get("name") not in (None, "", "----")],
         "series": series,
         "series_id": series_id,
         "genres": genres,
@@ -130,6 +142,7 @@ def parse_floor_item(raw, key):
         "price": price,
         "list_price": list_price,
         "campaign": campaign,
+        "review": G.parse_review(raw),
         "comment": "",
         "comment_kind": "none",
         "updated": "",
@@ -266,7 +279,7 @@ def update_floor(key, today, call=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="FANZA同人・FANZAゲームの人気作品を集め直す")
+    parser = argparse.ArgumentParser(description="FANZA同人・FANZAゲームなどの売り場の人気作品を集め直す")
     parser.add_argument("--update", action="store_true", help="集め直して保存する")
     parser.add_argument("--only", choices=sorted(F.FLOORS), help="1つの売り場だけ")
     args = parser.parse_args()
@@ -276,7 +289,7 @@ def main():
     if not G.API_ID:
         sys.exit("❌ API_ID が設定されていません")
     today = datetime.now(G.JST).replace(hour=0, minute=0, second=0, microsecond=0)
-    lines = ["### 🎮 FANZA同人・FANZAゲーム", ""]
+    lines = ["### 🎮 FANZA同人・FANZAゲームなどの売り場", ""]
     for key in ([args.only] if args.only else list(F.FLOORS)):
         lines.append(G.run_stage(f"{F.FLOORS[key]['label']}の取得", lambda k=key: update_floor(k, today)) or f"- {F.FLOORS[key]['label']}: 取得に失敗（前のデータのまま）")
     G.write_step_summary(lines)

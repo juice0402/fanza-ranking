@@ -612,7 +612,32 @@ r = run("list")
 check("同人・ゲームのファイルが壊れていたら、止める（書き戻して壊さないように）", r.returncode != 0 and "ゲーム" in (r.stdout + r.stderr), r.stdout + r.stderr)
 os.remove(os.path.join(tmp, "game.json"))
 os.remove(os.path.join(tmp, "doujin.json"))
-check("同人・ゲームに回す数は、40件のうち同人4件・ゲーム1件（運営者の希望）", cc_mod.FLOOR_QUOTA == {"doujin": 4, "game": 1} and cc_mod.floor_quota(40) == {"doujin": 4, "game": 1} and cc_mod.floor_quota(30) == {"doujin": 3, "game": 1})
+_new6 = ("anime", "amateur", "cinema", "comic", "photo", "vr")
+check("売り場に回す数は、40件のうち同人4件・ゲーム1件・新しい売り場は各1件（運営者の希望。2026-10-09・2026-10-10）＝動画は29件",
+      cc_mod.FLOOR_QUOTA == {"doujin": 4, "game": 1, **{k: 1 for k in _new6}} and sum(cc_mod.floor_quota(40).values()) == 11
+      and cc_mod.floor_quota(30) == {"doujin": 3, "game": 1, **{k: 1 for k in _new6}} and set(cc_mod.FLOOR_QUOTA) == set(FD.FLOORS) and set(cc_mod.FLOOR_REASON) == set(FD.FLOORS))
+
+print("\n■ 新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題。各1件。2026-10-10）")
+vr = {"updated": "2026-11-03", "scanned": 100, "skipped": 0, "ranks": {"vr_0001": 1, "vr_0002": 2}, "items": {}}
+for i, cid in enumerate(["vr_0001", "vr_0002"]):
+    vr["items"][cid] = floor_item(cid, 20 + i, actress=["作った出演者A", "女子校生B"], genres=["痴女", "お姉さん"])
+cm = {"updated": "2026-11-03", "scanned": 100, "skipped": 0, "ranks": {"cm_0001": 1}, "items": {"cm_0001": floor_item("cm_0001", 30, authors=["作った漫画家"])}}
+FD.save_floor(os.path.join(tmp, "vr.json"), vr)
+FD.save_floor(os.path.join(tmp, "comic.json"), cm)
+lst_n = json.loads(run("list", "--today", "2026-11-03", "--limit", "40").stdout)
+fl_n = [r for r in lst_n["items"] if r.get("floor")]
+check("list: 新しい売り場は各1件（順位の上の作品）・動画のあとに、売り場の順で",
+      [(r["floor"], r["cid"]) for r in fl_n] == [("comic", "cm_0001"), ("vr", "vr_0001")] and lst_n["floor_pending"] == {"comic": 1, "vr": 2}, [(r["floor"], r["cid"]) for r in fl_n])
+row_v = next(r for r in fl_n if r["floor"] == "vr")
+row_c = next(r for r in fl_n if r["floor"] == "comic")
+check("list: VR見放題の行（reason・メーカー・出演者（未成年を連想させる名前は出さない））・コミックの行（出版社・作家）",
+      row_v["reason"] == "VR見放題" and row_v["maker"] == "作ったサークル20" and row_v["actress"] == ["作った出演者A"] and row_v["genres"] == ["お姉さん"]
+      and row_c["reason"] == "コミック" and row_c["publisher"] == "作ったサークル30" and row_c["authors"] == ["作った漫画家"], (row_v, row_c))
+r = run("apply", write_comments("floor_new.json", {"vr_0001": "魔法の森を舞台にしたVR作品で、作った出演者Aさんが出演しています。作ったサークル20による一本で、森の奥でふたりが過ごす穏やかな暮らしを、すぐそばで見守るように感じられる作りになっています。9月1日に配信が始まりました。"}), "--today", "2026-11-03")
+check("apply: 新しい売り場の作品にも書き込める（売り場ごとの件数・残りを出す）", r.returncode == 0 and "VR見放題 1件" in r.stdout and "VR見放題: 1本" in r.stdout
+      and FD.load_floor(os.path.join(tmp, "vr.json"))["items"]["vr_0001"]["comment_kind"] == "claude", r.stdout[-1500:] + r.stderr)
+os.remove(os.path.join(tmp, "vr.json"))
+os.remove(os.path.join(tmp, "comic.json"))
 check("同人・ゲームのコメントの手がかりのジャンルに、行為・未成年を連想させる言葉が入っていない",
       not any(w.lower() in g.lower() for g in cc_mod.FLOOR_COMMENT_GENRES for w in cc_mod.EXPLICIT_WORDS + cc_mod.TITLE_BLOCK))
 

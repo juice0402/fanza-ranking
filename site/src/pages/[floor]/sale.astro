@@ -8,7 +8,10 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
 import FloorSaleCards from '../../components/FloorSaleCards.astro';
-import { activeFloors, floorSaleHistory, floorSalePageGroups, floors } from '../../lib/data.js';
+import TenYenHero from '../../components/TenYenHero.astro';
+import { tenYenPath } from '../../lib/ten-yen.js';
+import { inlineScript } from '../../lib/assets.js';
+import { activeFloors, floorSaleHistory, floorSalePageGroups, floors, tenYenFloors, tenYenNow } from '../../lib/data.js';
 import { FLOORS, FLOOR_SALE_LIMIT, couponTags, floorItemListLd, floorMaxOff, floorPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, isSaleTag, offInTitle, priceNote, saleBadgeOf, saleTagGroups } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SALE_PATH } from '../../lib/sale.js';
@@ -40,24 +43,29 @@ const trail = [
   { name: 'セール中の作品', path: floorSalePath(key) },
 ];
 const noindex = shown.length === 0 || !listIndexable(shown);
-const title = key === 'game'
+// この売り場の10円セールの開催中は、タイトルの先頭に出す（2026-10-09）
+const tenLive = tenYenNow.counts[key] > 0 ? `${f.label} 10円セール開催中・` : '';
+const title = tenLive + (key === 'game'
   ? `FANZAゲームのセール中の作品【${dayLabel}更新】${groups[0] ? `${groups[0].title}ほか` : ''}${sale.length}本｜${SITE_NAME}`
-  : `FANZA同人のセール中の作品【${dayLabel}更新】${maxOff ? `最大${maxOff}%OFF・` : ''}${sale.length}本｜${SITE_NAME}`;
+  : `${f.label}のセール中の作品【${dayLabel}更新】${maxOff ? `最大${maxOff}%OFF・` : ''}${sale.length}本｜${SITE_NAME}`);
 const description = key === 'game'
   ? `FANZAゲーム（PCゲーム）で、いま値下げのセール中の人気作品${sale.length}本を、セールごとにまとめています（${groups.map((g) => g.title).slice(0, 3).join('・')}）。クーポン・ポイント還元の対象も。毎日、日付が変わったあとに更新します。`
-  : `FANZA同人で、いまセール中の人気作品${sale.length}本${maxOff ? `（最大${maxOff}%OFF）` : ''}を、人気の高い順にまとめています。いまの価格と通常の価格も。毎日、日付が変わったあとに更新します。`;
+  : `${f.label}で、いまセール中の人気作品${sale.length}本${maxOff ? `（最大${maxOff}%OFF）` : ''}を、人気の高い順にまとめています。いまの価格と通常の価格も。毎日、日付が変わったあとに更新します。`;
 const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${f.label}のセール中の作品`, url: SITE_URL + floorSalePath(key), ...(data.updated ? { dateModified: data.updated } : {}) };
 ---
 
-<Base title={title} description={description} path={floorSalePath(key)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd, floorItemListLd(shown, SITE_URL)]}>
+<Base title={title} description={description} path={floorSalePath(key)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd, floorItemListLd(shown, SITE_URL)]} tenYenBar={false}>
+  {tenYenNow.total > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
     <section class="hero">
       <h1 class="hero-title">{f.label}のセール</h1>
       <p class="page-facts">{sale.length}本{topOff > 0 && `・最大${topOff}%OFF`}{data.updated && `・${dayLabel}時点`}</p>
-      <p class="hero-links"><a class="spec-link" href={floorSaleHistoryPath(key)}>{f.label}のセールはいつ？</a><a class="spec-link" href={SALE_PATH}>FANZA動画のセール</a></p>
+      <p class="hero-links"><a class="spec-link" href={floorSaleHistoryPath(key)}>{f.label}のセールはいつ？</a>{tenYenFloors.includes(key) && <a class="spec-link" href={tenYenPath(key)}>{f.label}の10円セール</a>}<a class="spec-link" href={SALE_PATH}>FANZA動画のセール</a></p>
     </section>
+
+    <TenYenHero first={key} />
 
     {salePages.length > 0 && (
       <section class="section" aria-labelledby="fl-sale-kinds-title">

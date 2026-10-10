@@ -84,7 +84,216 @@ def main():
         archive = []
     base = {"site": "FANZA", "service": "digital", "floor": "videoa"}
 
-    say("## 0) 過去作品の集め方（人気順・発売済みだけ・offset で続きから）")
+    # 新しい売り場の下調べ（運営者の希望「アニメ動画・素人・成人映画・FANZAブックス（コミック・写真集）・VR見放題も」。2026-10-10）
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
+    try:
+        from claude_comments import title_block_reason as tbr
+    except Exception:  # noqa: BLE001
+        tbr = lambda x: ""  # noqa: E731
+    from collections import Counter
+
+    def masked(u, cid):
+        u = str(u or "")
+        if cid:
+            u = u.replace(cid, "{cid}")
+        return re.sub(r"[0-9]", "#", u)[:110]
+
+    for n_, (label, svc, flr) in enumerate((("アニメ動画", "digital", "anime"), ("素人", "digital", "videoc"), ("成人映画", "digital", "nikkatsu"),
+                                             ("ブックス・コミック", "ebook", "comic"), ("ブックス・写真集", "ebook", "photo"), ("VR見放題", "monthly", "vr")), start=1):
+        say(f"## 11-{n_}) 新しい売り場: {label}（{svc}/{flr}）")
+        got, total = [], None
+        for off in (1, 101, 201):
+            res, err = call("ItemList", {"site": "FANZA", "service": svc, "floor": flr, "sort": "rank", "hits": 100, "offset": off})
+            if err:
+                say(f"- offset={off}: ❌ {err}")
+                break
+            total = res.get("total_count")
+            got += res.get("items") or []
+        if not got:
+            continue
+        keys, info_keys, img_forms, smp_forms, aff_forms, price_forms = Counter(), Counter(), Counter(), Counter(), Counter(), Counter()
+        blocked = cid_bad = with_review = with_actress = with_author = with_maker = with_movie = future = 0
+        today_s = today.strftime("%Y-%m-%d")
+        for x in got:
+            cid = str(x.get("content_id") or "")
+            keys.update(x.keys())
+            info = x.get("iteminfo") or {}
+            info_keys.update(info.keys())
+            img_forms[masked((x.get("imageURL") or {}).get("large"), cid)] += 1
+            smp = x.get("sampleImageURL") or {}
+            smp_forms[",".join(sorted(smp.keys())) + " " + masked(((smp.get("sample_l") or smp.get("sample_s") or {}).get("image") or [""])[0], cid)] += 1
+            aff_forms[mask_url(x.get("affiliateURL"))] += 1
+            pr = x.get("prices") or {}
+            price_forms[re.sub(r"[0-9]", "#", f"{pr.get('price')}|{pr.get('list_price')}")] += 1
+            texts = [x.get("title")] + [g.get("name") for k in ("genre", "series", "maker", "author", "label") for g in info.get(k) or [] if isinstance(g, dict)]
+            if any(t and tbr({"title": str(t)}) == "minor" for t in texts):
+                blocked += 1
+            if not re.match(r"^[A-Za-z0-9_\-]{1,40}$", cid):
+                cid_bad += 1
+            with_review += bool(x.get("review"))
+            with_actress += bool(info.get("actress"))
+            with_author += bool(info.get("author"))
+            with_maker += bool(info.get("maker"))
+            with_movie += bool(x.get("sampleMovieURL"))
+            future += str(x.get("date") or "")[:10] > today_s
+        say(f"- 取得 {len(got)}本 / 全体 {total} / 未成年を連想させる {blocked}本 / 品番の形が違う {cid_bad}本 / 予約 {future}本 / レビューあり {with_review} / 出演者あり {with_actress} / 作者あり {with_author} / メーカーあり {with_maker} / サンプル動画あり {with_movie}")
+        say(f"- 項目: {', '.join(sorted(keys))} / iteminfo: {dict(info_keys.most_common(12))}")
+        say(f"- 表紙の形: {img_forms.most_common(3)}")
+        say(f"- サンプル画像の形: {smp_forms.most_common(2)}")
+        say(f"- リンクの形: {aff_forms.most_common(2)} / 価格の形: {price_forms.most_common(4)}")
+        ex = got[0]
+        say(f"- 1本目: 品番 {ex.get('content_id')} / volume {ex.get('volume')} / 発売日 {ex.get('date')} / iteminfo {json.dumps({k: [g.get('name') for g in v][:3] for k, v in (ex.get('iteminfo') or {}).items() if isinstance(v, list)}, ensure_ascii=False)[:300]}")
+
+    # 新しい売り場の画像（表紙の大きさ・ほかのサイトの中で読めるか・pics.dmm.co.jp にも同じ画像があるか）
+    def jpeg_size(data):
+        i = 2
+        while i < len(data) - 9:
+            if data[i] != 0xFF:
+                i += 1
+                continue
+            m = data[i + 1]
+            if m in (0xC0, 0xC1, 0xC2):
+                return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
+            i += 2 + int.from_bytes(data[i + 2:i + 4], "big")
+        return None
+
+    def fetch_img(url, referer=None):
+        try:
+            h = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1"}
+            if referer:
+                h["Referer"] = referer
+            with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=20) as r:
+                body = r.read()
+                return r.status, len(body), jpeg_size(body), body
+        except Exception as e:  # noqa: BLE001
+            return type(e).__name__ + str(getattr(e, "code", "")), 0, None, b""
+
+    for n_, (label, svc, flr) in enumerate((("素人", "digital", "videoc"), ("ブックス・コミック", "ebook", "comic"), ("ブックス・写真集", "ebook", "photo"), ("成人映画", "digital", "nikkatsu")), start=1):
+        say(f"## 12-{n_}) 画像: {label}")
+        res, err = call("ItemList", {"site": "FANZA", "service": svc, "floor": flr, "sort": "rank", "hits": 2})
+        if err:
+            say(f"- ❌ {err}")
+            continue
+        for x in res.get("items") or []:
+            cid = str(x.get("content_id") or "")
+            imgs = x.get("imageURL") or {}
+            say(f"- {cid}: imageURL {json.dumps({k: masked(v, cid) for k, v in imgs.items()}, ensure_ascii=False)}")
+            for k in ("large", "small", "list"):
+                u = imgs.get(k)
+                if not u:
+                    continue
+                st, ln, sz, body = fetch_img(u)
+                st2, ln2, _, _ = fetch_img(u, "https://fanza-ranking.pages.dev/")
+                line = f"  - {k}: 状態 {st} {ln}バイト {sz} / ほかのサイトから {st2} {ln2}バイト"
+                if "ebook-assets.dmm.co.jp/" in u:
+                    alt = u.replace("https://ebook-assets.dmm.co.jp/", "https://pics.dmm.co.jp/")
+                    st3, ln3, sz3, body3 = fetch_img(alt)
+                    line += f" / pics.dmm.co.jp: {st3} {ln3}バイト {sz3} 同じ中身={body3 == body and bool(body)}"
+                    small = re.sub(r"pl\.jpg$", "ps.jpg", u)
+                    if small != u:
+                        st4, ln4, sz4, _ = fetch_img(small)
+                        line += f" / ps.jpg: {st4} {ln4}バイト {sz4}"
+                say(line)
+            if not imgs.get("large") and svc == "digital":
+                for guess in (f"https://pics.dmm.co.jp/digital/amateur/{cid}/{cid}jp.jpg", f"https://pics.dmm.co.jp/digital/amateur/{cid}/{cid}jm.jpg", f"https://pics.dmm.co.jp/digital/video/{cid}/{cid}pl.jpg"):
+                    st, ln, sz, _ = fetch_img(guess)
+                    say(f"  - 推測 {masked(guess, cid)}: {st} {ln}バイト {sz}")
+            break
+
+    say("\n## 8) まだ使っていないAPI・項目（レビュー・評価順・フロア・ジャンル・メーカー・シリーズ・作者の検索）")
+    res, err = call("ItemList", dict(base, sort="rank", hits=5))
+    if err:
+        say(f"- 人気順の review: ❌ {err}")
+    else:
+        say("- 人気順の上位5本の review: " + " / ".join(f"{x.get('content_id')}={json.dumps(x.get('review'), ensure_ascii=False)}" for x in res.get("items") or []))
+        it = (res.get("items") or [{}])[0]
+        say("- iteminfo のキー: " + ", ".join(sorted((it.get("iteminfo") or {}).keys())) + " / 項目のキー: " + ", ".join(sorted(it.keys())))
+    res, err = call("ItemList", dict(base, sort="review", hits=5))
+    say("- sort=review（評価順）の上位5本: " + (f"❌ {err}" if err else " / ".join(f"{x.get('content_id')}（{str(x.get('date'))[:10]}）={json.dumps(x.get('review'), ensure_ascii=False)}" for x in res.get("items") or [])))
+    for label, fl in (("同人", {"site": "FANZA", "service": "doujin", "floor": "digital_doujin"}), ("ゲーム", {"site": "FANZA", "service": "pcgame", "floor": "digital_pcgame"})):
+        res, err = call("ItemList", dict(fl, sort="rank", hits=3))
+        say(f"- {label}の人気順の review・iteminfo のキー: " + (f"❌ {err}" if err else " / ".join(f"{x.get('content_id')}={json.dumps(x.get('review'), ensure_ascii=False)}" for x in res.get("items") or [])
+            + " / " + ", ".join(sorted(((res.get("items") or [{}])[0].get("iteminfo") or {}).keys()))))
+    res, err = call("FloorList", {})
+    floor_ids = {}
+    if err:
+        say(f"- FloorList: ❌ {err}")
+    else:
+        for site_ in res.get("site") or []:
+            if site_.get("code") != "FANZA":
+                continue
+            for sv in site_.get("service") or []:
+                fls = [f"{f.get('name')}({f.get('code')}/{f.get('id')})" for f in sv.get("floor") or []]
+                for f in sv.get("floor") or []:
+                    floor_ids[(sv.get("code"), f.get("code"))] = f.get("id")
+                say(f"- FANZA の {sv.get('name')}（{sv.get('code')}）: " + "、".join(fls))
+    say("\n## 9) ジャンル・メーカー・シリーズ・作者の検索API（売り場ごと）")
+    for label, key in (("動画", ("digital", "videoa")), ("同人", ("doujin", "digital_doujin")), ("ゲーム", ("pcgame", "digital_pcgame"))):
+        fid = floor_ids.get(key)
+        if not fid:
+            say(f"- {label}: フロアの id が分からない")
+            continue
+        for api, extra in (("GenreSearch", {}), ("MakerSearch", {}), ("SeriesSearch", {}), ("AuthorSearch", {})):
+            res, err = call(api, dict(floor_id=fid, hits=3, **extra))
+            if err:
+                say(f"- {label} {api}: ❌ {err}")
+                continue
+            rows = next((v for k, v in res.items() if isinstance(v, list)), [])
+            say(f"- {label} {api}: 全体 {res.get('total_count')}件 / キー {sorted(rows[0].keys()) if rows else '-'} / 例 {[(r.get('name'), r.get('ruby')) for r in rows[:2]]}")
+    say("\n## 10) ジャンルを指定した人気順・評価順")
+    res, err = call("GenreSearch", dict(floor_id=floor_ids.get(("digital", "videoa")) or 43, hits=100))
+    if not err:
+        g = next((r for r in res.get("genre") or [] if r.get("name") in ("巨乳", "人妻・主婦", "単体作品")), None)
+        if g:
+            r2, e2 = call("ItemList", dict(base, article="genre", article_id=g.get("genre_id"), sort="rank", hits=3))
+            say(f"- ItemList article=genre（{g.get('name')}）: " + (f"❌ {e2}" if e2 else f"全体 {r2.get('total_count')}件 / 上位 {[x.get('content_id') for x in r2.get('items') or []]}"))
+            r3, e3 = call("ItemList", dict(base, article="genre", article_id=g.get("genre_id"), sort="review", hits=3))
+            say(f"- 同じジャンルの評価順: " + (f"❌ {e3}" if e3 else str([(x.get('content_id'), (x.get('review') or {}).get('count'), (x.get('review') or {}).get('average')) for x in r3.get('items') or []])))
+    for label, fl in (("同人", {"site": "FANZA", "service": "doujin", "floor": "digital_doujin"}), ("ゲーム", {"site": "FANZA", "service": "pcgame", "floor": "digital_pcgame"})):
+        r4, e4 = call("ItemList", dict(fl, sort="review", hits=5))
+        say(f"- {label}の評価順: " + (f"❌ {e4}" if e4 else str([(x.get('content_id'), (x.get('review') or {}).get('count'), (x.get('review') or {}).get('average')) for x in r4.get('items') or []])))
+    with_review = 0
+    total = 0
+    for off in (1, 101, 1001):
+        r5, e5 = call("ItemList", dict(base, sort="rank", hits=100, offset=off))
+        if not e5:
+            got = r5.get("items") or []
+            total += len(got)
+            with_review += sum(1 for x in got if x.get("review"))
+    say(f"- 動画の人気順（1〜100・101〜200・1001〜1100本目）で、レビューのある作品: {with_review}/{total}本")
+
+    say("\n## 7) 安い順（sort=-price）で、10円の作品を見つけられるか（動画・同人・ゲーム）")
+    floors = (("動画", base), ("同人", {"site": "FANZA", "service": "doujin", "floor": "digital_doujin"}),
+              ("ゲーム", {"site": "FANZA", "service": "pcgame", "floor": "digital_pcgame"}))
+
+    def yen(v):
+        m = re.match(r"^\s*([0-9][0-9,]*)", str(v or ""))
+        return int(m.group(1).replace(",", "")) if m else None
+
+    for label, fl in floors:
+        for sort in ("-price", "price"):
+            for off in ((1, 101, 501) if sort == "-price" else (1,)):
+                res, err = call("ItemList", dict(fl, sort=sort, hits=100, offset=off))
+                if err:
+                    say(f"- {label} sort={sort} offset={off}: ❌ {err}")
+                    continue
+                got = res.get("items") or []
+                pr = [(yen((x.get("prices") or {}).get("price")), yen((x.get("prices") or {}).get("list_price"))) for x in got]
+                now = [p for p, _ in pr if p is not None]
+                mono = all(a <= b for a, b in zip(now, now[1:])) if sort == "-price" else all(a >= b for a, b in zip(now, now[1:]))
+                disc = sum(1 for p, l in pr if p is not None and l is not None and p < l)
+                raw_forms = sorted({re.sub(r"[0-9]", "#", str((x.get("prices") or {}).get("price"))) for x in got})[:5]
+                camps = sorted({str(c.get("title"))[:24] for x in got for c in (x.get("campaign") or []) if isinstance(c, dict)})[:8]
+                say(f"- {label} sort={sort} offset={off}: {len(got)}件 / 全体 {res.get('total_count')} / 価格 {now[:12]}… 最後 {now[-3:]} / 価格の順に並ぶ={mono} / 値引き中 {disc}件 / 0円 {sum(1 for p in now if p == 0)}件 / 10円 {sum(1 for p in now if p == 10)}件 / 10円以下 {sum(1 for p in now if p <= 10)}件 / 価格の書き方 {raw_forms} / キャンペーン名 {camps}")
+                if sort == "-price" and off == 1:
+                    ten = [x for x in got if yen((x.get("prices") or {}).get("price")) == 10][:3]
+                    for x in ten:
+                        say(f"  - 10円の例: {x.get('content_id')} 定価 {(x.get('prices') or {}).get('list_price')} / deliveries {json.dumps((x.get('prices') or {}).get('deliveries'), ensure_ascii=False)[:300]} / campaign {json.dumps(x.get('campaign'), ensure_ascii=False)[:200]} / 発売日 {str(x.get('date'))[:10]}")
+                    cheap = [x for x in got if (yen((x.get("prices") or {}).get("price")) or 0) > 0][:2]
+                    for x in cheap:
+                        say(f"  - 0円より上の最初の例: {x.get('content_id')} 価格 {(x.get('prices') or {}).get('price')} 定価 {(x.get('prices') or {}).get('list_price')} / campaign {json.dumps(x.get('campaign'), ensure_ascii=False)[:160]}")
+
+    say("\n## 0) 過去作品の集め方（人気順・発売済みだけ・offset で続きから）")
     lte = today.replace(hour=23, minute=59, second=59).strftime(fmt)
     for off in (1, 101, 25001, 49901, 50001):
         res, err = call("ItemList", dict(base, sort="rank", hits=100, offset=off, lte_date=lte))
@@ -228,7 +437,7 @@ def main():
                 sections.append([text])
             else:
                 sections[-1].append(text)
-        for block in sections[:10]:
+        for block in sections[:30]:
             title = block[0].strip().lstrip("# ").strip()[:100]
             body = "\n".join(block[1:]).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
             print(f"::notice title={title}::{body}")

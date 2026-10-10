@@ -2,17 +2,36 @@
 // 運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも」→「同人 1,000本・ゲーム 500本」（2026-10-09）。
 // データは毎日の更新が集める site/src/data/doujin.json・game.json（scripts/doujin_game.py。形は scripts/floor_data.py）。
 // 未成年を連想させる作品は、集めるときに入れていない。ここでも、タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前を調べて、念のため外す（二重の備え）。
+import { reviewOf } from './reviews.js';
 import { FANZA_HOSTS, FANZA_LINK_HOSTS, addDays, daysBetween, entitySlug, isDay, resizedImage, safeHttpsUrl, smallImage } from './items.js';
 import { isMinorTitle } from './gacha.js';
 import { bestOf } from './popularity.js';
 import { phraseZwsp } from './phrase.js';
 
-/** 売り場の設定。label: 正式な名前・short: 短い名前・maker: サークル/ブランドの呼び方・kind: 作品の呼び方 */
+/**
+ * 売り場の設定。label: 正式な名前・short: 短い名前・maker: サークル/ブランド/メーカー/出版社の呼び方・makerUnit: 数えるときの言葉・kind: 作品の呼び方。
+ * frame: 一覧の表紙の枠（'wide'＝横長 4:3・'square'＝正方形・'cover'＝動画と同じ縦長）。detail: 作品ページの大きな表紙の形
+ * （'wide'・'square'・'spread'＝パッケージの見開き 800×538・'tall'＝縦長）。authors: 作家を出す。people: 出演者を出す。noPrice: 価格を出さない（見放題）。
+ * 運営者の希望「アニメ動画・素人・成人映画・FANZAブックス（コミック・写真集）・VR見放題も。各100、素人は500」（2026-10-10）。
+ * 集める道具は scripts/floor_data.py の FLOORS（同じ売り場・同じ順。tests/test_floors.mjs で突き合わせ）
+ */
 export const FLOORS = {
-  doujin: { key: 'doujin', label: 'FANZA同人', short: '同人', maker: 'サークル', kind: '同人作品' },
-  game: { key: 'game', label: 'FANZAゲーム', short: 'ゲーム', maker: 'ブランド', kind: 'PCゲーム' },
+  doujin: { key: 'doujin', label: 'FANZA同人', short: '同人', maker: 'サークル', makerUnit: 'サークル', kind: '同人作品', frame: 'wide', detail: 'wide' },
+  game: { key: 'game', label: 'FANZAゲーム', short: 'ゲーム', maker: 'ブランド', makerUnit: 'ブランド', kind: 'PCゲーム', frame: 'cover', detail: 'tall', authors: true },
+  anime: { key: 'anime', label: 'FANZAアニメ', short: 'アニメ', maker: 'メーカー', makerUnit: '社', kind: 'アダルトアニメ', frame: 'cover', detail: 'spread' },
+  amateur: { key: 'amateur', label: 'FANZA素人', short: '素人', maker: 'メーカー', makerUnit: '社', kind: '素人作品', frame: 'square', detail: 'square', people: true },
+  cinema: { key: 'cinema', label: 'FANZA成人映画', short: '成人映画', maker: 'メーカー', makerUnit: '社', kind: '成人映画', frame: 'cover', detail: 'spread', people: true },
+  comic: { key: 'comic', label: 'FANZAコミック', short: 'コミック', maker: '出版社', makerUnit: '社', kind: 'アダルトコミック', frame: 'cover', detail: 'tall', authors: true },
+  photo: { key: 'photo', label: 'FANZA写真集', short: '写真集', maker: '出版社', makerUnit: '社', kind: '写真集', frame: 'cover', detail: 'tall', authors: true, people: true },
+  vr: { key: 'vr', label: 'FANZA VR見放題', short: 'VR見放題', maker: 'メーカー', makerUnit: '社', kind: 'VR作品', frame: 'cover', detail: 'spread', people: true, noPrice: true },
 };
 export const FLOOR_KEYS = Object.keys(FLOORS);
+/** 一覧の表紙の枠の印（class）: 同人＝is-wide（横長）・素人＝is-wide is-square（正方形。横長の枠の札の置き方を、そのまま使う）・ほか＝なし */
+export const frameClass = (key) => ({ 'is-wide': FLOORS[key]?.frame === 'wide' || FLOORS[key]?.frame === 'square', 'is-square': FLOORS[key]?.frame === 'square' });
+/** 作品検索の欄の案内（「タイトル・サークル」「タイトル・ブランド・作家」「タイトル・メーカー・出演者」など） */
+export const floorSearchHint = (key) => `タイトル・${FLOORS[key].maker}${FLOORS[key].authors ? '・作家' : ''}${FLOORS[key].people ? '・出演者' : ''}`;
+/** 横長・正方形の枠の売り場か（表紙を枠にまるごと入れる。<picture> で縮めた版） */
+export const isFramed = (key) => FLOORS[key]?.frame === 'wide' || FLOORS[key]?.frame === 'square';
 
 export const floorPath = (key) => `/${key}/`;
 export const floorRankingPath = (key) => `/${key}/ranking/`;
@@ -52,6 +71,15 @@ export const DOUJIN_TINY_W = 240;
 export const doujinThumb = (url, kind = 'card') => ({ src: url, small: resizedImage(url, kind === 'tiny' ? DOUJIN_TINY_W : DOUJIN_CARD_W) });
 /** <picture> の中の同人の img の onerror: スマホで縮めた版が読めなければ <source> を外して元の画像に。元の画像も読めなければ DOUJIN_IMG_ONERROR */
 export const DOUJIN_THUMB_ONERROR = `var s=this.previousElementSibling,m=s?s.tagName=='SOURCE'?matchMedia(s.media).matches:0:0;if(m){s.remove()}else{${DOUJIN_IMG_ONERROR}}`;
+/** 素人の表紙（1200×1200 の四角。2026-10-10 に本物で確かめた。約160KB）も、スマホは「縮めて返す版」に。読めなければ元の画像、それも読めなければ隠す */
+export const FRAMED_THUMB_ONERROR = "var s=this.previousElementSibling,m=s?s.tagName=='SOURCE'?matchMedia(s.media).matches:0:0;if(m){s.remove()}else{this.style.visibility='hidden'}";
+/** 横長・正方形の枠の表紙: { src, small（スマホ）, onerror, width, height }（同人は doujin-assets に戻す道も） */
+export function framedThumb(key, url, kind = 'card') {
+  const t = doujinThumb(url, kind);
+  return key === 'doujin'
+    ? { ...t, onerror: DOUJIN_THUMB_ONERROR, width: 560, height: 420 }
+    : { ...t, onerror: FRAMED_THUMB_ONERROR, width: 600, height: 600 };
+}
 const minor = (text) => Boolean(text) && isMinorTitle(text);
 const names = (list, limit) => (Array.isArray(list) ? list : []).map((s) => String(s ?? '').trim()).filter(Boolean).slice(0, limit);
 const yen = (v) => (Number.isInteger(v) && v > 0 && v < 10_000_000 ? v : null);
@@ -66,7 +94,7 @@ export const offOf = (price, listPrice) => (price && listPrice && price < listPr
 
 /**
  * doujin.json・game.json → { key, updated, items }。items は人気の高い順（順位の無い作品はそのあと、発売日の新しい順）。
- * 作品: { floor, cid, title, url, image_url, sample_images, date, dateKey, maker:{id,name}|null, authors, series:{id,name}|null,
+ * 作品: { floor, cid, title, url, image_url, sample_images, date, dateKey, maker:{id,name}|null, authors, actress, sampleMovie, trialUrl, series:{id,name}|null,
  *         genres, formats, sales, price, listPrice, off, campaign:{title,begin}|null, comment, updated, rank, upcoming, type（同人の形式。comic・cg・voice・game） }
  */
 export function normalizeFloor(raw, key, today) {
@@ -85,13 +113,15 @@ export function normalizeFloor(raw, key, today) {
     const formats = names(r.formats, 12);
     const sales = names(r.sales, 8);
     const authors = names(r.authors, 4);
+    const actress = names(r.actress, 8);
     const maker = entry(r.maker_id, r.maker);
     const series = entry(r.series_id, r.series);
     // 未成年を連想させる作品は出さない（集めるときにも外している。二重の備え）
-    if ([title, ...genres, ...formats, ...sales, ...authors, maker?.name, series?.name].some(minor)) continue;
+    if ([title, ...genres, ...formats, ...sales, ...authors, ...actress, maker?.name, series?.name].some(minor)) continue;
     seen.add(cid);
-    const price = yen(r.price);
-    const listPrice = yen(r.list_price);
+    // 見放題（VR見放題）の価格は、作品の値段ではないので出さない
+    const price = FLOORS[key]?.noPrice ? null : yen(r.price);
+    const listPrice = FLOORS[key]?.noPrice ? null : yen(r.list_price);
     const rank = Number.isInteger(ranks[cid]) && ranks[cid] > 0 ? ranks[cid] : null;
     const camp = r.campaign && typeof r.campaign === 'object' && String(r.campaign.title ?? '').trim()
       ? { title: String(r.campaign.title).trim().slice(0, 40), begin: isDay(String(r.campaign.begin ?? '')) ? r.campaign.begin : '' }
@@ -107,6 +137,10 @@ export function normalizeFloor(raw, key, today) {
       dateKey: date.slice(0, 10),
       maker,
       authors,
+      // 出演者（VR・成人映画・写真集など）・サンプル動画のページ（アニメ・素人・VR など）・立ち読みのページ（ブックス）。2026-10-10 から
+      actress,
+      sampleMovie: safeHttpsUrl(r.sample_movie, FANZA_HOSTS),
+      trialUrl: safeHttpsUrl(r.trial_url, FANZA_LINK_HOSTS),
       series,
       genres,
       formats,
@@ -115,6 +149,8 @@ export function normalizeFloor(raw, key, today) {
       listPrice: listPrice && price && price <= listPrice ? listPrice : null,
       off: offOf(price, listPrice),
       campaign: camp,
+      // FANZAのレビューの評価（2026-10-10 から。lib/reviews.js）。無ければ null
+      review: reviewOf(r.review),
       comment: r.comment_kind === 'claude' ? String(r.comment ?? '').trim() : '',
       updated: isDay(r.updated) ? r.updated : '',
       rank,
@@ -208,7 +244,9 @@ export const FLOOR_GENRE_OK = ['巨乳', '人妻・主婦', '人妻', '熟女', 
   '動画・アニメーション', 'アニメーション', 'フルカラー', 'ボイス付き', '癒し', '耳かき', 'バイノーラル/ダミヘ', 'ASMR', '水着',
   '着物・和服', '褐色・日焼け', 'スレンダー', 'めがね', 'コスプレ', '温泉・銭湯', '旅行', 'オフィス・職場', '同棲', '夫婦', '不倫',
   '浮気', '未亡人', 'アイドル・芸能人', 'スポーツ', 'SF', 'ホラー', 'ミステリー', '歴史', '和風', 'ダークファンタジー', 'ケモミミ',
-  '獣人', '天使・悪魔', 'お嬢様・令嬢', '王女・姫', '主従', '上司・部下'];
+  '獣人', '天使・悪魔', 'お嬢様・令嬢', '王女・姫', '主従', '上司・部下',
+  // 新しい売り場（アニメ・素人・成人映画・写真集・VR見放題。2026-10-10）で多い、おだやかなもの（動画のジャンルのページ TAG_PAGE_GENRES にもあるもの）
+  '美乳', '巨尻', 'グラビア', 'ドラマ'];
 const GENRE_OK = new Set(FLOOR_GENRE_OK);
 
 /** 中身のジャンルの多い順（数えるのは作品の数。おだやかなジャンル FLOOR_GENRE_OK だけ。上から limit 個）: [{ name, count }] */
@@ -242,10 +280,12 @@ export function priceNote(item) {
   return item.listPrice && item.price < item.listPrice ? `${comma(item.price)}円（通常${comma(item.listPrice)}円）` : `${comma(item.price)}円`;
 }
 
-/** カードのサークル/ブランドの1行（ゲームは作家も1人） */
+/** カードのサークル/ブランドの1行（ゲーム・コミックは作家も1人。出演者のいる売り場は、出演者を先に2人まで） */
 export function makerLine(item) {
+  const f = FLOORS[item.floor] ?? {};
+  if (f.people && item.actress?.length > 0) return [item.actress.slice(0, 2).join('、') + (item.actress.length > 2 ? ` ほか${item.actress.length - 2}名` : ''), item.maker?.name ?? ''].filter(Boolean).join('｜');
   const parts = [item.maker?.name ?? ''];
-  if (item.floor === 'game' && item.authors.length > 0) parts.push(`作家 ${item.authors[0]}`);
+  if (f.authors && item.authors.length > 0) parts.push(`作家 ${item.authors[0]}`);
   return parts.filter(Boolean).join('｜');
 }
 
@@ -804,7 +844,7 @@ export function floorGachaPool(items, limit = FLOOR_GACHA_POOL) {
     c: i.cid,
     h: floorItemPath(i.floor, i.cid),
     t: phraseZwsp(i.title),
-    i: i.floor === 'doujin' ? doujinThumb(i.image_url, 'tiny').small : smallImage(i.image_url),
+    i: isFramed(i.floor) ? doujinThumb(i.image_url, 'tiny').small : smallImage(i.image_url),
     a: makerLine(i),
   }));
 }
@@ -813,15 +853,26 @@ export function floorGachaPool(items, limit = FLOOR_GACHA_POOL) {
 export const floorSearchPath = (key) => `/${key}/search/`;
 export const floorSearchIndexPath = (key) => `/data/${key}-index.json`;
 export const FLOOR_SEARCH_PAGE = 30; // 1回に出す本数（はじめの一覧も同じ）
-/** 表紙の決まった置き場所（同人 /digital/<形式>/<品番>/<品番>pl.jpg・ゲーム /digital/pcgame/…）。この形なら、索引から画像の項目を省く（索引を軽くするため） */
-export const floorImageOf = (key, cid, type) => `https://pics.dmm.co.jp/digital/${key === 'game' ? 'pcgame' : type}/${cid}/${cid}pl.jpg`;
+/** 表紙の決まった置き場所（同人 /digital/<形式>/<品番>/<品番>pl.jpg・ゲーム /digital/pcgame/…）。この形なら、索引から画像の項目を省く（索引を軽くするため）。
+ * ほかの売り場は、いつも画像の項目を入れる（'' を返す） */
+export const floorImageOf = (key, cid, type) => (key === 'game' || key === 'doujin' ? `https://pics.dmm.co.jp/digital/${key === 'game' ? 'pcgame' : type}/${cid}/${cid}pl.jpg` : '');
 
 /**
- * 作品検索の索引: { key, genres: [名前]（おだやかなジャンルだけ）, themes: [{ s, n }]（特集）, types: [{ s, n }]（同人の形式）,
+ * 作品検索の索引: { key, genres: [名前]（おだやかなジャンルだけ）, themes: [{ s, n }]（特集）, types: [{ s, n }]（同人の形式）, yomi: { 名前: 読み },
  *   items: [{ c, t（文節の区切り入り）, m（サークル/ブランド）, a（作家）, g:[ジャンルの番号], h:[特集の番号], y（形式）, p（価格）, o（割引%）, r（人気の順位）, d（発売日）, u（予約なら1）, s（セール中なら1）, i（画像。決まった形なら省く） }] }。人気の高い順
  */
-export function floorSearchIndex(items, key, groups) {
+export function floorSearchIndex(items, key, groups, readingOf = () => '') {
   const genres = topGenres(items, FLOOR_GENRE_OK.length).map((g) => g.name);
+  // 読みがな（サークル/ブランドは id、作家・ジャンルは名前で引く）→ { 名前: 読み }（ひらがなで打っても見つかるように。2026-10-10）
+  const yomi = {};
+  const put = (name, r) => {
+    if (name && r && !(name in yomi) && r.replace(/\s/g, '') !== name.replace(/\s/g, '')) yomi[name] = r;
+  };
+  for (const i of items) {
+    if (i.maker) put(i.maker.name, readingOf('maker', i.maker.id));
+    for (const a of i.authors) put(a, readingOf('author', a));
+  }
+  for (const g of genres) put(g, readingOf('genre', g));
   const gIndex = new Map(genres.map((g, n) => [g, n]));
   const themes = (groups.theme ?? []).map((g) => ({ s: g.slug, n: g.name }));
   const themeOf = new Map();
@@ -832,6 +883,7 @@ export function floorSearchIndex(items, key, groups) {
     genres,
     themes,
     types: key === 'doujin' ? DOUJIN_TYPES.filter((t) => items.some((i) => i.type === t.slug)).map((t) => ({ s: t.slug, n: t.short })) : [],
+    yomi,
     items: items.map((i) => {
       const g = [...new Set(i.genres)].filter((x) => gIndex.has(x)).map((x) => gIndex.get(x));
       const h = themeOf.get(i.cid) ?? [];
@@ -839,12 +891,14 @@ export function floorSearchIndex(items, key, groups) {
         c: i.cid,
         t: phraseZwsp(i.title),
         ...(i.maker ? { m: i.maker.name } : {}),
-        ...(i.authors.length ? { a: i.authors.join('、') } : {}),
+        ...(i.authors.length || i.actress?.length ? { a: [...i.authors, ...(i.actress ?? [])].join('、') } : {}),
         ...(g.length ? { g } : {}),
         ...(h.length ? { h } : {}),
         ...(i.type ? { y: i.type } : {}),
         ...(i.price ? { p: i.price } : {}),
         ...(i.off ? { o: i.off } : {}),
+        // FANZAのレビューの評価（並び順「評価が高い順」。平均×100・件数。2026-10-10）
+        ...(i.review ? { v: Math.round(i.review.avg * 100), vc: i.review.count } : {}),
         ...(pos.has(i.cid) ? { r: pos.get(i.cid) } : {}),
         d: i.dateKey,
         ...(i.upcoming ? { u: 1 } : {}),
@@ -864,7 +918,8 @@ export function floorSearchRow(row, key) {
     href: floorItemPath(key, row.c),
     title: row.t,
     img,
-    wide: key === 'doujin',
+    wide: isFramed(key),
+    square: FLOORS[key]?.frame === 'square',
     line: [row.m, row.a].filter(Boolean).join('｜'),
     meta: [row.u ? `${+row.d.slice(5, 7)}月${+row.d.slice(8, 10)}日発売予定` : `${row.d.slice(0, 4)}年${+row.d.slice(5, 7)}月${+row.d.slice(8, 10)}日発売`, yen].filter(Boolean).join('・'),
     rank: row.r ?? 0,

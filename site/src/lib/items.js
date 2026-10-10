@@ -110,7 +110,8 @@ export function isSoloWork({ genres = [], actress = [] } = {}) {
  * FANZA のパッケージ画像（…pl.jpg。800×538、表紙と背表紙と裏）を、表紙だけの小さな画像（…ps.jpg。147×200）に置きかえる
  * （ファイルが数分の1になり、読み込みが軽くなる。運営者の「読み込みのストレスをフリーに」。2026-10-05）。形が違うURLはそのまま
  */
-export const smallImage = (url) => (/^https:\/\/pics\.dmm\.co\.jp\/.+pl\.jpg$/.test(String(url ?? '')) ? String(url).replace(/pl\.jpg$/, 'ps.jpg') : String(url ?? ''));
+// FANZAブックス（コミック・写真集）の表紙は ebook-assets.dmm.co.jp にあり、表紙だけの小さい版（ps 140×198）も同じ形（2026-10-10 に本物で確かめた）
+export const smallImage = (url) => (/^https:\/\/(pics|ebook-assets)\.dmm\.co\.jp\/.+pl\.jpg$/.test(String(url ?? '')) ? String(url).replace(/pl\.jpg$/, 'ps.jpg') : String(url ?? ''));
 /** 小さな画像が読めなかったら、もとのパッケージ画像に戻す（それも読めなければ隠す）。img の onerror に入れる */
 export const SMALL_IMG_ONERROR = "if(/ps\\.jpg$/.test(this.src)){this.src=this.src.replace(/ps\\.jpg$/,'pl.jpg');this.classList.remove('is-small')}else{this.style.visibility='hidden'}";
 
@@ -142,6 +143,8 @@ export const THUMB_Q = 75;
 const DMM_IMG = /^https:\/\/pics\.dmm\.co\.jp\/[^?#]+\.jpg$/;
 const VIDEO_IMG = /^https:\/\/pics\.dmm\.co\.jp\/digital\/video\/[^?#]+p[ls]\.jpg$/;
 const GAME_IMG = /^https:\/\/pics\.dmm\.co\.jp\/digital\/pcgame\/[^?#]+pl\.jpg$/;
+/** FANZAブックスの表紙（424×600・約80KB。縮めて返す版は無い。2026-10-10） */
+const BOOK_IMG = /^https:\/\/ebook-assets\.dmm\.co\.jp\/[^?#]+pl\.jpg$/;
 /** pics.dmm.co.jp の画像を、幅 w に縮めた版の URL に（FANZA の画像でなければ、そのまま） */
 export const resizedImage = (url, w) => {
   const s = String(url ?? '');
@@ -151,13 +154,14 @@ export const resizedImage = (url, w) => {
 export const tinyImage = (url) => {
   const s = String(url ?? '');
   if (VIDEO_IMG.test(s)) return resizedImage(s.replace(/p[ls]\.jpg$/, 'ps.jpg'), THUMB_TINY_W);
-  return DMM_IMG.test(s) && /pl\.jpg$/.test(s) ? smallImage(s) : s;
+  return (DMM_IMG.test(s) || BOOK_IMG.test(s)) && /pl\.jpg$/.test(s) ? smallImage(s) : s;
 };
 /** スマホの作品カード・TOP3 の画像。動画は表紙（ps）を幅300に、ゲームはパッケージ（pl）を幅300に。ほかは表紙（ps） */
 export const cardImage = (url) => {
   const s = String(url ?? '');
   if (VIDEO_IMG.test(s)) return resizedImage(s.replace(/p[ls]\.jpg$/, 'ps.jpg'), THUMB_CARD_W);
   if (GAME_IMG.test(s)) return resizedImage(s, THUMB_CARD_W);
+  if (BOOK_IMG.test(s)) return s; // ブックスは、縮めた版が無いので、スマホのカードも元の表紙（ps 140×198 は、カードには粗い）
   return smallImage(s);
 };
 /**

@@ -68,15 +68,50 @@ jobs:
         run: python scripts/agency_events.py --update
 
       # FANZA同人（1,000本）・FANZAゲーム（500本）の人気作品を集め直す（FANZAのAPIだけ。Gemini は使わない。2026-10-09 から）。
+      # アニメ・成人映画・コミック・写真集・VR見放題（各100本）・素人（500本）も（2026-10-10 から。scripts/floor_data.py の FLOORS）。
       # 失敗しても、ほかの更新は止めない（前のデータを残す。scripts/doujin_game.py）
       - name: Update doujin and games (daily)
+        if: steps.guard.outputs.skip != '1'
+        continue-on-error: true
+        timeout-minutes: 25
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python scripts/doujin_game.py --update
+
+      # 読みがな（ジャンル・メーカー・シリーズ・作家。FANZAのAPIだけ。Gemini は使わない。2026-10-10 から）。
+      # 7日に1回（読みきれなかった一覧は次の日に続きから）。一覧のページの「50音で探す」と、作品検索をひらがなで探すのに使う。
+      # 同人・ゲームなどのデータを集めたあと。失敗しても、ほかの更新は止めない（前のデータを残す。scripts/readings.py）
+      - name: Update readings (weekly)
         if: steps.guard.outputs.skip != '1'
         continue-on-error: true
         timeout-minutes: 15
         env:
           API_ID: ${{ secrets.API_ID }}
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
-        run: python scripts/doujin_game.py --update
+        run: python scripts/readings.py --update
+
+      # ジャンルのページの「FANZA全体で人気の作品 TOP20」（FANZAのAPIだけ。Gemini は使わない。2026-10-10 から）。
+      # 毎日（ジャンルごとに1回）。失敗しても、ほかの更新は止めない（前のデータを残す。scripts/genre_tops.py）
+      - name: Update genre tops (daily)
+        if: steps.guard.outputs.skip != '1'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python scripts/genre_tops.py --update
+
+      # 10円セール（動画・同人・ゲーム。FANZAのAPIだけ。Gemini は使わない。運営者の希望「10円セールは大イベント。開催中はものすごく訴求したい」。2026-10-09 から）。
+      # 開催中の日中の入れかわりは ten-yen.yml が確かめる。失敗しても、ほかの更新は止めない（前のデータを残す。scripts/ten_yen.py）
+      - name: Update 10-yen sale (daily)
+        if: steps.guard.outputs.skip != '1'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python scripts/ten_yen.py --update
 
       - name: Commit and push if changed
         if: steps.guard.outputs.skip != '1'

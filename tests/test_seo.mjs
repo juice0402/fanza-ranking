@@ -99,7 +99,8 @@ check('作品数の多い順。パスは /tag/名前のハッシュ/', tags.ever
 check('作品は発売日が新しい順', tags[0].items.every((it, i, a) => i === 0 || a[i - 1].dateKey >= it.dateKey));
 const ts = C.tagSummary(tags.find((g) => g.name === '巨乳'));
 check('ジャンルの紹介文: 本数が、データを数えた値と同じ。VR のページは「VR作品は」', ts.includes('「巨乳」のジャンルの作品は5本です') && C.tagSummary(tags.find((g) => g.name === C.VR_TAG_NAME)).includes('VR作品は3本です'), ts);
-check('ジャンルのタイトル: 「○○の新作・予約作品一覧（N本）｜サイト名」', C.tagPageTitle(tags.find((g) => g.name === '巨乳')) === `巨乳の新作・予約作品一覧（5本）｜${L.SITE_NAME}`);
+check('ジャンルのタイトル: 「○○の新作・予約作品一覧（N本）｜サイト名」（FANZA全体の人気ランキングがあれば「・人気ランキング」）', C.tagPageTitle(tags.find((g) => g.name === '巨乳')) === `巨乳の新作・予約作品一覧（5本）｜${L.SITE_NAME}`
+  && C.tagPageTitle(tags.find((g) => g.name === '巨乳'), true) === `巨乳の新作・予約作品一覧・人気ランキング（5本）｜${L.SITE_NAME}`);
 
 console.log('\n■ 設定（config.js）');
 const cfg = await import('../site/src/config.js');

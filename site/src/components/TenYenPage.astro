@@ -1,0 +1,231 @@
+---
+// 10円セールのページ（/sale/10yen/ ＝動画・同人・ゲームのまとめ、/doujin/sale/10yen/・/game/sale/10yen/ ＝売り場ごと）。
+// 運営者の希望「10円セールは大イベント。開催中はものすごく訴求したいし、SEOもかなり上位に来るように」（2026-10-09）。
+// いつも同じURLにあり（開催していないあいだも消さない。検索エンジンに覚えてもらうため）、開催中は、いま10円の作品をすべて並べる。
+// 開催していないあいだは、「いまは開催していません」・このサイトが見かけた前回・いま割引の大きい作品・ほかのセールへの道。
+// 書くのはデータから数えた事実だけ（次の開催の予想はしない）。終わりの時刻をすぎた作品は、ブラウザで隠す（public/sale.js）
+import Base from '../layouts/Base.astro';
+import Breadcrumb from './Breadcrumb.astro';
+import ItemCard from './ItemCard.astro';
+import FloorCard from './FloorCard.astro';
+import { activeFloors, all, floors, floorSalePageGroups, paged, sale, saleCampaignPages, today, tenYen, tenYenFloors } from '../lib/data.js';
+import { FLOORS, floorPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, priceNote, saleBadgeOf } from '../lib/floors.js';
+import { SALE_HISTORY_PATH, SALE_PATH, endIso, endLabel, onSaleItems, saleBadge, salePriceNote } from '../lib/sale.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, filterAttrs } from '../lib/items.js';
+import { isMinorTitle } from '../lib/gacha.js';
+import { inlineScript } from '../lib/assets.js';
+import {
+  TEN_YEN_DEALS,
+  TEN_YEN_KEYS,
+  TEN_YEN_NAMES,
+  TEN_YEN_PATH,
+  TEN_YEN_SHORT,
+  TEN_YEN_SINCE,
+  checkedLabel,
+  faqLd,
+  hideAt,
+  latestRun,
+  runRangeText,
+  tenYenDescription,
+  tenYenFaq,
+  tenYenHref,
+  tenYenIndexable,
+  tenYenNote,
+  tenYenPath,
+  tenYenState,
+  tenYenTitle,
+  untilText,
+} from '../lib/ten-yen.js';
+
+// key: 'video' ＝まとめのページ（動画・同人・ゲームの全部）、'doujin'・'game' ＝その売り場のページ
+const { key = 'video' } = Astro.props;
+const hub = key === 'video';
+const keys = hub ? TEN_YEN_KEYS : [key];
+const s = tenYenState(tenYen, keys);
+const live = s.total > 0;
+const path = tenYenPath(key);
+const name = hub ? 'FANZA' : TEN_YEN_NAMES[key];
+const until = untilText(s);
+const end = hideAt(s);
+const at = checkedLabel(tenYen.checked);
+const faq = tenYenFaq(tenYen, key);
+const runs = tenYen.runs.filter((r) => keys.includes(r.floor));
+const prev = hub ? latestRun(tenYen) : latestRun(tenYen, key);
+// まとめのページから、同人・ゲームのページへ（その売り場のページがあるときだけ）／売り場のページから、まとめのページ・ほかの売り場へ
+const otherPages = [
+  ...(hub ? [] : [{ path: TEN_YEN_PATH, label: 'FANZAの10円セール（動画・同人・ゲーム）' }]),
+  ...tenYenFloors.filter((k) => k !== key).map((k) => ({ path: tenYenPath(k), label: `${TEN_YEN_NAMES[k]}の10円セール` })),
+];
+
+// 開催していないあいだの「いま割引の大きい作品」（売り場ごとに6本。割引の大きい順・同じなら人気の高い順。こちらから案内する欄なので、未成年を連想させるタイトルは出さない）
+const deals = live ? [] : keys.map((k) => {
+  if (k === 'video') {
+    const list = onSaleItems(all, sale, today)
+      .filter((i) => i.sale.price && !isMinorTitle(i.title))
+      .map((i) => ({ i, off: Math.round((1 - i.sale.price / i.sale.listPrice) * 100) }))
+      .sort((a, b) => b.off - a.off)
+      .slice(0, TEN_YEN_DEALS)
+      .map((x) => x.i);
+    return { k, list, more: SALE_PATH };
+  }
+  const list = (floors[k]?.items ?? []).filter((i) => !i.upcoming && i.off > 0).sort((a, b) => b.off - a.off || (a.rank ?? Infinity) - (b.rank ?? Infinity)).slice(0, TEN_YEN_DEALS);
+  return { k, list, more: floorSalePath(k) };
+}).filter((d) => d.list.length > 0);
+
+// ほかのセール（開催中のセールのページ・セールはいつ？）
+const saleLinks = [
+  ...(hub || key === 'video' ? [{ path: SALE_PATH, label: `FANZA動画のセール${saleCampaignPages.filter((p) => p.active).length ? `（開催中${saleCampaignPages.filter((p) => p.active).length}件）` : ''}` }] : []),
+  // （セールのページがある売り場だけ。見放題など、セール中の作品が無い売り場にはページが無い。2026-10-10）
+  ...activeFloors.filter((k) => (hub || k === key) && floorSaleItems(floors[k].items).length > 0).map((k) => ({ path: floorSalePath(k), label: `${FLOORS[k].label}のセール${floorSalePageGroups[k].length ? `（${floorSalePageGroups[k].length}件）` : ''}` })),
+  ...(hub ? [{ path: SALE_HISTORY_PATH, label: 'FANZAのセールはいつ？' }] : [{ path: floorSaleHistoryPath(key), label: `${FLOORS[key].label}のセールはいつ？` }]),
+];
+
+const trail = hub
+  ? [{ name: 'トップ', path: '/' }, { name: 'セール・キャンペーン', path: SALE_PATH }, { name: '10円セール', path }]
+  : [{ name: 'トップ', path: '/' }, { name: FLOORS[key].label, path: floorPath(key) }, { name: 'セール', path: floorSalePath(key) }, { name: '10円セール', path }];
+const listed = keys.flatMap((k) => tenYen.items[k]);
+const pageLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: `${name} 10円セール`,
+  url: SITE_URL + path,
+  ...(tenYen.checked ? { dateModified: tenYen.checked.slice(0, 10) } : {}),
+  ...(listed.length ? {
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: listed.length,
+      itemListElement: listed.slice(0, 30).map((item, n) => {
+        const link = tenYenHref(item, paged);
+        return { '@type': 'ListItem', position: n + 1, name: item.title, url: link.external ? link.href : SITE_URL + link.href };
+      }),
+    },
+  } : {}),
+};
+const hasEnds = listed.some((i) => i.tenYen.end);
+---
+
+<Base title={`${tenYenTitle(tenYen, key)}｜${SITE_NAME}`} description={tenYenDescription(tenYen, key)} path={path} noindex={!tenYenIndexable(tenYen, key)} jsonLd={[breadcrumbLd(trail), pageLd, faqLd(faq)]} tenYenBar={false}>
+  {/* 終わりの時刻をすぎた作品・案内を隠す（public/sale.js を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付ける） */}
+  {hasEnds && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class:list={['hero', 'ten-page-hero', { 'is-live': live }]}>
+      <div class="ten-page-head">
+        <span class="ten-coin ten-coin-lg" aria-hidden="true"><span class="ten-coin-num">10</span><span class="ten-coin-yen">円</span></span>
+        <h1 class="hero-title">{name} 10円セール</h1>
+      </div>
+      {live
+        ? (
+          <p class="ten-status" data-sale-end={end || undefined}>
+            <span class="ten-pill">開催中</span>
+            いま10円の作品 <strong>{s.total}本</strong>{until && <>・<strong>{until}</strong></>}
+          </p>
+        )
+        : (
+          <p class="ten-status">
+            <span class="ten-pill is-off">いまは開催していません</span>
+            {prev && `前回: ${runRangeText(prev)}（${TEN_YEN_SHORT[prev.floor]}）`}
+          </p>
+        )}
+      {live && end && <p class="ten-status sale-over" data-sale-over={end} hidden>この10円セールは終わりました（{until || endLabel(s.end)}）。</p>}
+      <p class="hero-lead">{at ? `${at}の時点の情報です。` : ''}{live ? '価格・終わりの日時は、FANZAの作品ページで確かめてください。' : '開催が始まると、このページに10円の作品が並びます。'}</p>
+      {hub && live && s.live.length > 1 && (
+        <nav class="sale-jump genre-chips" aria-label="売り場">
+          {s.live.map((k) => <a class="chip-link" href={`#ten-${k}`}>{TEN_YEN_SHORT[k]}<span class="chip-count">{s.counts[k]}</span></a>)}
+        </nav>
+      )}
+    </section>
+
+    {live && s.live.map((k) => {
+      const list = tenYen.items[k];
+      const ends = [...new Set(list.map((i) => i.tenYen.end).filter(Boolean))].sort();
+      return (
+        <section class="section" id={`ten-${k}`} aria-labelledby={`ten-${k}-title`} data-sale-group>
+          <div class="section-head">
+            <h2 id={`ten-${k}-title`} class="section-title">{TEN_YEN_NAMES[k]}の10円の作品</h2>
+            <p class="section-note">{list.length}本{ends.length === 1 ? `・${endLabel(ends[0])}まで` : ''}</p>
+          </div>
+          <ul class="shelf">
+            {list.map((item, n) => (
+              <li class="shelf-cell" data-sale-end={item.tenYen.end ? endIso(item.tenYen.end) : undefined} {...(k === 'video' ? filterAttrs(item) : {})}>
+                {k === 'video'
+                  ? <ItemCard item={item} level="h3" badge="10円" note={tenYenNote(item)} eager={n < 4} />
+                  : <FloorCard item={item} level="h3" badge="10円" note={tenYenNote(item)} eager={n < 4} external={!item.hasPage} />}
+              </li>
+            ))}
+          </ul>
+          {hub && k !== 'video' && tenYenFloors.includes(k) && <p class="more"><a class="btn btn-quiet" href={tenYenPath(k)}>{TEN_YEN_NAMES[k]}の10円セールのページ</a></p>}
+        </section>
+      );
+    })}
+
+    {deals.map((d) => (
+      <section class="section" aria-labelledby={`ten-deal-${d.k}`}>
+        <div class="section-head">
+          <h2 id={`ten-deal-${d.k}`} class="section-title">いま割引の大きい{TEN_YEN_SHORT[d.k]}の作品</h2>
+          <a class="subsection-more" href={d.more}>セールをすべて見る</a>
+        </div>
+        <ul class="shelf">
+          {d.list.map((item) => (
+            <li class="shelf-cell" {...(d.k === 'video' ? filterAttrs(item) : {})}>
+              {d.k === 'video'
+                ? <ItemCard item={item} level="h3" badge={saleBadge(item.sale)} note={salePriceNote(item.sale)} />
+                : <FloorCard item={item} level="h3" badge={saleBadgeOf(item)} note={priceNote(item)} />}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+
+    <section class="section" aria-labelledby="ten-faq">
+      <div class="section-head">
+        <h2 id="ten-faq" class="section-title">よくある質問</h2>
+      </div>
+      <dl class="faq faq-grid">
+        {faq.map((f) => (
+          <div class="faq-row">
+            <dt>{f.q}</dt>
+            <dd>{f.key && <span class="faq-key">{f.key}</span>}<span class="faq-text">{f.a}</span></dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+
+    {runs.length > 0 && (
+      <section class="section" aria-labelledby="ten-runs">
+        <div class="section-head">
+          <h2 id="ten-runs" class="section-title">これまでの10円セール</h2>
+          <p class="section-note">このサイトが見かけた日（{runs.length}回）</p>
+        </div>
+        <div class="table-scroll">
+          <table class="run-table">
+            <thead>
+              <tr>{hub && <th scope="col">売り場</th>}<th scope="col">見かけた日</th><th scope="col">10円の作品</th><th scope="col">セールの名前</th></tr>
+            </thead>
+            <tbody>
+              {runs.map((r) => (
+                <tr>
+                  {hub && <td data-label="売り場">{TEN_YEN_SHORT[r.floor]}</td>}
+                  <td data-label="見かけた日">{runRangeText(r)}</td>
+                  <td data-label="10円の作品">いちばん多い日 {r.count}本</td>
+                  <td data-label="セールの名前">{r.titles.length ? r.titles.join('・') : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="section-note run-note">記録は{TEN_YEN_SINCE.slice(0, 4)}年{+TEN_YEN_SINCE.slice(5, 7)}月{+TEN_YEN_SINCE.slice(8, 10)}日から。毎日0時すぎと日中に数回、FANZA公式のAPIで確かめています。</p>
+      </section>
+    )}
+
+    <section class="section" aria-labelledby="ten-more">
+      <div class="section-head">
+        <h2 id="ten-more" class="section-title">ほかのセール</h2>
+      </div>
+      <nav class="sale-jump genre-chips" aria-label="ほかのセール">
+        {[...otherPages, ...saleLinks].map((l) => <a class="chip-link" href={l.path}>{l.label}</a>)}
+      </nav>
+    </section>
+  </div>
+</Base>

@@ -1,12 +1,15 @@
 // 画面の写真（スクリーンショット）を撮って、形のくずれを調べる道具（運営者の「改行・高さがそろっていない所を全域調査して」。2026-10-09）。
 // .github/workflows/screens.yml が、GitHub の上で動かす（Claude のクラウド環境からは pages.dev が見えないため）。
-// 設定は scripts/screens.json（base: 撮るサイト、paths: ページ、widths: 画面の幅、chunks: 1ページを何枚に分けて撮るか、at: 見たい所のセレクター（任意。その所を上にして1枚ずつ））。
+// 設定は scripts/screens.json（base: 撮るサイト、paths: ページ、widths: 画面の幅、chunks: 1ページを何枚に分けて撮るか、at: 見たい所のセレクター（任意。その所を上にして1枚ずつ）、
+// local: 見本のデータの名前（任意。scripts/screens_sample.py。まだ本番に無い状態を、GitHub の上でビルドして写す））。
 // 作品の画像は写さない（灰色の箱にする。形だけを見るため・公開のリポジトリに作品の画像を置かないため）。
 // 結果: shots/<ページ>-<幅>-<番号>.png と shots/report.json（横にはみ出す要素・同じ行の棚でタイトルの高さがずれている所・行の数がそろわない所）
 import fs from 'node:fs';
 import { chromium } from 'playwright';
 
 const cfg = JSON.parse(fs.readFileSync(new URL('./screens.json', import.meta.url), 'utf-8'));
+// local: 見本のデータで、GitHub の上でビルドしたサイト（screens.yml が http://localhost:4321 で出す）を写す
+if (cfg.local) cfg.base = 'http://localhost:4321';
 const out = 'shots';
 fs.mkdirSync(out, { recursive: true });
 const HIDE = `img, video, iframe, picture source { opacity: 0 !important; }

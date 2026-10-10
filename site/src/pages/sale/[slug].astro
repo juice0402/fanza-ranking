@@ -10,10 +10,11 @@ import VrToggle from '../../components/VrToggle.astro';
 import ItemCard from '../../components/ItemCard.astro';
 import CampaignFacts from '../../components/CampaignFacts.astro';
 import { sale, saleCampaignPages, today } from '../../lib/data.js';
-import { SALE_HISTORY_PATH, SALE_HISTORY_START, SALE_PATH, endIso, endLabel, endSoonTag, runDays, runRange, saleBadge, salePriceNote } from '../../lib/sale.js';
+import { SALE_HISTORY_PATH, SALE_HISTORY_START, SALE_PATH, isTenYenCampaign, endIso, endLabel, endSoonTag, runDays, runRange, saleBadge, salePriceNote } from '../../lib/sale.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, daysBetween, filterAttrs, formatDateJp } from '../../lib/items.js';
 import { inlineScript } from '../../lib/assets.js';
+import { TEN_YEN_PATH } from '../../lib/ten-yen.js';
 
 export function getStaticPaths() {
   return saleCampaignPages.map((page) => ({ params: { slug: page.slug }, props: { page } }));
@@ -28,7 +29,9 @@ const md = (d) => {
 const left = g ? daysBetween(g.end.slice(0, 10), today) : null;
 const others = saleCampaignPages.filter((p) => p.active && p.slug !== page.slug);
 const lastRun = page.runs[0];
-const noindex = !g || g.items.length === 0 || !listIndexable(g.items);
+// 10円セールの特集は、10円セールのページ（/sale/10yen/。動画・同人・ゲームの全部の10円の作品）を検索エンジンに出す（同じ検索で2つ並ばないように）
+const tenYenCamp = isTenYenCampaign(page.title);
+const noindex = tenYenCamp || !g || g.items.length === 0 || !listIndexable(g.items);
 // 名前に同じ割引が入っているとき（「妄想族30％OFF」）は、タイトルに「最大30%OFF」を重ねない
 const offInName = g?.maxOff && page.title.normalize('NFKC').toUpperCase().includes(`${g.maxOff}%OFF`);
 const title = g
@@ -68,6 +71,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
       <p class="hero-lead">
         {sale.date && `${formatDateJp(sale.date)}の時点の情報です。`}くわしくはFANZAの作品ページで確かめてください。
       </p>
+      {tenYenCamp && <p class="hero-links"><a class="spec-link" href={TEN_YEN_PATH}>10円セールの作品は、まとめのページへ（動画・同人・ゲーム）</a></p>}
     </section>
 
     {g && (

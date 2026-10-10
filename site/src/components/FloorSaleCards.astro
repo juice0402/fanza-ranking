@@ -2,9 +2,8 @@
 // 同人・ゲームのセールのカード（動画のトップの「セール中の特集」SaleCampaigns.astro と同じ見た目・同じ CSS。2026-10-09）。
 // ゲームはセールの札ごと、同人は割引ごと（lib/floors.js の floorSalePages）。1枚に、名前・本数・おもなサークル/ブランド・人気作品の表紙（重ねて3枚）・「○%OFF」の札。
 // タップで、そのセールのページ
-import Thumb from './Thumb.astro';
-import { THUMB_MEDIA } from '../lib/items.js';
-import { DOUJIN_THUMB_ONERROR, FLOORS, doujinThumb, topMakersIn } from '../lib/floors.js';
+import FloorImg from './FloorImg.astro';
+import { FLOORS, topMakersIn } from '../lib/floors.js';
 
 // pages: floorSalePages の結果（見せる分だけ）、key: 売り場
 const { pages, key } = Astro.props;
@@ -20,9 +19,7 @@ const f = FLOORS[key];
           <span class="camp-art" aria-hidden="true">
             {p.items.slice(0, 3).map((w) => (
               <span class="camp-cover">
-                {w.image_url && (key === 'doujin'
-                  ? <picture class="pic"><source media={THUMB_MEDIA} srcset={doujinThumb(w.image_url, 'tiny').small} /><img class="floor-img" src={w.image_url} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={DOUJIN_THUMB_ONERROR} /></picture>
-                  : <Thumb src={w.image_url} kind="tiny" class="item-img is-small" />)}
+                <FloorImg floor={key} url={w.image_url} kind="tiny" />
               </span>
             ))}
             {p.off > 0 && <span class="camp-off">{p.off}%OFF{p.kind === 'off' && '〜'}</span>}

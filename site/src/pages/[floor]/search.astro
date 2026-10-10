@@ -8,7 +8,7 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorRow from '../../components/FloorRow.astro';
 import { activeFloors, floorCollectionGroups, floorMakerGroups, floorSearchIndexes, floors } from '../../lib/data.js';
-import { FLOORS, FLOOR_SEARCH_PAGE, floorCollectionIndexPath, floorMakerIndexPath, floorPath, floorRankingPath, floorSearchIndexPath, floorSearchPath, floorSearchRow } from '../../lib/floors.js';
+import { FLOORS, FLOOR_SEARCH_PAGE, floorCollectionIndexPath, floorMakerIndexPath, floorPath, floorRankingPath, floorSearchIndexPath, floorSearchPath, floorSearchRow, floorSearchHint } from '../../lib/floors.js';
 import { SITE_NAME, breadcrumbLd } from '../../lib/items.js';
 import { assetUrl } from '../../lib/assets.js';
 
@@ -25,7 +25,7 @@ const first = byPop.slice(0, FLOOR_SEARCH_PAGE).map((r) => floorSearchRow(r, key
 const genreCount = index.genres.map((_, n) => index.items.filter((r) => r.g?.includes(n)).length);
 const themeCount = index.themes.map((_, n) => index.items.filter((r) => r.h?.includes(n)).length);
 const GENRES_SHOWN = 12;
-const placeholder = key === 'game' ? 'タイトル・ブランド・作家' : 'タイトル・サークル';
+const placeholder = floorSearchHint(key);
 const trail = [
   { name: 'トップ', path: '/' },
   { name: f.label, path: floorPath(key) },
@@ -47,7 +47,7 @@ const trail = [
       <h1 class="hero-title">{f.label}の作品を探す</h1>
     </section>
 
-    <section id="floor-search" class="work-search section search-layout" data-index={floorSearchIndexPath(key)} data-floor={key} aria-labelledby="fs-title">
+    <section id="floor-search" class="work-search section search-layout" data-index={floorSearchIndexPath(key)} data-floor={key} data-frame={FLOORS[key].frame} aria-labelledby="fs-title">
       <div class="search-side">
         <h2 id="fs-title" class="visually-hidden">条件で探す</h2>
         <form class="ws-form" role="search" autocomplete="off">
@@ -65,6 +65,7 @@ const trail = [
               <label class="seg-opt"><input type="radio" name="sort" value="new" /><span>新しい順</span></label>
               <label class="seg-opt"><input type="radio" name="sort" value="cheap" /><span>安い順</span></label>
               <label class="seg-opt"><input type="radio" name="sort" value="off" /><span>割引の大きい順</span></label>
+              <label class="seg-opt"><input type="radio" name="sort" value="review" /><span>評価が高い順</span></label>
             </div>
           </fieldset>
 
@@ -120,7 +121,7 @@ const trail = [
         <h2 class="visually-hidden">検索結果</h2>
         <p id="fs-count" class="as-count ws-count" aria-live="polite"><strong class="ws-num">{String(index.items.length).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</strong>本</p>
         <ul id="fs-list" class="ws-list" data-first="1">
-          {first.map((row) => <FloorRow row={row} />)}
+          {first.map((row) => <FloorRow row={row} floor={key} />)}
         </ul>
         <p class="more"><button id="fs-more" type="button" class="btn btn-quiet more-btn" hidden={index.items.length <= first.length}>もっと見る</button></p>
         <p class="as-coverage">このサイトに載っている{f.label}の人気作品（{index.items.length}本）から探します。価格は{floors[key].updated ? `${+floors[key].updated.slice(5, 7)}月${+floors[key].updated.slice(8, 10)}日` : '毎日の更新'}の時点です。</p>

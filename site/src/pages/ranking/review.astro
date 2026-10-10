@@ -1,0 +1,76 @@
+---
+// 高評価ランキング（/ranking/review/。運営者の希望「APIで使えるものは全部。SEO対策も徹底」。2026-10-10。lib/reviews.js）。
+// FANZAのレビューが10件以上ある発売済みの作品（このサイトに載っている作品）を、ならした評価（件数の少ない満点が上に来すぎないように）の高い順に100本。
+// 下に、最近30日の発売で評価が高い作品（レビュー3件以上）。評価はFANZAのもの（このサイトの評価ではない。検索結果の星マークには使わない）
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import VrToggle from '../../components/VrToggle.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import { all, reviewRanking, reviews, today } from '../../lib/data.js';
+import { REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, REVIEW_RANKING_PATH, REVIEW_RECENT_DAYS, REVIEW_RECENT_MIN, recentTopRated } from '../../lib/reviews.js';
+import { RANKING_PATH } from '../../lib/popularity.js';
+import { listIndexable } from '../../lib/plan.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, filterAttrs, formatDateJp } from '../../lib/items.js';
+
+const list = reviewRanking;
+const recent = recentTopRated(all, today).filter((i) => !list.slice(0, 12).some((x) => x.cid === i.cid));
+const ym = `${+today.slice(0, 4)}年${+today.slice(5, 7)}月`;
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '新着の人気ランキング', path: RANKING_PATH },
+  { name: '高評価ランキング', path: REVIEW_RANKING_PATH },
+];
+const noindex = list.length < REVIEW_RANKING_MIN_ITEMS || !listIndexable(list);
+const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'FANZA動画の高評価ランキング', url: SITE_URL + REVIEW_RANKING_PATH, ...(reviews.updated ? { dateModified: reviews.updated } : {}) };
+---
+
+<Base
+  title={`FANZA動画の高評価ランキング${list.length > 0 ? `TOP${list.length}` : ''}【${ym}】レビューの評価が高い作品｜${SITE_NAME}`}
+  description={`FANZA動画で、レビューが${REVIEW_MIN}件以上ある作品を、レビューの評価が高い順に${list.length}本並べたランキングです。件数の少ない満点が上に来すぎないよう、件数もふまえて並べています。最近${REVIEW_RECENT_DAYS}日の発売で評価が高い作品も。毎日更新。`}
+  path={REVIEW_RANKING_PATH}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail), pageLd]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">高評価ランキング</h1>
+      {list.length > 0 && <p class="page-facts">レビュー{REVIEW_MIN}件以上・{list.length}本{reviews.updated && `・${formatDateJp(reviews.updated)}ごろの時点`}</p>}
+      <p class="hero-lead">FANZAのレビューの評価が高い順です（件数の少ない満点が上に来すぎないよう、件数もふまえて並べています）。</p>
+    </section>
+
+    <section class="section" aria-labelledby="rv-title">
+      <div class="section-head">
+        <h2 id="rv-title" class="section-title">高評価{list.length > 0 ? ` TOP${list.length}` : 'ランキング'}</h2>
+        <p class="section-note">評価はFANZAのレビューのもの</p>
+      </div>
+      {list.length > 0
+        ? (
+          <>
+            <div class="list-tools">
+              <VrToggle />
+            </div>
+            <ul class="shelf">
+              {list.map((item, i) => <li class="shelf-cell" {...filterAttrs(item)}><ItemCard item={item} level="h3" badge={`${i + 1}位`} eager={i < 4} /></li>)}
+            </ul>
+          </>
+        )
+        : <p class="empty">レビューの評価は、毎日の更新のたびに集まっていきます（レビューが{REVIEW_MIN}件以上の作品が出てきたら、ここに並びます）。</p>}
+    </section>
+
+    {recent.length > 0 && (
+      <section class="section" aria-labelledby="rv-recent-title">
+        <div class="section-head">
+          <h2 id="rv-recent-title" class="section-title">最近{REVIEW_RECENT_DAYS}日の発売で評価が高い作品</h2>
+          <p class="section-note">レビュー{REVIEW_RECENT_MIN}件以上</p>
+        </div>
+        <ul class="shelf">
+          {recent.map((item) => <li class="shelf-cell" {...filterAttrs(item)}><ItemCard item={item} level="h3" /></li>)}
+        </ul>
+      </section>
+    )}
+
+    <p class="more"><a class="btn btn-quiet" href={RANKING_PATH}>新着の人気ランキング</a></p>
+  </div>
+</Base>

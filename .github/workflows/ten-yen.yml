@@ -1,0 +1,57 @@
+name: 10-yen Sale Check
+
+# FANZAの10円セール（動画・同人・ゲーム）の対象作品を、1日に数回確かめる（運営者の希望「10円セールは大イベント。開催中はものすごく訴求したい」。2026-10-09）。
+# 10円セールは、回ごとに対象の作品が入れかわる（動画は10時、同人は12時・16時ごろ。FANZAの発表から）ので、毎日の更新（0:05）のほかに、その少しあとにも確かめる。
+# 10円の作品が変わったときだけ保存して、公開（deploy.yml）を頼む。変わらなければ何もしない（ふだんは、数回APIを読むだけで終わる）。
+# Gemini は使わない。手動でも動かせる（Actions の画面の「Run workflow」）
+on:
+  schedule:
+    - cron: '12 1 * * *'  # 日本時間 10:12
+    - cron: '12 3 * * *'  # 日本時間 12:12
+    - cron: '12 7 * * *'  # 日本時間 16:12
+    - cron: '12 11 * * *' # 日本時間 20:12
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+# 毎日の更新・取り直しと重ならないように、同じ順番待ちに並ぶ（データが混ざらないように）
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check 10-yen sale
+        id: ten
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python scripts/ten_yen.py --update --if-changed
+      - name: Commit and deploy if changed
+        if: steps.ten.outputs.saved == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 保存するのは10円セールのデータだけ
+          git add -- site/src/data/ten_yen.json
+          if git diff --staged --quiet; then
+            echo "データに変更なし。保存しません。"
+            exit 0
+          fi
+          git commit -m "10円セールの確認: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          # 公開を頼む（ワークフローが保存したコミットでは、ほかのワークフローが自動では動かないため）
+          gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}"
+          echo "### 🚀 10円の作品が変わったので、公開を頼みました（Deploy）" >> "$GITHUB_STEP_SUMMARY"

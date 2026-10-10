@@ -26,6 +26,18 @@ python3 tests/test_claude_monthly.py || failed=1
 step "FANZA同人・FANZAゲームを集める道具 (Python)"
 python3 tests/test_doujin_game.py || failed=1
 
+step "10円セールを集める道具 (Python)"
+python3 tests/test_ten_yen.py || failed=1
+
+step "FANZAのレビューの評価を集める道具 (Python)"
+python3 tests/test_reviews.py || failed=1
+
+step "読みがな（ジャンル・メーカー・シリーズ・作家）を集める道具 (Python)"
+python3 tests/test_readings.py || failed=1
+
+step "ジャンルの「FANZA全体で人気の作品」を集める道具 (Python)"
+python3 tests/test_genre_tops.py || failed=1
+
 step "公開のしくみ（Cloudflare Pages への直接アップロード）"
 python3 tests/test_deploy.py || failed=1
 
@@ -95,6 +107,15 @@ node tests/test_floors.mjs || failed=1
 
 step "セール・キャンペーンの部品 (Node.js)"
 node tests/test_sale.mjs || failed=1
+
+step "10円セールの部品 (Node.js + Pythonとの突き合わせ)"
+node tests/test_ten_yen.mjs || failed=1
+
+step "レビューの評価・高評価ランキングの部品 (Node.js + Pythonとの突き合わせ)"
+node tests/test_reviews.mjs || failed=1
+
+step "読みがな・50音で探す・ひらがなの作品検索の部品 (Node.js)"
+node tests/test_kana.mjs || failed=1
 node tests/test_topics.mjs || failed=1
 node tests/test_gacha.mjs || failed=1
 

@@ -1,0 +1,13 @@
+---
+// FANZA同人・FANZAゲームの10円セール。/doujin/sale/10yen/・/game/sale/10yen/（売り場のページがあるときだけ）。中身は components/TenYenPage.astro（2026-10-09）
+import TenYenPage from '../../../components/TenYenPage.astro';
+import { tenYenFloors } from '../../../lib/data.js';
+
+export function getStaticPaths() {
+  return tenYenFloors.map((floor) => ({ params: { floor } }));
+}
+
+const { floor } = Astro.params;
+---
+
+<TenYenPage key={floor} />

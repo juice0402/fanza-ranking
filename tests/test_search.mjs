@@ -76,6 +76,13 @@ check('ジャンル1つ', find({ tags: [gn('人妻')] }) === 'a002,a005,a004');
   check('索引に、全体の人気順（r）・新着の人気順（n）が入る（分からなければ無い）', pr.find((r) => r.c === 'a004').r === 3 && pr.find((r) => r.c === 'a001').n === 1 && !('r' in pr.find((r) => r.c === 'a003')) && !('n' in pr.find((r) => r.c === 'a004')));
   check('人気順（全体）: 順位の上から・順位の無い作品はそのあと新しい順', by('pop') === 'a004,a002,a003,a001,a005', by('pop'));
   check('人気順（新着）: 新着の順位の上から・順位の無い作品はそのあと新しい順', by('popnew') === 'a001,a005,a003,a002,a004', by('popnew'));
+  // 評価が高い順（索引の s・sc。2026-10-10）: 3件以上の作品を、件数でならした評価の高い順。3件に満たない・評価の無い作品は、そのあとに新しい順
+  const rv = { a001: { avg: 5, count: 2 }, a002: { avg: 4.5, count: 200 }, a003: { avg: 4.9, count: 4 }, a004: { avg: 3.1, count: 50 } };
+  const rr = plain(L.buildItemsIndex(items.map((i) => ({ ...i, review: rv[i.cid] ?? null })), today).items).map((r) => ({ ...r }));
+  S.prepare(rr, idx.genres);
+  const byR = S.filterRows(rr, { terms: [], tags: [], status: '', sort: 'review' }, { today, hideVr: false }).map((r) => r.c).join();
+  check('索引に評価（s: 平均×100・sc: 件数）が入る・評価が高い順は件数でならす（200件の4.5が、4件の4.9より上）・3件に満たない作品はそのあと',
+    rr.find((r) => r.c === 'a002').s === 450 && rr.find((r) => r.c === 'a002').sc === 200 && !('s' in rr.find((r) => r.c === 'a005')) && byR === 'a002,a003,a004,a001,a005', byR);
   const popIdx = L.buildItemsIndex(items.map((i) => ({ ...i, popAll: i.cid === 'a004' ? 1 : null })), today, 2, 1);
   check('索引に入れる作品: 全体の人気順の上位は、古くても先に入れる（残りは新しい順）。並びは発売日の新しい順', popIdx.items.map((r) => r.c).join() === 'a003,a004', popIdx.items.map((r) => r.c).join());
 }

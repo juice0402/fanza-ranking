@@ -1,0 +1,29 @@
+---
+// 10円セールの帯（全部のページの、ヘッダーのすぐ下。開催中だけ。運営者の希望「10円セールは大イベント。開催中はものすごく訴求したい」。2026-10-09）。
+// タップで10円セールのページへ。全部の作品の終わりが分かるときは、その時刻をすぎたら、すぐ後ろの小さなスクリプトが隠す
+// （ページを読みながら動くので、見えてから消えることはない。ビルドは、毎日の更新と、開催中の入れかわりのたび）
+import { tenYen, tenYenNow } from '../lib/data.js';
+import { TEN_YEN_PATH, countsText, hideAt, tenYenPath, untilText } from '../lib/ten-yen.js';
+
+const s = tenYenNow;
+const end = hideAt(s);
+// 売り場が1つだけ開催中なら、その売り場のページへ（動画だけ・まとめのページは /sale/10yen/）
+const href = s.live.length === 1 ? tenYenPath(s.live[0]) : TEN_YEN_PATH;
+const until = untilText(s);
+// 隠す時刻（ISO）は、決まった形の文字だけなので、そのままスクリプトに入れてよい（lib/sale.js の endIso）
+const hideJs = end ? `(function(){var b=document.getElementById('ten-bar');if(b&&Date.parse('${end}')<Date.now())b.hidden=true})();` : '';
+---
+
+{s.total > 0 && tenYen.checked && (
+  <>
+    <a id="ten-bar" class="ten-bar" href={href}>
+      <span class="ten-coin" aria-hidden="true"><span class="ten-coin-num">10</span><span class="ten-coin-yen">円</span></span>
+      <span class="ten-bar-text">
+        <strong class="ten-bar-title">10円セール開催中</strong>
+        <span class="ten-bar-meta">{countsText(s)}{until && `｜${until}`}</span>
+      </span>
+      <span class="ten-bar-go">見る</span>
+    </a>
+    {hideJs && <script is:inline set:html={hideJs} />}
+  </>
+)}

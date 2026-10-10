@@ -146,13 +146,20 @@
     );
   }
 
-  // 検索用の文字を、行ごとに1回だけ作る（タイトル・出演者・メーカー・品番・ジャンル）
-  function prepare(rows, genres) {
+  // 検索用の文字を、行ごとに1回だけ作る（タイトル・出演者・メーカー・品番・ジャンル・出演者/メーカー/ジャンルの読みがな）
+  // yomi: 索引の { 名前: 読み }（ひらがなで打っても見つかるように。2026-10-10）
+  function prepare(rows, genres, yomi) {
+    var dict = yomi && typeof yomi === 'object' ? yomi : {};
+    function reading(name) {
+      var r = Object.prototype.hasOwnProperty.call(dict, name) ? dict[name] : '';
+      return typeof r === 'string' && r ? SEP + normalizeText(r) : '';
+    }
     rows.forEach(function (row) {
       var names = row.g.map(function (n) {
         return genres[n] || '';
       });
-      row._h = normalizeText(row.t) + SEP + row.a.map(normalizeText).join(SEP) + SEP + normalizeText(row.m) + SEP + normalizeText(row.c) + SEP + normalizeText(typeof row.p === 'string' ? row.p : '') + SEP + names.map(normalizeText).join(SEP);
+      var yomiText = row.a.map(reading).join('') + reading(row.m) + names.map(reading).join('');
+      row._h = normalizeText(row.t) + SEP + row.a.map(normalizeText).join(SEP) + SEP + normalizeText(row.m) + SEP + normalizeText(row.c) + SEP + normalizeText(typeof row.p === 'string' ? row.p : '') + SEP + names.map(normalizeText).join(SEP) + yomiText;
     });
     return rows;
   }
@@ -193,8 +200,20 @@
     };
   }
 
-  // 並び順: new 新しい順 / old 古い順 / popnew 人気順（新着）/ pop 人気順（全体）
-  var SORTS = { new: newer, old: older, popnew: byRank('n'), pop: byRank('r') };
+  // 評価が高い順（索引の s: レビューの平均×100・sc: 件数。2026-10-10）: レビューが3件以上の作品を、件数でならした評価の高い順
+  // （lib/reviews.js の reviewScore と同じ考え方。全体の平均は 4.2 とみなす）。3件に満たない・評価の無い作品は、そのあとに新しい順
+  function reviewScore(row) {
+    if (typeof row.s !== 'number' || typeof row.sc !== 'number' || row.sc < 3) return -1;
+    return (row.sc * row.s / 100 + 10 * 4.2) / (row.sc + 10);
+  }
+  function byReview(a, b) {
+    var x = reviewScore(a);
+    var y = reviewScore(b);
+    return x > y ? -1 : x < y ? 1 : newer(a, b);
+  }
+
+  // 並び順: new 新しい順 / old 古い順 / popnew 人気順（新着）/ pop 人気順（全体）/ review 評価が高い順
+  var SORTS = { new: newer, old: older, popnew: byRank('n'), pop: byRank('r'), review: byReview };
   function sortOf(name) {
     return Object.prototype.hasOwnProperty.call(SORTS, name) ? name : 'new';
   }
@@ -637,7 +656,7 @@
       rows = data && Array.isArray(data.items) ? data.items.filter(isRow) : [];
       if (data && typeof data.newDays === 'number') newDays = data.newDays;
       if (!rows.length) throw new Error('empty');
-      prepare(rows, indexGenres);
+      prepare(rows, indexGenres, data.yomi);
       // ページのジャンルのボタンが、索引のジャンルと違えば作り直す（選んでいるジャンルは、名前で引き継ぐ）
       if (indexGenres.join('\n') !== genres.join('\n')) {
         var names = selected.map(function (n) {

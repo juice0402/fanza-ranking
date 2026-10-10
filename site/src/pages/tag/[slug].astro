@@ -5,7 +5,8 @@ import VrToggle from '../../components/VrToggle.astro';
 import DaySection from '../../components/DaySection.astro';
 import CastFaces from '../../components/CastFaces.astro';
 import MiniShelf from '../../components/MiniShelf.astro';
-import { tagGroups, tagByName, contentGenres, genreTops } from '../../lib/data.js';
+import RatedShelf from '../../components/RatedShelf.astro';
+import { all, tagGroups, tagByName, contentGenres, genreTops, fanzaGenreTops } from '../../lib/data.js';
 import { campaignSummary } from '../../lib/sale.js';
 import { relatedGenres } from '../../lib/insights.js';
 import { TAG_INDEX_PATH, VR_TAG_NAME, tagPageTitle, tagSummary } from '../../lib/collections.js';
@@ -24,7 +25,10 @@ const summary = tagSummary(group);
 const shown = group.items.slice(0, TAG_PAGE_LIMIT); // 新しい順
 const groups = groupByDate(shown, countByDate(group.items));
 // 内部リンク（2026-10-07）: このジャンルで人気の作品（このサイトの全作品から、FANZAの人気順の上のほう）・よく出ている女優・いっしょに付いていることが多いジャンル
-const popular = isVr ? [] : (genreTops.get(group.name) ?? []).slice(0, 6);
+// FANZA全体で人気の作品 TOP20（scripts/genre_tops.py が毎日。2026-10-10）。あれば、このサイトの作品から数えた「人気の作品」の代わりに出す
+const fanzaTop = isVr ? null : fanzaGenreTops.get(group.name) ?? null;
+const popular = isVr || fanzaTop ? [] : (genreTops.get(group.name) ?? []).slice(0, 6);
+const mdOf = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 const castFaces = campaignSummary(group.items, { genres: contentGenres, limit: 6 }).actresses.slice(0, 6);
 const pages = new Map([...tagByName].map(([name, g]) => [name, g.path]));
 const nearGenres = isVr ? [] : relatedGenres(group.items, group.name, contentGenres, pages);
@@ -36,7 +40,7 @@ const trail = [
 ---
 
 <Base
-  title={tagPageTitle(group)}
+  title={tagPageTitle(group, Boolean(fanzaTop))}
   description={summaryDescription(summary)}
   path={group.path}
   jsonLd={[breadcrumbLd(trail)]}
@@ -49,6 +53,16 @@ const trail = [
       <p class="page-facts">{group.items.length}本・{shortSpan(group.items)}発売</p>
     </section>
 
+    {fanzaTop && (
+      <section class="section" aria-labelledby="fanza-top-title" data-vr-group>
+        <div class="section-head">
+          <h2 id="fanza-top-title" class="section-title">FANZA全体で人気の{group.name} TOP{fanzaTop.items.length}</h2>
+          <p class="section-note">{mdOf(fanzaTop.date)}のFANZAの人気順</p>
+        </div>
+        <MiniShelf items={fanzaTop.items} rank />
+      </section>
+    )}
+
     {popular.length > 0 && (
       <section class="section" aria-labelledby="popular-title" data-vr-group>
         <div class="section-head">
@@ -58,6 +72,9 @@ const trail = [
         <MiniShelf items={popular} />
       </section>
     )}
+
+    {/* 評価の高い作品（このサイトの全作品から。FANZAのレビューの評価。2026-10-10） */}
+    {!isVr && <RatedShelf items={all.filter((i) => i.genres.includes(group.name))} title={`${group.name}の評価の高い作品`} id="rated-title" />}
 
     {castFaces.length > 0 && (
       <section class="section" aria-labelledby="cast-title">

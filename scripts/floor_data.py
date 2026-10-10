@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FANZA同人・FANZAゲームのデータ（site/src/data/doujin.json・game.json）の読み書き（Python標準ライブラリだけ）。
+"""FANZA同人・FANZAゲームなどの売り場のデータ（site/src/data/doujin.json・game.json・anime.json など）の読み書き（Python標準ライブラリだけ）。
 
 運営者の希望「FANZA同人・FANZAゲームのページも」（2026-10-09）。集めるのは scripts/doujin_game.py（毎日の更新から）、
 コメントを書き込むのは scripts/claude_comments.py。どちらもこのファイルの読み書きを使う（書き方がそろって、余計な差分が出ないように）。
@@ -7,10 +7,13 @@
 ファイルの形（1作品1行・品番の順。毎日書きかわる順位は ranks に分けて、作品の行が毎日変わらないように）:
   {"updated": 集めた日, "scanned": 人気順を何本目まで見たか, "skipped": 入れなかった本数（未成年を連想させる作品）,
    "ranks": {cid: その日の人気順の順位},
-   "items": [{cid, title, url, image_url, sample_images, date, maker, maker_id, authors, series, series_id,
-              genres, formats, sales, price, list_price, campaign, comment, comment_kind, updated}, …]}
+   "items": [{cid, title, url, image_url, sample_images, sample_movie, trial_url, date, maker, maker_id, authors, actress, series, series_id,
+              genres, formats, sales, price, list_price, campaign, review, comment, comment_kind, updated}, …]}
   ・genres: 中身のジャンル / formats: 形式・配信の区分（男性向け・Windows11対応作品 など） / sales: セール・クーポンの対象を表す札（ゲーム）
   ・price・list_price: 円（分からなければ null）。campaign: {"title": "30%OFF", "begin": "2026-10-01"}（同人。無ければ null）
+  ・review: FANZAのレビューの評価 [平均×100, 件数]（無ければ null。2026-10-10 から）
+  ・actress: 出演者（VR・成人映画・写真集など。8人まで）・sample_movie: サンプル動画のページ（アニメ・素人・VR など）・trial_url: 立ち読みのページ（ブックス）。
+    無ければ空（2026-10-10 から）
   ・comment_kind: "none"（コメントがまだ無い）か "claude"（Claude が書いた）。updated: 入れた日・コメントを変えた日（sitemap の lastmod）
 """
 import json
@@ -20,21 +23,49 @@ import re
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "site", "src", "data")
 
-# 運営者が決めた本数（2026-10-09）: 同人 1,000本・ゲーム 500本（どちらも、FANZAの人気順の上から。未成年を連想させる作品は入れない）
+# 運営者が決めた本数（2026-10-09）: 同人 1,000本・ゲーム 500本（どちらも、FANZAの人気順の上から。未成年を連想させる作品は入れない）。
+# 新しい売り場（運営者の希望「アニメ動画・素人・成人映画・FANZAブックス（コミック・写真集）・VR見放題も。各100、素人は見たい人が多いので500」。2026-10-10）。
+# floor_id: FloorList の id（読みがなの一覧に使う）・author_search: 作家の一覧（AuthorSearch）が使える売り場・upcoming: 予約の人気順も入れる本数・
+# max_calls: 1日に一覧を取る回数の上限（未成年を連想させる作品が多い売り場は多め。2026-10-10 に本物で確かめた割合: 素人 58%・コミック 65%・アニメ 54%）
 FLOORS = {
     "doujin": {
-        "label": "FANZA同人", "service": "doujin", "floor": "digital_doujin", "target": 1000, "max_calls": 40, "upcoming": 0,
+        "label": "FANZA同人", "service": "doujin", "floor": "digital_doujin", "floor_id": 81, "target": 1000, "max_calls": 40, "upcoming": 0,
         "env": "DOUJIN_PATH", "file": "doujin.json", "samples": 6,
     },
     "game": {
-        "label": "FANZAゲーム", "service": "pcgame", "floor": "digital_pcgame", "target": 500, "max_calls": 40, "upcoming": 30,
+        "label": "FANZAゲーム", "service": "pcgame", "floor": "digital_pcgame", "floor_id": 80, "author_search": True, "target": 500, "max_calls": 40, "upcoming": 30,
         "env": "GAME_PATH", "file": "game.json", "samples": 8,
+    },
+    "anime": {
+        "label": "FANZAアニメ", "service": "digital", "floor": "anime", "floor_id": 46, "target": 100, "max_calls": 8, "upcoming": 12,
+        "env": "ANIME_PATH", "file": "anime.json", "samples": 8,
+    },
+    "amateur": {
+        "label": "FANZA素人", "service": "digital", "floor": "videoc", "floor_id": 44, "target": 500, "max_calls": 25, "upcoming": 0,
+        "env": "AMATEUR_PATH", "file": "amateur.json", "samples": 8,
+    },
+    "cinema": {
+        "label": "FANZA成人映画", "service": "digital", "floor": "nikkatsu", "floor_id": 45, "target": 100, "max_calls": 6, "upcoming": 0,
+        "env": "CINEMA_PATH", "file": "cinema.json", "samples": 8,
+    },
+    "comic": {
+        "label": "FANZAコミック", "service": "ebook", "floor": "comic", "floor_id": 82, "author_search": True, "target": 100, "max_calls": 10, "upcoming": 0,
+        "env": "COMIC_PATH", "file": "comic.json", "samples": 0,
+    },
+    "photo": {
+        "label": "FANZA写真集", "service": "ebook", "floor": "photo", "floor_id": 84, "author_search": True, "target": 100, "max_calls": 6, "upcoming": 0,
+        "env": "PHOTO_PATH", "file": "photo.json", "samples": 0,
+    },
+    "vr": {
+        "label": "FANZA VR見放題", "service": "monthly", "floor": "vr", "floor_id": 91, "target": 100, "max_calls": 6, "upcoming": 0,
+        "env": "VR_PATH", "file": "vr.json", "samples": 8,
     },
 }
 
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 CID = re.compile(r"^[A-Za-z0-9_\-]{1,40}$")
 KINDS = ("none", "claude")
+FANZA_URL = re.compile(r"^https://([a-z0-9-]+\.)*(dmm\.co\.jp|fanza\.co\.jp)/[^\s\\]*$")
 
 
 def floor_path(key):
@@ -53,6 +84,17 @@ def _names(values, limit):
         if text and text not in out:
             out.append(text)
     return out[:limit]
+
+
+def _url(v):
+    """FANZA(DMM) の https のURLだけ（ちがえば ""）"""
+    text = str(v or "").strip()
+    return text if FANZA_URL.match(text) else ""
+
+
+def _review(v):
+    """FANZAのレビューの評価 [平均×100, 件数]（無い・形が違えば None。get_new_releases.py の parse_review と同じ形）"""
+    return v if isinstance(v, list) and len(v) == 2 and all(isinstance(n, int) and not isinstance(n, bool) for n in v) and 100 <= v[0] <= 500 and v[1] >= 1 else None
 
 
 def clean_item(row):
@@ -78,10 +120,13 @@ def clean_item(row):
         "url": str(row.get("url") or ""),
         "image_url": str(row.get("image_url") or ""),
         "sample_images": [str(u) for u in (row.get("sample_images") or []) if isinstance(u, str) and u][:12],
+        "sample_movie": _url(row.get("sample_movie")),
+        "trial_url": _url(row.get("trial_url")),
         "date": date[:19],
         "maker": " ".join(str(row.get("maker") or "").split())[:80],
         "maker_id": _int_or_none(row.get("maker_id"), 1) or 0,
         "authors": _names(row.get("authors"), 4),
+        "actress": _names(row.get("actress"), 8),
         "series": " ".join(str(row.get("series") or "").split())[:80],
         "series_id": _int_or_none(row.get("series_id"), 1) or 0,
         "genres": _names(row.get("genres"), 30),
@@ -90,6 +135,7 @@ def clean_item(row):
         "price": _int_or_none(row.get("price"), 1),
         "list_price": _int_or_none(row.get("list_price"), 1),
         "campaign": campaign,
+        "review": _review(row.get("review")),
         "comment": comment,
         "comment_kind": kind,
         "updated": str(row.get("updated") or "") if DAY.match(str(row.get("updated") or "")) else date[:10],

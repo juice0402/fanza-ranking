@@ -8,30 +8,40 @@
   var THUMB_MEDIA = '(max-width: 480px)'; // スマホ（lib/items.js の THUMB_MEDIA と同じ）
   var AWS_IMG = 'https://awsimgsrc.dmm.co.jp/pics_dig/';
 
-  // くらべるための文字（全角・半角、大文字・小文字、文節の区切りの見えない文字をそろえる）
+  // くらべるための文字（全角・半角、大文字・小文字、カタカナ・ひらがな、文節の区切りの見えない文字をそろえる）
   function norm(s) {
     return String(s || '')
       .normalize('NFKC')
       .replace(/[​⁠ ]/g, '')
-      .toLowerCase();
+      .toLowerCase()
+      .replace(/[ァ-ヶ]/g, function (c) {
+        return String.fromCharCode(c.charCodeAt(0) - 0x60);
+      });
   }
 
   function comma(n) {
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
-  // 表紙の決まった置き場所（lib/floors.js の floorImageOf と同じ）
+  // 表紙の決まった置き場所（lib/floors.js の floorImageOf と同じ。同人・ゲームだけ。ほかの売り場は、索引にいつも画像が入っている）
   function imageOf(key, row) {
     if (row.i) return row.i;
     if (key === 'game') return 'https://pics.dmm.co.jp/digital/pcgame/' + row.c + '/' + row.c + 'pl.jpg';
+    if (key !== 'doujin') return '';
     return row.y ? 'https://pics.dmm.co.jp/digital/' + row.y + '/' + row.c + '/' + row.c + 'pl.jpg' : '';
   }
 
-  // 小さな表紙: 同人は、スマホのとき FANZA の「縮めて返す版」の幅240（lib/floors.js の doujinThumb の tiny）。ゲームは表紙（…ps.jpg）
-  function thumbUrl(key, url, tiny) {
+  // 表紙の枠の形（lib/floors.js の FLOORS の frame。ページの data-frame）: 'wide'（同人）・'square'（素人）・'cover'（ほか）
+  function framed(frame) {
+    return frame === 'wide' || frame === 'square';
+  }
+
+  // 小さな表紙: 横長・正方形の枠（同人・素人）は、スマホのとき FANZA の「縮めて返す版」の幅240（lib/floors.js の doujinThumb の tiny）。
+  // ほかは表紙（…ps.jpg。ブックスは ebook-assets の ps も同じ形）
+  function thumbUrl(key, url, tiny, frame) {
     var s = String(url || '');
-    if (key === 'doujin') return tiny && s.indexOf('https://pics.dmm.co.jp/') === 0 ? AWS_IMG + s.slice(23) + '?w=240&q=75' : s;
-    return /^https:\/\/pics\.dmm\.co\.jp\/[^?#]+pl\.jpg$/.test(s) ? s.replace(/pl\.jpg$/, 'ps.jpg') : s;
+    if (framed(frame || (key === 'doujin' ? 'wide' : 'cover'))) return tiny && s.indexOf('https://pics.dmm.co.jp/') === 0 ? AWS_IMG + s.slice(23) + '?w=240&q=75' : s;
+    return /^https:\/\/(pics|ebook-assets)\.dmm\.co\.jp\/[^?#]+pl\.jpg$/.test(s) ? s.replace(/pl\.jpg$/, 'ps.jpg') : s;
   }
 
   // 並べ方（lib/floors.js の byRank と同じ考え方: 順位のある作品を順位の順、そのあと発売日の新しい順）
@@ -49,7 +59,15 @@
     off: function (a, b) {
       return (b.o || 0) - (a.o || 0) || byPop(a, b);
     },
+    // 評価が高い順（索引の v: レビューの平均×100・vc: 件数。2026-10-10）: 3件以上の作品を、件数でならした評価の高い順（作品検索の search.js と同じ）
+    review: function (a, b) {
+      return reviewScore(b) - reviewScore(a) || byPop(a, b);
+    },
   };
+  function reviewScore(row) {
+    if (typeof row.v !== 'number' || typeof row.vc !== 'number' || row.vc < 3) return -1;
+    return (row.vc * row.v / 100 + 10 * 4.2) / (row.vc + 10);
+  }
 
   // 条件に合う作品（state: { q, sort, st, type, g: [ジャンルの番号], h: [特集の番号] }）
   function filterRows(index, state) {
@@ -70,7 +88,8 @@
   }
 
   // 行の中身（lib/floors.js の floorSearchRow と同じ）
-  function rowView(row, key) {
+  function rowView(row, key, frame) {
+    frame = frame || (key === 'doujin' ? 'wide' : 'cover');
     var yen = row.p ? comma(row.p) + '円' + (row.o ? '（' + row.o + '%OFF）' : '') : '';
     var day = row.u
       ? +row.d.slice(5, 7) + '月' + +row.d.slice(8, 10) + '日発売予定'
@@ -80,7 +99,8 @@
       href: '/' + key + '/item/' + row.c + '/',
       title: row.t,
       img: imageOf(key, row),
-      wide: key === 'doujin',
+      wide: framed(frame),
+      square: frame === 'square',
       line: [row.m, row.a].filter(Boolean).join('｜'),
       meta: [day, yen].filter(Boolean).join('・'),
       upcoming: row.u === 1,
@@ -95,7 +115,8 @@
 
   var root = document.getElementById('floor-search');
   if (!root) return;
-  var key = root.getAttribute('data-floor') === 'game' ? 'game' : 'doujin';
+  var key = /^[a-z]{2,10}$/.test(root.getAttribute('data-floor') || '') ? root.getAttribute('data-floor') : 'doujin';
+  var frame = root.getAttribute('data-frame') || (key === 'doujin' ? 'wide' : 'cover');
   var form = root.querySelector('form');
   var input = document.getElementById('fs-q');
   var list = document.getElementById('fs-list');
@@ -181,7 +202,7 @@
   }
 
   function thumb(url) {
-    var img = el('img', key === 'doujin' ? 'floor-img' : 'item-img is-small');
+    var img = el('img', framed(frame) ? 'floor-img' : 'item-img is-small');
     img.alt = '';
     img.loading = 'lazy';
     img.decoding = 'async';
@@ -194,11 +215,11 @@
         img.classList.remove('is-small');
       } else img.style.visibility = 'hidden';
     });
-    if (key === 'doujin') {
-      img.width = 560;
-      img.height = 420;
+    if (framed(frame)) {
+      img.width = frame === 'square' ? 600 : 560;
+      img.height = frame === 'square' ? 600 : 420;
     }
-    img.src = thumbUrl(key, url, tiny);
+    img.src = thumbUrl(key, url, tiny, frame);
     return img;
   }
 
@@ -206,7 +227,7 @@
     var li = el('li', 'ws-row');
     li.setAttribute('data-c', v.c);
     var article = el('article', 'item');
-    var cover = el('a', 'item-cover' + (v.wide ? ' is-wide' : ''));
+    var cover = el('a', 'item-cover' + (v.wide ? ' is-wide' : '') + (v.square ? ' is-square' : ''));
     cover.href = v.href;
     cover.tabIndex = -1;
     cover.setAttribute('aria-hidden', 'true');
@@ -235,7 +256,7 @@
       list.appendChild(el('li', 'empty', '条件に合う作品はありません。条件をへらしてみてください。'));
     }
     found.slice(0, shownCount).forEach(function (row) {
-      list.appendChild(card(rowView(row, key)));
+      list.appendChild(card(rowView(row, key, frame)));
     });
     more.hidden = found.length <= shownCount;
     // ボタンの本数（いまの結果の中で、そのボタンも足したときの本数）。足すと0本になるボタンは押せない
@@ -262,9 +283,12 @@
   function start(raw) {
     if (!raw || !Array.isArray(raw.items) || !Array.isArray(raw.genres) || !Array.isArray(raw.themes)) throw new Error('index');
     index = raw;
+    var yomi = raw.yomi && typeof raw.yomi === 'object' ? raw.yomi : {};
     index.items.forEach(function (row) {
-      // 照らし合わせ用の文字は1作品1回だけ作る（タイトル・サークル/ブランド・作家・ジャンル）
-      row.$k = norm([row.t, row.m, row.a].concat((row.g || []).map(function (n) { return raw.genres[n]; })).join(' '));
+      // 照らし合わせ用の文字は1作品1回だけ作る（タイトル・サークル/ブランド・作家・ジャンルと、その読みがな＝索引の yomi。ひらがなで打っても見つかるように）
+      var names = [row.m].concat(String(row.a || '').split('、')).concat((row.g || []).map(function (n) { return raw.genres[n]; }));
+      var readings = names.map(function (n) { return n && Object.prototype.hasOwnProperty.call(yomi, n) && typeof yomi[n] === 'string' ? yomi[n] : ''; });
+      row.$k = norm([row.t, row.m, row.a].concat((row.g || []).map(function (n) { return raw.genres[n]; })).concat(readings).join(' '));
     });
     readUrl();
     if (!isBlank(state())) update(true); // 条件つきの URL で開いたときだけ作り直す（条件なしは、ページに入っている一覧のまま）

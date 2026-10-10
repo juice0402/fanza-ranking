@@ -1204,7 +1204,7 @@ if _shown_m and _up_m:
 
 # パソコンの右の欄（運営者の希望「右のカラム（きょうの話題）の下に全て並べる」「作品を探すも右のカラムの上に」「週のまとめは概要だけ」「月のまとめはバックナンバー」。2026-10-05）:
 # 作品を探す・いま人気の女優・人気のジャンル・きょうの話題・週のまとめ・月のまとめは .home-side の中。おすすめのコーナーは、HTMLではスマホの場所（発売中の中）にあり、パソコンのときだけ小さなスクリプトで右の欄へ移す
-home_m = re.search(r'<div class="home has-side" style="--side-span: (\d+)">', home_html)
+home_m = re.search(r'<div class="home has-side" style="--side-span: (\d+)(?:; --side-start: 3)?">', home_html)  # 10円セールの開催中は、大きな案内の下の行から（--side-start）
 side_start = home_html.find('<div class="home-side">')
 side_end = min([p for p in (home_html.find('<section id="sale"'), home_html.find('<section id="released"')) if p >= 0] or [-1])
 side_html = home_html[side_start:side_end] if 0 <= side_start < side_end else ""
@@ -1719,7 +1719,11 @@ for pth in all_html:
         cls_ = a_.get("class", "").split()
         src_ = a_.get("src", "")
         small_ = htmllib.unescape(small_)
-        if "floor-img" in cls_:
+        if "floor-img" in cls_ and "/digital/amateur/" in src_:
+            # 素人の正方形の表紙（…jp.jpg 1200×1200。2026-10-10）
+            kind_, want_ = "amateur", (src_.startswith(_PICS_HOST) and src_.endswith("jp.jpg") and small_ in (_resized(src_, 300), _resized(src_, 240))
+                                       and a_.get("referrerpolicy") == "no-referrer")
+        elif "floor-img" in cls_:
             kind_, want_ = "doujin", (src_.startswith(_PICS_HOST) and src_.endswith("pl.jpg") and small_ in (_resized(src_, 300), _resized(src_, 240))
                                       and a_.get("referrerpolicy") == "no-referrer")
         elif "is-small" in cls_:
@@ -1729,19 +1733,22 @@ for pth in all_html:
         elif "item-img" in cls_ and _is_game_img(src_):
             kind_, want_ = "game-card", (small_ == _resized(src_, 300) and "has-small" not in cls_)
         elif "item-img" in cls_:
-            kind_, want_ = "card", (src_.endswith("pl.jpg") and _is_video_img(src_) and small_ == _resized(_as_ps(src_), 300) and "has-small" in cls_)
+            # 成人映画の一部は、大きい表紙が無く、表紙（…ps.jpg）だけ（2026-10-10）
+            kind_, want_ = "card", (re.search(r"p[ls]\.jpg$", src_) and _is_video_img(src_) and small_ == _resized(_as_ps(src_), 300) and "has-small" in cls_)
         else:
             kind_, want_ = "?", False
         pic_kinds[kind_] += 1
         onerr_ = a_.get("onerror", "")
         # alt="" は、Astro が値の無い「alt」だけで書く（どちらも空の代替テキスト）
         has_alt_ = a_.get("alt") is not None or re.search(r'(?:^|\s)alt(?=\s|/?$)', re.sub(r'"[^"]*"', '""', img_)) is not None
-        back_ = "doujin-assets.dmm.co.jp" in onerr_ if kind_ == "doujin" else "pl.jpg" in onerr_  # 元の画像も読めなければ、の戻し先
+        back_ = ("doujin-assets.dmm.co.jp" in onerr_ if kind_ == "doujin" else "visibility" in onerr_ if kind_ == "amateur" else "pl.jpg" in onerr_)  # 元の画像も読めなければ、の戻し先
         if media_ != THUMB_MEDIA or not want_ or not fanza_https(src_, DMM) or not fanza_https(small_, DMM) or "previousElementSibling" not in onerr_ or "matchMedia(s.media)" not in onerr_ or not back_ or not has_alt_:
             bad_pic.append((rel_, kind_, src_[-20:], small_[-20:]))
     # 一覧のサムネ（item-img・genre-img）で、パッケージ画像（pl.jpg）を <picture> の外で読んでいるもの（スマホで重いまま）
     for t in tags(re.sub(r"<picture class=\"pic\">.*?</picture>", "", h_), "img"):
-        if (has_class(t, "item-img") or has_class(t, "genre-img") or has_class(t, "floor-img")) and str(t.get("src", "")).endswith("pl.jpg"):
+        # （FANZAブックスの表紙＝ebook-assets は、縮めた版が無いので、元の表紙のまま。2026-10-10）
+        if (has_class(t, "item-img") or has_class(t, "genre-img") or has_class(t, "floor-img")) and str(t.get("src", "")).endswith("pl.jpg") \
+                and not str(t.get("src", "")).startswith("https://ebook-assets.dmm.co.jp/"):
             bad_bare.append((rel_, t.get("src", "")[-24:]))
     # 作品ページの大きな表紙・パッケージ写真・サンプル画像は、元の画像のまま（<picture> に入れない）
     for cls_name in ("detail-cover", "package-img", "sample-img"):
@@ -2235,7 +2242,7 @@ if want_camps and os.path.isfile(sale_page):
     st_ = re.search(r"<title>(.*?)</title>", read_raw(sale_page), re.S)
     st_ = htmllib.unescape(st_.group(1)) if st_ else ""
     check("セールのページのタイトルに「開催中」「○月○日更新」・特集の数、はじめに「セールはいつ？」へのリンク",
-          st_.startswith("FANZAセール開催中の作品一覧【") and "更新】" in st_ and f"特集{len(want_camps)}件" in st_ and 'href="/sale/history/"' in read_raw(sale_page), st_)
+          re.sub(r"^FANZA 10円セール開催中・", "", st_).startswith("FANZAセール開催中の作品一覧【") and "更新】" in st_ and f"特集{len(want_camps)}件" in st_ and 'href="/sale/history/"' in read_raw(sale_page), st_)
 
 # 出演者のページ（運営者の希望「SEOを上位に」→ ②女優のページを強く。2026-10-06）: タイトルに年月・次の新作・セール中の作品・更新日・ProfilePage
 _ym = f"【{int(JST_TODAY[:4])}年{int(JST_TODAY[5:7])}月】"
@@ -2375,6 +2382,75 @@ if os.path.isfile(_mi):
     _mt = htmllib.unescape(_mt.group(1)) if _mt else ""
     check("メーカー一覧のタイトルに「FANZAのメーカー一覧」・社数・年月", _mt.startswith("FANZAのメーカー一覧（") and "社）" in _mt and _ym in _mt, _mt)
 
+# 50音で探す（一覧のページ。components/NameIndex.astro・lib/kana.js。2026-10-10）: 行へのボタンの飛び先がページにある・名前のリンク先が実在する・
+# 作品数の多い順のタイルの名前は、どれも50音の並びにもある。読みがなは、名前と同じ読みなら出さない
+_kana_pages, _kana_bad, _ruby_bad = [], [], []
+for p_ in glob.glob(os.path.join(DIST, "**", "index.html"), recursive=True):
+    h_ = read_raw(p_)
+    if 'class="hero-ruby"' in h_:
+        for m_ in re.finditer(r'<p class="hero-ruby">(.*?)</p>', unphrase(h_), re.S):
+            if not strip_tags(m_.group(1)).strip() or re.search(r"[一-龥ァ-ヶ]", strip_tags(m_.group(1))):
+                _ruby_bad.append(rel(p_))
+    if 'class="kana-jump"' not in h_:
+        continue
+    _kana_pages.append(p_)
+    ids_ = set(re.findall(r'\bid="([^"]+)"', h_))
+    nav_ = re.search(r'<nav class="kana-jump"[^>]*>(.*?)</nav>', h_, re.S)
+    jumps_ = [t.get("href", "") for t in tags(nav_.group(1), "a")] if nav_ else []
+    lists_ = re.findall(r'<ul class="kana-list">(.*?)</ul>', h_, re.S)
+    links_ = [t.get("href", "") for blk in lists_ for t in tags(blk, "a")]
+    grid_ = re.search(r'<ul class="name-grid">(.*?)</ul>', h_, re.S)
+    tiles_ = [t.get("href", "") for t in tags(grid_.group(1), "a")] if grid_ else []
+    if not jumps_ or any(not j.startswith("#") or j[1:] not in ids_ for j in jumps_) \
+            or not links_ or len(links_) != len(set(links_)) or any(not os.path.isfile(page_file(l)) for l in links_) or not set(tiles_) <= set(links_) or len(tiles_) > 30:
+        _kana_bad.append(rel(p_))
+check("50音で探す: 行へのボタンの飛び先がページにある・名前のリンク先が実在する・上のタイルの名前は、どれも50音の並びにもある（タイルは30まで）", not _kana_bad, _kana_bad[:3])
+print(f"     （50音で探すのあるページ: {len(_kana_pages)}）")
+check("見出しの下の読みがな（.hero-ruby）は、ひらがなの読み（漢字・カタカナが無い・空でない）", not _ruby_bad, _ruby_bad[:3])
+
+# FANZAのレビューの評価（2026-10-10）: 高評価ランキングは noindex ⇔ sitemap に無い・10本に満たなければ noindex。
+# 評価は検索結果の星マーク（AggregateRating）に使わない（Googleの決まりで、ほかのサイトの評価を集めたものは使えない）
+_rv_bad = []
+for p_ in [page_file("/ranking/review/")] + glob.glob(os.path.join(DIST, "*", "ranking", "review", "index.html")):
+    if not os.path.isfile(p_):
+        continue
+    h_ = read_raw(p_)
+    path_ = "/" + os.path.relpath(os.path.dirname(p_), DIST).replace(os.sep, "/") + "/"
+    n_ = len(re.findall(r'<li class="shelf-cell"[^>]*>\s*<article class="item">', h_.split('aria-labelledby="rv-recent-title"')[0]))
+    if ('name="robots" content="noindex' in h_) == (path_ in sm_paths) or (n_ < 10 and path_ in sm_paths):
+        _rv_bad.append((path_, n_))
+check("高評価ランキング: sitemap に入っている ⇔ noindex でない・10本に満たなければ検索エンジンに出さない", not _rv_bad, _rv_bad[:3])
+_ar_pages = [p_ for p_ in (glob.glob(os.path.join(DIST, "item", "*", "index.html"))[:400] + glob.glob(os.path.join(DIST, "*", "item", "*", "index.html"))[:400]
+                           + [page_file("/ranking/review/")]) if os.path.isfile(p_) and "AggregateRating" in read_raw(p_)]
+check("レビューの評価を、構造化データの星マーク（AggregateRating）に使っていない", not _ar_pages, [rel(p_) for p_ in _ar_pages[:3]])
+
+# ジャンルの「FANZA全体で人気の作品 TOP20」（scripts/genre_tops.py。2026-10-10）: データのあるジャンルのページに、順位つきの棚・
+# このサイトの作品は作品ページへ（実在する）・ほかはFANZAへ（広告のリンクの属性）・未成年を連想させるタイトルは無い・タイトルに「人気ランキング」
+_gt_path = os.path.join(ROOT, "site", "src", "data", "genre_tops.json")
+_gt = load_json(_gt_path) if os.path.isfile(_gt_path) else None
+_gt_bad, _gt_seen = [], 0
+if isinstance(_gt, dict) and isinstance(_gt.get("genres"), dict):
+    for name_, g_ in _gt["genres"].items():
+        tp_ = page_file(f"/tag/{entity_slug(name_)}/")
+        if not os.path.isfile(tp_):
+            continue
+        h_ = read(tp_)
+        sec_ = re.search(r'<section class="section" aria-labelledby="fanza-top-title"[^>]*>(.*?)</section>', h_, re.S)
+        if not sec_:
+            _gt_bad.append(f"{name_}: 棚が無い")
+            continue
+        _gt_seen += 1
+        links_ = tags(sec_.group(1), "a")
+        titles_ = [strip_tags(t) for t in re.findall(r'<h3 class="mini-title">(.*?)</h3>', sec_.group(1), re.S)]
+        ranks_ = re.findall(r'<span class="mini-rank">(\d+)</span>', sec_.group(1))
+        title_ = htmllib.unescape(re.search(r"<title>(.*?)</title>", h_, re.S).group(1))
+        if not links_ or len(links_) > 20 or ranks_ != [str(n + 1) for n in range(len(links_))] or "人気ランキング" not in title_ \
+                or any((not os.path.isfile(page_file(a["href"]))) if a.get("href", "").startswith("/") else not (fanza_https(a.get("href"), ("dmm.co.jp", "fanza.co.jp")) and "sponsored" in a.get("rel", "")) for a in links_) \
+                or any(is_minor_title(re.sub(r"^\d+", "", t)) for t in titles_):
+            _gt_bad.append(name_)
+check("ジャンルのページの「FANZA全体で人気の作品」: 順位つきの棚・リンク先（作品ページは実在・FANZAは広告の属性）・未成年を連想させるタイトルが無い・タイトルに「人気ランキング」", not _gt_bad, _gt_bad[:3])
+print(f"     （FANZA全体で人気の作品の棚のあるジャンルのページ: {_gt_seen}）")
+
 # 検索ページ
 sp = os.path.join(DIST, "search", "index.html")
 check("検索ページ（/search/）がある", os.path.isfile(sp))
@@ -2417,8 +2493,10 @@ if os.path.isfile(sp):
     radios_ = [t for t in tags(stext_, "input") if t.get("type") == "radio"]
     sel_values = [[t.get("value") for t in radios_ if t.get("name") == n] for n in ("status", "sort")]
     checked_ = [(t.get("name"), t.get("value")) for t in radios_ if "checked" in t]
-    check("選択肢の値が、スクリプトの読める形（''・released・upcoming / new・popnew・pop・old）だけ・はじめは「すべて」「新しい順」",
-          sel_values == [["", "released", "upcoming"], ["new", "popnew", "pop", "old"]] and sorted(checked_) == [("sort", "new"), ("status", "")], (sel_values, checked_))
+    # 「評価が高い順」（review）は、FANZAのレビューの評価（2026-10-10）
+    check("選択肢の値が、スクリプトの読める形（''・released・upcoming / new・popnew・pop・review・old）だけ・はじめは「すべて」「新しい順」",
+          sel_values == [["", "released", "upcoming"], ["new", "popnew", "pop", "review", "old"]] and sorted(checked_) == [("sort", "new"), ("status", "")]
+          and "review:" in read(os.path.join(ROOT, "site", "public", "search.js")), (sel_values, checked_))
     check("作品検索の検索バー（紙の色のバー・探すボタン）がある", 'class="search-bar"' in stext_ and 'class="search-bar-btn"' in stext_)
     fb = next((t for t in tags(stext_, "section") if t.get("id") == "ws-fallback"), None)
     check("JavaScriptが使えないとき用の案内（#ws-fallback）に、過去の作品・出演者・メーカーへのリンクがある", fb is not None and all(f'href="{h}"' in stext_ for h in ("/archive/1/", "/actress/", "/maker/")))
@@ -2598,7 +2676,7 @@ no_desc = descs.get("", [])
 warn("タイトルがページごとに違う（重複があっても失敗にはしない）", not dup_titles, list(dup_titles.items())[:2])
 warn("説明文（description）がすべてのページにある", not no_desc, no_desc[:3])
 
-print("\n■ FANZA同人・FANZAゲーム（/doujin/・/game/。運営者の希望。2026-10-09）")
+print("\n■ FANZA同人・FANZAゲームなどの売り場（/doujin/・/game/・/anime/・/amateur/・/cinema/・/comic/・/photo/・/vr/。運営者の希望。2026-10-09・2026-10-10）")
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import floor_data as _FD  # noqa: E402
 from claude_comments import title_block_reason as _tbr  # noqa: E402
@@ -2609,7 +2687,7 @@ for _fk in _FD.FLOORS:
     _fdata = _FD.load_floor(_fpath) if os.path.isfile(_fpath) else None
     _fitems = list(_fdata["items"].values()) if _fdata else []
     # 画面でも、未成年を連想させる名前の作品は外す（二重の備え）。ページを作る作品は、そのあと
-    _fshow = [x for x in _fitems if not any(_tbr({"title": t}) == "minor" for t in [x["title"], *x["genres"], *x["formats"], *x["sales"], x["series"], x["maker"], *x["authors"]] if t)
+    _fshow = [x for x in _fitems if not any(_tbr({"title": t}) == "minor" for t in [x["title"], *x["genres"], *x["formats"], *x["sales"], x["series"], x["maker"], *x["authors"], *x.get("actress", [])] if t)
               and str(x["url"]).startswith("https://")]
     if not _fshow:
         check(f"{_flabel}: データが無いあいだは、ページを作らない・フッターにもリンクを出さない",
@@ -2678,7 +2756,7 @@ for _fk in _FD.FLOORS:
         "game": [("trial", _fmt("デモ・体験版あり")), ("browser", _fmt("ブラウザ対応")), ("win11", _fmt("Windows11対応作品")), ("dlonly", _fmt("DL版独占販売")),
                  ("set", _fmt("セット商品")), ("bestprice", _gen("BEST PRICE版")), ("budget", lambda x: 0 < _yen(x) <= 2000), ("anime", _gen("アニメーション")),
                  ("longseller", lambda x: _rel(x) and str(x["date"])[:10] <= _ago(365 * 5))],
-    }[_fk]
+    }.get(_fk, [])
     for x in _fshow:
         _m = re.match(r"^https://(?:pics|doujin-assets)\.dmm\.co\.jp/digital/(comic|cg|voice|game)/", str(x["image_url"] or "")) if _fk == "doujin" else None
         if _m:
@@ -2739,7 +2817,7 @@ for _fk in _FD.FLOORS:
         if ('name="robots" content="noindex' in h_) == (f"/{_fk}/ranking/{by_}/" in sm_paths):
             _er_bad.append((by_, "sitemap"))
     _want_maker_rank = any(x["maker_id"] for x in _released if x["cid"] in _fdata["ranks"])
-    check(f"{_flabel}: 人気{'サークル' if _fk == 'doujin' else 'ブランド'}ランキングがある・行に順位・「○日の時点」・sitemap に入っている ⇔ noindex でない",
+    check(f"{_flabel}: 人気{ {'doujin': 'サークル', 'game': 'ブランド', 'comic': '出版社', 'photo': '出版社'}.get(_fk, 'メーカー') }ランキングがある・行に順位・「○日の時点」・sitemap に入っている ⇔ noindex でない",
           not _er_bad and os.path.isfile(os.path.join(DIST, _fk, "ranking", "maker", "index.html")) == _want_maker_rank, _er_bad)
     _sp = os.path.join(DIST, _fk, "search", "index.html")
     _six = os.path.join(DIST, "data", f"{_fk}-index.json")
@@ -2778,6 +2856,7 @@ for _fk in _FD.FLOORS:
         _sp_want = {f"off{m_}" for m_ in (90, 70, 50) if sum(1 for o_ in _offs if o_ >= m_) >= 3}
     _sp_pages = {os.path.basename(os.path.dirname(p_)): p_ for p_ in glob.glob(os.path.join(DIST, _fk, "sale", "*", "index.html"))}
     _sp_pages.pop("history", None)
+    _sp_pages.pop("10yen", None)  # 10円セールのページ（下の「10円セール」で調べる）
     check(f"{_flabel}: セールのページ（{'セールの札ごと' if _fk == 'game' else '割引ごと'}・{len(_sp_pages)}ページ）は、対象が3本以上のものだけ", set(_sp_pages) == _sp_want, (sorted(_sp_want - set(_sp_pages))[:3], sorted(set(_sp_pages) - _sp_want)[:3]))
     _sp_bad = []
     for s_, p_ in _sp_pages.items():
@@ -2791,9 +2870,13 @@ for _fk in _FD.FLOORS:
     # 「セールはいつ？」（/…/sale/history/）: データから数えた事実だけ。記録が7日に満たないあいだは noindex
     _hist_page = os.path.join(DIST, _fk, "sale", "history", "index.html")
     _hh = read(_hist_page) if os.path.isfile(_hist_page) else ""
-    check(f"{_flabel}: 「セールはいつ？」のページがある・予想は書かない・sitemap に入っている ⇔ noindex でない",
-          bool(_hh) and "次の開催日は分かりません" in _hh and not re.search(r"予想されます|見込みです|はずです", _hh)
-          and ('name="robots" content="noindex' in read_raw(_hist_page)) != (f"/{_fk}/sale/history/" in sm_paths))
+    if _fk == "vr" or not os.path.isfile(os.path.join(DIST, _fk, "sale", "index.html")):
+        # 見放題（価格を出さない売り場）・いまセール中の作品が無い売り場には「セールはいつ？」を作らない（セールのページへのリンクが切れるため。2026-10-10）
+        check(f"{_flabel}: 見放題・セールのページが無い売り場には「セールはいつ？」のページも無い", not _hh and f"/{_fk}/sale/history/" not in sm_paths)
+    else:
+        check(f"{_flabel}: 「セールはいつ？」のページがある・予想は書かない・sitemap に入っている ⇔ noindex でない",
+              bool(_hh) and "次の開催日は分かりません" in _hh and not re.search(r"予想されます|見込みです|はずです", _hh)
+              and ('name="robots" content="noindex' in read_raw(_hist_page)) != (f"/{_fk}/sale/history/" in sm_paths))
     # 人気の動き（毎日の順位の記録。2026-10-09）: 上位300本に入ったことのある作品のページにだけ「人気の動き」がある
     _frh_path = os.path.join(ROOT, "site", "src", "data", "floor_rank_history.json")
     _frh = (json.load(open(_frh_path, encoding="utf-8")).get(_fk) or {}) if os.path.isfile(_frh_path) else {}
@@ -2812,6 +2895,68 @@ check("サイトの「セール・キャンペーン」（/sale/）から、同�
       all((f'href="/{k_}/sale/"' in read_raw(os.path.join(DIST, "sale", "index.html"))) == os.path.isfile(os.path.join(DIST, k_, "sale", "index.html")) for k_ in _FD.FLOORS))
 check("同人・ゲームの見出しに出すジャンルの一覧（floors.js）に、行為・未成年を連想させる言葉が無い",
       not any(_tbr({"title": g_}) == "minor" for g_ in re.findall(r"'([^']+)'", re.search(r"FLOOR_GENRE_OK = \[([\s\S]*?)\];", _floor_src).group(1))))
+
+# ---- 10円セール（運営者の希望「10円セールは大イベント。開催中はものすごく訴求したいし、SEOもかなり上位に」。2026-10-09） ----
+print("\n■ 10円セール（/sale/10yen/）")
+_ty_path = os.path.join(ROOT, "site", "src", "data", "ten_yen.json")
+_ty = json.load(open(_ty_path, encoding="utf-8")) if os.path.isfile(_ty_path) else {}
+_ty_checked = str(_ty.get("checked") or "")
+_ty_floor_texts = lambda x: [x.get("title") or "", *(x.get("genres") or []), *(x.get("formats") or []), *(x.get("sales") or []), *(x.get("authors") or []), x.get("maker") or "", x.get("series") or ""]  # noqa: E731
+_ty_want = {}
+for _k in ("video", "doujin", "game"):
+    _ty_want[_k] = [x["cid"] for x in (_ty.get(_k) or []) if isinstance(x, dict) and x.get("price") == 10
+                    and not (re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$", str(x.get("sale_end") or "")) and _ty_checked and x["sale_end"] < _ty_checked)
+                    and str(x.get("date") or "")[:10] <= JST_TODAY and str(x.get("url") or "").startswith("https://")
+                    and not any(_tbr({"title": t_}) == "minor" for t_ in ([x.get("title") or ""] if _k == "video" else _ty_floor_texts(x)) if t_)]
+_ty_total = sum(len(v) for v in _ty_want.values())
+_ty_file = page_file("/sale/10yen/")
+_ty_html = read(_ty_file) if os.path.isfile(_ty_file) else ""
+_ty_raw = read_raw(_ty_file) if _ty_html else ""
+check("10円セールのページ（/sale/10yen/）がある・いつも検索エンジンに出す（sitemap にも）・見出し・FAQPage の構造化データ・タイトルは「FANZA 10円セール」から",
+      bool(_ty_html) and 'name="robots" content="noindex' not in _ty_raw and "/sale/10yen/" in sm_paths
+      and re.search(r"<h1[^>]*>FANZA 10円セール</h1>", _ty_html) and '"@type":"FAQPage"' in _ty_raw.replace(" ", "")
+      and re.search(r"<title>FANZA 10円セール", _ty_raw))
+check("10円セールのページ: 予想は書かない・「よくある質問」と、FANZAで確かめての注記（開催中）／開催が始まったら並ぶ注記（開催していない）",
+      bool(_ty_html) and not re.search(r"予想されます|見込みです|はずです|開催される予定", _ty_html) and "よくある質問" in _ty_html
+      and ("FANZAの作品ページで確かめてください" in _ty_html if _ty_total else "開催が始まると、このページに10円の作品が並びます" in _ty_html))
+_no_foot_ty = [os.path.relpath(p_, DIST) for p_ in pages if 'href="/sale/10yen/"' not in read_raw(p_)[read_raw(p_).find("<footer"):]]
+check(f"全ページのフッターに、10円セールのページへのリンク（開催していないあいだも。どのページからもリンクする）", not _no_foot_ty, _no_foot_ty[:3])
+_bar_pages = [os.path.relpath(p_, DIST) for p_ in pages if 'id="ten-bar"' in read_raw(p_)]
+_hero_pages = [os.path.relpath(p_, DIST) for p_ in pages if 'class="ten-hero"' in read_raw(p_)]
+if _ty_total:
+    _home_raw = read_raw(page_file("/"))
+    _rk = page_file("/ranking/")
+    check(f"開催中（{_ty_total}本）: ヘッダーの下の帯がほかのページにあり、トップ・セールのページ・10円セールのページには帯の代わりに大きな案内（トップ）",
+          'class="ten-hero"' in _home_raw and 'id="ten-bar"' not in _home_raw and 'id="ten-bar"' not in _ty_raw and 'id="ten-bar"' not in read_raw(page_file("/sale/"))
+          and (not os.path.isfile(_rk) or 'id="ten-bar"' in read_raw(_rk)) and len(_bar_pages) > len(pages) // 2, (len(_bar_pages), len(pages)))
+    _ty_got = {k_: re.findall(r'<li class="shelf-cell"[^>]*>\s*<article class="item">.*?href="([^"]+)"', re.search(rf'<section class="section" id="ten-{k_}".*?</section>', _ty_raw, re.S).group(0), re.S) if re.search(rf'id="ten-{k_}"', _ty_raw) else [] for k_ in _ty_want}
+    check("開催中: 10円セールのページに、売り場ごとの10円の作品が全部ある（終わった作品・予約・未成年を連想させる作品は無い）・タイトルに「開催中」",
+          all(len(_ty_got[k_]) == len(v_) for k_, v_ in _ty_want.items()) and "10円セール開催中" in _ty_raw.split("</title>")[0],
+          {k_: (len(_ty_got[k_]), len(v_)) for k_, v_ in _ty_want.items()})
+else:
+    check("開催していないあいだ: 帯も大きな案内も出さない・10円セールのページは「いまは開催していません」・タイトルは「はいつ？」",
+          not _bar_pages and not _hero_pages and "いまは開催していません" in _ty_html and "10円セールはいつ？" in _ty_raw.split("</title>")[0], (_bar_pages[:2], _hero_pages[:2]))
+# 同人・ゲームの10円セールのページ: 売り場のページがある売り場だけ・開催中か開催を見かけたことがあるときだけ検索エンジンに出す
+_ty_runs = {r_.get("floor") for r_ in (_ty.get("runs") or []) if isinstance(r_, dict)}
+_ty_floor_bad = []
+for _k in ("doujin", "game"):
+    _f = page_file(f"/{_k}/sale/10yen/")
+    _exists = os.path.isfile(_f)
+    if _exists != os.path.isfile(page_file(f"/{_k}/")):
+        _ty_floor_bad.append((_k, "ページの有無"))
+        continue
+    if _exists:
+        _idx = bool(_ty_want[_k]) or _k in _ty_runs
+        if ('name="robots" content="noindex' in read_raw(_f)) == _idx or (f"/{_k}/sale/10yen/" in sm_paths) != _idx:
+            _ty_floor_bad.append((_k, "noindex・sitemap"))
+check("同人・ゲームの10円セールのページ: 売り場のページがある売り場だけ・開催中か開催を見かけたことがあるときだけ検索エンジンに出す（sitemap も同じ）", not _ty_floor_bad, _ty_floor_bad)
+# 10円セールの特集（キャンペーンの名前に「10円」）の特集ごとのページは、検索エンジンに出さない（同じ検索で2つ並ばないように）
+_ten_camp_bad = [p_ for p_ in glob.glob(os.path.join(DIST, "sale", "*", "index.html")) if os.path.basename(os.path.dirname(p_)) != "10yen" and re.search(r"<h1[^>]*>[^<]*(?<![0-9,])10円", read(p_))
+                 and ('name="robots" content="noindex' not in read_raw(p_) or 'href="/sale/10yen/"' not in read_raw(p_).split("<footer")[0])]
+check("名前に「10円」のある特集のページは noindex で、10円セールのページへ案内する", not _ten_camp_bad, _ten_camp_bad[:3])
+# 帯の「終わったら隠す」スクリプトは、決まった形の時刻だけ（そのままスクリプトに入れるため）
+_bar_js_bad = [p_ for p_ in _bar_pages[:200] if re.search(r"Date\.parse\('(?!\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:59\+09:00')", read_raw(os.path.join(DIST, p_)))]
+check("帯を隠すスクリプトには、決まった形の時刻だけが入っている", not _bar_js_bad, _bar_js_bad[:3])
 
 if problems:
     print("\n失敗:", problems)

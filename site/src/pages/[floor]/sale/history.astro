@@ -14,7 +14,8 @@ import { barSpan, dayTicks } from '../../../lib/sale.js';
 import { SITE_NAME, SITE_URL, addDays, breadcrumbLd, daysBetween, entitySlug, formatDateJp } from '../../../lib/items.js';
 
 export function getStaticPaths() {
-  return activeFloors.map((floor) => ({ params: { floor } }));
+  // セールのページがある売り場だけ（見放題・いまセール中の作品が無い売り場には作らない。2026-10-10）
+  return activeFloors.filter((k) => !FLOORS[k].noPrice && floorSaleItems(floors[k].items).length > 0).map((floor) => ({ params: { floor } }));
 }
 
 const { floor: key } = Astro.params;

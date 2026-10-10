@@ -1,0 +1,19 @@
+---
+// 売り場の作品の表紙（一覧のカード・TOP3・小さな棚・話題・セールのカード・行の一覧。2026-10-10）。
+// 枠の形は売り場ごと（lib/floors.js の FLOORS の frame）: 同人（横長）・素人（正方形）は、表紙を枠にまるごと入れる
+// （<picture> で、スマホは FANZA の「縮めて返す版」。読めなければ元の画像＝framedThumb の onerror）。
+// ほか（ゲーム・アニメ・成人映画・ブックス・VR見放題）は、動画と同じ縦長の枠で、components/Thumb.astro（スマホの版は lib/items.js の thumbSources）。
+// どのページから読んだかは送らない（referrerpolicy="no-referrer"。同人の画像がページの中で出なかったため。2026-10-09）
+import Thumb from './Thumb.astro';
+import { THUMB_MEDIA } from '../lib/items.js';
+import { framedThumb, isFramed } from '../lib/floors.js';
+
+// floor: 売り場、url: 表紙、kind: 'card'（カード・TOP3）か 'tiny'（小さな表紙）
+const { floor, url, kind = 'card', loading = 'lazy', fetchpriority } = Astro.props;
+const framed = isFramed(floor);
+const t = framed && url ? framedThumb(floor, url, kind) : null;
+---
+
+{url && (t
+  ? <picture class="pic"><source media={THUMB_MEDIA} srcset={t.small} /><img class="floor-img" src={url} alt="" width={t.width} height={t.height} loading={loading} fetchpriority={fetchpriority} decoding="async" referrerpolicy="no-referrer" onerror={t.onerror} /></picture>
+  : <Thumb src={url} kind={kind} class={kind === 'tiny' ? 'item-img is-small' : 'item-img'} loading={loading} fetchpriority={fetchpriority} />)}

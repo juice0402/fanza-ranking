@@ -6,10 +6,12 @@ import DaySection from '../../components/DaySection.astro';
 import FavButton from '../../components/FavButton.astro';
 import NextWorks from '../../components/NextWorks.astro';
 import OnSaleWorks from '../../components/OnSaleWorks.astro';
+import RatedShelf from '../../components/RatedShelf.astro';
 import CastFaces from '../../components/CastFaces.astro';
 import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
-import { makerGroups, actressByName, contentGenres, sale, tagByName, today, seriesById, labelById } from '../../lib/data.js';
+import { makerGroups, actressByName, contentGenres, readings, sale, tagByName, today, seriesById, labelById } from '../../lib/data.js';
+import { readingLine } from '../../lib/kana.js';
 import { entryChips } from '../../lib/insights.js';
 import EntryChips from '../../components/EntryChips.astro';
 import { campaignSummary, offPercent, onSaleItems } from '../../lib/sale.js';
@@ -68,13 +70,15 @@ const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 // 最後に変わった日（sitemap の lastmod と同じ）。画面の「○月○日更新」と、構造化データの dateModified に使う
 const modified = listLastmod(group.items, today);
 const description = entityDescription(summary, { next: upcomingWorks[0] ?? null, saleCount: saleWorks.length, maxOff: saleMaxOff });
+// 読みがな（FANZA公式のAPIから。見出しの下と、構造化データの alternateName に。2026-10-10）
+const ruby = readingLine(group.name, readings.of('video', 'maker', group.name));
 const pageLd = {
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
   name: `${group.name}の新作・作品一覧`,
   url: SITE_URL + group.path,
   ...(modified ? { dateModified: modified } : {}),
-  about: { '@type': 'Organization', name: group.name },
+  about: { '@type': 'Organization', name: group.name, ...(ruby ? { alternateName: ruby } : {}) },
 };
 const trail = [
   { name: 'トップ', path: '/' },
@@ -97,6 +101,7 @@ const trail = [
 
     <section class="hero">
       <h1 class="hero-title">{group.name}の新作・作品一覧</h1>
+      {ruby && <p class="hero-ruby">{ruby}</p>}
       {modified && <p class="page-updated">{md(modified)}更新</p>}
       <div class="hero-actions">
         <FavButton type="maker" favKey={group.name} slug={group.slug} size="lead" off="お気に入り（新作をお知らせ）" on="お気に入り済み（新作をお知らせ）" />
@@ -136,6 +141,7 @@ const trail = [
 
     <NextWorks items={upcomingWorks} shown={NEXT_SHOWN} />
     <OnSaleWorks items={saleWorks} shown={SALE_SHOWN} label="このメーカーの作品が入っているセール" />
+    <RatedShelf items={group.items} title={`${group.name}の評価の高い作品`} />
 
     {castFaces.length > 0 && (
       <section class="section" aria-labelledby="cast-title">
