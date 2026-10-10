@@ -8,8 +8,7 @@ import HotGenres from '../components/HotGenres.astro';
 import VrToggle from '../components/VrToggle.astro';
 import SaleCampaigns from '../components/SaleCampaigns.astro';
 import TenYenHero from '../components/TenYenHero.astro';
-import { all, sale, today, released, upcoming, roundups, ranking, monthGroups, tagGroups, paged, popularity, todayData, faceOfName, birthOfName, coverOfName, contentGenres, events, upcomingEventList, activeFloors, tenYenNow, campaignHrefOf } from '../lib/data.js';
-import { FLOORS, floorPath } from '../lib/floors.js';
+import { all, sale, today, released, upcoming, roundups, ranking, monthGroups, tagGroups, paged, popularity, todayData, faceOfName, birthOfName, coverOfName, contentGenres, events, upcomingEventList, tenYenNow, campaignHrefOf } from '../lib/data.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemHref } from '../lib/plan.js';
 import { RANKING_PATH } from '../lib/popularity.js';
@@ -165,13 +164,6 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
           {latestRoundup && <a class="chip-link only-narrow" href={weeklyPath(latestRoundup.week_start)}>週のまとめ</a>}
           {monthGroups.length > 0 && <a class="chip-link only-narrow" href={MONTH_INDEX_PATH}>月のまとめ</a>}
         </nav>
-        {/* FANZA同人・FANZAゲームなどの売り場（運営者の希望。2026-10-09・2026-10-10。データがある売り場だけ。
-            2つまでは「FANZA同人」の正式な名前で横に2つ、3つからは短い名前（同人・ゲーム・アニメ・素人…）で4つずつ並べる） */}
-        {activeFloors.length > 0 && (
-          <nav class:list={['hero-jump', 'floor-jump', { 'is-many': activeFloors.length > 2 }]} aria-label="FANZAのほかの売り場">
-            {activeFloors.map((k) => <a class="chip-link" href={floorPath(k)}>{activeFloors.length > 2 ? FLOORS[k].short : FLOORS[k].label}</a>)}
-          </nav>
-        )}
       </section>
       {hot.length > 0 && (
         <section id="hot" class="today-hot" aria-labelledby="hot-title">
