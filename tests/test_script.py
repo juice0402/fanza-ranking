@@ -1421,7 +1421,8 @@ with tempfile.TemporaryDirectory() as tmp_r:
         if "gte_date" in params:
             return []
         other = dict(make_api_item("notonsite01", -50, actress=("だれか",), maker="どこか", title="このサイトに無い作品"), campaign=[camp_c])  # このサイトに無い作品
-        return [on_sale(3, [camp_a, camp_c], price="1500~", list_price="2500~"), on_sale(6, [camp_a]), other, past_item(5)] if params["offset"] == 1 else []
+        minor = dict(make_api_item("notonsite02", -50, actress=("だれか",), maker="どこか", title="制服のなにか"), campaign=[camp_c])  # 未成年を連想させる作品
+        return [on_sale(3, [camp_a, camp_c], price="1500~", list_price="2500~"), on_sale(6, [camp_a]), other, past_item(5), minor] if params["offset"] == 1 else []
 
     now_r = (TODAY + timedelta(days=1)).replace(hour=10, minute=17)
     with contextlib.redirect_stdout(io.StringIO()):
@@ -1432,7 +1433,13 @@ with tempfile.TemporaryDirectory() as tmp_r:
           saved_r and rs["date"] == day(1) and rby == {"cat00003": "10時からのセール30％OFF", "cat00007": "日替わりセール★"}, (rby, lines_r))
     check("人気順の上位1,000本と、新着の人気順の上位500本を読み直す（人気順・100本ずつ・発売済みだけ）",
           [c["offset"] for c in r_calls if "gte_date" not in c] == [1] and any("gte_date" in c for c in r_calls) and all(c["sort"] == "rank" and c["hits"] == 100 and c.get("lte_date") for c in r_calls)
-          and m_s.SALE_REFRESH_TOP_CALLS == 10 and m_s.SALE_REFRESH_NEW_CALLS == 5, r_calls[:2])
+          and m_s.SALE_REFRESH_TOP_CALLS == 500 and m_s.SALE_REFRESH_NEW_CALLS == 5, r_calls[:2])
+    rx = {r["c"]: r for r in rs.get("extra", [])}
+    check("このサイトに無いセール中の作品も、特集ごとに保存する（人気順の順位・タイトル・URL・画像・発売日・メーカー・出演者・ジャンル。未成年を連想させる作品は入れない）",
+          set(rx) == {"notonsite01"} and rs["campaigns"][rx["notonsite01"]["k"]]["title"] == "10時からのセール30％OFF" and rx["notonsite01"]["r"] == 3
+          and rx["notonsite01"]["t"] == "このサイトに無い作品" and rx["notonsite01"]["u"].startswith("https://") and rx["notonsite01"]["a"] == ["だれか"], rs.get("extra"))
+    check("特集ごとの本数（人気順の上位5万本のうち。このサイトの作品も、無い作品も、未成年を連想させる作品も数える）",
+          {c["title"]: c.get("n") for c in rs["campaigns"]} == {"10時からのセール30％OFF": 3, "日替わりセール★": None}, rs["campaigns"])
     rh = {r["title"]: r for r in json.load(open(r_hist, encoding="utf-8"))["campaigns"]}
     check("セールの履歴: 10時に始まったセールを、その日に見かけたことになる", rh["10時からのセール30％OFF"]["first"] == day(1) and rh["10時からのセール30％OFF"]["max_off"] == 40, rh.get("10時からのセール30％OFF"))
     before_r = open(r_sale, encoding="utf-8").read()
@@ -1449,6 +1456,16 @@ with tempfile.TemporaryDirectory() as tmp_r:
     open(r_sale, "w").write("{壊れている")
     saved_r4, _ = m_s.refresh_sales(now_r, call=r_call, sale_path=r_sale, history_path=r_hist)
     check("前のセールのデータが壊れていたら、上書きしない", not saved_r4 and open(r_sale).read() == "{壊れている")
+with tempfile.TemporaryDirectory() as tmp_x:
+    x_path = os.path.join(tmp_x, "sale.json")
+    c_old = {"title": "日替わりセール◇", "begin": "2026-10-10 00:00", "end": "2026-10-10 23:59"}
+    c_new = {"title": "週末セール", "begin": "2026-10-10 10:00", "end": "2026-10-12 09:59"}
+    info = {"r": 5, "t": "作品", "u": "https://al.fanza.co.jp/?x", "i": "https://pics.dmm.co.jp/x.jpg", "d": "2020-01-01", "m": "メーカー", "a": [], "g": []}
+    open(x_path, "w", encoding="utf-8").write(m_s.dump_sale_file({}, "2026-10-10", {"x1": (c_old, None, None, info), "x2": (c_new, 700, 1000, dict(info, r=9)), "x3": (c_new, None, None, info)},
+                                                                     {m_s.camp_key(c_old): 56, m_s.camp_key(c_new): 2}))
+    ex, cn = m_s.active_extras("2026-10-11 00:30", {"x3"}, x_path)
+    check("毎日の更新が sale.json を書き直すときは、このサイトに無い作品と本数のうち、まだ期間中のものだけ残す（終わった日替わりセール・このサイトに入った作品は外す）",
+          set(ex) == {"x2"} and ex["x2"][1:3] == (700, 1000) and ex["x2"][3]["r"] == 9 and cn == {m_s.camp_key(c_new): 2}, (ex, cn))
 check("時刻の比べ方: 終わりの分まで（日付だけなら、その日の 23:59 まで）",
       m_s.sale_active("2026-10-10 09:59", "2026-10-10 09:59") and not m_s.sale_active("2026-10-10 09:59", "2026-10-10 10:00")
       and m_s.sale_active("2026-10-10", "2026-10-10 23:59") and not m_s.sale_active("", "2026-10-10 00:00"))

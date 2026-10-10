@@ -38,7 +38,7 @@ const title = g
   ? `${page.title}の対象作品【${md(g.end.slice(0, 10))}まで】${g.maxOff && !offInName ? `最大${g.maxOff}%OFF` : ''}｜FANZAセール｜${SITE_NAME}`
   : `${page.title}（いまは開催していません）これまでの開催｜FANZAセール｜${SITE_NAME}`;
 const description = g
-  ? `FANZA動画の「${page.title}」の対象作品のうち、このサイトに載っている${g.total}本を人気の高い順にまとめています。${endLabel(g.end)}まで${g.maxOff ? `・最大${g.maxOff}%OFF` : ''}。${sale.date ? `${md(sale.date)}の時点の情報で、` : ''}毎日更新します。`
+  ? `FANZA動画の「${page.title}」の対象作品${g.counted ? '' : 'のうち、このサイトに載っている'}${g.total}本を、人気の高い順にまとめています。${endLabel(g.end)}まで${g.maxOff ? `・最大${g.maxOff}%OFF` : ''}。${sale.date ? `${md(sale.date)}の時点の情報で、` : ''}毎日更新します。`
   : `FANZA動画の「${page.title}」がこれまでに開かれた期間（このサイトが記録したもの）と、いま開催中のほかのセールです。`;
 const trail = [
   { name: 'トップ', path: '/' },
@@ -63,7 +63,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
             <strong>{endLabel(g.end)}まで</strong>
             {left !== null && left > 1 && `（あと${left}日）`}
             {g.maxOff && <>・<strong>最大{g.maxOff}%OFF</strong></>}
-            ・このサイトの作品{g.total}本
+            {g.counted ? `・対象${g.total}本` : `・このサイトの作品${g.total}本`}
           </p>
         )
         : <p class="camp-status">いまは開催していません{lastRun && `（前回: ${runRange(lastRun)}）`}</p>}

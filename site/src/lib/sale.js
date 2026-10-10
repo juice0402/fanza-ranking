@@ -2,7 +2,7 @@
 // データは data/sale.json（毎日の更新が、FANZA公式のAPIの campaign・prices から、その日に見かけたセール中の作品を保存したもの）。
 // 価格・期間は、その日の 0:05 ごろの情報（動画のセールが入れかわる10時のすぐあと＝10:17 にも読み直す。sale-refresh.yml）。変わることがあるので、画面には「○日時点」と「最新はFANZAで」を必ず添える。
 import { bestRank } from './popularity.js';
-import { addDays, daysBetween, entitySlug, isDay } from './items.js';
+import { addDays, daysBetween, entitySlug, isDay, normalizeItems } from './items.js';
 import { isMinorTitle } from './gacha.js';
 
 export const SALE_PATH = '/sale/';
@@ -19,21 +19,44 @@ export const saleHref = (k) => `${SALE_PATH}#${saleAnchor(k)}`;
 
 const DAY_TIME = /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?$/;
 
-/** sale.json → { date, campaigns: [{title, begin, end}], byCid: Map(cid → {k, price, listPrice}) }。無い・形が違うときは空 */
-export function normalizeSale(raw) {
+/**
+ * sale.json → { date, campaigns: [{title, begin, end, count}], byCid: Map(cid → {k, price, listPrice}), extras: [作品] }。無い・形が違うときは空。
+ * count: FANZAの人気順の上位5万本のうち、その特集の作品の数（日中のセールの読み直しで数えたもの。分からなければ 0）。
+ * extras: このサイトに無いセール中の作品（日中のセールの読み直しが、特集ごとに人気の高い順に集めたもの。運営者の「日替わりセールはFANZAで51本なのに、
+ * サイトは1本」。2026-10-10）。作品の形は normalizeItems と同じに、popAll（その日の人気順の順位）と offsite（作品ページが無い）を足したもの。
+ * このサイトの作品と同じ作品があれば、このサイトのほうを使う（extras には入れない）
+ */
+export function normalizeSale(raw, siteCids = new Set()) {
   const ok = raw && typeof raw === 'object' && !Array.isArray(raw);
   const campaigns = (ok && Array.isArray(raw.campaigns) ? raw.campaigns : []).map((c) => ({
     title: String(c?.title ?? '').trim().slice(0, 60),
     begin: DAY_TIME.test(String(c?.begin ?? '')) ? c.begin : '',
     end: DAY_TIME.test(String(c?.end ?? '')) ? c.end : '',
+    count: Number.isInteger(c?.n) && c.n > 0 ? c.n : 0,
   }));
   const byCid = new Map();
-  for (const r of ok && Array.isArray(raw.items) ? raw.items : []) {
-    if (!r || typeof r !== 'object' || typeof r.c !== 'string' || !Number.isInteger(r.k) || !campaigns[r.k]?.title || !campaigns[r.k]?.end) continue;
+  const infoOf = (r) => {
+    if (!r || typeof r !== 'object' || typeof r.c !== 'string' || !Number.isInteger(r.k) || !campaigns[r.k]?.title || !campaigns[r.k]?.end) return null;
     const priced = Number.isInteger(r.p) && Number.isInteger(r.l) && r.p > 0 && r.p < r.l;
-    byCid.set(r.c, { k: r.k, price: priced ? r.p : null, listPrice: priced ? r.l : null });
+    return { k: r.k, price: priced ? r.p : null, listPrice: priced ? r.l : null };
+  };
+  for (const r of ok && Array.isArray(raw.items) ? raw.items : []) {
+    const info = infoOf(r);
+    if (info) byCid.set(r.c, info);
   }
-  return { date: ok && /^\d{4}-\d{2}-\d{2}$/.test(String(raw.date ?? '')) ? raw.date : '', campaigns, byCid };
+  const rows = [];
+  const rankOf = new Map();
+  for (const r of ok && Array.isArray(raw.extra) ? raw.extra : []) {
+    const info = infoOf(r);
+    if (!info || !Number.isInteger(r.r) || r.r < 1 || byCid.has(r.c) || siteCids.has(r.c)) continue;
+    byCid.set(r.c, info);
+    rankOf.set(r.c, r.r);
+    rows.push({ cid: r.c, title: r.t, url: r.u, image_url: r.i, date: r.d, maker: r.m, actress: Array.isArray(r.a) ? r.a : [], genres: Array.isArray(r.g) ? r.g : [] });
+  }
+  const extras = normalizeItems(rows).filter((i) => i.url && !isMinorTitle(i.title)).map((i) => ({ ...i, popAll: rankOf.get(i.cid), popNew: null, offsite: true }));
+  const keep = new Set(extras.map((i) => i.cid));
+  for (const cid of rankOf.keys()) if (!keep.has(cid)) byCid.delete(cid);
+  return { date: ok && /^\d{4}-\d{2}-\d{2}$/.test(String(raw.date ?? '')) ? raw.date : '', campaigns, byCid, extras };
 }
 
 /** 値引きの割合（%。四捨五入）。分からなければ null */
@@ -127,7 +150,8 @@ export function saleGroups(items, sale, today, perGroup = SALE_GROUP_LIMIT, { ge
     .map((g) => {
       const sorted = [...g.items].sort(byPopular);
       const offs = sorted.map((i) => offPercent(i.sale.price, i.sale.listPrice)).filter(Boolean);
-      return { ...g, total: sorted.length, items: sorted.slice(0, perGroup), covers: campaignCovers(sorted), maxOff: offs.length ? Math.max(...offs) : null, ...campaignSummary(sorted, { genres }) };
+      // 本数: FANZAの人気順の上位5万本で数えた本数があれば、そちら（このサイトに無い作品は、特集ごとに48本までしか持たないため）
+      return { ...g, total: Math.max(sorted.length, g.count || 0), counted: (g.count || 0) >= sorted.length && g.count > 0, items: sorted.slice(0, perGroup), covers: campaignCovers(sorted), maxOff: offs.length ? Math.max(...offs) : null, ...campaignSummary(sorted, { genres }) };
     })
     .sort((a, b) => a.end.localeCompare(b.end) || b.total - a.total || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0));
 }

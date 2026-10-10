@@ -87,7 +87,11 @@ export const tagByName = indexByName(tagGroups);
 // ハイビジョン・単体作品のような形式のジャンルは、いつも上に来てしまうので数えない
 export const contentGenres = new Set(TAG_PAGE_GENRES.filter((g) => !HOT_GENRE_SKIP.includes(g)));
 // 特集（キャンペーンの名前）ごとのページ（/sale/<印>/。開催中のものと、最後に見かけてから90日のあいだのもの。lib/sale.js）
-export const saleCampaignPages = campaignPages(all, sale, saleHistory, today, { genres: contentGenres });
+// セールの特集に並べる作品: このサイトの作品＋このサイトに無いセール中の作品（日中のセールの読み直しが、人気順の上位5万本から特集ごとに集めたもの。
+// 作品ページは無いので、FANZAへ直接リンクする。運営者の「日替わりセールはFANZAで51本なのに、サイトは1本」。2026-10-10）
+const allCids = new Set(all.map((i) => i.cid));
+export const saleWorks = [...all, ...sale.extras.filter((i) => !allCids.has(i.cid))];
+export const saleCampaignPages = campaignPages(saleWorks, sale, saleHistory, today, { genres: contentGenres });
 export const saleCampaignBySlug = new Map(saleCampaignPages.map((p) => [p.slug, p]));
 /** 特集（キャンペーン）へのリンク先: 10円セールの特集は10円セールのページ、ほかは特集ごとのページ（無ければ /sale/ のその特集の見出し）。c: { title, k } */
 export const campaignHrefOf = (c) => (isTenYenCampaign(c.title) ? TEN_YEN_PATH : saleCampaignBySlug.get(campaignSlug(c.title))?.path ?? saleHref(c.k));
