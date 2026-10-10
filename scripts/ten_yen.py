@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""FANZAの「10円セール」（動画・同人・ゲーム）の対象作品を集める道具（Python標準ライブラリだけ。Gemini は使わない）。
+"""FANZAの「10円セール」（動画・同人・ゲーム・アニメ・素人・成人映画・コミック・写真集）の対象作品を集める道具（Python標準ライブラリだけ。Gemini は使わない）。
 
 運営者の希望「動画・同人・ゲームのどれも、10円セールの時は大イベント。開催中はものすごく訴求したいし、SEOもかなり上位に来るように」（2026-10-09）。
+「同人以外の、ゲームとか動画とか、ほかの売り場の10円セールも逃さず載せてほしい」（2026-10-10）→ 新しい売り場（アニメ・素人・成人映画・コミック・写真集）も。
+VR見放題は月額の見放題（1本ずつの価格が無い）なので入れない。
 
   python3 scripts/ten_yen.py --update               毎日の更新から（変わらなくても、確かめた時刻を書く）
   python3 scripts/ten_yen.py --update --if-changed  1日に数回の確認から（10円の作品が変わったときだけ保存する。変わらなければファイルを書かない＝公開もしない）
@@ -10,11 +12,14 @@
   安い順の先頭には、0円・5円（95%OFF）の作品が何千本も並ぶ（同人は約2,700本。2026-10-10 に本物のAPIで確かめた）ので、
   「価格が10円以上になる位置」を二分探索で見つけ（1本ずつ・17回ほど）、その少し前から100本ずつ、10円以下の作品が出てこなくなるまで読む
   （安い順は、ところどころ順番が前後する（ゲーム）ので、少し前から読み、10円以下が1本も無い100本が出たらやめる）
-・同人・ゲームは、人気順（sort=rank・発売済み）も上から読む（同人3,000本・ゲーム1,500本）。人気順の順位（rank）を付けるため。
+・動画のほかの売り場は、人気順（sort=rank・発売済み）も上から読む（同人3,000本・ゲーム1,500本・ほかは300本〜）。人気順の順位（rank）を付けるため。
   人気順の外の10円の作品は、順位なし（ページでは人気順の作品のあと）
+・FANZAコミックだけは、安い順の一覧が価格の順に並ばない（1,320円・220円・77円…。2026-10-10 に本物で確かめた＝probe_api.py の 14）ので、
+  安い順は使わず、人気順の上から3,000本を読む（その外の10円の作品は見つけられない）
 ・10円の作品＝価格がちょうど10円で、値引きされているもの
-  （動画は、定価が10円より高いか分からないもの。同人・ゲームは、定価が300円以上か、キャンペーン・セールの札の名前に「10円」があるもの。
-   同人には、ふだんから110円の作品の95%OFF＝5円のような安売りがあるので、それとは分ける）
+  （同人・ゲームは、定価が300円以上か、キャンペーン・セールの札の名前に「10円」があるもの。同人には、ふだんから110円の作品の95%OFF＝5円のような安売りがあるので、それとは分ける。
+   ほかの売り場は、定価が10円より高いか分からないもの。ふだんのいちばん安い作品が、動画60円・素人100円・アニメ200円・成人映画50円・写真集23円（0円をのぞく）で、
+   10円の作品はふだん無いため。ブックスの API は定価を返さない）
 ・未成年を連想させる作品は入れない（doujin_game.blocked_reason。タイトル・ジャンル・シリーズ・サークル/メーカー・作家の名前）
 ・売り場ごとに、最後まで読めなかったときは、その売り場は前のまま（10円の作品を消さない・開催の記録も足さない）
 ・終わりの日時は、動画のキャンペーンの「2026-10-12 09:59」の形のときだけ使う（ほかの形は、日本時間かどうかが分からないので使わない）
@@ -45,9 +50,11 @@ import floor_data as F  # noqa: E402
 PATH = os.environ.get("TEN_YEN_PATH", os.path.join(ROOT, "site", "src", "data", "ten_yen.json"))
 PRICE = 10
 FLOOR_MIN_LIST = 300  # 同人・ゲーム: 定価がこれ以上の作品が10円なら、10円セールの対象とみる（ふだんの「110円の95%OFF」と分ける）
-FLOOR_KEYS = ("video", "doujin", "game")
+FLOOR_KEYS = ("video", "doujin", "game", "anime", "amateur", "cinema", "comic", "photo")
+LIST_RULE_KEYS = ("doujin", "game")  # 定価300円以上か、名前に「10円」のあるときだけ10円セールとみる売り場
+NO_CHEAP_SORT = ("comic",)  # 安い順の一覧が価格の順に並ばない売り場（人気順だけ読む）
 PAGE = 100
-RANK_PAGES = {"doujin": 30, "game": 15}  # 同人・ゲーム: 人気順の上から（同人3,000本・ゲーム1,500本。順位を付けるため）
+RANK_PAGES = {"doujin": 30, "game": 15, "anime": 3, "amateur": 5, "cinema": 3, "comic": 30, "photo": 3}  # 人気順の上から（100本ずつ。順位を付けるため。コミックは見つけるため）
 CHEAP_BACK = 100  # 安い順: 二分探索で見つけた位置の、この本数だけ前から読む（順番が前後する所があるので）
 CHEAP_MAX_PAGES = 30  # 安い順: 10円のあたりを読む最大（100本ずつ・3,000本まで。2026-10-10 の同人は161本）
 OFFSET_MAX = 50000  # APIの offset の上限（total_count も 50000 で止まる）
@@ -93,9 +100,9 @@ def is_ten_yen(key, price, list_price, names):
         return False
     if any(has_ten_yen(n) for n in names):
         return True
-    if key == "video":
-        return list_price is None or list_price > PRICE
-    return list_price is not None and list_price >= FLOOR_MIN_LIST
+    if key in LIST_RULE_KEYS:
+        return list_price is not None and list_price >= FLOOR_MIN_LIST
+    return list_price is None or list_price > PRICE
 
 
 def sale_info(camps, names):
@@ -132,7 +139,7 @@ def video_row(raw):
 
 
 def floor_row(raw, key, rank=None):
-    """同人・ゲームの1件 → 保存する形（10円の作品でなければ None）"""
+    """動画のほかの売り場の1件 → 保存する形（10円の作品でなければ None）"""
     if not isinstance(raw, dict) or D.blocked_reason(raw):
         return None
     price, list_price = price_pair(raw)
@@ -218,7 +225,7 @@ def fetch_video(call, now):
 
 
 def fetch_floor(key, call, now):
-    """同人・ゲームの10円の作品（人気順の上から＝順位付き → 安い順の10円のあたりを、すべて） → (作品のリスト, 最後まで読めたか)"""
+    """動画のほかの売り場の10円の作品（人気順の上から＝順位付き → 安い順の10円のあたりを、すべて） → (作品のリスト, 最後まで読めたか)"""
     conf = F.FLOORS[key]
     today_str = now.strftime("%Y-%m-%d")
     lte = G.iso(now.replace(hour=23, minute=59, second=59, microsecond=0))
@@ -246,6 +253,8 @@ def fetch_floor(key, call, now):
         off += PAGE
     if fails >= G.MAX_API_FAILS_IN_ROW:
         return rows, False
+    if key in NO_CHEAP_SORT:
+        return rows, True
     cheap = {k: v for k, v in base.items() if k != "hits"}
     ok = scan_cheap(cheap, call, lambda raw: floor_row(raw, key), rows, seen, today_str)
     return rows, ok

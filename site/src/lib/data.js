@@ -16,7 +16,7 @@ import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
 import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG_PAGE_GENRES } from '../config.js';
 import { genreTopLists, groupByEntry, normalizeGenreTops } from './insights.js';
 import { buildItemsIndex } from './search.js';
-import { TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenState } from './ten-yen.js';
+import { TEN_YEN_ALWAYS, TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenIndexable, tenYenState } from './ten-yen.js';
 import { FLOOR_REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, normalizeReviews, topRated } from './reviews.js';
 import { normalizeReadings } from './kana.js';
 import { FLOOR_KEYS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
@@ -147,7 +147,7 @@ export const activeFloors = FLOOR_KEYS.filter((k) => floors[k].items.length > 0)
 export const floorReviewRankings = Object.fromEntries(FLOOR_KEYS.map((k) => [k, topRated(floors[k].items, today, { min: FLOOR_REVIEW_MIN })]));
 export const floorReviewRankOf = Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floorReviewRankings[k].length >= REVIEW_RANKING_MIN_ITEMS ? floorReviewRankings[k].map((i, n) => [i.cid, n + 1]) : [])]));
 
-// 10円セール（動画・同人・ゲーム。scripts/ten_yen.py が毎日と、開催中は1日に数回確かめる。2026-10-09 から。まだ無ければ空。lib/ten-yen.js）
+// 10円セール（動画・同人・ゲーム・アニメ・素人・成人映画・コミック・写真集。scripts/ten_yen.py が毎日と、開催中は1日に数回確かめる。2026-10-09 から。まだ無ければ空。lib/ten-yen.js）
 export const tenYen = normalizeTenYen(optionalData('ten_yen'), {
   today,
   videoByCid: new Map(all.map((i) => [i.cid, i])),
@@ -156,11 +156,12 @@ export const tenYen = normalizeTenYen(optionalData('ten_yen'), {
 /** いまの様子（開催中の売り場・本数・終わり。全部の売り場） */
 export const tenYenNow = tenYenState(tenYen);
 const tenYenInfoMap = new Map(Object.entries(tenYen.items).flatMap(([k, list]) => list.map((i) => [`${k}:${i.cid}`, i.tenYen])));
-/** その作品が、いま10円セールの対象なら { price, listPrice, off, title, end }（作品ページの札。key: 'video'・'doujin'・'game'） */
+/** その作品が、いま10円セールの対象なら { price, listPrice, off, title, end }（作品ページの札。key: 'video'・'doujin' など） */
 export const tenYenInfo = (key, cid) => tenYenInfoMap.get(`${key}:${cid}`) ?? null;
-/** 10円セールのページのある売り場（まとめのページ /sale/10yen/ はいつも。同人・ゲームは、その売り場のページがあるときだけ） */
-// 10円セールを集めている売り場（同人・ゲーム。ten_yen.py の FLOOR_KEYS と同じ）のうち、ページのある売り場
-export const tenYenFloors = activeFloors.filter((k) => TEN_YEN_KEYS.includes(k));
+/** 売り場ごとの10円セールのページがある売り場（まとめのページ /sale/10yen/ はいつも）。
+ * 10円セールを集めている売り場（ten_yen.py の FLOOR_KEYS と同じ）のうち、売り場のページがあり、
+ * 同人・ゲームはいつも、ほかの売り場は10円の作品を見かけたことがあるときだけ（空のページを作らない） */
+export const tenYenFloors = activeFloors.filter((k) => TEN_YEN_KEYS.includes(k) && (TEN_YEN_ALWAYS.includes(k) || tenYenIndexable(tenYen, k)));
 
 // 作品ページを作る作品（サイト全体を2万ファイル以内に収める。lib/plan.js）
 export const pagePlan = planPages(all, {

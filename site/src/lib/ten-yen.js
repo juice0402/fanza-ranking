@@ -1,4 +1,4 @@
-// FANZAの「10円セール」（動画・同人・ゲーム）の部品（画面に依存しない。tests/test_ten_yen.mjs）。
+// FANZAの「10円セール」（動画・同人・ゲーム・アニメ・素人・成人映画・コミック・写真集）の部品（画面に依存しない。tests/test_ten_yen.mjs）。
 // 運営者の希望「動画・同人・ゲームのどれも、10円セールの時は大イベント。開催中はものすごく訴求したいし、SEOもかなり上位に来るように」（2026-10-09）。
 // データは data/ten_yen.json（scripts/ten_yen.py。毎日の更新と、開催中の入れかわりに合わせて1日に数回）。
 // 書くのはデータから数えた事実だけ（いま10円の作品の本数・終わりの日時・このサイトが見かけた開催の日）。次の開催の予想は書かない。
@@ -11,9 +11,15 @@ import { endIso, endLabel } from './sale.js';
 
 export const TEN_YEN_PRICE = 10;
 export const TEN_YEN_PATH = '/sale/10yen/';
-export const TEN_YEN_KEYS = ['video', 'doujin', 'game'];
-export const TEN_YEN_NAMES = { video: 'FANZA動画', doujin: 'FANZA同人', game: 'FANZAゲーム' };
-export const TEN_YEN_SHORT = { video: '動画', doujin: '同人', game: 'ゲーム' };
+// 運営者の希望「同人以外の、ゲームとか動画とか、ほかの売り場の10円セールも逃さず載せてほしい」（2026-10-10）で、新しい売り場も（VR見放題は月額なので無し）。
+// scripts/ten_yen.py の FLOOR_KEYS と同じ並び（テストで突き合わせ）
+export const TEN_YEN_KEYS = ['video', 'doujin', 'game', 'anime', 'amateur', 'cinema', 'comic', 'photo'];
+export const TEN_YEN_NAMES = { video: 'FANZA動画', doujin: 'FANZA同人', game: 'FANZAゲーム', anime: 'FANZAアニメ', amateur: 'FANZA素人', cinema: 'FANZA成人映画', comic: 'FANZAコミック', photo: 'FANZA写真集' };
+export const TEN_YEN_SHORT = { video: '動画', doujin: '同人', game: 'ゲーム', anime: 'アニメ', amateur: '素人', cinema: '成人映画', comic: 'コミック', photo: '写真集' };
+// 売り場ごとの10円セールのページを、いつも作る売り場（同人・ゲーム。ほかの売り場は、10円の作品を見かけたことがあるときだけ）
+export const TEN_YEN_ALWAYS = ['doujin', 'game'];
+// 開催していないあいだの「いま割引の大きい作品」を並べる売り場（まとめのページ。新しい売り場まで並べると長くなるので）
+export const TEN_YEN_DEAL_KEYS = ['video', 'doujin', 'game'];
 export const TEN_YEN_SINCE = '2026-10-09'; // 記録を始めた日（scripts/ten_yen.py を足した日）
 export const TEN_YEN_HERO_COVERS = 6; // トップ・売り場のトップの大きな案内に並べる表紙の数
 export const TEN_YEN_DEALS = 6; // 開催していないあいだの「割引の大きい作品」の本数（売り場ごと）
@@ -30,9 +36,9 @@ export const checkedLabel = (checked) => (CHECKED.test(String(checked ?? '')) ? 
 const md = (day) => (isDay(day) ? `${+day.slice(5, 7)}月${+day.slice(8, 10)}日` : '');
 
 /**
- * ten_yen.json → { checked, items: { video, doujin, game }（いま10円の作品）, runs（このサイトが見かけた開催。新しい順） }。
+ * ten_yen.json → { checked, items: { video, doujin, game, …（TEN_YEN_KEYS） }（いま10円の作品）, runs（このサイトが見かけた開催。新しい順） }。
  * 作品には tenYen: { price, listPrice, off, title（キャンペーンの名前）, end（終わりの日時。分からなければ ''） } を足す。
- * このサイトのデータにある作品（動画は videoByCid・同人/ゲームは floorByCid）は、そちらの形（コメント・作品ページ）を使う。
+ * このサイトのデータにある作品（動画は videoByCid・ほかの売り場は floorByCid）は、そちらの形（コメント・作品ページ）を使う。
  * 確かめた時刻より前に終わっていた作品・未成年を連想させる作品・予約の作品は入れない
  */
 export function normalizeTenYen(raw, { today = '', videoByCid = new Map(), floorByCid = {} } = {}) {
@@ -59,7 +65,7 @@ export function normalizeTenYen(raw, { today = '', videoByCid = new Map(), floor
     .map((i) => ({ ...(videoByCid.get(i.cid) ?? i), tenYen: extra(vBy.get(i.cid)) }))
     .sort((a, b) => (bestRank(a.popAll ?? null, a.popNew ?? null) ?? Infinity) - (bestRank(b.popAll ?? null, b.popNew ?? null) ?? Infinity)
       || (b.tenYen.listPrice ?? 0) - (a.tenYen.listPrice ?? 0) || a.cid.localeCompare(b.cid));
-  // 同人・ゲーム: 人気順（集めたときの順位）
+  // 動画のほかの売り場: 人気順（集めたときの順位）
   for (const k of TEN_YEN_KEYS.slice(1)) {
     const rows = rowsOf(k);
     const by = new Map(rows.map((r) => [String(r.cid), r]));
@@ -120,7 +126,7 @@ export const latestRun = (ty, key = null) => ty.runs.find((r) => !key || r.floor
 /** 開催の期間の文字（このサイトが見かけた日）: 「10月9日〜10月11日」（1日なら「10月9日」） */
 export const runRangeText = (run) => (run.first === run.last ? md(run.first) : `${md(run.first)}〜${md(run.last)}`);
 
-/** ページの title（検索結果に出る）。key: 'video' はまとめのページ（全部の売り場）、'doujin'・'game' は売り場のページ */
+/** ページの title（検索結果に出る）。key: 'video' はまとめのページ（全部の売り場）、ほかは売り場のページ */
 export function tenYenTitle(ty, key = 'video') {
   const state = tenYenState(ty, key === 'video' ? TEN_YEN_KEYS : [key]);
   const name = key === 'video' ? 'FANZA' : TEN_YEN_NAMES[key];
@@ -144,7 +150,7 @@ export function tenYenDescription(ty, key = 'video') {
     return `${name}の10円セールで、いま10円で買える作品を${key === 'video' ? countsText(state) : `${state.total}本`}まとめました（${at}の時点）。${until ? `${until}。` : ''}開催中は1日に数回確かめて更新しています。`;
   }
   const run = key === 'video' ? latestRun(ty) : latestRun(ty, key);
-  return `${name}の10円セール${key === 'video' ? '（動画・同人・ゲーム）' : ''}の開催状況を毎日確かめ、開催中は10円の対象作品を一覧にします。`
+  return `${name}の10円セール${key === 'video' ? '（動画・同人・ゲームなど）' : ''}の開催状況を毎日確かめ、開催中は10円の対象作品を一覧にします。`
     + (run ? `前回は${runRangeText(run)}に見かけました（${TEN_YEN_SHORT[run.floor]}）。` : '');
 }
 
