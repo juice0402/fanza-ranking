@@ -60,7 +60,8 @@ export function normalizeSale(raw, siteCids = new Set()) {
 }
 
 /** 値引きの割合（%。四捨五入）。分からなければ null */
-export const offPercent = (price, listPrice) => (price && listPrice && price < listPrice ? Math.round((1 - price / listPrice) * 100) : null);
+// 価格が0円でなければ、四捨五入しても99%まで（10円の作品を「100%OFF」にしない。2026-10-11）
+export const offPercent = (price, listPrice) => (price && listPrice && price < listPrice ? Math.min(99, Math.round((1 - price / listPrice) * 100)) : null);
 
 /** "2026-10-05 09:59" → "10月5日 9:59"（時刻が無ければ日付だけ） */
 export function endLabel(end) {

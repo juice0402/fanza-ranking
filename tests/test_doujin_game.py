@@ -244,6 +244,8 @@ with contextlib.redirect_stdout(io.StringIO()):
 check("壊れていたら、空から記録し直す（ほかに元のデータが無いので）", empty["doujin"] == {} and empty["game"] == {})
 
 print("\n■ セールの記録（scripts/floor_history.py）")
+check("割引は、価格が0円でなければ99%まで（10円・定価2,310円の99.6%を100%にしない。FANZAも「99%OFF」。2026-10-11）",
+      H.off_of({"price": 10, "list_price": 2310}) == 99 and H.off_of({"price": 10, "list_price": 1320}) == 99 and H.off_of({"price": 550, "list_price": 1100}) == 50)
 sale_data = {"items": {
     "d1": {"date": "2026-10-01", "price": 550, "list_price": 1100, "sales": [], "campaign": {"title": "50%OFF", "begin": "2026-10-01"}},
     "d2": {"date": "2026-10-02", "price": 770, "list_price": 1100, "sales": [], "campaign": {"title": "30%OFF", "begin": "2026-09-29"}},

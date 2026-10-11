@@ -1486,10 +1486,11 @@ def run_sales_only():
 
 
 def off_percent(price, list_price):
-    """値引きの割合（%。四捨五入。サイトの offPercent と同じ）。分からなければ 0"""
+    """値引きの割合（%。四捨五入。サイトの offPercent と同じ）。分からなければ 0。
+    価格が0円でなければ99%まで（10円・定価2,310円の99.6%を「100%OFF」にしない。2026-10-11）"""
     if not price or not list_price or not 0 < price < list_price:
         return 0
-    return int((1 - price / list_price) * 100 + 0.5)
+    return min(99, int((1 - price / list_price) * 100 + 0.5))
 
 
 def clean_sale_history_row(r):
