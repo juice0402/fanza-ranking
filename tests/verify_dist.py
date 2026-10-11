@@ -2545,7 +2545,50 @@ if os.path.isfile(ii):
         check(f"索引の作品の数（{len(irows)}）= min(データの件数 {len(valid)}, 3000)", len(irows) == min(len(valid), 3000), (len(irows), len(valid)))
         check("索引は発売日の新しい順", [r["d"] for r in irows] == sorted((r["d"] for r in irows), reverse=True))
         check("ジャンルの番号（g）が、すべて genres の範囲内で、作品のジャンルの名前に戻る", all(all(isinstance(n, int) and 0 <= n < len(igenres) for n in r["g"]) and sorted(igenres[n] for n in r["g"]) == sorted(set(g for g in (valid[r["c"]].get("genres") or []) if g)) for r in irows), [r["c"] for r in irows if sorted(igenres[n] for n in r["g"] if isinstance(n, int) and 0 <= n < len(igenres)) != sorted(set(g for g in (valid[r["c"]].get("genres") or []) if g))][:2])
-        check("ジャンルの一覧は、重複なし・作品の多い順", len(set(igenres)) == len(igenres) and [sum(1 for r in irows if i in r["g"]) for i in range(len(igenres))] == sorted((sum(1 for r in irows if i in r["g"]) for i in range(len(igenres))), reverse=True))
+        # 作品検索の続き（/data/items-more/N.json。載っているそのほかの作品＝作品ページの無い、FANZAへ直接リンクする過去作品も。
+        # キーワード・ジャンルで絞り込んだときなどに、ブラウザが後ろで読む。運営者の希望「直リンクの作品も含めて探せるように」。2026-10-11）
+        more_paths = sorted(glob.glob(os.path.join(DIST, "data", "items-more", "*.json")), key=lambda p_: int(os.path.basename(p_)[:-5]) if os.path.basename(p_)[:-5].isdigit() else 0)
+        more_parts = []
+        for p_ in more_paths:
+            try:
+                more_parts.append(json.loads(read(p_)))
+            except ValueError:
+                more_parts.append(None)
+        search_html = read_raw(os.path.join(DIST, "search", "index.html"))
+        m_more = re.search(r'id="work-search"[^>]*?data-more="([^"]*)"', search_html)
+        want_more = [f"/data/items-more/{n}.json" for n in range(1, len(more_paths) + 1)]
+        check(f"検索ページの data-more が、続きのファイル（{len(more_paths)}個。1 から順に）の場所と同じ",
+              [os.path.basename(p_) for p_ in more_paths] == [f"{n}.json" for n in range(1, len(more_paths) + 1)] and ((m_more.group(1).split() if m_more else []) == want_more), (m_more.group(1)[:80] if m_more else None, len(more_paths)))
+        ok_parts = all(isinstance(d, dict) and set(d) == {"generated", "part", "parts", "fanza", "yomi", "items"} and d["generated"] == iidx["generated"] and d["part"] == n + 1 and d["parts"] == len(more_parts)
+                       and isinstance(d["items"], list) and isinstance(d["yomi"], dict) for n, d in enumerate(more_parts))
+        check("続きのファイルは正しいJSONで、作った日がはじめの索引と同じ・part は 1 から・parts は全部の数", ok_parts, [str(d)[:80] for d in more_parts if not isinstance(d, dict)][:1])
+        if ok_parts and more_parts:
+            mrows = [r for d in more_parts for r in d["items"]]
+            fz = more_parts[0]["fanza"]
+            check("続きのFANZAのURLの形（{cid} が1つ・al.fanza.co.jp・アフィリエイトのID入り）は、どのファイルも同じ", all(d["fanza"] == fz for d in more_parts) and fz.count("{cid}") == 1 and fz.startswith("https://al.fanza.co.jp/") and "af_id=" in fz, fz[:80])
+            mkeys = ikeys | {"x", "u"}
+            check("続きの行の項目は、索引の行と同じ短い名前と x・u だけ（コメントなどの長い文は入れない）", all(isinstance(r, dict) and set(r) <= mkeys and {"c", "t", "d", "a", "m", "g"} <= set(r) and DAY.match(str(r["d"])) and isinstance(r["g"], list) and all(isinstance(n, int) and 0 <= n < len(igenres) for n in r["g"]) for r in mrows),
+                  [r for r in mrows if not (isinstance(r, dict) and set(r) <= mkeys)][:1])
+            seen_c = [r["c"] for r in irows] + [r["c"] for r in mrows]
+            check(f"はじめの索引（{len(irows)}本）と続き（{len(mrows)}本）に、同じ作品は1回だけ", len(seen_c) == len(set(seen_c)), [c for c, n in Counter(seen_c).items() if n > 1][:3])
+            check(f"載っている作品（{len(everything)}本）は、すべて作品検索で探せる（はじめの索引か続きのどちらか）", set(everything) <= set(seen_c), sorted(set(everything) - set(seen_c))[:3])
+            check("続きの作品は、データにある作品だけ", {r["c"] for r in mrows} <= set(everything), sorted({r["c"] for r in mrows} - set(everything))[:3])
+            bad_link = [r["c"] for r in mrows if (("x" in r or "u" in r) == (r["c"] in paged)) or ("x" in r and (r["x"] != 1 or everything[r["c"]].get("url") != fz.replace("{cid}", r["c"]))) or ("u" in r and (r["u"] != everything[r["c"]].get("url") or not fanza_https(r["u"], ["fanza.co.jp", "dmm.co.jp"])))]
+            check("続きの作品のリンク: 作品ページのある作品はサイトの中（x・u なし）、無い作品は x:1（決まった形のFANZAのURL）か u（データのFANZAのURL）", not bad_link, bad_link[:3])
+            bad_mg = [r["c"] for r in mrows if sorted(igenres[n] for n in r["g"]) != sorted(set(g for g in (everything[r["c"]].get("genres") or []) if g))]
+            check("続きのジャンルの番号は、はじめの索引のジャンルの一覧で、作品のジャンルの名前に戻る", not bad_mg, bad_mg[:3])
+            bad_mt = [r["c"] for r in mrows if r["t"].replace("\u200b", "").replace("\u2060", "").replace("\u00a0", " ") != str(everything[r["c"]].get("title", "")).strip()]
+            check("続きのタイトルは、区切りの文字を戻すと、データのタイトルと同じ", not bad_mt, bad_mt[:3])
+            check("続きのファイルは、どれも 1.5MB 以内（絞り込んだときに後ろで読むため）", all(os.path.getsize(p_) <= 1500 * 1024 for p_ in more_paths), [os.path.getsize(p_) for p_ in more_paths])
+        else:
+            mrows = []
+            check("載っている作品が、はじめの索引に全部入っている（続きのファイルが無いとき）", set(everything) <= {r["c"] for r in irows}, len(set(everything) - {r["c"] for r in irows}))
+        sjs_more = read(os.path.join(DIST, "search.js"))
+        check("search.js が、絞り込んだときに続きを読み（needsMore・loadMore）、作品ページの無い作品はFANZAへ（新しいタブ・広告の属性）",
+              "if (needsMore(state)) loadMore();" in sjs_more and "function rowLink" in sjs_more and "a.rel = 'sponsored nofollow noopener noreferrer'" in sjs_more)
+        grows = irows + mrows
+        gcount = [sum(1 for r in grows if i in r["g"]) for i in range(len(igenres))]
+        check("ジャンルの一覧は、重複なし・作品の多い順（続きの作品も入れて数える）", len(set(igenres)) == len(igenres) and gcount == sorted(gcount, reverse=True))
         check("VRの印（v:1）が、データから判定したVR作品と一致する（VR作品にだけ付く）", all((r.get("v") == 1) == is_vr_raw(valid[r["c"]]) and r.get("v") in (None, 1) for r in irows), [r["c"] for r in irows if (r.get("v") == 1) != is_vr_raw(valid[r["c"]])][:3])
         warn("索引にVR作品が1本以上ある（VRの除外のテストが空振りしていない）", any(r.get("v") == 1 for r in irows))
         check("単体作品の印（o:1）が、データから判定した単体作品と一致する（ジャンル「単体作品」、ジャンルが無ければ出演者1人）", all((r.get("o") == 1) == is_solo_raw(valid[r["c"]]) and r.get("o") in (None, 1) for r in irows), [r["c"] for r in irows if (r.get("o") == 1) != is_solo_raw(valid[r["c"]])][:3])
