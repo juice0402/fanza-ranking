@@ -2,10 +2,10 @@
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import VrToggle from '../../components/VrToggle.astro';
-import { all, itemsIndex, paged, today } from '../../lib/data.js';
+import { all, itemsIndex, itemsMore, paged, today } from '../../lib/data.js';
 import { ACTRESS_INDEX_PATH, MAKER_INDEX_PATH, SITE_NAME, archivePath, breadcrumbLd } from '../../lib/items.js';
 import Thumb from '../../components/Thumb.astro';
-import { ITEMS_INDEX_PATH, SEARCH_COUNT_BLANK, SEARCH_COUNT_BLANK_NOTE, SEARCH_PATH, searchFirstPage } from '../../lib/search.js';
+import { ITEMS_INDEX_PATH, SEARCH_COUNT_BLANK, SEARCH_COUNT_BLANK_NOTE, SEARCH_PATH, searchFirstPage, searchMorePath } from '../../lib/search.js';
 
 const trail = [
   { name: 'トップ', path: '/' },
@@ -14,6 +14,8 @@ const trail = [
 const hasWorks = all.some((i) => paged.has(i.cid));
 // 条件なし（新しい順・すべて）のときの、はじめの一覧・ジャンルのボタン。索引を待たずに、ページを開いたときから見える（2026-10-07。lib/search.js）
 const first = hasWorks ? searchFirstPage(itemsIndex(), today) : null;
+// 続きのファイル（キーワード・ジャンルで絞り込んだときなどに、ブラウザが後ろで読む。2026-10-11。lib/search.js の buildSearchIndexes）
+const moreUrls = hasWorks ? itemsMore().map((p) => searchMorePath(p.part)).join(' ') : '';
 // 検索画面は、条件の組み合わせごとに内容が変わる（JavaScriptで作る）ので、検索エンジンには載せない（noindex）
 import { assetUrl } from '../../lib/assets.js';
 ---
@@ -33,7 +35,7 @@ import { assetUrl } from '../../lib/assets.js';
     </section>
 
     {hasWorks && (
-      <section id="work-search" class="work-search section search-layout" data-index={ITEMS_INDEX_PATH} aria-labelledby="ws-title">
+      <section id="work-search" class="work-search section search-layout" data-index={ITEMS_INDEX_PATH} data-more={moreUrls || undefined} aria-labelledby="ws-title">
         {/* 作品検索（運営者の希望「スタイリッシュじゃない。ほかの雰囲気と合わせて刷新」。2026-10-06）:
             紙の色の検索バー（赤い「探す」）→ 発売・並び順は押して選ぶ丸いボタン（選んだものは黄色）→ ジャンル（スマホは横に流れる1行。「すべて」で全部）→ 結果。
             スマホは「条件 → 結果」の1列、パソコン（960px〜）は「左に条件（画面に固定）｜右に結果」の2列 */}

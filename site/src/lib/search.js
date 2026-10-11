@@ -35,54 +35,139 @@ export const standardImage = (cid) => `digital/video/${cid}/${cid}pl.jpg`;
  * ひらがなで打っても見つかるようにする（「みかみ」で 三上…。2026-10-10。読みは FANZA公式のAPIから＝lib/kana.js・profiles.js）
  */
 export function buildItemsIndex(items, today, limit = ITEMS_INDEX_LIMIT, popularCount = ITEMS_INDEX_POPULAR, readingOf = () => '') {
-  const newest = (a, b) => b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid);
-  const popular = items.filter((i) => i.popAll).sort((a, b) => a.popAll - b.popAll || newest(a, b)).slice(0, Math.min(popularCount, limit));
+  return indexOf(pickMain(items, limit, popularCount), [], today, readingOf);
+}
+
+// 索引の作品（全体の人気順の上位 popularCount 本と、残りは新しい順に、合わせて limit 本まで。並びは発売日の新しい順）
+const newestFirst = (a, b) => b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid);
+function pickMain(items, limit = ITEMS_INDEX_LIMIT, popularCount = ITEMS_INDEX_POPULAR) {
+  const popular = items.filter((i) => i.popAll).sort((a, b) => a.popAll - b.popAll || newestFirst(a, b)).slice(0, Math.min(popularCount, limit));
   const chosen = new Set(popular.map((i) => i.cid));
-  const picked = [...popular, ...[...items].sort(newest).filter((i) => !chosen.has(i.cid))].slice(0, limit).sort(newest);
+  return [...popular, ...[...items].sort(newestFirst).filter((i) => !chosen.has(i.cid))].slice(0, limit).sort(newestFirst);
+}
 
-  const counts = new Map();
-  for (const item of picked) for (const g of new Set(item.genres)) counts.set(g, (counts.get(g) ?? 0) + 1);
-  const genres = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a) || (a < b ? -1 : a > b ? 1 : 0));
-  const numberOf = new Map(genres.map((g, i) => [g, i]));
-  const namesRe = namesPattern(picked.flatMap((i) => [...i.actress, i.maker]).filter((n) => n !== '不明'));
-
+// 名前（出演者・メーカー・ジャンル）→ 読み（名前と同じ読みは入れない）
+function yomiOf(names, readingOf) {
   const yomi = {};
-  for (const name of [...new Set(picked.flatMap((i) => [...i.actress, i.maker]))].concat(genres).sort()) {
+  for (const name of [...new Set(names)].sort()) {
     const r = name && name !== '不明' ? readingOf(name) : '';
     if (r && normalizeYomi(r) !== normalizeYomi(name)) yomi[name] = r;
   }
+  return yomi;
+}
+
+// 索引の1行（短い名前の項目。buildItemsIndex の説明を参照）
+function rowOf(item, numberOf, namesRe) {
+  const row = {
+    c: item.cid,
+    t: phraseZwsp(item.title, namesRe),
+    d: item.dateKey,
+    a: item.actress,
+    m: item.maker === '不明' ? '' : item.maker,
+    g: [...new Set(item.genres)].map((g) => numberOf.get(g)).sort((x, y) => x - y),
+  };
+  // 画像: DMM の URL の先頭を省く。いちばん多い決まった形（digital/video/作品ID/作品IDpl.jpg）なら、項目ごと省く
+  // （ブラウザ側の public/search.js の rowImage が作り直す。索引を軽くするため。2026-10-05）。画像が無い作品は ''
+  const image = item.image_url.startsWith(DMM_IMAGE_PREFIX) ? item.image_url.slice(DMM_IMAGE_PREFIX.length) : item.image_url;
+  if (image !== standardImage(item.cid)) row.i = image;
+  if (item.vr) row.v = 1;
+  if (item.solo) row.o = 1; // 単体作品（「単体作品のみ表示」スイッチ）
+  if (item.popAll) row.r = item.popAll;
+  if (item.popNew) row.n = item.popNew;
+  // FANZAのレビューの評価（並び順「評価が高い順」。平均×100・件数。2026-10-10）
+  if (item.review) {
+    row.s = Math.round(item.review.avg * 100);
+    row.sc = item.review.count;
+  }
+  const code = productCode(item.cid);
+  if (code) row.p = code;
+  return row;
+}
+
+// 索引（はじめに読む分）。ジャンルの一覧は、続きの作品（rest）の分も入れて数える（続きの行も同じ番号を使うため）
+function indexOf(picked, rest, today, readingOf) {
+  const counts = new Map();
+  for (const item of [...picked, ...rest]) for (const g of new Set(item.genres)) counts.set(g, (counts.get(g) ?? 0) + 1);
+  const genres = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a) || (a < b ? -1 : a > b ? 1 : 0));
+  const numberOf = new Map(genres.map((g, i) => [g, i]));
+  const namesRe = namesPattern(picked.flatMap((i) => [...i.actress, i.maker]).filter((n) => n !== '不明'));
   return {
     generated: today,
     newDays: NEW_BADGE_DAYS,
     genres,
-    yomi,
-    items: picked.map((item) => {
-      const row = {
-        c: item.cid,
-        t: phraseZwsp(item.title, namesRe),
-        d: item.dateKey,
-        a: item.actress,
-        m: item.maker === '不明' ? '' : item.maker,
-        g: [...new Set(item.genres)].map((g) => numberOf.get(g)).sort((x, y) => x - y),
-      };
-      // 画像: DMM の URL の先頭を省く。いちばん多い決まった形（digital/video/作品ID/作品IDpl.jpg）なら、項目ごと省く
-      // （ブラウザ側の public/search.js の rowImage が作り直す。索引を軽くするため。2026-10-05）。画像が無い作品は ''
-      const image = item.image_url.startsWith(DMM_IMAGE_PREFIX) ? item.image_url.slice(DMM_IMAGE_PREFIX.length) : item.image_url;
-      if (image !== standardImage(item.cid)) row.i = image;
-      if (item.vr) row.v = 1;
-      if (item.solo) row.o = 1; // 単体作品（「単体作品のみ表示」スイッチ）
-      if (item.popAll) row.r = item.popAll;
-      if (item.popNew) row.n = item.popNew;
-      // FANZAのレビューの評価（並び順「評価が高い順」。平均×100・件数。2026-10-10）
-      if (item.review) {
-        row.s = Math.round(item.review.avg * 100);
-        row.sc = item.review.count;
-      }
-      const code = productCode(item.cid);
-      if (code) row.p = code;
-      return row;
-    }),
+    yomi: yomiOf(picked.flatMap((i) => [...i.actress, i.maker]).concat(genres), readingOf),
+    items: picked.map((item) => rowOf(item, numberOf, namesRe)),
   };
+}
+
+// ---- 作品検索の「続き」（運営者の希望「直リンクの作品も含めて、たくさんの作品から探せるように」→「①の方法で」。2026-10-11） ----
+// はじめに読む索引（上の3,000本・圧縮して約210KB）は、今までどおりページを開いたときに読む。
+// 載っているそのほかの作品（作品ページの無い、FANZAへ直接リンクする過去作品も）は、続きのファイル（/data/items-more/1.json …）に分け、
+// キーワード・ジャンルで絞り込んだときや、古い順・人気順（全体）・評価が高い順で並べたときだけ、ブラウザが後ろで読む（public/search.js の needsMore）。
+// 続きの1行は、索引の1行と同じ形。作品ページが無い作品は x:1（リンク先は、ファイルの fanza の {cid} を作品IDにしたFANZAの作品ページ）、
+// FANZAのURLがその形でない作品は u（URLそのもの）。並びは人気の高い順（先に読むファイルに、見つかりやすい作品を入れる）
+
+/** 続きのファイル1つに入れる作品の数（約1MB・圧縮して約220KB。並べて読む） */
+export const SEARCH_MORE_SIZE = 3000;
+/** 続きのファイルの場所（n は 1 から） */
+export const searchMorePath = (n) => `/data/items-more/${n}.json`;
+/** FANZAへのリンクとして使ってよいURL（https の al.fanza.co.jp・dmm.co.jp だけ。public/search.js の FANZA_HOSTS と同じ） */
+export const SEARCH_LINK_HOSTS = ['fanza.co.jp', 'dmm.co.jp'];
+
+/** 作品のFANZAのURLの、いちばん多い形（作品IDの所が {cid}）。作れなければ '' */
+export function fanzaTemplate(items) {
+  const counts = new Map();
+  for (const i of items) {
+    const url = String(i.url ?? '');
+    if (!i.cid || url.split(i.cid).length !== 2 || !searchSafeUrl(url, SEARCH_LINK_HOSTS)) continue;
+    const t = url.split(i.cid).join('{cid}');
+    counts.set(t, (counts.get(t) ?? 0) + 1);
+  }
+  let best = '';
+  for (const [t, n] of counts) if (!best || n > counts.get(best) || (n === counts.get(best) && t < best)) best = t;
+  return best;
+}
+
+/**
+ * 作品検索の索引と、続きのファイル。
+ *   pagedItems: 作品ページのある作品（はじめの索引はこの中から）/ allItems: 載っている作品のすべて（続きは、はじめの索引に無いもの）
+ * → { main: buildItemsIndex と同じ形（ジャンルの一覧は、続きの作品も入れて数える）, more: [{ generated, part, parts, fanza, yomi, items }] }
+ */
+export function buildSearchIndexes(pagedItems, allItems, today, readingOf = () => '', { limit = ITEMS_INDEX_LIMIT, popularCount = ITEMS_INDEX_POPULAR, size = SEARCH_MORE_SIZE } = {}) {
+  const picked = pickMain(pagedItems, limit, popularCount);
+  const inMain = new Set(picked.map((i) => i.cid));
+  const pagedSet = new Set(pagedItems.map((i) => i.cid));
+  const fanza = fanzaTemplate(allItems);
+  const linkOf = (i) => (pagedSet.has(i.cid) ? {} : fanza && i.url === fanza.replace('{cid}', i.cid) ? { x: 1 } : searchSafeUrl(i.url, SEARCH_LINK_HOSTS) ? { u: i.url } : null);
+  const seen = new Set(inMain);
+  const rest = [];
+  for (const i of allItems) {
+    if (seen.has(i.cid) || !linkOf(i)) continue;
+    seen.add(i.cid);
+    rest.push(i);
+  }
+  // 人気の高い順（全体の人気順の順位が無い作品は、そのあとに新しい順）
+  rest.sort((a, b) => (a.popAll ?? Infinity) - (b.popAll ?? Infinity) || newestFirst(a, b));
+  const main = indexOf(picked, rest, today, readingOf);
+  const numberOf = new Map(main.genres.map((g, i) => [g, i]));
+  const parts = Math.ceil(rest.length / Math.max(1, size));
+  const more = [];
+  for (let n = 0; n < parts; n++) {
+    const chunk = rest.slice(n * size, (n + 1) * size);
+    const names = chunk.flatMap((i) => [...i.actress, i.maker]).filter((x) => x !== '不明');
+    const namesRe = namesPattern(names);
+    // 読み: はじめの索引に無い名前だけ（ブラウザが、はじめの索引の読みと合わせて使う）
+    const yomi = Object.fromEntries(Object.entries(yomiOf(names, readingOf)).filter(([k]) => !(k in main.yomi)));
+    more.push({
+      generated: today,
+      part: n + 1,
+      parts,
+      fanza,
+      yomi,
+      items: chunk.map((i) => ({ ...rowOf(i, numberOf, namesRe), ...linkOf(i) })),
+    });
+  }
+  return { main, more };
 }
 
 // ---- 作品検索の「はじめの一覧」（運営者の「ほかのページでも、あとから出てくる・重い所を直して」。2026-10-07） ----

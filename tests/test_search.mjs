@@ -184,9 +184,86 @@ console.log('\n■ 作品検索の「はじめの一覧」（ページを作る�
       && S.isNarrowed({ ...base, terms: ['桜'] }) && S.isNarrowed({ ...base, tags: [0] }) && S.isNarrowed({ ...base, status: 'released' }) && S.isNarrowed({ ...base, status: 'upcoming' }));
   const src = fs.readFileSync(new URL('../site/public/search.js', import.meta.url), 'utf-8');
   check('ブラウザの検索は、ページの「はじめの一覧」（data-first）がいまの条件と同じなら作り直さず、キーワードは打ち終わってから探す', src.includes("list.getAttribute('data-first') === '1'") && src.includes("'読み込み中…'") && src.includes('TYPING_WAIT_MS'));
-  check('ブラウザの本数の表示は、絞り込みの条件で「ーー本」と本数を切りかえる', src.includes('countHtml(found.length, o, isNarrowed(state))') && src.includes("'ws-num ws-num-blank', COUNT_BLANK"));
+  check('ブラウザの本数の表示は、絞り込みの条件で「ーー本」と本数を切りかえる', src.includes('countHtml(found.length, o, isNarrowed(state), ') && src.includes("'ws-num ws-num-blank', COUNT_BLANK"));
   const page = fs.readFileSync(new URL('../site/src/pages/search/index.astro', import.meta.url), 'utf-8');
   check('検索ページの「はじめの一覧」の本数は「ーー本」（索引の本数を出さない）', page.includes('{SEARCH_COUNT_BLANK}</strong>本') && !page.includes('first.total.toLocaleString'));
+}
+
+console.log('\n■ 作品検索の続き（/data/items-more/N.json。作品ページの無い作品も、絞り込んだときに後ろで読んで探す。2026-10-11）');
+{
+  const AF = (cid) => `https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3D${cid}&af_id=test-990&ch=api`;
+  const pool = normalizeItems(Array.from({ length: 23 }, (_, i) => {
+    const cid = `z${String(i).padStart(3, '0')}`;
+    return {
+      cid, title: `続きの作品${i}`, date: `2026-${String(1 + (i % 9)).padStart(2, '0')}-${String(1 + (i % 27)).padStart(2, '0')}`, maker: `メーカー${i % 3}`,
+      actress: i % 4 ? [`出演者${i % 5}`] : [], genres: i === 21 ? ['続きだけのジャンル'] : [`ジャンル${i % 4}`],
+      image_url: `https://pics.dmm.co.jp/digital/video/${cid}/${cid}pl.jpg`,
+      // 22: FANZAのURLが決まった形でない（u）・20: 使えないURL（出さない）
+      url: i === 22 ? 'https://video.dmm.co.jp/av/content/?id=z022' : i === 20 ? 'https://example.net/z020' : AF(cid),
+    };
+  })).map((it, i) => ({ ...it, popAll: i % 2 ? 100 + i : null }));
+  const pagedItems = pool.slice(0, 8); // 作品ページのある作品
+  const { main, more } = L.buildSearchIndexes(pagedItems, pool, today, (n) => (n === '出演者1' ? 'しゅつえんしゃいち' : ''), { limit: 5, popularCount: 2, size: 6 });
+  const mainC = main.items.map((r) => r.c);
+  const moreRowsAll = more.flatMap((p) => p.items);
+  check('はじめの索引は、作品ページのある作品から（buildItemsIndex と同じ作品・同じ並び）', JSON.stringify(mainC) === JSON.stringify(L.buildItemsIndex(pagedItems, today, 5, 2).items.map((r) => r.c)) && mainC.length === 5);
+  check('続きは、はじめの索引に無い作品が1回ずつ（使えないURLの作品だけ出さない）',
+    moreRowsAll.length === pool.length - 5 - 1 && new Set(moreRowsAll.map((r) => r.c)).size === moreRowsAll.length && moreRowsAll.every((r) => !mainC.includes(r.c)) && !moreRowsAll.some((r) => r.c === 'z020'));
+  check('続きのファイルは size 本ずつ・part は 1 から・parts は全部の数・作った日が同じ', more.length === Math.ceil(moreRowsAll.length / 6) && more.every((p, n) => p.part === n + 1 && p.parts === more.length && p.generated === today && p.items.length <= 6));
+  check('FANZAのURLの決まった形（作品IDの所が {cid}）は、いちばん多い形', more[0].fanza === AF('{cid}') && L.fanzaTemplate(pool) === AF('{cid}') && L.fanzaTemplate([]) === '');
+  const byC = Object.fromEntries(moreRowsAll.map((r) => [r.c, r]));
+  check('作品ページの無い作品は x:1（決まった形）か u（そのほかのFANZAのURL）・作品ページのある作品は、どちらも無い',
+    byC.z010.x === 1 && !('u' in byC.z010) && byC.z022.u === 'https://video.dmm.co.jp/av/content/?id=z022' && !('x' in byC.z022)
+      && pagedItems.filter((i) => !mainC.includes(i.cid)).every((i) => !('x' in byC[i.cid]) && !('u' in byC[i.cid])));
+  check('続きの行の項目は、索引の行と同じ短い名前と x・u だけ（長い文・コメントは入れない）', moreRowsAll.every((r) => Object.keys(r).every((k) => ['c', 'p', 't', 'd', 'a', 'm', 'g', 'i', 'v', 'o', 'r', 'n', 's', 'sc', 'x', 'u'].includes(k))) && !JSON.stringify(moreRowsAll).includes('af_id'));
+  check('続きは、人気の高い順（順位の無い作品は、そのあとに新しい順）', (() => { const r = moreRowsAll.map((x) => x.r ?? Infinity); return r.every((v, i) => i === 0 || r[i - 1] <= v); })());
+  check('ジャンルの一覧は、続きの作品も入れて数える（続きだけのジャンルにも番号がある）・続きの行の番号で元のジャンルに戻る',
+    main.genres.includes('続きだけのジャンル') && byC.z021.g.map((n) => main.genres[n]).join() === '続きだけのジャンル' && byC.z013.g.map((n) => main.genres[n]).join() === 'ジャンル1');
+  check('読みは、はじめの索引に無い名前だけ続きに入れる', main.yomi['出演者1'] === 'しゅつえんしゃいち' && more.every((p) => !('出演者1' in p.yomi)));
+  check('続きのファイルの場所', L.searchMorePath(1) === '/data/items-more/1.json' && L.searchMorePath(12) === '/data/items-more/12.json');
+  check('作品が全部はじめの索引に入るときは、続きは無い', L.buildSearchIndexes(pagedItems.slice(0, 3), pagedItems.slice(0, 3), today).more.length === 0 && L.buildSearchIndexes([], [], today).more.length === 0);
+
+  // ブラウザの部品
+  const fanza = more[0].fanza;
+  check('リンク: 続きの x:1 はFANZAの作品ページ（{cid} を作品IDに）・u はそのURL・ふつうの行は作品ページ',
+    JSON.stringify(plain(S.rowLink({ c: 'z010', x: 1 }, fanza))) === JSON.stringify({ href: AF('z010'), external: true })
+      && JSON.stringify(plain(S.rowLink({ c: 'z022', u: 'https://video.dmm.co.jp/av/content/?id=z022' }, fanza))) === JSON.stringify({ href: 'https://video.dmm.co.jp/av/content/?id=z022', external: true })
+      && JSON.stringify(plain(S.rowLink({ c: 'a001' }, fanza))) === JSON.stringify({ href: '/item/a001/', external: false }));
+  check('リンク: FANZA(DMM)の https でないURL・形の違う作品ID・決まった形が無いときは使わない',
+    S.rowLink({ c: 'z1', u: 'https://example.net/x' }, fanza) === null && S.rowLink({ c: 'z1', u: 'javascript:alert(1)' }, fanza) === null && S.rowLink({ c: 'z1', u: 'https://fanza.co.jp.evil.example/' }, fanza) === null
+      && S.rowLink({ c: '../x', x: 1 }, fanza) === null && S.rowLink({ c: 'z1', x: 1 }, '') === null && S.rowLink({ c: 'z1', x: 1 }, 'https://example.net/{cid}') === null && S.rowLink(null, fanza) === null);
+  const have = {};
+  main.items.forEach((r) => { have[r.c] = true; });
+  const added = plain(S.moreRows(plain(more[0]), today, have));
+  check('続きのファイル → 足す行: 形が正しく、まだ無い作品だけ（同じファイルをもう一度読んでも足さない）・作った日が違うファイルは使わない',
+    added.length === more[0].items.length && plain(S.moreRows(plain(more[0]), today, have)).length === 0 && plain(S.moreRows(plain(more[1]), '2026-01-01', {})).length === 0 && plain(S.moreRows(null, today, {})).length === 0
+      && plain(S.moreRows({ generated: today, fanza, items: [{ c: 'q1', t: 'x', d: '2026-10-01', a: [], g: [], u: 'https://example.net/' }, { c: 'q2', t: 'y', d: '2026-10-01', a: [], g: [] }] }, today, {})).map((r) => r.c).join() === 'q2');
+  const base = { terms: [], tags: [], status: '', sort: 'new' };
+  check('続きを読むのは、キーワード・ジャンルで絞り込んだとき・古い順・全体の人気順・評価が高い順のときだけ（条件なし・新しい順・新着の人気順・発売の状態だけでは読まない）',
+    S.needsMore({ ...base, terms: ['桜'] }) && S.needsMore({ ...base, tags: [0] }) && S.needsMore({ ...base, sort: 'old' }) && S.needsMore({ ...base, sort: 'pop' }) && S.needsMore({ ...base, sort: 'review' })
+      && !S.needsMore(base) && !S.needsMore({ ...base, sort: 'popnew' }) && !S.needsMore({ ...base, status: 'released' }) && !S.needsMore({ ...base, status: 'upcoming' }) && !S.needsMore(null));
+  // つなげて探す: はじめの索引だけでは見つからない作品が、続きを足すと見つかる
+  const rowsAll = plain(main.items).map((r) => ({ ...r }));
+  S.prepare(rowsAll, main.genres, main.yomi);
+  const o = { today, hideVr: false, onlySolo: false };
+  const st = { ...base, terms: S.splitTerms('続きの作品21') };
+  const before = plain(S.filterRows(rowsAll, st, o)).length;
+  const h2 = {};
+  rowsAll.forEach((r) => { h2[r.c] = true; });
+  let joined = rowsAll;
+  for (const p of more) {
+    const add = plain(S.moreRows(plain(p), today, h2)).map((r) => ({ ...r }));
+    S.prepare(add, main.genres, { ...main.yomi, ...p.yomi });
+    joined = joined.concat(add);
+  }
+  const after = plain(S.filterRows(joined, st, o)).map((r) => r.c);
+  const tagN = main.genres.indexOf('続きだけのジャンル');
+  check('はじめの索引に無い作品も、続きを足すとキーワード・ジャンルで見つかる', before === 0 && after.join() === 'z021' && plain(S.filterRows(joined, { ...base, tags: [tagN] }, o)).map((r) => r.c).join() === 'z021' && joined.length === mainC.length + moreRowsAll.length);
+  const src = fs.readFileSync(new URL('../site/public/search.js', import.meta.url), 'utf-8');
+  check('ブラウザ: 続きを読んでいるあいだは「○本〜」「ほかの作品も探しています…」・FANZAへのリンクは新しいタブ・広告の属性',
+    src.includes("countHtml(found.length, o, isNarrowed(state), moreState === 'loading')") && src.includes("'ほかの作品も探しています…'") && src.includes("a.rel = 'sponsored nofollow noopener noreferrer'") && src.includes("a.target = '_blank'") && src.includes('if (needsMore(state)) loadMore();'));
+  const page = fs.readFileSync(new URL('../site/src/pages/search/index.astro', import.meta.url), 'utf-8');
+  check('検索ページは、続きのファイルの場所を data-more に入れる', page.includes('data-more={moreUrls || undefined}') && page.includes('searchMorePath(p.part)'));
 }
 
 console.log('\n■ 「VR作品を隠す」「単体作品のみ表示」スイッチ（vr-filter.js）');

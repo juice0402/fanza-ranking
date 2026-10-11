@@ -4425,6 +4425,12 @@ html:not(.js) .actress-search,
   color: var(--paper-dim);
 }
 
+/* 続きの作品を読んでいるあいだの「ほかの作品も探しています…」（本数の横。2026-10-11） */
+.ws-more-note {
+  margin-left: 8px;
+  font-size: 12px;
+}
+
 .tag-btn {
   display: inline-flex;
   align-items: center;
