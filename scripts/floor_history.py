@@ -80,9 +80,10 @@ def is_sale_tag(tag):
 
 
 def off_of(item):
-    """値引きの割合（%）。価格と定価が分かるときだけ（site/src/lib/floors.js の offOf と同じ）"""
+    """値引きの割合（%）。価格と定価が分かるときだけ（site/src/lib/floors.js の offOf と同じ）。
+    価格が0円でなければ、四捨五入しても99%まで（10円・定価2,310円は99.6% → FANZAの「99%OFF」。100%OFFとは書かない。2026-10-11）"""
     price, base = item.get("price"), item.get("list_price")
-    return round((1 - price / base) * 100) if isinstance(price, int) and isinstance(base, int) and 0 < price < base else 0
+    return min(99, round((1 - price / base) * 100)) if isinstance(price, int) and isinstance(base, int) and 0 < price < base else 0
 
 
 def off_in_title(title):

@@ -90,7 +90,8 @@ const entry = (id, name) => {
 };
 
 /** 値引きの割合（%。四捨五入。サイトのほかの所と同じ）。分からなければ 0 */
-export const offOf = (price, listPrice) => (price && listPrice && price < listPrice ? Math.round((1 - price / listPrice) * 100) : 0);
+// 価格が0円でなければ、四捨五入しても99%まで（10円・定価2,310円の99.6%を「100%OFF」にしない。FANZAも「99%OFF」。2026-10-11）
+export const offOf = (price, listPrice) => (price && listPrice && price < listPrice ? Math.min(99, Math.round((1 - price / listPrice) * 100)) : 0);
 
 /**
  * doujin.json・game.json → { key, updated, items }。items は人気の高い順（順位の無い作品はそのあと、発売日の新しい順）。

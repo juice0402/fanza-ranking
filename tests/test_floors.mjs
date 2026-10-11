@@ -42,6 +42,7 @@ const fl = L.normalizeFloor(raw, 'doujin', today);
 const cids = fl.items.map((i) => i.cid);
 
 console.log('■ 読み込み（normalizeFloor）');
+check('割引は、価格が0円でなければ99%まで（10円・定価2,310円を「100%OFF」にしない。2026-10-11）', L.offOf(10, 2310) === 99 && L.offOf(550, 1100) === 50 && L.offOf(0, 100) === 0);
 check('人気の高い順（順位の無い作品はそのあと、発売日の新しい順）・同じ品番は1つ', cids.join() === 'd_100002,d_100003,d_100001,d_100004,d_100008,d_100010', cids);
 check('未成年を連想させる作品は出さない（タイトル・ジャンル・サークル。集めるときにも外しているが、念のため）', !cids.includes('d_100005') && !cids.includes('d_100006') && !cids.includes('d_100009'));
 check('URL が FANZA の https でない作品は出さない・サンプル画像も DMM の https だけ', !cids.includes('d_100007') && fl.items[0].sample_images.length === 1);

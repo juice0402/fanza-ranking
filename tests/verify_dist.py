@@ -1314,7 +1314,8 @@ bad_cast = []
 for lp in [index_path] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html")))[:3]:
     for line in re.findall(r'<p class="item-cast">(.*?)</p>', read(lp), re.S):
         text = htmllib.unescape(re.sub(r"<[^>]+>", "", line))
-        names = text.split(" ほか")[0].split("、")
+        # 名前の中のかっこ（「よしい美希（伊沢涼子、吉井美希）」のような別名）の中の「、」では分けない（2026-10-11）
+        names = re.split(r"、(?![^（]*）)", text.split(" ほか")[0])
         more = re.search(r" ほか(\d+)名$", text)
         if len(names) > 3 or (len(names) == 3 and "ほか" in text and not more):
             bad_cast.append(text[:40])
@@ -2101,7 +2102,7 @@ def camp_slug(title):
 
 def camp_max_off(k):
     """特集のいちばん大きい割引（このサイトの作品で、値引きの分かるもの。site/src/lib/sale.js の maxOff と同じ）"""
-    offs = [int((1 - r["p"] / r["l"]) * 100 + 0.5) for r, _ in _works_rows if r["k"] == k
+    offs = [min(99, int((1 - r["p"] / r["l"]) * 100 + 0.5)) for r, _ in _works_rows if r["k"] == k
             and isinstance(r.get("p"), int) and isinstance(r.get("l"), int) and 0 < r["p"] < r["l"]]
     return max(offs) if offs else None
 
@@ -2529,7 +2530,11 @@ if os.path.isfile(ii):
     check("索引が正しいJSONで、generated・newDays・genres・items がある", bool(ok_shape), str(iidx)[:80])
     if ok_shape:
         irows, igenres = iidx["items"], iidx["genres"]
-        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v,o,r,n）だけで、データにある作品・長い文やURLは入っていない（i は、決まった形の画像なら省く）", all(isinstance(r, dict) and set(r) <= set("cptdamgivorn") and {"c", "t", "d", "a", "m", "g"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= set("cptdamgivorn"))][:1])
+        # s・sc は FANZAのレビューの評価（平均×100・件数。評価が高い順の並べ替え。2026-10-10）
+        ikeys = set("cptdamgivorn") | {"s", "sc"}
+        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v,o,r,n,s,sc）だけで、データにある作品・長い文やURLは入っていない（i は、決まった形の画像なら省く）", all(isinstance(r, dict) and set(r) <= ikeys and {"c", "t", "d", "a", "m", "g"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= ikeys)][:1])
+        bad_rv = [r["c"] for r in irows if ("s" in r) != ("sc" in r) or ("s" in r and not (isinstance(r["s"], int) and 100 <= r["s"] <= 500 and isinstance(r["sc"], int) and r["sc"] > 0))]
+        check("索引の評価（s: 平均×100・sc: 件数）は、両方あるか両方無い・s は 100〜500 の整数・sc は1以上", not bad_rv, bad_rv[:3])
         bad_rn = [r["c"] for r in irows if r.get("r") != all_rank_of(r["c"]) or r.get("n") != pop_new.get(r["c"])]
         check("索引の人気順（r: 全体・n: 新着）が、順位のファイルと同じ（分からない作品には無い）", not bad_rn, bad_rn[:3])
         bad_p = [(r["c"], r.get("p")) for r in irows if (r.get("p") or "") != product_code(r["c"])]
@@ -2866,7 +2871,7 @@ for _fk in _FD.FLOORS:
         _tagc = Counter(t_ for x in _released for t_ in _cnames(x["sales"], 8) if "セール" in t_ and not re.search(r"クーポン|還元", t_))
         _sp_want = {_cslug(t_) for t_, n_ in _tagc.items() if n_ >= 3}
     else:
-        _offs = [int((1 - x["price"] / x["list_price"]) * 100 + 0.5) for x in _released
+        _offs = [min(99, int((1 - x["price"] / x["list_price"]) * 100 + 0.5)) for x in _released
                  if isinstance(x["price"], int) and isinstance(x["list_price"], int) and 0 < x["price"] < x["list_price"] < 10_000_000]
         _sp_want = {f"off{m_}" for m_ in (90, 70, 50) if sum(1 for o_ in _offs if o_ >= m_) >= 3}
     _sp_pages = {os.path.basename(os.path.dirname(p_)): p_ for p_ in glob.glob(os.path.join(DIST, _fk, "sale", "*", "index.html"))}

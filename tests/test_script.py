@@ -1397,6 +1397,7 @@ check("同じ名前でも、始まりがちがえば別の回（毎日の「日�
       ("日替わり", "2026-01-03 00:00") in mrow and not any(t == "とても古いセール" for t, _ in mrow) and len(merged["campaigns"]) == 2
       and merged["campaigns"][0]["title"] == "日替わり" and mrow[("日替わり", "2026-01-03 00:00")]["max_off"] == 50)
 check("割引の割合は四捨五入（サイトの offPercent と同じ）", m_s.off_percent(1884, 2692) == 30 and m_s.off_percent(675, 1350) == 50 and m_s.off_percent(1, 3) == 67 and m_s.off_percent(None, 100) == 0 and m_s.off_percent(100, 100) == 0)
+check("割引の割合は、価格が0円でなければ99%まで（10円・定価2,310円は100%にしない）", m_s.off_percent(10, 2310) == 99 and m_s.off_percent(10, 1320) == 99)
 with tempfile.TemporaryDirectory() as tmp_h:
     bad_h = os.path.join(tmp_h, "sale_history.json")
     open(bad_h, "w").write("{壊れている")
