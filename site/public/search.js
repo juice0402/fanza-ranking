@@ -1,5 +1,7 @@
 // 作品検索（/search/）。キーワード（タイトル・出演者・メーカー・品番・ジャンル）・ジャンル（タグ）・発売の状態で絞り込む。
 // 検索のもとになるデータは /data/items-index.json（ビルドごとに作る。短い名前の項目は site/src/lib/search.js の説明を参照）。
+// 載っているそのほかの作品（作品ページの無い、FANZAへ直接リンクする過去作品も）は、続きのファイル（ページの data-more）に分けてあり、
+// キーワード・ジャンルで絞り込んだときなどだけ、後ろで読んで結果に足す（needsMore。運営者の希望「直リンクの作品も含めて探せるように」。2026-10-11）。
 // 「VR作品を隠す」は、サイト全体のスイッチ（site/public/vr-filter.js）と同じ状態を使う。
 // 条件は URL にも反映する（?q=…&tag=…）。作品ページのジャンルから、この URL で飛んでくる。
 // JavaScript が使えない・索引を読めないときは、ページに最初から載っている案内（過去の作品・出演者・メーカーへのリンク）のまま。
@@ -313,8 +315,50 @@
     return !!state && ((state.terms && state.terms.length > 0) || (state.tags && state.tags.length > 0) || !!state.status);
   }
 
+  // 続きのファイルを読む条件: キーワード・ジャンルで絞り込んだとき、古い順・全体の人気順・評価が高い順で並べたとき
+  // （はじめの索引は、新しい作品と全体の人気順の上位だけなので、これらの結果は、ほかの作品にも広がる）。
+  // 条件なし・新しい順・新着の人気順・発売の状態だけのときは読まない（ふだんの重さは今までどおり）
+  function needsMore(state) {
+    if (!state) return false;
+    return (state.terms && state.terms.length > 0) || (state.tags && state.tags.length > 0) || state.sort === 'old' || state.sort === 'pop' || state.sort === 'review';
+  }
+
+  // 作品へのリンク。続きの行の x:1 は、作品ページの無い作品で、fanza（続きのファイルの、作品IDの所が {cid} のFANZAのURL）へ直接。
+  // u はFANZAのURLそのもの。どちらも FANZA(DMM) の https だけ（FANZA_HOSTS）。使えなければ null（その行は出さない）。
+  // ふつうの行は、このサイトの作品ページ。→ { href, external }
+  var FANZA_HOSTS = ['fanza.co.jp', 'dmm.co.jp'];
+  function rowLink(row, fanza) {
+    if (!row || typeof row !== 'object' || !CID.test(String(row.c || ''))) return null;
+    if (row.x === 1) {
+      var t = typeof fanza === 'string' && fanza.split('{cid}').length === 2 ? fanza.split('{cid}').join(row.c) : '';
+      var url = safeUrl(t, FANZA_HOSTS);
+      return url ? { href: url, external: true } : null;
+    }
+    if (row.u !== undefined) {
+      var u = safeUrl(row.u, FANZA_HOSTS);
+      return u ? { href: u, external: true } : null;
+    }
+    return { href: '/item/' + row.c + '/', external: false };
+  }
+
+  // 続きのファイル → 足してよい行（形が正しく、リンクが作れて、まだ無い作品だけ）。have: すでにある作品IDの { cid: true }。
+  // はじめの索引と、作った日が違うファイル（ジャンルの番号がずれる）は使わない
+  function moreRows(data, generated, have) {
+    if (!data || typeof data !== 'object' || data.generated !== generated || !Array.isArray(data.items)) return [];
+    var out = [];
+    data.items.forEach(function (row) {
+      if (!isRow(row) || !rowLink(row, data.fanza) || Object.prototype.hasOwnProperty.call(have, row.c)) return;
+      have[row.c] = true;
+      out.push(row);
+    });
+    return out;
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
+      needsMore: needsMore,
+      rowLink: rowLink,
+      moreRows: moreRows,
       smallImageUrl: smallImageUrl,
       tinyImageUrl: tinyImageUrl,
       THUMB_MEDIA: THUMB_MEDIA,
@@ -370,6 +414,14 @@
   var expanded = false;
   var shown = PAGE_SIZE;
   var ready = false; // 索引を読み終えたか
+  // 続きのファイル（ページの data-more。空白区切りのURL）。'idle' まだ読んでいない / 'loading' 読んでいる / 'done' 読み終えた（読めなかった分は足さない）
+  var moreUrls = (root.getAttribute('data-more') || '').split(/\s+/).filter(function (u) {
+    return /^\/data\/[A-Za-z0-9/_.-]+\.json$/.test(u);
+  });
+  var moreState = moreUrls.length ? 'idle' : 'done';
+  var indexGenerated = '';
+  var indexYomi = {};
+  var have = {}; // 結果にある作品ID
   var TYPING_WAIT_MS = 180; // キーワードの欄: 打ち終わってから、この時間たったら絞り込む（1文字ごとに作り直さない。2026-10-07）
 
   function el(tag, className, text) {
@@ -410,10 +462,18 @@
     var li = el('li', 'ws-row');
     li.setAttribute('data-c', row.c);
     var article = el('article', 'item');
-    var href = '/item/' + row.c + '/';
+    // 作品ページが無い作品（続きの x・u）は、FANZAの作品ページへ直接（サイトのほかの「FANZAで見る」と同じ属性）
+    var to = rowLink(row, row._f) || { href: '/item/' + row.c + '/', external: false };
+    var href = to.href;
+    function outbound(a) {
+      if (!to.external) return;
+      a.target = '_blank';
+      a.rel = 'sponsored nofollow noopener noreferrer';
+    }
 
     var cover = el('a', 'item-cover');
     cover.href = href;
+    outbound(cover);
     cover.tabIndex = -1;
     cover.setAttribute('aria-hidden', 'true');
     // 結果のサムネは小さいので、表紙だけの軽い画像（…ps.jpg。スマホは縮めた版）
@@ -427,6 +487,7 @@
     var heading = el('h3', 'item-title');
     var link = el('a', 'item-title-link ph-js', row.t); // ph-js: 文節の区切り（索引のタイトルに入っている U+200B）の所だけで改行する
     link.href = href;
+    outbound(link);
     heading.appendChild(link);
     article.appendChild(heading);
 
@@ -489,7 +550,8 @@
     return [buildQuery({ q: form.elements.q.value, tags: selected, status: form.elements.status.value, sort: form.elements.sort.value }, genres), shown, o.hideVr ? 1 : 0, o.onlySolo ? 1 : 0, expanded ? 1 : 0, o.today].join('|');
   }
 
-  function countHtml(n, o, narrowed) {
+  // pending: 続きのファイルを読んでいるあいだ（本数は「○本〜」、0本なら「探しています…」）
+  function countHtml(n, o, narrowed, pending) {
     var vrNote = o.hideVr && o.onlySolo ? '（単体作品・VR作品を除く）' : o.onlySolo ? '（単体作品のみ）' : o.hideVr ? '（VR作品を除く）' : '';
     var offNote = (o.onlySolo ? '単体作品だけ表示しています。' : '') + (o.hideVr ? 'VR作品は隠しています。' : '');
     // 見つかった本数は、大きな数字で（「120本」。2026-10-06）。条件なしのときは「ーー本」（掲載数と誤解されないように。2026-10-09。
@@ -504,7 +566,10 @@
       count.appendChild(el('span', 'visually-hidden', COUNT_BLANK_NOTE));
     } else if (n) {
       count.appendChild(el('strong', 'ws-num', withCommas(n)));
-      count.appendChild(document.createTextNode('本' + vrNote));
+      count.appendChild(document.createTextNode('本' + (pending ? '〜' : '') + vrNote));
+      if (pending) count.appendChild(el('span', 'ws-more-note', 'ほかの作品も探しています…'));
+    } else if (pending) {
+      count.textContent = 'ほかの作品も探しています…';
     } else {
       count.textContent = '条件に合う作品がありません。条件をゆるめてみてね。' + offNote;
     }
@@ -525,6 +590,7 @@
     list.removeAttribute('aria-busy');
     list.removeAttribute('data-first'); // ページに入っていた「はじめの一覧」ではなくなる（CSS の「単体作品のみ」の仮の隠し方を外す）
     var state = readState();
+    if (needsMore(state)) loadMore();
     var found = filterRows(rows, state, o);
     updateTags(genreCounts(found, genres.length));
     var visible = found.slice(0, shown);
@@ -534,13 +600,49 @@
       frag.appendChild(card(row, o.today));
     });
     list.appendChild(frag);
-    countHtml(found.length, o, isNarrowed(state));
+    countHtml(found.length, o, isNarrowed(state), moreState === 'loading');
     more.hidden = found.length <= visible.length;
     if (filterNote) {
       var active = selected.length + (state.status ? 1 : 0) + (state.sort !== 'new' ? 1 : 0);
       filterNote.textContent = active ? '（' + active + '件を指定中）' : '';
     }
     writeUrl();
+  }
+
+  // 続きのファイルを、まとめて後ろで読む（1回だけ）。届いたファイルから結果に足して、作り直す
+  function loadMore() {
+    if (moreState !== 'idle' || !ready) return;
+    moreState = 'loading';
+    var left = moreUrls.length;
+    function settle() {
+      left--;
+      if (left === 0) moreState = 'done';
+      lastKey = '';
+      render();
+    }
+    moreUrls.forEach(function (url) {
+      fetch(url, { credentials: 'same-origin' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('status ' + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          var add = moreRows(data, indexGenerated, have);
+          if (add.length) {
+            var yomi = {};
+            [indexYomi, data && data.yomi].forEach(function (d) {
+              if (d && typeof d === 'object') for (var k in d) if (Object.prototype.hasOwnProperty.call(d, k)) yomi[k] = d[k];
+            });
+            prepare(add, genres, yomi);
+            add.forEach(function (row) {
+              row._f = data.fanza;
+            });
+            rows = rows.concat(add);
+          }
+          settle();
+        })
+        .catch(settle); // 読めなかったファイルは足さない（はじめの索引の結果のまま）
+    });
   }
 
   function onChange() {
@@ -657,6 +759,11 @@
       if (data && typeof data.newDays === 'number') newDays = data.newDays;
       if (!rows.length) throw new Error('empty');
       prepare(rows, indexGenres, data.yomi);
+      indexGenerated = typeof data.generated === 'string' ? data.generated : '';
+      indexYomi = data.yomi && typeof data.yomi === 'object' ? data.yomi : {};
+      rows.forEach(function (row) {
+        have[row.c] = true;
+      });
       // ページのジャンルのボタンが、索引のジャンルと違えば作り直す（選んでいるジャンルは、名前で引き継ぐ）
       if (indexGenres.join('\n') !== genres.join('\n')) {
         var names = selected.map(function (n) {

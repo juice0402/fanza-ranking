@@ -15,7 +15,7 @@ import { eventsByName, normalizeEvents, upcomingEvents } from './events.js';
 import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
 import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG_PAGE_GENRES } from '../config.js';
 import { genreTopLists, groupByEntry, normalizeGenreTops } from './insights.js';
-import { buildItemsIndex } from './search.js';
+import { SEARCH_MORE_SIZE, buildSearchIndexes } from './search.js';
 import { TEN_YEN_ALWAYS, TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenIndexable, tenYenState } from './ten-yen.js';
 import { FLOOR_REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, normalizeReviews, topRated } from './reviews.js';
 import { normalizeReadings } from './kana.js';
@@ -179,6 +179,7 @@ export const pagePlan = planPages(all, {
   sale: saleCampaignPages.length + 1 + 1 + FLOOR_KEYS.length + 1 + FLOOR_KEYS.length, // 特集ごとのページと「セールはいつ？」のページ・10円セールのページ（まとめ＋売り場ごと）・高評価ランキング（動画＋売り場ごと）
   ics: calendarActressGroups.length + calendarMakerGroups.length,
   archiveItems: allReleased.length,
+  search: Math.ceil(all.length / SEARCH_MORE_SIZE), // 作品検索の続きのファイル（多めに見積もる。lib/search.js の buildSearchIndexes）
   floors: FLOOR_KEYS.reduce((n, k) => n + floorFileCount(floors[k], floorMakerGroups[k], floorCollectionGroups[k], floorSalePageGroups[k]), 0),
 });
 export const paged = pagePlan.paged;
@@ -217,9 +218,9 @@ export const ranking = rankingForDisplay(optionalData('ranking'), today, new Set
 export const actressReading = (name) => profilesByName.get(name)?.ruby || directoryByName.get(name)?.ruby || '';
 export const nameReading = (name) => actressReading(name) || readings.of('video', 'maker', name) || readings.of('video', 'genre', name) || '';
 
-// 作品検索の索引（/data/items-index.json と、検索ページの「はじめの一覧」が同じものを使う。作るのは1回だけ。lib/search.js）
-let itemsIndexCache = null;
-export function itemsIndex() {
-  if (!itemsIndexCache) itemsIndexCache = buildItemsIndex(all.filter((i) => paged.has(i.cid)), today, undefined, undefined, nameReading);
-  return itemsIndexCache;
-}
+// 作品検索の索引（/data/items-index.json と、検索ページの「はじめの一覧」が同じものを使う。作るのは1回だけ。lib/search.js）と、
+// 続きのファイル（/data/items-more/1.json …。載っているそのほかの作品＝作品ページの無い、FANZAへ直接リンクする過去作品も。2026-10-11）
+let searchCache = null;
+const searchData = () => (searchCache ??= buildSearchIndexes(all.filter((i) => paged.has(i.cid)), all, today, nameReading));
+export const itemsIndex = () => searchData().main;
+export const itemsMore = () => searchData().more;
