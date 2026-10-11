@@ -10,7 +10,7 @@ import ItemCard from './ItemCard.astro';
 import FloorCard from './FloorCard.astro';
 import { activeFloors, all, floors, floorSalePageGroups, paged, sale, saleCampaignPages, today, tenYen, tenYenFloors } from '../lib/data.js';
 import { FLOORS, floorPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, priceNote, saleBadgeOf } from '../lib/floors.js';
-import { SALE_HISTORY_PATH, SALE_PATH, endIso, endLabel, onSaleItems, saleBadge, salePriceNote } from '../lib/sale.js';
+import { SALE_HISTORY_PATH, SALE_PATH, endIso, endLabel, offPercent, onSaleItems, saleBadge, salePriceNote } from '../lib/sale.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, filterAttrs } from '../lib/items.js';
 import { isMinorTitle } from '../lib/gacha.js';
 import { inlineScript } from '../lib/assets.js';
@@ -63,7 +63,7 @@ const deals = live ? [] : keys.filter((k) => !hub || TEN_YEN_DEAL_KEYS.includes(
   if (k === 'video') {
     const list = onSaleItems(all, sale, today)
       .filter((i) => i.sale.price && !isMinorTitle(i.title))
-      .map((i) => ({ i, off: Math.round((1 - i.sale.price / i.sale.listPrice) * 100) }))
+      .map((i) => ({ i, off: offPercent(i.sale.price, i.sale.listPrice) }))
       .sort((a, b) => b.off - a.off)
       .slice(0, TEN_YEN_DEALS)
       .map((x) => x.i);

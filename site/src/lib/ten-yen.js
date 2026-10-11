@@ -7,7 +7,7 @@ import { floorItemPath, normalizeFloor } from './floors.js';
 import { itemHref } from './plan.js';
 import { isMinorTitle } from './gacha.js';
 import { bestRank } from './popularity.js';
-import { endIso, endLabel } from './sale.js';
+import { endIso, endLabel, offPercent } from './sale.js';
 
 export const TEN_YEN_PRICE = 10;
 export const TEN_YEN_PATH = '/sale/10yen/';
@@ -51,7 +51,7 @@ export function normalizeTenYen(raw, { today = '', videoByCid = new Map(), floor
     return {
       price: TEN_YEN_PRICE,
       listPrice,
-      off: listPrice ? Math.round((1 - TEN_YEN_PRICE / listPrice) * 100) : null,
+      off: listPrice ? offPercent(TEN_YEN_PRICE, listPrice) : null, // 99%まで（sale.js）
       title: String(r?.sale_title ?? '').trim().slice(0, 60),
       end: END.test(String(r?.sale_end ?? '')) ? r.sale_end : '',
     };

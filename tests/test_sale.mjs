@@ -30,6 +30,7 @@ check('無い・形が違うときは空', [null, undefined, [], 'x', { campaign
 
 console.log('\n■ 表示の文');
 check('値引きの割合（四捨五入）・分からなければ null', S.offPercent(1884, 2692) === 30 && S.offPercent(990, 1980) === 50 && S.offPercent(null, 100) === null && S.offPercent(100, 100) === null);
+check('値引きの割合は、価格が0円でなければ99%まで（10円・定価2,310円は「100%OFF」にしない）', S.offPercent(10, 2310) === 99 && S.offPercent(10, 1320) === 99 && S.offPercent(1, 100000) === 99);
 check('札: 「30%OFF」・価格が分からなければ「セール」', S.saleBadge(sale.byCid.get('a')) === '30%OFF' && S.saleBadge(sale.byCid.get('b')) === 'セール' && S.saleBadge(null) === 'セール');
 check('価格の文: 「1,884円〜（通常2,692円〜）」・分からなければ空', S.salePriceNote(sale.byCid.get('a')) === '1,884円〜（通常2,692円〜）' && S.salePriceNote(sale.byCid.get('b')) === '' && S.salePriceNote(null) === '');
 check('終わりの文: 「10月6日 9:59」・時刻が無ければ日付だけ・読めなければ空', S.endLabel('2026-10-06 09:59') === '10月6日 9:59' && S.endLabel('2026-10-06') === '10月6日' && S.endLabel('あした') === '');
