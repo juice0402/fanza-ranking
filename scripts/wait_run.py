@@ -90,13 +90,17 @@ def annotations(check_run_id):
         notes = gh(f"repos/{REPO}/check-runs/{check_run_id}/annotations?per_page=30") or []
     except ApiError:
         return []
-    lines = []
+    lines, failed_checks = [], []
     for n in notes:
-        for line in str(n.get("message") or "").splitlines():
-            line = line.strip()
-            if line:
-                lines.append(line[:200])
-    return lines[:NOTE_LINES]
+        for raw in str(n.get("message") or "").splitlines():
+            line = raw.strip()
+            if not line:
+                continue
+            lines.append(line[:200])
+            # テストの点検の失敗（「  ❌ 名前  → くわしく」。字下げがある）。わざと失敗させたときのエラー文（字下げなし）より先に出す
+            if raw[:1].isspace() and line.startswith("❌"):
+                failed_checks.append(line[:200])
+    return (failed_checks or lines)[:NOTE_LINES]
 
 
 def failed_steps(run_id):

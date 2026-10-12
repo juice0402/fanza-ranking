@@ -107,7 +107,11 @@ check("check が成功なら ok", W.Ci(SHA).poll() == ("ok", "成功"))
 fake = use(FakeGh({"/check-runs?": {"check_runs": [run(conclusion="failure")]},
                    "/check-runs/7/annotations": [{"message": "❌ tests/test_data.py\n  ❌ 形が違う"}, {"message": "Process completed with exit code 1."}]}))
 state, msg = W.Ci(SHA).poll()
-check("失敗なら、注釈（失敗の理由）を短く添える", state == "fail" and msg.startswith("failure（理由: ❌ tests/test_data.py / ❌ 形が違う / Process completed"), msg)
+check("失敗なら、注釈（失敗の理由）を短く添える（テストの点検の失敗の行だけ）", state == "fail" and msg == "failure（理由: ❌ 形が違う）", msg)
+use(FakeGh({"/check-runs?": {"check_runs": [run(conclusion="failure")]},
+            "/check-runs/7/annotations": [{"message": "Node.js 20 is deprecated."}, {"message": "（この下に出る ❌ はわざと）\n❌ FANZA APIから取得できませんでした\n  ✅ よい点検\n  ❌ 注意があれば ::warning  → ['x']"}]}))
+state, msg = W.Ci(SHA).poll()
+check("テストの点検の失敗（字下げのある ❌）を、わざと失敗させたときのエラー文より先に出す", state == "fail" and msg == "failure（理由: ❌ 注意があれば ::warning  → ['x']）", msg)
 use(FakeGh({"/check-runs?": {"check_runs": [run(conclusion="failure", started_at="2026-10-13T00:00:00Z"), run(id=8, started_at="2026-10-13T01:00:00Z")]}}))
 check("同じコミットで何回か動いたら、いちばん新しい結果", W.Ci(SHA).poll()[0] == "ok")
 
