@@ -1060,8 +1060,8 @@ check("今日の「データ更新」があれば、済んでいる（0）", gua
 check("前の日の更新・取り直し・似た件名だけなら、まだ（1）",
       guard_in_temp_repo(["データ更新: 2026-10-03", "データの取り直し: 2026-10-04", "データ更新: 2026-10-04（テスト）"], "2026-10-04") == 1)
 check("記録を読めないとき（無い名前）は、まだとして扱う（1）", guard_in_temp_repo(["データ更新: 2026-10-04"], "2026-10-04", ref="no-such-ref") == 1)
-check("update.yml: 定時実行のときだけ調べ、済んでいたら更新と保存をしない（Python の準備・更新・所属事務所・イベント・同人とゲーム・読みがな・ジャンルの人気・10円セール・保存の9つ）",
-      "if: github.event_name == 'schedule'" in yml_update and "already_updated.sh FETCH_HEAD" in yml_update
+check("update.yml: 定時実行と手動実行（force を入れたとき以外）は調べ、済んでいたら更新と保存をしない（Python の準備・更新・所属事務所・イベント・同人とゲーム・読みがな・ジャンルの人気・10円セール・保存の9つ）",
+      "if: github.event_name == 'schedule' || !inputs.force" in yml_update and "force:\n        description:" in yml_update and "type: boolean\n        default: false" in yml_update and "already_updated.sh FETCH_HEAD" in yml_update
       and yml_update.count("if: steps.guard.outputs.skip != '1'") == 9 and 'git commit -m "データ更新: $(TZ=Asia/Tokyo date +%Y-%m-%d)"' in yml_update)
 check("update.yml: 読みがなは、週1回（--update は7日ごと）・同人とゲームのあと・失敗しても更新を止めない・保存の前",
       "python scripts/readings.py --update\n" in yml_update and yml_update.index("doujin_game.py") < yml_update.index("readings.py") < yml_update.index("git add -A -- site/src/data"))
