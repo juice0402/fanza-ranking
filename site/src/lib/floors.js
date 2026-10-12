@@ -987,6 +987,31 @@ export function floorGachaPool(items, limit = FLOOR_GACHA_POOL) {
 export const floorSearchPath = (key) => `/${key}/search/`;
 export const floorSearchIndexPath = (key) => `/data/${key}-index.json`;
 export const FLOOR_SEARCH_PAGE = 30; // 1回に出す本数（はじめの一覧も同じ）
+
+/**
+ * 素人の「女の子検索」（/amateur/girls/。女優検索のような別のページ。運営者の希望「女の子のタイプから探すは、女の子検索みたいに別ページに」。2026-10-12）。
+ * 中身は作品検索と同じ索引・同じスクリプト（public/floor-search.js）で、ジャンルのボタンの代わりに、女の子のタイプ（GIRL_TYPES）を組ごとに並べる
+ */
+export const floorGirlsPath = (key) => `/${key}/girls/`;
+/** 作品検索の索引の、はじめの一覧（人気順。public/floor-search.js の並べ方と同じ: 順位のある作品を順位の順、そのあと発売日の新しい順） */
+export const floorSearchFirstRows = (index, size = FLOOR_SEARCH_PAGE) => [...(index?.items ?? [])]
+  .sort((a, b) => (a.r ?? Infinity) - (b.r ?? Infinity) || b.d.localeCompare(a.d) || (a.c < b.c ? -1 : 1)).slice(0, size);
+/** 女の子検索を検索エンジンに出してよいか: はじめの一覧に、コメントのある作品があるとき（ほかのページと同じ決まり） */
+export const girlsIndexable = (index, items) => {
+  const byCid = new Map((items ?? []).map((i) => [i.cid, i]));
+  return floorSearchFirstRows(index).some((r) => String(byCid.get(r.c)?.comment ?? '').trim() !== '');
+};
+/** 女の子検索のタイプのボタン（作品検索の索引の、ジャンルの番号と本数）: [{ name: 組, types: [{ name, n, count }] }]。索引に無いタイプは出さない */
+export function girlSearchGroups(key, index) {
+  if (!hasGirlTypes(key) || !index || !Array.isArray(index.genres)) return [];
+  const at = new Map(index.genres.map((g, n) => [g, n]));
+  const count = index.genres.map(() => 0);
+  for (const r of index.items ?? []) for (const n of r.g ?? []) if (n >= 0 && n < count.length) count[n]++;
+  return GIRL_TYPES.map((g) => ({
+    name: g.name,
+    types: g.genres.filter((x) => at.has(x)).map((x) => ({ name: x, n: at.get(x), count: count[at.get(x)] })),
+  })).filter((g) => g.types.length > 0);
+}
 /** 表紙の決まった置き場所（同人 /digital/<形式>/<品番>/<品番>pl.jpg・ゲーム /digital/pcgame/…）。この形なら、索引から画像の項目を省く（索引を軽くするため）。
  * ほかの売り場は、いつも画像の項目を入れる（'' を返す） */
 export const floorImageOf = (key, cid, type) => (key === 'game' || key === 'doujin' ? `https://pics.dmm.co.jp/digital/${key === 'game' ? 'pcgame' : type}/${cid}/${cid}pl.jpg` : '');
@@ -1065,5 +1090,5 @@ export function floorSearchRow(row, key) {
 export const floorFileCount = (floor, makers, collections = {}, salePages = []) => (floor.items.length > 0
   ? floor.items.length + makers.length + 5 + salePages.length + FLOOR_COLLECTION_KINDS.reduce((n, k) => n + (collections[k]?.length ? collections[k].length + 1 : 0), 0)
     + 2 + 3 // 人気サークル/ブランド・作家ランキング（2）＋作品検索のページ・索引・運命の作品の候補（3）
-    + (FLOORS[floor.key]?.girls ? FLOOR_PERIODS.length : 0) // 素人の週間・月間の女の子ランキング（2026-10-12）
+    + (FLOORS[floor.key]?.girls ? FLOOR_PERIODS.length + 1 : 0) // 素人の週間・月間の女の子ランキングと、女の子検索（2026-10-12）
   : 0);

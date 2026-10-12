@@ -1,9 +1,9 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
-import { all, allReleased, events, paged, popularity, sale, saleWorks, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors, reviewRanking, reviews, floorReviewRankings, floorPeriodRankings } from '../lib/data.js';
+import { all, allReleased, events, paged, popularity, sale, saleWorks, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors, reviewRanking, reviews, floorReviewRankings, floorPeriodRankings, floorSearchIndexes } from '../lib/data.js';
 import { REVIEW_RANKING_MIN_ITEMS, REVIEW_RANKING_PATH, floorReviewRankingPath } from '../lib/reviews.js';
-import { FLOORS, FLOOR_COLLECTION_KINDS, FLOOR_HUB_SHOWN, FLOOR_PERIODS, floorPeriodIndexable, floorPeriodPath, floorEntityIndexable, floorEntityRankingPath, collectionIndexIndexable, collectionIndexable, floorCollectionIndexPath, floorSaleHistoryIndexable, floorSaleHistoryPath, floorSalePageIndexable, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorUpcoming } from '../lib/floors.js';
+import { FLOORS, FLOOR_COLLECTION_KINDS, FLOOR_HUB_SHOWN, FLOOR_PERIODS, floorGirlsPath, girlsIndexable, floorPeriodIndexable, floorPeriodPath, floorEntityIndexable, floorEntityRankingPath, collectionIndexIndexable, collectionIndexable, floorCollectionIndexPath, floorSaleHistoryIndexable, floorSaleHistoryPath, floorSalePageIndexable, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorUpcoming } from '../lib/floors.js';
 import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemIndexable, listIndexable } from '../lib/plan.js';
@@ -74,6 +74,8 @@ export function GET() {
     for (const p of floorSalePageGroups[k]) if (floorSalePageIndexable(p)) out.push({ path: p.path, lastmod });
     if (!FLOORS[k].noPrice && floorSaleItems(fl.items).length > 0 && floorSaleHistoryIndexable(floorSaleHistory[k], fl.updated)) out.push({ path: floorSaleHistoryPath(k), lastmod: floorSaleHistory.updated || lastmod });
     if (floorReviewRankings[k].length >= REVIEW_RANKING_MIN_ITEMS && listIndexable(floorReviewRankings[k])) out.push({ path: floorReviewRankingPath(k), lastmod });
+    // 素人の女の子検索（2026-10-12）。ページの側と同じ決まり
+    if (FLOORS[k].girls && girlsIndexable(floorSearchIndexes[k], fl.items)) out.push({ path: floorGirlsPath(k), lastmod });
     // 素人の週間・月間の女の子ランキング（2026-10-12）。ページの側と同じ決まり（記録の日数がそろってから）
     for (const p of FLOOR_PERIODS) {
       const r = floorPeriodRankings[k][p.span];

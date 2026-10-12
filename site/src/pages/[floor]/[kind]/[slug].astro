@@ -11,7 +11,7 @@ import { activeFloors, floorCollectionGroups, floorGenreTops, floorMakerById, fl
 import { readingLine } from '../../../lib/kana.js';
 import {
   FLOORS, FLOOR_COLLECTIONS, FLOOR_COLLECTION_KINDS, FLOOR_COLLECTION_LIST, collectionDescription, collectionFacts, collectionHeading, collectionIndexable, collectionTitle,
-  floorCollectionIndexPath, floorItemListLd, floorPath, girlTypeGroups, isGirlType, priceNote, relatedFloorGenres, saleBadgeOf, topGenres, topMakersIn,
+  floorCollectionIndexPath, floorGirlsPath, floorItemListLd, floorPath, girlTypeGroups, isGirlType, priceNote, relatedFloorGenres, saleBadgeOf, topGenres, topMakersIn,
 } from '../../../lib/floors.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../../lib/items.js';
 
@@ -141,7 +141,10 @@ const pageLd = {
     )}
     {otherTypes.length > 0 && (
       <section class="section" aria-labelledby="fl-col-types-title">
-        <h2 id="fl-col-types-title" class="section-title">ほかのタイプから探す</h2>
+        <div class="section-head">
+          <h2 id="fl-col-types-title" class="section-title">ほかのタイプから探す</h2>
+          <a class="subsection-more" href={floorGirlsPath(key)}>女の子検索</a>
+        </div>
         {otherTypes.map((g) => (
           <div class="type-group">
             <h3 class="type-group-title">{g.name}</h3>

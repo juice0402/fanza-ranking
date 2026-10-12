@@ -1,0 +1,124 @@
+---
+// 素人の「女の子検索」（/amateur/girls/。運営者の希望「女の子のタイプから探すは、女の子検索みたいにして、女優検索みたいな別ページに」。2026-10-12）。
+// FANZA公式のAPIには、素人の年齢・身長・スリーサイズ・カップが無い（scripts/probe_api.py の 17）ので、FANZAのジャンルを「属性・雰囲気・体型」の
+// タイプ（lib/floors.js の GIRL_TYPES）として並べ、名前（作品のタイトル）・メーカーでも探せるようにする。いくつ選んでも、全部に当てはまる女の子だけ。
+// 中身は作品検索と同じ索引（/data/amateur-index.json）・同じスクリプト（public/floor-search.js）。条件なし（人気順）の「はじめの一覧」はページに入れておく。
+// タイプごとのページ（人気TOP20のあるジャンルのページ）へのリンクも、いちばん下に並べる
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import FloorRow from '../../components/FloorRow.astro';
+import { activeFloors, floorCollectionGroups, floorSearchIndexes, floors } from '../../lib/data.js';
+import { FLOORS, floorGirlsPath, floorPath, floorRankingPath, floorSearchFirstRows, floorSearchIndexPath, floorSearchRow, girlSearchGroups, girlTypeGroups, girlsIndexable } from '../../lib/floors.js';
+import { SITE_NAME, breadcrumbLd } from '../../lib/items.js';
+import { assetUrl } from '../../lib/assets.js';
+
+export function getStaticPaths() {
+  return activeFloors.filter((floor) => FLOORS[floor].girls).map((floor) => ({ params: { floor } }));
+}
+
+const { floor: key } = Astro.params;
+const f = FLOORS[key];
+const index = floorSearchIndexes[key];
+const groups = girlSearchGroups(key, index);
+const typePages = girlTypeGroups(key, floorCollectionGroups[key].genre);
+// はじめの一覧（人気順。public/floor-search.js の並べ方と同じ）。コメントのある作品が無いあいだは、検索エンジンに出さない
+const first = floorSearchFirstRows(index).map((r) => floorSearchRow(r, key));
+const noindex = !girlsIndexable(index, floors[key].items);
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: '女の子検索', path: floorGirlsPath(key) },
+];
+const examples = groups.flatMap((g) => g.types.slice(0, 2).map((t) => t.name)).slice(0, 4).join('・');
+---
+
+<Base
+  title={`${f.label}の女の子検索｜タイプ（${examples}など）から探す｜${SITE_NAME}`}
+  description={`${f.label}の人気作品${index.items.length}本から、女の子のタイプ（属性・雰囲気・体型）や名前で探せます。いくつ選んでも、全部に当てはまる女の子だけを人気順に並べます。毎日更新。`}
+  path={floorGirlsPath(key)}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero search-hero">
+      <h1 class="hero-title">女の子検索</h1>
+      <p class="hero-lead">タイプをいくつ選んでも、全部に当てはまる女の子だけが出ます。</p>
+    </section>
+
+    <section id="floor-search" class="work-search section search-layout" data-index={floorSearchIndexPath(key)} data-floor={key} data-frame={f.frame} data-unit="人" aria-labelledby="gs-title">
+      <div class="search-side">
+        <h2 id="gs-title" class="visually-hidden">条件で探す</h2>
+        <form class="ws-form" role="search" autocomplete="off">
+          <div class="search-bar">
+            <svg class="search-bar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5 20 20" /></svg>
+            <label class="visually-hidden" for="fs-q">名前・メーカーで探す</label>
+            <input id="fs-q" class="search-bar-input" type="search" name="q" placeholder="名前・メーカー" enterkeyhint="search" />
+            <button type="submit" class="search-bar-btn">探す</button>
+          </div>
+
+          {groups.map((g) => (
+            <fieldset class="seg ws-tags">
+              <legend class="seg-label">{g.name}</legend>
+              <ul class="ws-tag-list is-open">
+                {g.types.map((t) => (
+                  <li><button type="button" class="tag-btn" aria-pressed="false" data-kind="g" data-n={t.n} disabled={t.count === 0}><span class="tag-name">{t.name}</span><span class="tag-count">{t.count}</span></button></li>
+                ))}
+              </ul>
+            </fieldset>
+          ))}
+
+          <fieldset class="seg">
+            <legend class="seg-label">並び順</legend>
+            <div class="seg-row seg-scroll">
+              <label class="seg-opt"><input type="radio" name="sort" value="pop" checked /><span>人気順</span></label>
+              <label class="seg-opt"><input type="radio" name="sort" value="new" /><span>新しい順</span></label>
+              <label class="seg-opt"><input type="radio" name="sort" value="review" /><span>評価が高い順</span></label>
+              <label class="seg-opt"><input type="radio" name="sort" value="cheap" /><span>安い順</span></label>
+            </div>
+          </fieldset>
+
+          <div class="as-actions">
+            <button type="reset" class="clear-link">条件をクリア</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="search-main">
+        <h2 class="visually-hidden">検索結果</h2>
+        <p id="fs-count" class="as-count ws-count" aria-live="polite"><strong class="ws-num">{String(index.items.length).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</strong>人</p>
+        <ul id="fs-list" class="ws-list" data-first="1">
+          {first.map((row) => <FloorRow row={row} floor={key} />)}
+        </ul>
+        <p class="more"><button id="fs-more" type="button" class="btn btn-quiet more-btn" hidden={index.items.length <= first.length}>もっと見る</button></p>
+        <p class="as-coverage">このサイトに載っている{f.label}の人気作品（{index.items.length}本）から探します。タイプはFANZAのジャンルです。</p>
+      </div>
+    </section>
+
+    {typePages.length > 0 && (
+      <section class="section" aria-labelledby="gs-pages-title">
+        <h2 id="gs-pages-title" class="section-title">タイプごとの人気ランキング</h2>
+        {typePages.map((g) => (
+          <div class="type-group">
+            <h3 class="type-group-title">{g.name}</h3>
+            <nav class="sale-jump genre-chips" aria-label={g.name}>
+              {g.types.map((t) => <a class="chip-link" href={t.path}>{t.name}<span class="chip-count">{t.total}本</span></a>)}
+            </nav>
+          </div>
+        ))}
+      </section>
+    )}
+
+    {/* JavaScript が使えないとき（と、索引を読めなかったとき）の案内（CSS の html.js で、はじめは隠す。読めなかったら is-fallback で出す） */}
+    <section id="ws-fallback" class="section ws-fallback" aria-labelledby="gs-fallback-title">
+      <h2 id="gs-fallback-title" class="section-title">ほかの探し方</h2>
+      <noscript><p class="empty">検索を使うには、ブラウザのJavaScriptを有効にしてください。</p></noscript>
+      <ul class="ws-links">
+        <li><a class="spec-link" href={floorRankingPath(key)}>女の子ランキングを見る</a></li>
+      </ul>
+    </section>
+  </div>
+
+  <script is:inline src={assetUrl('/floor-search.js')} defer></script>
+</Base>

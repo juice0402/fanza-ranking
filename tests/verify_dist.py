@@ -2918,11 +2918,20 @@ for _fk in _FD.FLOORS:
             _h1 = re.search(r"<h1[^>]*>(.*?)</h1>", read(p_), re.S)
             _gpages[strip_tags(_h1.group(1)).strip() if _h1 else ""] = "/" + os.path.relpath(os.path.dirname(p_), DIST).replace(os.sep, "/") + "/"
         _want_types = [t_ for t_ in _types_all if f"「{t_}」タイプの女の子" in _gpages]
-        _sec = re.search(r'id="fl-types-title".*?</section>', _hub_raw, re.S)
-        _chip_hrefs = re.findall(r'href="(/[^"]+)"', _sec.group(0)) if _sec else []
-        check(f"{_flabel}: トップに「女の子のタイプから探す」（タイプのジャンルのページ {len(_want_types)}個へ。見出しは「○○タイプの女の子」）",
-              bool(_want_types) and _sec is not None and sorted(_chip_hrefs) == sorted(_gpages[f"「{t_}」タイプの女の子"] for t_ in _want_types),
-              (len(_want_types), len(_chip_hrefs)))
+        # 女の子検索（/amateur/girls/。女優検索のような別のページ。運営者の希望。2026-10-12）: トップの「作品を探す」から入れる・タイプのボタンは索引のジャンルの番号・
+        # いちばん下に、タイプごとのページへのリンク・検索エンジンに出す ⇔ sitemap
+        _girls = os.path.join(DIST, _fk, "girls", "index.html")
+        _gidx = json.loads(read(os.path.join(DIST, "data", f"{_fk}-index.json")))
+        _graw = read_raw(_girls) if os.path.isfile(_girls) else ""
+        _gbtn = [(int(n_), strip_tags(b_).strip()) for n_, b_ in re.findall(r'<button type="button" class="tag-btn"[^>]*data-kind="g" data-n="(\d+)"[^>]*>(.*?)</button>', _graw, re.S)]
+        _gbtn_ok = bool(_gbtn) and all(_gidx["genres"][n_] in _types_all and re.sub(r"\d+$", "", label_).strip() == _gidx["genres"][n_] for n_, label_ in _gbtn)
+        _gsec = re.search(r'id="gs-pages-title".*?</section>', _graw, re.S)
+        _ghrefs = re.findall(r'href="(/[^"]+)"', _gsec.group(0)) if _gsec else []
+        check(f"{_flabel}: 女の子検索のページ（タイプのボタン {len(_gbtn)}個は、索引のジャンルの番号と同じタイプ・いちばん下にタイプのページ {len(_want_types)}個へのリンク）があり、トップの「作品を探す」から入れる",
+              os.path.isfile(_girls) and _gbtn_ok and 'data-unit="人"' in _graw and f'href="/{_fk}/girls/"' in _hub_raw
+              and sorted(_ghrefs) == sorted(_gpages[f"「{t_}」タイプの女の子"] for t_ in _want_types) and 'id="fl-types-title"' not in _hub_raw,
+              (len(_gbtn), _gbtn[:2], len(_ghrefs), len(_want_types)))
+        check(f"{_flabel}: 女の子検索は、検索エンジンに出す ⇔ sitemap にある", ('name="robots" content="noindex' in _graw) == (f"/{_fk}/girls/" not in sm_paths))
         _fgt_path = os.path.join(ROOT, "site", "src", "data", "floor_genre_tops.json")
         _fgt = json.load(open(_fgt_path, encoding="utf-8")).get(_fk, {}) if os.path.isfile(_fgt_path) else {}
         _miss_top = [t_ for t_ in _want_types if _fgt.get(t_, {}).get("items") and 'id="fl-col-fanza-title"' not in read_raw(os.path.join(DIST, _gpages[f"「{t_}」タイプの女の子"].strip("/"), "index.html"))]
