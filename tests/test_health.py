@@ -8,6 +8,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import health as H  # noqa: E402
 
+os.environ.pop("GITHUB_STEP_SUMMARY", None)  # CI の中でも、表を実行の要約ではなく out に出す（テストで見るため）
+
 passed = failed = 0
 
 
