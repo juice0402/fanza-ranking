@@ -489,5 +489,21 @@ console.log('■ キャンペーンの名前ごとのセールのページ（素
   check('キャンペーンの売り場: 素人・アニメ・成人映画', JSON.stringify(L.FLOOR_KEYS.filter((k) => L.FLOORS[k].campaigns)) === JSON.stringify(['anime', 'amateur', 'cinema']));
 }
 
+console.log('■ 作品検索・女の子検索の本数は、絞り込んだときだけ（条件なしは「ーー本」「ーー人」。動画の作品検索と同じ。運営者の希望。2026-10-12）');
+{
+  const { SEARCH_COUNT_BLANK } = await import('../site/src/lib/search.js');
+  check('本数の代わりの「ーー」と読み上げの文は、ページとブラウザで同じ', FS.COUNT_BLANK === SEARCH_COUNT_BLANK && FS.blankNote('本') === L.floorCountBlankNote('本') && FS.blankNote('人') === L.floorCountBlankNote('人') && /人数/.test(FS.blankNote('人')));
+  const base = { q: '', sort: 'pop', st: '', type: '', g: [], h: [] };
+  check('絞り込みは、キーワード・セール中/予約・形式・特集・ジャンル（タイプ）。並び順だけ・空白だけのキーワードは絞り込みに入れない',
+    !FS.isNarrowed(base) && !FS.isNarrowed({ ...base, sort: 'new' }) && !FS.isNarrowed({ ...base, q: '  ' })
+    && FS.isNarrowed({ ...base, q: 'あ' }) && FS.isNarrowed({ ...base, st: 'sale' }) && FS.isNarrowed({ ...base, type: 'voice' }) && FS.isNarrowed({ ...base, g: [0] }) && FS.isNarrowed({ ...base, h: [1] }));
+  const src = fs.readFileSync(new URL('../site/public/floor-search.js', import.meta.url), 'utf-8');
+  check('ブラウザの本数の表示は、絞り込みで「ーー」と本数を切りかえる', src.includes('if (found.length && !isNarrowed(s))') && src.includes("'ws-num ws-num-blank', COUNT_BLANK"));
+  for (const [name, unit] of [['search.astro', '本'], ['girls.astro', '人']]) {
+    const page = fs.readFileSync(new URL(`../site/src/pages/[floor]/${name}`, import.meta.url), 'utf-8');
+    check(`${name}: はじめの本数は「ーー${unit}」（索引の本数を出さない）`, page.includes(`{SEARCH_COUNT_BLANK}</strong>${unit}`) && page.includes(`floorCountBlankNote('${unit}')`) && !page.includes('index.items.length).replace') && !/index\.items\.length\}本/.test(page));
+  }
+}
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

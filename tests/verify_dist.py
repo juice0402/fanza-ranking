@@ -2890,6 +2890,19 @@ for _fk in _FD.FLOORS:
         _six_ok = len(_sj.get("items", [])) == len(_fshow) and all(re.match(r"^[A-Za-z0-9_-]+$", r_["c"]) for r_ in _sj["items"]) and set(_sj.get("genres", [])) <= _ok_genres
     check(f"{_flabel}: 作品検索のページ（noindex・sitemap なし）と索引（全作品・おだやかなジャンルだけ）がある",
           os.path.isfile(_sp) and 'name="robots" content="noindex' in read_raw(_sp) and f"/{_fk}/search/" not in sm_paths and _six_ok and 'id="fs-list"' in read_raw(_sp))
+    # 本数は、絞り込んだときだけ（条件なしは「ーー本」。索引には全部の作品が入っていて、このサイトに載っている数になるため。動画の作品検索と同じ。運営者の希望。2026-10-12）
+    _fblank = re.search(r"export const SEARCH_COUNT_BLANK = '([^']*)';", read(os.path.join(ROOT, "site", "src", "lib", "search.js"))).group(1)
+    _fcnt_bad = []
+    for _fsp, _funit, _fnote in ((_sp, "本", "本数"), (os.path.join(DIST, _fk, "girls", "index.html"), "人", "人数")):
+        if not os.path.isfile(_fsp):
+            continue
+        _fraw = read_raw(_fsp)
+        _fcnt = re.search(r'<p id="fs-count"[^>]*>(.*?)</p>', _fraw, re.S)
+        _fct = strip_tags(_fcnt.group(1)).strip() if _fcnt else None
+        if _fct != f"{_fblank}{_funit}条件で絞り込むと、{_fnote}が出ます" or 'class="ws-num ws-num-blank"' not in _fcnt.group(1) or 'aria-hidden="true"' not in _fcnt.group(1) \
+                or f"{len(_fshow):,}{_funit}" in strip_tags(read(_fsp)):
+            _fcnt_bad.append((rel(_fsp), _fct))
+    check(f"{_flabel}: 作品検索・女の子検索の条件なしの本数は「{_fblank}本」「{_fblank}人」で、載っている本数をページに出さない", not _fcnt_bad, _fcnt_bad)
     _gj = os.path.join(DIST, "data", f"{_fk}-gacha.json")
     _gpool = json.load(open(_gj, encoding="utf-8")) if os.path.isfile(_gj) else []
     _hub_raw = read_raw(os.path.join(DIST, _fk, "index.html"))

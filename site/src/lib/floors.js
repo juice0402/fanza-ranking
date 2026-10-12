@@ -839,6 +839,12 @@ export function floorSaleShelf(items, key, floorSale = null, limit = FLOOR_SALE_
   return [...own, ...(floorSale?.[key]?.extras ?? []).filter((e) => !have.has(e.cid))].sort(byRank).slice(0, limit);
 }
 
+/**
+ * 作品検索・女の子検索の、条件なしのときの本数の代わり（動画の作品検索の SEARCH_COUNT_BLANK と同じ「ーー」）の読み上げの文（画面には出さない）。
+ * 索引には全部の作品が入っていて、条件なしの本数が、このサイトに載っている数になるため（運営者の希望。2026-10-12。public/floor-search.js の blankNote と同じ）
+ */
+export const floorCountBlankNote = (unit) => (unit === '人' ? '条件で絞り込むと、人数が出ます' : '条件で絞り込むと、本数が出ます');
+
 /** セール中の本数（キャンペーンの売り場は、キャンペーンごとの対象の本数＝FANZAの人気順の上から数えたもの、の合計。ほかは、このサイトのセール中の作品の数） */
 export const floorSaleCount = (items, key, pages = []) => {
   const own = floorSaleItems(items).length;
