@@ -119,6 +119,7 @@ check("キャンペーンのページに並べる本数（FLOOR_SALE_PAGE_LIST�
       f"FLOOR_SALE_PAGE_LIST = {S.EXTRA_PER_CAMPAIGN};" in floors_js)
 js_camp = re.findall(r"(\w+): \{ key: '\w+'[^\n]*campaigns: true", floors_js)
 check("lib/floors.js の FLOORS の campaigns と、同じ売り場", sorted(js_camp) == sorted(S.KEYS), js_camp)
+check("はじめに読む回数: 素人は上位1万本・アニメと成人映画（全部で4千・6千本ほど）は上位1千本", S.quick_calls("amateur") == 100 and S.quick_calls("anime") == 10 and S.quick_calls("cinema") == 10)
 
 print("■ キャンペーンごとの本数と、このサイトに無い作品")
 rows = [raw(n, HOIHOI if n % 2 else (DAILY if n % 5 == 0 else None)) for n in range(1, 251)]

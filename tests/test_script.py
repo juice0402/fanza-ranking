@@ -1457,6 +1457,81 @@ with tempfile.TemporaryDirectory() as tmp_r:
     open(r_sale, "w").write("{壊れている")
     saved_r4, _ = m_s.refresh_sales(now_r, call=r_call, sale_path=r_sale, history_path=r_hist)
     check("前のセールのデータが壊れていたら、上書きしない", not saved_r4 and open(r_sale).read() == "{壊れている")
+print("\n■ セールの読み直しは、はじめに上位1万本だけ（顔ぶれが前と同じなら、そこでやめる。運営者の「日時のあるセールが分かったら、読み込みを短縮」）")
+camp_q = {"date_begin": day(1) + " 00:00:00", "date_end": day(4) + " 23:59:59", "title": "週末クイック30％OFF"}
+camp_deep = {"date_begin": day(1) + " 00:00:00", "date_end": day(2) + " 23:59:59", "title": "奥のセール20％OFF"}
+camp_new = {"date_begin": day(1) + " 12:00:00", "date_end": day(5) + " 23:59:59", "title": "昼からのセール"}
+
+
+def q_sale(cid, camp):
+    it_ = dict(make_api_item(cid, -60, actress=("だれか",), maker="どこか", title="このサイトに無い作品"), campaign=[camp])
+    it_["prices"] = {"price": "700~", "list_price": "1000~", "deliveries": {"delivery": []}}
+    return it_
+
+
+q_fill = [make_api_item(f"qfill{n:05d}", -60, actress=("だれか",), maker="どこか", title="ふつうの作品") for n in range(300)]
+q_page1 = [on_sale(3, [camp_q])] + q_fill[:99]
+q_page2 = [q_sale(f"qq{n:05d}", camp_q) for n in range(50)] + q_fill[99:149]
+q_page3 = [q_sale(f"qd{n:05d}", camp_deep) for n in range(30)]
+with tempfile.TemporaryDirectory() as tmp_q:
+    q_sale_path, q_hist = os.path.join(tmp_q, "sale.json"), os.path.join(tmp_q, "sale_history.json")
+    q_calls = []
+    q_first = {"rows": q_page1}
+
+    def q_call(params):
+        q_calls.append(params["offset"] if "gte_date" not in params else "new")
+        if "gte_date" in params:
+            return []
+        return {1: q_first["rows"], 101: q_page2, 201: q_page3}.get(params["offset"], [])
+
+    saved_quick, saved_top = m_s.SALE_QUICK_CALLS, m_s.SALE_REFRESH_TOP_CALLS
+    m_s.SALE_QUICK_CALLS, m_s.SALE_REFRESH_TOP_CALLS = 1, 3
+    try:
+        now_q = (TODAY + timedelta(days=1)).replace(hour=10, minute=17)
+        with contextlib.redirect_stdout(io.StringIO()):
+            m_s.refresh_sales(now_q, call=q_call, sale_path=q_sale_path, history_path=q_hist)
+        q1 = json.load(open(q_sale_path, encoding="utf-8"))
+        qc = {c["title"]: c for c in q1["campaigns"]}
+        check("前の記録が無い日は、5万本（テストでは3回分）まで読む・5万本まで読んだ日と、いちばん早く終わる日時・特集ごとの本数といちばん上の順位",
+              [c for c in q_calls if c != "new"] == [1, 101, 201] and q1["full"] == {"date": day(1), "next_end": day(2) + " 23:59"}
+              and qc["週末クイック30％OFF"]["n"] == 51 and qc["週末クイック30％OFF"]["top"] == 1 and qc["奥のセール20％OFF"]["n"] == 30 and qc["奥のセール20％OFF"]["top"] == 201, (q_calls, q1.get("full"), qc))
+        q_calls.clear()
+        with contextlib.redirect_stdout(io.StringIO()):
+            _, lines_q2 = m_s.refresh_sales(now_q.replace(hour=12, minute=17), call=q_call, sale_path=q_sale_path, history_path=q_hist)
+        q2 = json.load(open(q_sale_path, encoding="utf-8"))
+        qc2 = {c["title"]: c for c in q2["campaigns"]}
+        check("顔ぶれが同じなら、上位1万本（1回）でやめる・本数と5万本まで読んだ日はそのまま・このサイトに無い作品は前のデータから（48本まで）",
+              [c for c in q_calls if c != "new"] == [1] and q2["full"] == q1["full"] and qc2["週末クイック30％OFF"]["n"] == 51 and qc2["奥のセール20％OFF"]["n"] == 30
+              and sum(1 for r in q2["extra"] if q2["campaigns"][r["k"]]["title"] == "週末クイック30％OFF") == 48
+              and sum(1 for r in q2["extra"] if q2["campaigns"][r["k"]]["title"] == "奥のセール20％OFF") == 30 and "上位1万本だけ" in lines_q2[0], (q_calls, lines_q2))
+        open(os.path.join(tmp_q, "keep.json"), "w", encoding="utf-8").write(open(q_sale_path, encoding="utf-8").read())
+        q_calls.clear()
+        with contextlib.redirect_stdout(io.StringIO()):
+            _, lines_q3 = m_s.refresh_sales((TODAY + timedelta(days=3)).replace(hour=0, minute=35), call=q_call, sale_path=q_sale_path, history_path=q_hist)
+        check("前に数えた特集のどれかが終わる日時（next_end）をすぎたら、5万本まで読む", [c for c in q_calls if c != "new"] == [1, 101, 201] and "終わったセール" in lines_q3[0], (q_calls, lines_q3))
+        shutil.copy(os.path.join(tmp_q, "keep.json"), q_sale_path)
+        q_first["rows"] = [on_sale(3, [camp_q]), q_sale("qnew00001", camp_new)] + q_fill[:98]
+        q_calls.clear()
+        with contextlib.redirect_stdout(io.StringIO()):
+            _, lines_q4 = m_s.refresh_sales(now_q.replace(hour=13, minute=17), call=q_call, sale_path=q_sale_path, history_path=q_hist)
+        check("上位1万本に、数えていない特集があれば、5万本まで読む", [c for c in q_calls if c != "new"] == [1, 101, 201] and "新しいセール" in lines_q4[0], (q_calls, lines_q4))
+        shutil.copy(os.path.join(tmp_q, "keep.json"), q_sale_path)
+        q_first["rows"] = q_fill[:100]
+        q_calls.clear()
+        with contextlib.redirect_stdout(io.StringIO()):
+            _, lines_q5 = m_s.refresh_sales(now_q.replace(hour=13, minute=17), call=q_call, sale_path=q_sale_path, history_path=q_hist)
+        check("前は上位1万本に作品があった特集を見かけなかったら、5万本まで読む", [c for c in q_calls if c != "new"] == [1, 101, 201] and "見かけなくなった" in lines_q5[0], (q_calls, lines_q5))
+        shutil.copy(os.path.join(tmp_q, "keep.json"), q_sale_path)
+        q_first["rows"] = q_page1
+        q_calls.clear()
+        with contextlib.redirect_stdout(io.StringIO()):
+            _, lines_q6 = m_s.refresh_sales((TODAY + timedelta(days=4)).replace(hour=10, minute=17), call=q_call, sale_path=q_sale_path, history_path=q_hist)
+        check("前に5万本まで読んでから3日たったら、5万本まで読む", [c for c in q_calls if c != "new"] == [1, 101, 201] and "3日" in lines_q6[0], (q_calls, lines_q6))
+        full_k, tops_k = m_s.active_meta(now_q.strftime("%Y-%m-%d %H:%M"), os.path.join(tmp_q, "keep.json"))
+        check("毎日の更新が sale.json を書き直すときも、5万本まで読んだ記録と、期間中の特集のいちばん上の順位を残す",
+              full_k == q1["full"] and set(k[0] for k in tops_k) == {"週末クイック30％OFF", "奥のセール20％OFF"}, (full_k, tops_k))
+    finally:
+        m_s.SALE_QUICK_CALLS, m_s.SALE_REFRESH_TOP_CALLS = saved_quick, saved_top
 with tempfile.TemporaryDirectory() as tmp_x:
     x_path = os.path.join(tmp_x, "sale.json")
     c_old = {"title": "日替わりセール◇", "begin": "2026-10-10 00:00", "end": "2026-10-10 23:59"}

@@ -230,11 +230,20 @@ def fetch_video(call, now):
 
 
 def fetch_floor(key, call, now):
-    """動画のほかの売り場の10円の作品（人気順の上から＝順位付き → 安い順の10円のあたりを、すべて） → (作品のリスト, 最後まで読めたか)"""
+    """動画のほかの売り場の10円の作品（人気順の上から＝順位付き → 安い順の10円のあたりを、すべて） → (作品のリスト, 最後まで読めたか)。
+    安い順が使える売り場は、先に安い順の10円のあたりを読み、10円の作品が1本も無ければ、人気順（順位を付けるため。同人30回・ゲーム15回など）は読まない
+    （運営者の「仕組みで最適化できることは、とことん」。2026-10-12。ふだん＝10円セールをしていない日は、1回の確認が数回の読み込みで済む）"""
     conf = F.FLOORS[key]
     today_str = now.strftime("%Y-%m-%d")
     lte = G.iso(now.replace(hour=23, minute=59, second=59, microsecond=0))
     base = {"site": "FANZA", "service": conf["service"], "floor": conf["floor"], "hits": PAGE}
+    cheap_rows = []
+    if key not in NO_CHEAP_SORT:
+        cheap = {k: v for k, v in base.items() if k != "hits"}
+        if not scan_cheap(cheap, call, lambda raw: floor_row(raw, key), cheap_rows, set(), today_str):
+            return [], False
+        if not cheap_rows:
+            return [], True
     rows, seen = [], set()
     fails = read = 0
     off = 1
@@ -258,11 +267,9 @@ def fetch_floor(key, call, now):
         off += PAGE
     if fails >= G.MAX_API_FAILS_IN_ROW:
         return rows, False
-    if key in NO_CHEAP_SORT:
-        return rows, True
-    cheap = {k: v for k, v in base.items() if k != "hits"}
-    ok = scan_cheap(cheap, call, lambda raw: floor_row(raw, key), rows, seen, today_str)
-    return rows, ok
+    # 安い順で見つけた10円の作品のうち、人気順で見かけなかった作品は、順位なしで後ろに（前と同じ並び）
+    rows += [r for r in cheap_rows if r["cid"] not in seen]
+    return rows, True
 
 
 def clean_run(r):
