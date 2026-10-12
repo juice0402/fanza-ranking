@@ -134,7 +134,13 @@ def scan(key, now, site, call=None):
     return summary(state, now.strftime("%Y-%m-%d")), ok(state), state["calls"]
 
 
-def full_reason(old, quick, site_titles, now):
+def quick_calls(key):
+    """はじめに読む回数（上位1万本。アニメ・成人映画のように小さな売り場は、上位1千本＝floor_data.py の campaign_quick）"""
+    conf = F.FLOORS[key]
+    return min(QUICK_CALLS, conf.get("campaign_quick", QUICK_CALLS), conf["campaign_calls"])
+
+
+def full_reason(old, quick, site_titles, now, depth=None):
     """上位1万本だけ読んだ結果（quick）から、5万本まで読み直す理由（無ければ ""）。運営者の「先にセールが終わったかどうかを見れば、
     無駄な読み込みをせずに済むのでは」（2026-10-12）:
     ・前のデータが無い・前に5万本まで読んでから FULL_EVERY_DAYS 日たった（念のため）
@@ -154,11 +160,11 @@ def full_reason(old, quick, site_titles, now):
     fresh = [ck[0] for ck in quick_keys - old_keys]
     if fresh:
         return "新しいセールがある（" + "・".join(sorted(fresh)[:3]) + "）"
-    depth = QUICK_CALLS * PAGE
+    depth = depth or QUICK_CALLS * PAGE
     near = {r["campaign"]["title"] for r in old["extra"] if r["rank"] <= depth} | set(site_titles)
     gone = [ck[0] for ck in old_keys - quick_keys if ck[0] in near]
     if gone:
-        return "上位1万本で見かけなくなったセールがある（" + "・".join(sorted(gone)[:3]) + "）"
+        return f"上位{depth:,}本で見かけなくなったセールがある（" + "・".join(sorted(gone)[:3]) + "）"
     return ""
 
 
@@ -291,15 +297,15 @@ def update(now, keys=None, call=None, path=PATH):
         t0 = time.time()
         site = site_cids(key)
         # はじめは上位1万本だけ。セールの顔ぶれが前と同じ（新しい・終わった・見かけなくなったセールが無い）なら、そこでやめて、本数は前に5万本で数えたもの
-        state = read(key, now, site, new_state(), min(QUICK_CALLS, conf["campaign_calls"]), call)
+        state = read(key, now, site, new_state(), quick_calls(key), call)
         complete, mode, why = ok(state), "全部", ""
         if complete and not state["end"] and state["calls"] < conf["campaign_calls"]:
-            why = full_reason(old.get(key), summary(state, now.strftime("%Y-%m-%d")), site_campaign_titles(key), now)
+            why = full_reason(old.get(key), summary(state, now.strftime("%Y-%m-%d")), site_campaign_titles(key), now, quick_calls(key) * PAGE)
             if why:
                 read(key, now, site, state, conf["campaign_calls"], call)
                 complete = ok(state)
             else:
-                mode = "上位1万本だけ"
+                mode = f"上位{quick_calls(key) * PAGE:,}本だけ"
         calls = state["calls"]
         data = summary(state, now.strftime("%Y-%m-%d"))
         if complete and mode != "全部":

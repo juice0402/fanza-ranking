@@ -326,6 +326,11 @@ else:
                       and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(r.get("d", ""))) and isinstance(r.get("m"), str) and isinstance(r.get("a"), list) and isinstance(r.get("g"), list)
                       and (("p" not in r and "l" not in r) or (isinstance(r.get("p"), int) and isinstance(r.get("l"), int) and 0 < r["p"] < r["l"])) for r in extra)
               and all(isinstance(c.get("n", 1), int) and c.get("n", 1) > 0 for c in camps if isinstance(c, dict)), str(extra)[:80])
+        _sfull = salej.get("full") if isinstance(salej, dict) else None
+        check("sale.json: 5万本まで読んだ記録（full: 日付・いちばん早く終わる日時。まだ無いこともある）・特集のいちばん上の順位（top: 1以上の数字）",
+              (_sfull is None or (isinstance(_sfull, dict) and set(_sfull) == {"date", "next_end"} and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(_sfull["date"]))
+                                  and re.fullmatch(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2})?", str(_sfull["next_end"]))))
+              and all(isinstance(c.get("top", 1), int) and c.get("top", 1) > 0 for c in camps if isinstance(c, dict)), str(_sfull))
 
 SALE_HISTORY = os.path.join(ROOT, "site", "src", "data", "sale_history.json")
 if not os.path.exists(SALE_HISTORY):

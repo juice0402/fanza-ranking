@@ -91,7 +91,10 @@ doujin_rank = [
 game_rank = [floor(1, key="game", price="8800", list_price=None)] * 1 + [floor(i, key="game", price="5500", list_price=None) for i in range(2, 120)]
 game_cheap = [floor(500, key="game", price="0", list_price=None), floor(501, key="game", price="10", list_price=None, genres=("10円セール【秋の大感謝祭】", "男性向け")),
               floor(502, key="game", price="10", list_price=None)]
-LISTS = {("videoa", "-price"): cheap_video, ("digital_doujin", "rank"): doujin_rank, ("digital_pcgame", "rank"): game_rank, ("digital_pcgame", "-price"): game_cheap}
+# 同人の安い順（5円 → 10円 → ふだんの値段）。10円の作品が見つかったときだけ、人気順を読んで順位を付ける
+doujin_cheap = [doujin_rank[3], doujin_rank[0], doujin_rank[1], doujin_rank[2], doujin_rank[4]] + doujin_rank[5:125]
+LISTS = {("videoa", "-price"): cheap_video, ("digital_doujin", "rank"): doujin_rank, ("digital_doujin", "-price"): doujin_cheap,
+         ("digital_pcgame", "rank"): game_rank, ("digital_pcgame", "-price"): game_cheap}
 
 print("■ 10円の作品の見分け方")
 check("価格がちょうど10円で、値引きされているものだけ（動画は定価が10円より高いか分からないもの・同人とゲームは定価300円以上か名前に「10円」）",
@@ -117,9 +120,13 @@ check("同人: 人気順の上から、定価300円以上の10円か、名前に
       ok and [r["cid"] for r in rows] == ["d_200001", "d_200003"], [r["cid"] for r in rows])
 check("同人: 人気順の順位・キャンペーンの名前を持ち、Z の付いた終わりは使わない",
       rows[0]["rank"] == 1 and rows[1]["rank"] == 3 and rows[1]["sale_title"] == "10円セール" and rows[1]["sale_end"] == "" and rows[0]["list_price"] == 1100)
-check("同人: 人気順を最後まで読む（作品が尽きたらやめる）→ 安い順も読む",
+check("同人: 安い順で10円の作品が見つかったら、人気順を最後まで読んで順位を付ける（作品が尽きたらやめる）",
       [c["offset"] for c in api.calls if c["sort"] == "rank"] == [1, 101, 201] and all(c.get("lte_date") for c in api.calls if c["sort"] == "rank")
-      and any(c["sort"] == "-price" for c in api.calls))
+      and api.calls[0]["sort"] == "-price")
+api = FakeAPI({**LISTS, ("digital_doujin", "-price"): doujin_rank[5:]})
+rows, ok = T.fetch_floor("doujin", api, NOW)
+check("同人: 安い順に10円の作品が無ければ、人気順（30回分）は読まない（ふだんの日の確認を軽く。運営者の「とことん最適化」）",
+      ok and rows == [] and not any(c["sort"] == "rank" for c in api.calls), [c["sort"] for c in api.calls][:5])
 api = FakeAPI(LISTS)
 rows, ok = T.fetch_floor("game", api, NOW)
 check("ゲーム: 人気順と、安い順の先頭も読む。セールの札に「10円」がある10円の作品だけ（定価の分からない10円は入れない）",
