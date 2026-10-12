@@ -375,6 +375,11 @@ summary:focus-visible {
   border-color: var(--pop);
 }
 
+/* 素人の「女の子ランキング」「女の子検索」: 目立つ枠のまま、半分ずつの幅で1行に（2026-10-12） */
+.hero-jump .chip-link-half {
+  flex-basis: calc((100% - 8px) / 2);
+}
+
 .chip-link {
   display: inline-flex;
   align-items: center;

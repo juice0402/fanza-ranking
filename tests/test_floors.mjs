@@ -175,7 +175,20 @@ console.log('\n■ 素人の「女の子のタイプから探す」・女の子�
   check('週間・月間を検索エンジンに出すのは、期間の日数ぶんの記録がそろい、10本以上のとき', !L.floorPeriodIndexable(wk, 7) && L.floorPeriodIndexable({ recorded: 7, list: Array(10).fill({}) }, 7) && !L.floorPeriodIndexable({ recorded: 7, list: Array(9).fill({}) }, 7));
   check('週間・月間の場所と日数', L.floorPeriodPath('amateur', 'weekly') === '/amateur/ranking/weekly/' && L.FLOOR_PERIODS.map((p) => `${p.span}:${p.days}`).join() === 'weekly:7,monthly:30'
     && L.floorPeriodRanking(items, H, '', 7).list.length === 0 && L.floorPeriodRanking(items, null, '2026-10-12', 7).list.length === 0);
-  check('ファイルの数の見積もりに、素人の週間・月間の2ページを入れる', L.floorFileCount({ key: 'amateur', items: [1] }, []) === L.floorFileCount({ key: 'cinema', items: [1] }, []) + 2);
+  // 女の子検索（/amateur/girls/。2026-10-12）
+  const idx = { genres: ['中出し', '巨乳', '人妻・主婦', 'ギャル'], items: [
+    { c: 'a1', r: 2, d: '2026-10-01', g: [1, 2] }, { c: 'a2', r: 1, d: '2026-09-01', g: [1] }, { c: 'a3', d: '2026-10-05', g: [0, 3] },
+  ] };
+  const sg = L.girlSearchGroups('amateur', idx);
+  check('女の子検索のボタン: タイプの組ごとに、索引のジャンルの番号と本数（索引に無いタイプは出さない・タイプでないジャンルは出さない）・素人だけ',
+    JSON.stringify(sg) === JSON.stringify([{ name: '属性', types: [{ name: '人妻・主婦', n: 2, count: 1 }] }, { name: '雰囲気', types: [{ name: 'ギャル', n: 3, count: 1 }] }, { name: '体型', types: [{ name: '巨乳', n: 1, count: 2 }] }])
+      && L.girlSearchGroups('doujin', idx).length === 0 && L.girlSearchGroups('amateur', null).length === 0 && L.floorGirlsPath('amateur') === '/amateur/girls/', JSON.stringify(sg));
+  check('はじめの一覧は人気順（順位のある作品を順位の順、そのあと新しい順）・コメントのある作品があれば検索エンジンに出す',
+    L.floorSearchFirstRows(idx).map((r) => r.c).join() === 'a2,a1,a3' && L.floorSearchFirstRows(idx, 1).length === 1
+      && L.girlsIndexable(idx, [{ cid: 'a3', comment: 'ひとこと' }]) && !L.girlsIndexable(idx, [{ cid: 'a1', comment: '' }]) && !L.girlsIndexable(null, []));
+  const fsrc = fs.readFileSync(new URL('../site/public/floor-search.js', import.meta.url), 'utf-8');
+  check('作品検索のスクリプトは、女の子検索では本数を「人」で数える（data-unit）', fsrc.includes("root.getAttribute('data-unit') === '人'") && fsrc.includes('document.createTextNode(unit)'));
+  check('ファイルの数の見積もりに、素人の週間・月間・女の子検索の3ページを入れる', L.floorFileCount({ key: 'amateur', items: [1] }, []) === L.floorFileCount({ key: 'cinema', items: [1] }, []) + 3);
 }
 
 console.log('\n■ ページの場所・タイトル・ファイルの数');

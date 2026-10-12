@@ -117,6 +117,8 @@
   if (!root) return;
   var key = /^[a-z]{2,10}$/.test(root.getAttribute('data-floor') || '') ? root.getAttribute('data-floor') : 'doujin';
   var frame = root.getAttribute('data-frame') || (key === 'doujin' ? 'wide' : 'cover');
+  // 本数の数え方（素人の女の子検索は「人」。2026-10-12）
+  var unit = root.getAttribute('data-unit') === '人' ? '人' : '本';
   var form = root.querySelector('form');
   var input = document.getElementById('fs-q');
   var list = document.getElementById('fs-list');
@@ -249,11 +251,11 @@
     found = filterRows(index, s).sort(SORTS[s.sort] || byPop);
     count.textContent = '';
     count.appendChild(el('strong', 'ws-num', comma(found.length)));
-    count.appendChild(document.createTextNode('本'));
+    count.appendChild(document.createTextNode(unit));
     list.removeAttribute('data-first');
     list.textContent = '';
     if (!found.length) {
-      list.appendChild(el('li', 'empty', '条件に合う作品はありません。条件をへらしてみてください。'));
+      list.appendChild(el('li', 'empty', unit === '人' ? '条件に合う女の子はいません。タイプをへらしてみてください。' : '条件に合う作品はありません。条件をへらしてみてください。'));
     }
     found.slice(0, shownCount).forEach(function (row) {
       list.appendChild(card(rowView(row, key, frame)));
