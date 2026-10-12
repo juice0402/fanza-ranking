@@ -8,7 +8,8 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorRow from '../../components/FloorRow.astro';
 import { activeFloors, floorCollectionGroups, floorMakerGroups, floorSearchIndexes, floors } from '../../lib/data.js';
-import { FLOORS, FLOOR_SEARCH_PAGE, floorCollectionIndexPath, floorMakerIndexPath, floorPath, floorRankingPath, floorSearchIndexPath, floorSearchPath, floorSearchRow, floorSearchHint } from '../../lib/floors.js';
+import { FLOORS, FLOOR_SEARCH_PAGE, floorCollectionIndexPath, floorCountBlankNote, floorMakerIndexPath, floorPath, floorRankingPath, floorSearchIndexPath, floorSearchPath, floorSearchRow, floorSearchHint } from '../../lib/floors.js';
+import { SEARCH_COUNT_BLANK } from '../../lib/search.js';
 import { SITE_NAME, breadcrumbLd } from '../../lib/items.js';
 import { assetUrl } from '../../lib/assets.js';
 
@@ -35,7 +36,7 @@ const trail = [
 
 <Base
   title={`${f.label}の作品を探す｜${SITE_NAME}`}
-  description={`${f.label}の人気作品${index.items.length}本を、タイトル・${f.maker}・ジャンル・特集・セールで絞り込んで探せます。`}
+  description={`${f.label}の人気作品を、タイトル・${f.maker}・ジャンル・特集・セールで絞り込んで探せます。`}
   path={floorSearchPath(key)}
   noindex={true}
   jsonLd={[breadcrumbLd(trail)]}
@@ -119,12 +120,13 @@ const trail = [
 
       <div class="search-main">
         <h2 class="visually-hidden">検索結果</h2>
-        <p id="fs-count" class="as-count ws-count" aria-live="polite"><strong class="ws-num">{String(index.items.length).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</strong>本</p>
+        {/* 本数は、絞り込んだときだけ（条件なしは「ーー本」。索引には全部の作品が入っていて、このサイトに載っている数になるため。動画の作品検索と同じ。運営者の希望。2026-10-12） */}
+        <p id="fs-count" class="as-count ws-count" aria-live="polite"><span aria-hidden="true"><strong class="ws-num ws-num-blank">{SEARCH_COUNT_BLANK}</strong>本</span><span class="visually-hidden">{floorCountBlankNote('本')}</span></p>
         <ul id="fs-list" class="ws-list" data-first="1">
           {first.map((row) => <FloorRow row={row} floor={key} />)}
         </ul>
         <p class="more"><button id="fs-more" type="button" class="btn btn-quiet more-btn" hidden={index.items.length <= first.length}>もっと見る</button></p>
-        <p class="as-coverage">このサイトに載っている{f.label}の人気作品（{index.items.length}本）から探します。価格は{floors[key].updated ? `${+floors[key].updated.slice(5, 7)}月${+floors[key].updated.slice(8, 10)}日` : '毎日の更新'}の時点です。</p>
+        <p class="as-coverage">このサイトに載っている{f.label}の人気作品から探します。価格は{floors[key].updated ? `${+floors[key].updated.slice(5, 7)}月${+floors[key].updated.slice(8, 10)}日` : '毎日の更新'}の時点です。</p>
       </div>
     </section>
 

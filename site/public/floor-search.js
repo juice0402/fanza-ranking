@@ -7,6 +7,17 @@
   var TYPING_WAIT_MS = 180; // キーワードは、打ち終わって少したってから探す
   var THUMB_MEDIA = '(max-width: 480px)'; // スマホ（lib/items.js の THUMB_MEDIA と同じ）
   var AWS_IMG = 'https://awsimgsrc.dmm.co.jp/pics_dig/';
+  // 条件なしのときの本数の代わり（動画の作品検索と同じ「ーー本」。索引には全部の作品が入っていて、条件なしの本数が、このサイトに載っている数になるため。
+  // 本数は、キーワード・セール中/予約・形式・特集・ジャンル（女の子検索はタイプ）で絞り込んだときだけ出す。並び順だけでは出さない。運営者の希望。2026-10-12。
+  // site/src/lib/search.js の SEARCH_COUNT_BLANK・site/src/lib/floors.js の floorCountBlankNote と同じ）
+  var COUNT_BLANK = 'ーー';
+  function blankNote(unit) {
+    return unit === '人' ? '条件で絞り込むと、人数が出ます' : '条件で絞り込むと、本数が出ます'; // 読み上げ用（画面には出さない）
+  }
+  // 絞り込んでいるか（並び順は数えない）
+  function isNarrowed(s) {
+    return !!s && (!!String(s.q || '').trim() || !!s.st || !!s.type || (s.g || []).length > 0 || (s.h || []).length > 0);
+  }
 
   // くらべるための文字（全角・半角、大文字・小文字、カタカナ・ひらがな、文節の区切りの見えない文字をそろえる）
   function norm(s) {
@@ -108,7 +119,7 @@
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { norm: norm, filterRows: filterRows, SORTS: SORTS, rowView: rowView, imageOf: imageOf, thumbUrl: thumbUrl, PAGE: PAGE }; // tests/test_floors.mjs 用
+    module.exports = { norm: norm, filterRows: filterRows, SORTS: SORTS, rowView: rowView, imageOf: imageOf, thumbUrl: thumbUrl, PAGE: PAGE, COUNT_BLANK: COUNT_BLANK, blankNote: blankNote, isNarrowed: isNarrowed }; // tests/test_floors.mjs 用
     return;
   }
   if (typeof document === 'undefined') return;
@@ -250,8 +261,18 @@
   function render(s) {
     found = filterRows(index, s).sort(SORTS[s.sort] || byPop);
     count.textContent = '';
-    count.appendChild(el('strong', 'ws-num', comma(found.length)));
-    count.appendChild(document.createTextNode(unit));
+    if (found.length && !isNarrowed(s)) {
+      // 条件なし（並び順だけ）のときは「ーー本」「ーー人」（ページに入っている形＝pages/[floor]/search.astro・girls.astro と同じ）
+      var shown = el('span');
+      shown.setAttribute('aria-hidden', 'true');
+      shown.appendChild(el('strong', 'ws-num ws-num-blank', COUNT_BLANK));
+      shown.appendChild(document.createTextNode(unit));
+      count.appendChild(shown);
+      count.appendChild(el('span', 'visually-hidden', blankNote(unit)));
+    } else {
+      count.appendChild(el('strong', 'ws-num', comma(found.length)));
+      count.appendChild(document.createTextNode(unit));
+    }
     list.removeAttribute('data-first');
     list.textContent = '';
     if (!found.length) {

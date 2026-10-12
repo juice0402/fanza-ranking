@@ -8,7 +8,8 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorRow from '../../components/FloorRow.astro';
 import { activeFloors, floorCollectionGroups, floorSearchIndexes, floors } from '../../lib/data.js';
-import { FLOORS, floorGirlsPath, floorPath, floorRankingPath, floorSearchFirstRows, floorSearchIndexPath, floorSearchRow, girlSearchGroups, girlTypeGroups, girlsIndexable } from '../../lib/floors.js';
+import { FLOORS, floorCountBlankNote, floorGirlsPath, floorPath, floorRankingPath, floorSearchFirstRows, floorSearchIndexPath, floorSearchRow, girlSearchGroups, girlTypeGroups, girlsIndexable } from '../../lib/floors.js';
+import { SEARCH_COUNT_BLANK } from '../../lib/search.js';
 import { SITE_NAME, breadcrumbLd } from '../../lib/items.js';
 import { assetUrl } from '../../lib/assets.js';
 
@@ -34,7 +35,7 @@ const examples = groups.flatMap((g) => g.types.slice(0, 2).map((t) => t.name)).s
 
 <Base
   title={`${f.label}の女の子検索｜タイプ（${examples}など）から探す｜${SITE_NAME}`}
-  description={`${f.label}の人気作品${index.items.length}本から、女の子のタイプ（属性・雰囲気・体型）や名前で探せます。いくつ選んでも、全部に当てはまる女の子だけを人気順に並べます。毎日更新。`}
+  description={`${f.label}の人気作品から、女の子のタイプ（属性・雰囲気・体型）や名前で探せます。いくつ選んでも、全部に当てはまる女の子だけを人気順に並べます。毎日更新。`}
   path={floorGirlsPath(key)}
   noindex={noindex}
   jsonLd={[breadcrumbLd(trail)]}
@@ -87,12 +88,13 @@ const examples = groups.flatMap((g) => g.types.slice(0, 2).map((t) => t.name)).s
 
       <div class="search-main">
         <h2 class="visually-hidden">検索結果</h2>
-        <p id="fs-count" class="as-count ws-count" aria-live="polite"><strong class="ws-num">{String(index.items.length).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</strong>人</p>
+        {/* 本数は、絞り込んだときだけ（条件なしは「ーー人」。索引には全部の作品が入っていて、このサイトに載っている数になるため。動画の作品検索と同じ。運営者の希望。2026-10-12） */}
+        <p id="fs-count" class="as-count ws-count" aria-live="polite"><span aria-hidden="true"><strong class="ws-num ws-num-blank">{SEARCH_COUNT_BLANK}</strong>人</span><span class="visually-hidden">{floorCountBlankNote('人')}</span></p>
         <ul id="fs-list" class="ws-list" data-first="1">
           {first.map((row) => <FloorRow row={row} floor={key} />)}
         </ul>
         <p class="more"><button id="fs-more" type="button" class="btn btn-quiet more-btn" hidden={index.items.length <= first.length}>もっと見る</button></p>
-        <p class="as-coverage">このサイトに載っている{f.label}の人気作品（{index.items.length}本）から探します。タイプはFANZAのジャンルです。</p>
+        <p class="as-coverage">このサイトに載っている{f.label}の人気作品から探します。タイプはFANZAのジャンルです。</p>
       </div>
     </section>
 
