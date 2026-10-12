@@ -582,6 +582,30 @@ else:
               and (not _gt_rows or gttext.count("\n") == len(_gt_rows) + 2 + 2 * len(gt["genres"])))
         check("genre_tops.json: 未成年を連想させるタイトルの作品は無い", _gt_rows is not None and not [r["t"] for r in _gt_rows if cc.title_block_reason({"title": r["t"]}) == "minor"])
 
+# ---- 素人の女の子のタイプごとの「FANZA素人で人気の作品」（floor_genre_tops.json。scripts/genre_tops.py が毎日。2026-10-12 から） ----
+print("\n■ 素人の女の子のタイプごとの人気作品（floor_genre_tops.json）")
+FLOOR_GENRE_TOPS = os.path.join(ROOT, "site", "src", "data", "floor_genre_tops.json")
+if not os.path.exists(FLOOR_GENRE_TOPS):
+    print("  （floor_genre_tops.json はまだありません。毎日の更新で作られます）")
+else:
+    try:
+        fgttext = open(FLOOR_GENRE_TOPS, encoding="utf-8").read()
+        fgt = json.loads(fgttext)
+    except (OSError, ValueError) as e:
+        fgt = None
+        check("floor_genre_tops.json を読める", False, str(e))
+    if fgt is not None:
+        import floor_data as _FD  # noqa: E402
+        _types = {g for _, names in _FD.GIRL_TYPES for g in names}
+        _fgt_parts = [fgt.get(k) for k in _FD.GIRL_TYPE_FLOORS] if isinstance(fgt, dict) else []
+        _fgt_rows = [r for part in _fgt_parts if isinstance(part, dict) for g in part.values() if isinstance(g, dict) for r in g.get("items", [])]
+        check("floor_genre_tops.json: 売り場（素人）ごとに、女の子のタイプだけ・id・集めた日・作品（20本まで・c t d m i u だけ）",
+              isinstance(fgt, dict) and set(fgt) == {"updated", *_FD.GIRL_TYPE_FLOORS} and all(isinstance(p, dict) and set(p) <= _types for p in _fgt_parts)
+              and all(set(g) == {"id", "date", "items"} and isinstance(g["id"], int) and re.match(r"^\d{4}-\d{2}-\d{2}$", g["date"]) and len(g["items"]) <= 20 for p in _fgt_parts for g in p.values())
+              and all(set(r) == {"c", "t", "d", "m", "i", "u"} for r in _fgt_rows))
+        check("floor_genre_tops.json: 未成年を連想させる作品は無い・FANZAのURL", not [r["t"] for r in _fgt_rows if cc.title_block_reason({"title": r["t"]}) == "minor"]
+              and all(str(r["u"]).startswith("https://") and str(r["i"]).startswith("https://") for r in _fgt_rows))
+
 # ---- 10円セール（ten_yen.json。scripts/ten_yen.py が毎日と、開催中は1日に数回。2026-10-09 から） ----
 print("\n■ 10円セール（ten_yen.json）")
 import ten_yen as TY  # noqa: E402

@@ -2902,6 +2902,37 @@ for _fk in _FD.FLOORS:
     check(f"{_flabel}: トップは動画のトップと同じ形（見出し・きょうの人気TOP3・作品を探す・パソコンは右の欄）・ボタンを並べた案内（タブ）はどのページにも無い",
           'class="home has-side"' in _hub_raw and 'class="home-side"' in _hub_raw and 'class="today-title"' in _hub_raw and 'class="medals' in _hub_raw
           and f'action="/{_fk}/search/"' in _hub_raw and not _tabs, _tabs[:3])
+    # 素人の「女の子のタイプから探す」・女の子ランキング（日刊・週間・月間）・レーベルと収録時間（運営者の希望。2026-10-12）
+    _dur = [x for x in _fshow if x.get("duration")][:30]
+    if _dur:
+        _bad_dur = [x["cid"] for x in _dur if f'{x["duration"]}分' not in read(os.path.join(DIST, _fk, "item", x["cid"], "index.html")) or "収録時間" not in read(os.path.join(DIST, _fk, "item", x["cid"], "index.html"))]
+        check(f"{_flabel}: 作品ページに収録時間（○分）", not _bad_dur, _bad_dur[:3])
+    _lab = [x for x in _fshow if x.get("label") and x["label"] != x["maker"]][:30]
+    if _lab:
+        _bad_lab = [x["cid"] for x in _lab if "レーベル" not in read(os.path.join(DIST, _fk, "item", x["cid"], "index.html")) or x["label"] not in read(os.path.join(DIST, _fk, "item", x["cid"], "index.html"))]
+        check(f"{_flabel}: 作品ページにレーベル（メーカーと違う名前のときだけ）", not _bad_lab, _bad_lab[:3])
+    if _fk in _FD.GIRL_TYPE_FLOORS:
+        _types_all = [g_ for _, n_ in _FD.GIRL_TYPES for g_ in n_]
+        _gpages = {}
+        for p_ in glob.glob(os.path.join(DIST, _fk, "genre", "*", "index.html")):
+            _h1 = re.search(r"<h1[^>]*>(.*?)</h1>", read(p_), re.S)
+            _gpages[strip_tags(_h1.group(1)).strip() if _h1 else ""] = "/" + os.path.relpath(os.path.dirname(p_), DIST).replace(os.sep, "/") + "/"
+        _want_types = [t_ for t_ in _types_all if f"「{t_}」タイプの女の子" in _gpages]
+        _sec = re.search(r'id="fl-types-title".*?</section>', _hub_raw, re.S)
+        _chip_hrefs = re.findall(r'href="(/[^"]+)"', _sec.group(0)) if _sec else []
+        check(f"{_flabel}: トップに「女の子のタイプから探す」（タイプのジャンルのページ {len(_want_types)}個へ。見出しは「○○タイプの女の子」）",
+              bool(_want_types) and _sec is not None and sorted(_chip_hrefs) == sorted(_gpages[f"「{t_}」タイプの女の子"] for t_ in _want_types),
+              (len(_want_types), len(_chip_hrefs)))
+        _fgt_path = os.path.join(ROOT, "site", "src", "data", "floor_genre_tops.json")
+        _fgt = json.load(open(_fgt_path, encoding="utf-8")).get(_fk, {}) if os.path.isfile(_fgt_path) else {}
+        _miss_top = [t_ for t_ in _want_types if _fgt.get(t_, {}).get("items") and 'id="fl-col-fanza-title"' not in read_raw(os.path.join(DIST, _gpages[f"「{t_}」タイプの女の子"].strip("/"), "index.html"))]
+        check(f"{_flabel}: タイプのページに「{_flabel}で人気の○○」（FANZA全体の人気順。データのあるタイプだけ）", not _miss_top, _miss_top[:3])
+        _rank_title = re.search(r"<title>(.*?)</title>", read(os.path.join(DIST, _fk, "ranking", "index.html")), re.S)
+        check(f"{_flabel}: 人気ランキングは「女の子ランキング（日刊）」・週間・月間のページがあり、日数がそろうまでは検索エンジンに出さない（sitemap と同じ）",
+              _rank_title is not None and "女の子ランキング（日刊）" in htmllib.unescape(_rank_title.group(1))
+              and all(os.path.isfile(os.path.join(DIST, _fk, "ranking", sp_, "index.html"))
+                      and (('name="robots" content="noindex' in read_raw(os.path.join(DIST, _fk, "ranking", sp_, "index.html"))) == (f"/{_fk}/ranking/{sp_}/" not in sm_paths))
+                      for sp_ in ("weekly", "monthly")))
     # 形式別ランキング（同人）: 形式ごとの上位3本は、TOP3と同じメダルの3つ並び（画面の幅に合わせて大きさが変わる。運営者の指摘「端末によってはものすごく小さく見える」。2026-10-09）
     _tblocks = re.findall(r'<div class="type-block">(.*?)</ol>', _hub_raw, re.S)
     if _fk == "doujin" and 'id="fl-type-title"' in _hub_raw:

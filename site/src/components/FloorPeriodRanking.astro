@@ -1,0 +1,70 @@
+---
+// 素人の週間・月間の女の子ランキング（/amateur/ranking/weekly/・/amateur/ranking/monthly/。運営者の希望「公式サイトの日刊・週間・月間の女の子ランキングのように」。2026-10-12）。
+// FANZAのAPIには週間・月間のランキングが無いので、このサイトの人気の動きの記録（毎日の上位300本の順位）から数える（lib/floors.js の floorPeriodRanking）:
+// その期間の毎日の順位に「301 − 順位」の点を足した順。数えた事実だけを書き、予想はしない。記録の日数がそろうまでは、そろった日数を書いて検索エンジンに出さない
+import Base from '../layouts/Base.astro';
+import Breadcrumb from './Breadcrumb.astro';
+import FloorCard from './FloorCard.astro';
+import FloorMoreNav from './FloorMoreNav.astro';
+import { floorPeriodRankings, floors } from '../lib/data.js';
+import { FLOORS, FLOOR_PERIODS, FLOOR_TREND_TRACK, floorItemListLd, floorPath, floorPeriodIndexable, floorPeriodPath, floorRankingName, floorRankingPath, priceNote } from '../lib/floors.js';
+import { listIndexable } from '../lib/plan.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../lib/items.js';
+
+const { floorKey: key, span } = Astro.props;
+const f = FLOORS[key];
+const p = FLOOR_PERIODS.find((x) => x.span === span);
+const r = floorPeriodRankings[key][span];
+const list = r.list.map((row) => row.item);
+const name = `${p.name}${floorRankingName(key)}`;
+const md = (d) => { const x = dateParts(d); return `${x.m}月${x.d}日`; };
+const range = r.from ? `${md(r.from)}〜${md(r.to)}` : '';
+const full = r.recorded >= p.days;
+const updated = floors[key].updated;
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: f.label, path: floorPath(key) },
+  { name: floorRankingName(key), path: floorRankingPath(key) },
+  { name, path: floorPeriodPath(key, span) },
+];
+const noindex = !floorPeriodIndexable(r, p.days) || !listIndexable(list);
+---
+
+<Base
+  title={`${f.label} ${name}TOP${list.length}【${range || '毎日更新'}】｜${SITE_NAME}`}
+  description={`${f.label}の${name}です。このサイトが毎日記録しているFANZAの人気順（上位${FLOOR_TREND_TRACK}本）を、${p.days}日分の順位の点（1位＝${FLOOR_TREND_TRACK}点）で足した順に並べています。${range ? `${range}の${r.recorded}日分。` : ''}毎日、日付が変わったあとに更新します。`}
+  path={floorPeriodPath(key, span)}
+  noindex={noindex}
+  jsonLd={[breadcrumbLd(trail), floorItemListLd(list, SITE_URL)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">{name}</h1>
+      <p class="hero-lead">{p.days}日間の毎日の人気順を、順位の点で足した順です。</p>
+      {range && <p class="page-facts">{range}の{r.recorded}日分{!full && `（記録は${md(r.from)}から）`}</p>}
+    </section>
+
+    {list.length > 0 ? (
+      <section class="section" aria-labelledby="fl-period-title">
+        <div class="section-head">
+          <h2 id="fl-period-title" class="section-title">TOP{list.length}</h2>
+          <p class="section-note">1位＝{FLOOR_TREND_TRACK}点・{FLOOR_TREND_TRACK}位＝1点で、毎日の順位を足した順</p>
+        </div>
+        <ul class="shelf">
+          {r.list.map((row, i) => (
+            <li class="shelf-cell">
+              <FloorCard item={row.item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(row.item)}
+                rankNote={`${row.days}日ランクイン｜期間の最高${row.best}位`} />
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : (
+      <p class="empty">記録がそろうと、ここに並びます。</p>
+    )}
+
+    <FloorMoreNav floorKey={key} current={span} />
+  </div>
+</Base>

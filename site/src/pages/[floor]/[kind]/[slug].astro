@@ -7,13 +7,13 @@ import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorCard from '../../../components/FloorCard.astro';
 import FloorMoreNav from '../../../components/FloorMoreNav.astro';
-import { activeFloors, floorCollectionGroups, floorMakerById, floors, readings, today } from '../../../lib/data.js';
+import { activeFloors, floorCollectionGroups, floorGenreTops, floorMakerById, floors, readings, today } from '../../../lib/data.js';
 import { readingLine } from '../../../lib/kana.js';
 import {
   FLOORS, FLOOR_COLLECTIONS, FLOOR_COLLECTION_KINDS, FLOOR_COLLECTION_LIST, collectionDescription, collectionFacts, collectionHeading, collectionIndexable, collectionTitle,
-  floorCollectionIndexPath, floorItemListLd, floorPath, priceNote, relatedFloorGenres, saleBadgeOf, topGenres, topMakersIn,
+  floorCollectionIndexPath, floorItemListLd, floorPath, girlTypeGroups, isGirlType, priceNote, relatedFloorGenres, saleBadgeOf, topGenres, topMakersIn,
 } from '../../../lib/floors.js';
-import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../../../lib/items.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../../lib/items.js';
 
 export function getStaticPaths() {
   return activeFloors.flatMap((floor) => FLOOR_COLLECTION_KINDS.flatMap((kind) => floorCollectionGroups[floor][kind].map((group) => ({
@@ -44,6 +44,13 @@ const trail = [
   { name: group.name, path: group.path },
 ];
 const noindex = !collectionIndexable(group);
+// 素人の「女の子のタイプ」のジャンル（人妻・主婦・巨乳 など。2026-10-12）: 見出しを「○○タイプの女の子」に、FANZA素人で人気のTOP20（FANZA全体の人気順。
+// scripts/genre_tops.py）と、ほかのタイプへのチップを足す
+const girlType = group.kind === 'genre' && isGirlType(key, group.name);
+const fanzaTop = girlType ? floorGenreTops[key]?.get(group.name) ?? null : null;
+const otherTypes = girlType ? girlTypeGroups(key, floorCollectionGroups[key].genre).map((g) => ({ ...g, types: g.types.filter((t) => t.name !== group.name) })).filter((g) => g.types.length > 0) : [];
+const heading = girlType ? `「${group.name}」タイプの女の子` : collectionHeading(f, group);
+const title = girlType ? `${f.label}「${group.name}」の女の子・人気ランキング【${ym}】（${group.total}本）｜${SITE_NAME}` : collectionTitle(f, group, ym, SITE_NAME);
 // 読みがな（ジャンル・シリーズ・作家。FANZA公式のAPIから。見出しの下と、構造化データの alternateName に。2026-10-10）
 const ruby = ['genre', 'series', 'author'].includes(group.kind) ? readingLine(group.name, readings.of(key, group.kind, group.kind === 'series' ? group.slug : group.name)) : '';
 const alt = ruby ? { alternateName: ruby } : {};
@@ -53,7 +60,7 @@ const about = group.kind === 'series' ? { '@type': 'CreativeWorkSeries', name: g
 const pageLd = {
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
-  name: collectionHeading(f, group),
+  name: heading,
   url: SITE_URL + group.path,
   ...(about ? { about } : {}),
   ...(data.updated ? { dateModified: data.updated } : {}),
@@ -61,7 +68,7 @@ const pageLd = {
 ---
 
 <Base
-  title={collectionTitle(f, group, ym, SITE_NAME)}
+  title={title}
   description={collectionDescription(f, group, facts)}
   path={group.path}
   noindex={noindex}
@@ -71,11 +78,23 @@ const pageLd = {
     <Breadcrumb trail={trail} />
 
     <section class="hero">
-      <h1 class="hero-title">{collectionHeading(f, group)}</h1>
+      <h1 class="hero-title">{heading}</h1>
       {ruby && <p class="hero-ruby">{ruby}</p>}
       <p class="page-facts">{facts.total}本{facts.sale > 0 && `・セール中${facts.sale}本`}{facts.maxOff > 0 && `（最大${facts.maxOff}%OFF）`}{facts.upcoming > 0 && `・予約${facts.upcoming}本`}</p>
       {data.updated && <p class="page-updated">{day.m}月{day.d}日更新</p>}
     </section>
+
+    {fanzaTop && (
+      <section class="section" aria-labelledby="fl-col-fanza-title">
+        <div class="section-head">
+          <h2 id="fl-col-fanza-title" class="section-title">{f.label}で人気の「{group.name}」TOP{fanzaTop.items.length}</h2>
+          <p class="section-note">{formatDateJp(fanzaTop.date)}のFANZAの人気順</p>
+        </div>
+        <ul class="shelf">
+          {fanzaTop.items.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} external={Boolean(item.external)} /></li>)}
+        </ul>
+      </section>
+    )}
 
     {makers.length > 0 && (
       <section class="section" aria-labelledby="fl-col-makers-title">
@@ -119,6 +138,19 @@ const pageLd = {
         <a class="month-nav-link" href={floorCollectionIndexPath(key, 'month')}>月の一覧</a>
         {newer ? <a class="month-nav-link" href={newer.path}>{newer.name} →</a> : <span></span>}
       </nav>
+    )}
+    {otherTypes.length > 0 && (
+      <section class="section" aria-labelledby="fl-col-types-title">
+        <h2 id="fl-col-types-title" class="section-title">ほかのタイプから探す</h2>
+        {otherTypes.map((g) => (
+          <div class="type-group">
+            <h3 class="type-group-title">{g.name}</h3>
+            <nav class="sale-jump genre-chips" aria-label={g.name}>
+              {g.types.map((t) => <a class="chip-link" href={t.path}>{t.name}<span class="chip-count">{t.total}本</span></a>)}
+            </nav>
+          </div>
+        ))}
+      </section>
     )}
     {group.kind === 'type' && <FloorMoreNav floorKey={key} current={group.slug} />}
     {group.kind !== 'month' && group.kind !== 'type' && (

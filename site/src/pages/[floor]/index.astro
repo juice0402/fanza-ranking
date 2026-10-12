@@ -16,7 +16,7 @@ import TenYenHero from '../../components/TenYenHero.astro';
 import { activeFloors, floorCollectionGroups, floorEntityRankings, floorGachaPools, floorMakerGroups, floorRankHistory, floorSaleHistory, floorSalePageGroups, floors, tenYenNow } from '../../lib/data.js';
 import {
   DOUJIN_TYPES, FLOORS, FLOOR_HUB_SHOWN, floorCollectionIndexPath, floorEntityLabel, floorEntityRankingPath, floorItemListLd, floorMakerIndexPath, floorMaxOff, floorNewPopular,
-  floorPath, floorRankNote, floorRanking, floorRankingPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, floorSearchHint, floorSearchPath, floorTopics, floorUpcoming, hubThemes, priceNote,
+  floorPath, floorRankNote, floorRanking, floorRankingName, floorRankingPath, girlTypeGroups, FLOOR_PERIODS, floorPeriodPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, floorSearchHint, floorSearchPath, floorTopics, floorUpcoming, hubThemes, priceNote,
 } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../../lib/items.js';
@@ -47,6 +47,8 @@ const upcomingList = floorUpcoming(items);
 const cols = floorCollectionGroups[key];
 const types = cols.type;
 const themes = hubThemes(cols.theme);
+// 素人の「女の子のタイプから探す」（ジャンルをタイプとして並べる。APIに年齢・体型の数字が無いため。2026-10-12。lib/floors.js の GIRL_TYPES）
+const girlTypes = girlTypeGroups(key, cols.genre);
 const hot = ['maker', 'author'].filter((by) => floorEntityRankings[key][by]?.length >= 3).map((by) => ({ by, label: floorEntityLabel(f, by), path: floorEntityRankingPath(key, by), rows: floorEntityRankings[key][by].slice(0, 3) }));
 // ほかの売り場（2026-10-10 から8つ。2つより多いときは、短い名前で4つずつ。トップの「作品を探す」の下と同じ）
 const gacha = floorGachaPools[key];
@@ -103,7 +105,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
             <button class="search-bar-btn" type="submit">探す</button>
           </form>
           <nav class="hero-jump" aria-label="探し方">
-            <a class="chip-link chip-link-wide" href={floorRankingPath(key)}>人気ランキング</a>
+            <a class="chip-link chip-link-wide" href={floorRankingPath(key)}>{floorRankingName(key)}</a>
             {cols.genre.length > 0 && <a class="chip-link" href={floorCollectionIndexPath(key, 'genre')}>ジャンル検索</a>}
             {floorMakerGroups[key].length > 0 && <a class="chip-link" href={floorMakerIndexPath(key)}>{f.maker}検索</a>}
             {sale.length > 0 && <a class="chip-link" href={floorSalePath(key)}>セール</a>}
@@ -117,6 +119,22 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
               <p class="section-note">毎日入れかわります</p>
             </div>
             <FloorTopics topics={topics} />
+          </section>
+        )}
+
+        {girlTypes.length > 0 && (
+          <section class="today-types" aria-labelledby="fl-types-title">
+            <div class="today-sec-head">
+              <h2 id="fl-types-title" class="today-sec-title">女の子のタイプから探す</h2>
+            </div>
+            {girlTypes.map((g) => (
+              <div class="type-group">
+                <h3 class="type-group-title">{g.name}</h3>
+                <nav class="sale-jump genre-chips" aria-label={g.name}>
+                  {g.types.map((t) => <a class="chip-link" href={t.path}>{t.name}<span class="chip-count">{t.total}本</span></a>)}
+                </nav>
+              </div>
+            ))}
           </section>
         )}
 
@@ -166,12 +184,17 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
       {rest.length > 0 && (
         <section class="section" aria-labelledby="fl-rank-title">
           <div class="section-head">
-            <h2 id="fl-rank-title" class="section-title">人気ランキング</h2>
+            <h2 id="fl-rank-title" class="section-title">{f.girls ? '女の子ランキング（日刊）' : '人気ランキング'}</h2>
             <a class="subsection-more" href={floorRankingPath(key)}>TOP100を見る</a>
           </div>
           <ul class="shelf">
             {rest.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 4}位`} note={priceNote(item)} rankNote={restNotes[i]} /></li>)}
           </ul>
+          {f.girls && (
+            <nav class="sale-jump genre-chips rank-periods" aria-label="週間・月間">
+              {FLOOR_PERIODS.map((p) => <a class="chip-link" href={floorPeriodPath(key, p.span)}>{p.name}ランキング</a>)}
+            </nav>
+          )}
           {hasGacha && gachaIn === 'rank' && (
             <div id="gacha-home" class="gacha-home">
               <GachaCorner gacha={gacha} floor={key} level="h2" />

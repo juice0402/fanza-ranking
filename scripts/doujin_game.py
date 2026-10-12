@@ -95,6 +95,19 @@ def sample_images(raw, limit):
     return [u for u in (G.safe_https_url(pics_url(x), G.IMAGE_HOSTS) for x in big) if u][:limit]
 
 
+def volume_minutes(volume):
+    """APIの収録時間（volume）→ 分（読めなければ None）。動画は「120」（分）、素人などは「1:03:00」（時:分:秒）の形がある"""
+    text = str(volume or "").strip()
+    if re.fullmatch(r"\d{1,4}", text):
+        minutes = int(text)
+    else:
+        m = re.fullmatch(r"(\d{1,2}):(\d{2}):(\d{2})", text)
+        if not m:
+            return None
+        minutes = int(m.group(1)) * 60 + int(m.group(2)) + (1 if int(m.group(3)) >= 30 else 0)
+    return minutes if 1 <= minutes <= 1440 else None
+
+
 def parse_floor_item(raw, key):
     """APIの1件 → 保存する形（読めなければ None）。入れてよいかは blocked_reason で先に調べる"""
     info = raw.get("iteminfo") or {}
@@ -110,6 +123,7 @@ def parse_floor_item(raw, key):
     if not maker:
         maker_id, maker = G.first_entry(info.get("manufacture"))
     series_id, series = G.first_entry(info.get("series"))
+    label_id, label = G.first_entry(info.get("label"))
     genres, formats, sales = split_genres([g.get("name") for g in info.get("genre") or [] if isinstance(g, dict)])
     prices = raw.get("prices") if isinstance(raw.get("prices"), dict) else {}
     price, list_price = G.parse_yen(prices.get("price")), G.parse_yen(prices.get("list_price"))
@@ -130,12 +144,15 @@ def parse_floor_item(raw, key):
         "sample_movie": G.pick_sample_movie(raw),
         "trial_url": G.safe_https_url((raw.get("tachiyomi") or {}).get("affiliateURL") if isinstance(raw.get("tachiyomi"), dict) else "", G.LIST_HOSTS),
         "date": date[:19],
+        "duration": volume_minutes(raw.get("volume")) if F.FLOORS[key].get("duration") else None,
         "maker": maker,
         "maker_id": maker_id,
         "authors": [a.get("name") for a in info.get("author") or [] if isinstance(a, dict)],
         "actress": [a.get("name") for a in info.get("actress") or [] if isinstance(a, dict) and a.get("name") not in (None, "", "----")],
         "series": series,
         "series_id": series_id,
+        "label": label,
+        "label_id": label_id,
         "genres": genres,
         "formats": formats,
         "sales": sales,

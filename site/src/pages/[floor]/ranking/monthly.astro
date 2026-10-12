@@ -1,0 +1,14 @@
+---
+// 素人の月間の女の子ランキング（/amateur/ranking/monthly/）（中身は components/FloorPeriodRanking.astro。2026-10-12）
+import FloorPeriodRanking from '../../../components/FloorPeriodRanking.astro';
+import { activeFloors } from '../../../lib/data.js';
+import { FLOORS } from '../../../lib/floors.js';
+
+export function getStaticPaths() {
+  return activeFloors.filter((floor) => FLOORS[floor].girls).map((floor) => ({ params: { floor } }));
+}
+
+const { floor } = Astro.params;
+---
+
+<FloorPeriodRanking floorKey={floor} span="monthly" />

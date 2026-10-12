@@ -302,8 +302,8 @@ check("取り直しのワークフロー: 「同人・ゲームだけ」のと�
       "floors_only" in rf and rf.count("inputs.floors_only != '1'") >= 4 and "python scripts/doujin_game.py --update" in rf)
 
 print("\n■ 新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題。2026-10-10）")
-check("本数: アニメ・成人映画・コミック・写真集・VR見放題は100本・素人は500本（運営者の希望）。API の service/floor は 2026-10-10 に本物で確認したもの",
-      all(F.FLOORS[k]["target"] == 100 for k in ("anime", "cinema", "comic", "photo", "vr")) and F.FLOORS["amateur"]["target"] == 500
+check("本数: アニメ・成人映画・コミック・写真集・VR見放題は100本・素人は1,000本（運営者の希望。2026-10-12 に500本から）。API の service/floor は 2026-10-10 に本物で確認したもの",
+      all(F.FLOORS[k]["target"] == 100 for k in ("anime", "cinema", "comic", "photo", "vr")) and F.FLOORS["amateur"]["target"] == 1000 and F.FLOORS["amateur"]["max_calls"] >= 20
       and [(F.FLOORS[k]["service"], F.FLOORS[k]["floor"]) for k in ("anime", "amateur", "cinema", "comic", "photo", "vr")]
       == [("digital", "anime"), ("digital", "videoc"), ("digital", "nikkatsu"), ("ebook", "comic"), ("ebook", "photo"), ("monthly", "vr")]
       and len({F.FLOORS[k]["file"] for k in F.FLOORS}) == len(F.FLOORS) and len({F.FLOORS[k]["env"] for k in F.FLOORS}) == len(F.FLOORS))
@@ -311,12 +311,26 @@ am = {"content_id": "abc123", "title": "作った素人の作品", "date": "2026
       "affiliateURL": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Famateur%2Fcontent%2F%3Fid%3Dabc123&af_id=test-990&ch=api",
       "imageURL": {"list": "https://pics.dmm.co.jp/digital/amateur/abc123/abc123jm.jpg", "small": "https://pics.dmm.co.jp/digital/amateur/abc123/abc123jp.jpg"},
       "sampleMovieURL": {"size_476_306": "https://www.dmm.co.jp/litevideo/-/part/=/cid=abc123/size=476_306/", "pc_flag": 1, "sp_flag": 1},
+      "volume": "1:03:40",
       "iteminfo": {"genre": [{"id": 1, "name": "素人"}, {"id": 2, "name": "ハイビジョン"}], "maker": [{"id": 5, "name": "作ったメーカー"}],
+                   "label": [{"id": 77, "name": "作ったレーベル-Z-"}],
                    "actress": [{"id": 9, "name": "作った出演者"}, {"id": 0, "name": "----"}]}}
 it = D.parse_floor_item(am, "amateur")
 check("素人: 大きい表紙が無ければ小さい版（1200×1200の四角）・サンプル動画・出演者（「----」は入れない）・ハイビジョンは形式",
       it and it["image_url"].endswith("abc123jp.jpg") and it["sample_movie"].startswith("https://www.dmm.co.jp/litevideo/") and it["actress"] == ["作った出演者"]
       and "ハイビジョン" in it["formats"] and it["genres"] == ["素人"], it)
+check("素人: レーベル（id と名前）と収録時間（「1:03:40」→ 64分）を保存する（2026-10-12）",
+      it["label"] == "作ったレーベル-Z-" and it["label_id"] == 77 and it["duration"] == 64, (it.get("label"), it.get("duration")))
+check("収録時間の読み方: 分だけ・時:分:秒・読めない形・0分や長すぎる値は None",
+      D.volume_minutes("120") == 120 and D.volume_minutes("0:45:29") == 45 and D.volume_minutes("2:00:30") == 121 and D.volume_minutes("") is None
+      and D.volume_minutes("12ページ") is None and D.volume_minutes("0") is None and D.volume_minutes("99:00:00") is None and D.volume_minutes(None) is None)
+check("収録時間は動画の売り場だけ（ブックスの volume は別の意味なので使わない）・レーベルが無ければ空と 0",
+      D.parse_floor_item(dict(am, volume="300"), "comic")["duration"] is None and D.parse_floor_item(dict(am, volume="300"), "anime")["duration"] == 300
+      and D.parse_floor_item(dict(am, iteminfo={k: v for k, v in am["iteminfo"].items() if k != "label"}), "amateur")["label"] == ""
+      and [k for k in F.FLOORS if F.FLOORS[k].get("duration")] == ["anime", "amateur", "cinema", "vr"])
+check("保存の形: レーベルは id と名前の両方があるときだけ・収録時間は1〜1440分",
+      F.clean_item(dict(it, label_id=0))["label"] == "" and F.clean_item(dict(it, label=""))["label_id"] == 0 and F.clean_item(dict(it, duration=0))["duration"] is None
+      and F.clean_item(dict(it, duration=99999))["duration"] is None and F.clean_item(it)["duration"] == 64)
 bk = {"content_id": "b123abc456", "title": "作った写真集", "date": "2026-09-01 00:00:00",
       "affiliateURL": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fbook.dmm.co.jp%2Fproduct%2F1%2Fb123abc456%2F&af_id=test-990&ch=api",
       "imageURL": {"large": "https://ebook-assets.dmm.co.jp/digital/e-book/b123abc456/b123abc456pl.jpg"},

@@ -26,7 +26,8 @@ DATA_DIR = os.path.join(ROOT, "site", "src", "data")
 # 運営者が決めた本数（2026-10-09）: 同人 1,000本・ゲーム 500本（どちらも、FANZAの人気順の上から。未成年を連想させる作品は入れない）。
 # 新しい売り場（運営者の希望「アニメ動画・素人・成人映画・FANZAブックス（コミック・写真集）・VR見放題も。各100、素人は見たい人が多いので500」。2026-10-10）。
 # floor_id: FloorList の id（読みがなの一覧に使う）・author_search: 作家の一覧（AuthorSearch）が使える売り場・upcoming: 予約の人気順も入れる本数・
-# max_calls: 1日に一覧を取る回数の上限（未成年を連想させる作品が多い売り場は多め。2026-10-10 に本物で確かめた割合: 素人 58%・コミック 65%・アニメ 54%）
+# max_calls: 1日に一覧を取る回数の上限（未成年を連想させる作品が多い売り場は多め。2026-10-10 に本物で確かめた割合: 素人 58%・コミック 65%・アニメ 54%）・
+# duration: 収録時間（APIの volume）を保存する売り場（動画の売り場だけ。ブックスの volume は別の意味なので使わない。2026-10-12）
 FLOORS = {
     "doujin": {
         "label": "FANZA同人", "service": "doujin", "floor": "digital_doujin", "floor_id": 81, "target": 1000, "max_calls": 40, "upcoming": 0,
@@ -37,15 +38,16 @@ FLOORS = {
         "env": "GAME_PATH", "file": "game.json", "samples": 8,
     },
     "anime": {
-        "label": "FANZAアニメ", "service": "digital", "floor": "anime", "floor_id": 46, "target": 100, "max_calls": 8, "upcoming": 12,
+        "label": "FANZAアニメ", "service": "digital", "floor": "anime", "floor_id": 46, "target": 100, "max_calls": 8, "upcoming": 12, "duration": True,
         "env": "ANIME_PATH", "file": "anime.json", "samples": 8,
     },
+    # 素人は 1,000本（運営者の希望「素人のページを1,000本ほどに拡充」。2026-10-12。未成年を連想させる作品を外すと、1,000本目は人気順の約1,800本目＝probe_api.py の 17）
     "amateur": {
-        "label": "FANZA素人", "service": "digital", "floor": "videoc", "floor_id": 44, "target": 500, "max_calls": 25, "upcoming": 0,
+        "label": "FANZA素人", "service": "digital", "floor": "videoc", "floor_id": 44, "target": 1000, "max_calls": 30, "upcoming": 0, "duration": True,
         "env": "AMATEUR_PATH", "file": "amateur.json", "samples": 8,
     },
     "cinema": {
-        "label": "FANZA成人映画", "service": "digital", "floor": "nikkatsu", "floor_id": 45, "target": 100, "max_calls": 6, "upcoming": 0,
+        "label": "FANZA成人映画", "service": "digital", "floor": "nikkatsu", "floor_id": 45, "target": 100, "max_calls": 6, "upcoming": 0, "duration": True,
         "env": "CINEMA_PATH", "file": "cinema.json", "samples": 8,
     },
     "comic": {
@@ -57,10 +59,20 @@ FLOORS = {
         "env": "PHOTO_PATH", "file": "photo.json", "samples": 0,
     },
     "vr": {
-        "label": "FANZA VR見放題", "service": "monthly", "floor": "vr", "floor_id": 91, "target": 100, "max_calls": 6, "upcoming": 0,
+        "label": "FANZA VR見放題", "service": "monthly", "floor": "vr", "floor_id": 91, "target": 100, "max_calls": 6, "upcoming": 0, "duration": True,
         "env": "VR_PATH", "file": "vr.json", "samples": 8,
     },
 }
+
+# 素人の「女の子のタイプから探す」（運営者の希望「公式サイトの『女の子のタイプから探す』のように」。2026-10-12）。
+# FANZA公式のAPIには、素人の年齢・身長・スリーサイズ・カップが無い（scripts/probe_api.py の 17）ので、FANZAのジャンルをタイプとして並べる。
+# site/src/lib/floors.js の GIRL_TYPES と同じ（tests で突き合わせ）。どれも claude_comments.py の FLOOR_COMMENT_GENRES に入れてある（ジャンルのページを作るため）
+GIRL_TYPES = [
+    ("属性", ["人妻・主婦", "熟女", "お姉さん", "女子大生", "OL"]),
+    ("雰囲気", ["清楚", "ギャル", "色白", "黒髪"]),
+    ("体型", ["巨乳", "美乳", "巨尻", "スレンダー", "くびれ", "美脚", "長身", "ぽっちゃり"]),
+]
+GIRL_TYPE_FLOORS = ("amateur",)
 
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 CID = re.compile(r"^[A-Za-z0-9_\-]{1,40}$")
@@ -110,6 +122,10 @@ def clean_item(row):
     campaign = None
     if isinstance(camp, dict) and str(camp.get("title") or "").strip():
         campaign = {"title": str(camp["title"]).strip()[:40], "begin": str(camp.get("begin") or "")[:10] if DAY.match(str(camp.get("begin") or "")[:10]) else ""}
+    # レーベル（素人は「電影シロウト-バズ-」のような、メーカーの中の名前。2026-10-12）。id と名前の両方があるときだけ。無ければ (0, "")
+    label_name = " ".join(str(row.get("label") or "").split())[:80]
+    label_id = _int_or_none(row.get("label_id"), 1) or 0
+    label = (label_id, label_name) if label_id and label_name else (0, "")
     kind = row.get("comment_kind") if row.get("comment_kind") in KINDS else "none"
     comment = str(row.get("comment") or "").strip() if kind == "claude" else ""
     if not comment:
@@ -123,12 +139,16 @@ def clean_item(row):
         "sample_movie": _url(row.get("sample_movie")),
         "trial_url": _url(row.get("trial_url")),
         "date": date[:19],
+        "duration": _int_or_none(row.get("duration"), 1, 1440),
         "maker": " ".join(str(row.get("maker") or "").split())[:80],
         "maker_id": _int_or_none(row.get("maker_id"), 1) or 0,
         "authors": _names(row.get("authors"), 4),
         "actress": _names(row.get("actress"), 8),
         "series": " ".join(str(row.get("series") or "").split())[:80],
         "series_id": _int_or_none(row.get("series_id"), 1) or 0,
+        # レーベル（素人は「電影シロウト-バズ-」のような、メーカーの中の名前。2026-10-12）。無ければ空と 0
+        "label": label[1],
+        "label_id": label[0],
         "genres": _names(row.get("genres"), 30),
         "formats": _names(row.get("formats"), 12),
         "sales": _names(row.get("sales"), 8),
