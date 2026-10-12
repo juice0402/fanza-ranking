@@ -85,6 +85,15 @@ check('同人のスマホ版が読めない → <source> を外す（元の画�
     check(`${f}.astro: 表紙は FloorImg.astro（売り場ごとの枠の形）`, c.includes("import FloorImg from './FloorImg.astro'") && c.includes('<FloorImg ') && !c.includes("=== 'doujin'"));
   }
 }
+{
+  // レーベル・収録時間（素人などの動画の売り場。2026-10-12）
+  const base = { cid: 'ab1', title: 'まい', url: 'https://al.fanza.co.jp/?lurl=x', image_url: 'https://pics.dmm.co.jp/digital/amateur/ab1/ab1jp.jpg', date: '2026-10-01 00:00:00', maker: '作ったメーカー', maker_id: 5 };
+  const one = (r) => L.normalizeFloor({ items: [{ ...base, ...r }] }, 'amateur', today).items[0];
+  check('レーベル: id と名前があれば持つ・メーカーと同じ名前なら持たない・収録時間は1〜1440分だけ',
+    one({ label: '作ったレーベル-Z-', label_id: 7, duration: 64 }).label?.name === '作ったレーベル-Z-' && one({ label: '作ったメーカー', label_id: 7 }).label === null
+      && one({ label: 'x', label_id: 0 }).label === null && one({ duration: 64 }).duration === 64 && one({ duration: 0 }).duration === null && one({ duration: 99999 }).duration === null && one({}).duration === null);
+  check('レーベルの名前が未成年を連想させる作品は出さない', L.normalizeFloor({ items: [{ ...base, label: '女子校生レーベル', label_id: 9 }] }, 'amateur', today).items.length === 0);
+}
 check('壊れたデータ・空でも落ちない', L.normalizeFloor(null, 'game', today).items.length === 0 && L.normalizeFloor({ items: 'x' }, 'game', today).items.length === 0);
 
 console.log('\n■ 並べ方');
@@ -119,6 +128,55 @@ check('「○○で人気の作品」: おだやかなジャンルで、ほか�
 const py = fs.readFileSync(new URL('../scripts/claude_comments.py', import.meta.url), 'utf-8');
 const pyList = [...py.match(/FLOOR_COMMENT_GENRES = \[([\s\S]*?)\]/)[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
 check('見出し・多いジャンルに出すジャンルは、コメントの手がかりのジャンル（claude_comments.py の FLOOR_COMMENT_GENRES）と同じ', JSON.stringify(pyList) === JSON.stringify(L.FLOOR_GENRE_OK), [pyList.length, L.FLOOR_GENRE_OK.length]);
+
+console.log('\n■ 素人の「女の子のタイプから探す」・女の子ランキング（2026-10-12）');
+{
+  const fd = fs.readFileSync(new URL('../scripts/floor_data.py', import.meta.url), 'utf-8');
+  const pyTypes = [...fd.match(/GIRL_TYPES = \[([\s\S]*?)\n\]/)[1].matchAll(/\("([^"]+)", \[([^\]]*)\]\)/g)].map((m) => ({ name: m[1], genres: [...m[2].matchAll(/"([^"]+)"/g)].map((x) => x[1]) }));
+  check('女の子のタイプは、floor_data.py の GIRL_TYPES と同じ（組の名前・ジャンル・順番）', JSON.stringify(pyTypes) === JSON.stringify(L.GIRL_TYPES), JSON.stringify(pyTypes).slice(0, 80));
+  const allTypes = L.GIRL_TYPES.flatMap((g) => g.genres);
+  check('どのタイプのジャンルも、ジャンルのページを作るおだやかなジャンル（FLOOR_GENRE_OK）にあり、未成年を連想させない・重複なし',
+    allTypes.every((g) => L.FLOOR_GENRE_OK.includes(g) && !isMinorTitle(g)) && new Set(allTypes).size === allTypes.length);
+  check('女の子のタイプ・女の子ランキングは素人だけ', L.hasGirlTypes('amateur') && !L.hasGirlTypes('doujin') && L.isGirlType('amateur', '巨乳') && !L.isGirlType('doujin', '巨乳') && !L.isGirlType('amateur', '中出し')
+    && L.floorRankingName('amateur') === '女の子ランキング' && L.floorRankingName('game') === '人気ランキング');
+  const gg = L.girlTypeGroups('amateur', [{ name: '巨乳', path: '/amateur/genre/a/', total: 12 }, { name: '人妻・主婦', path: '/amateur/genre/b/', total: 30 }, { name: '中出し', path: '/amateur/genre/c/', total: 99 }]);
+  check('タイプの並び: ページのあるタイプだけ・組の順（属性 → 体型）・ページの無い組は出さない',
+    JSON.stringify(gg) === JSON.stringify([{ name: '属性', types: [{ name: '人妻・主婦', path: '/amateur/genre/b/', total: 30 }] }, { name: '体型', types: [{ name: '巨乳', path: '/amateur/genre/a/', total: 12 }] }])
+      && L.girlTypeGroups('doujin', [{ name: '巨乳', path: '/x/', total: 3 }]).length === 0, JSON.stringify(gg));
+  const own = { floor: 'amateur', cid: 'own1', title: 'ゆい' };
+  const GT = L.normalizeFloorGenreTops({ updated: '2026-10-12', amateur: {
+    '人妻・主婦': { id: 1, date: '2026-10-12', items: [
+      { c: 'own1', t: 'x', d: '2026-10-01', m: 'M', i: 'https://pics.dmm.co.jp/a.jpg', u: 'https://al.fanza.co.jp/?a' },
+      { c: 'ext1', t: 'まい', d: '2026-09-01', m: '素人メーカー', i: 'https://pics.dmm.co.jp/digital/amateur/ext1/ext1jp.jpg', u: 'https://al.fanza.co.jp/?lurl=x' },
+      { c: 'bad1', t: 'あい', d: '2026-09-01', m: 'M', i: 'https://evil.example/a.jpg', u: 'https://al.fanza.co.jp/?b' },
+      { c: 'bad2', t: '女子校生', d: '2026-09-01', m: 'M', i: 'https://pics.dmm.co.jp/b.jpg', u: 'https://al.fanza.co.jp/?c' },
+      { c: 'ext1', t: 'まい', d: '2026-09-01', m: 'M', i: 'https://pics.dmm.co.jp/c.jpg', u: 'https://al.fanza.co.jp/?d' },
+    ] },
+    '中出し': { id: 2, date: '2026-10-12', items: [{ c: 'z1', t: 'z', d: '2026-09-01', m: 'M', i: 'https://pics.dmm.co.jp/z.jpg', u: 'https://al.fanza.co.jp/?z' }] },
+  } }, { amateur: new Map([['own1', own]]) });
+  const hm = GT.amateur.get('人妻・主婦');
+  check('FANZA素人で人気のTOP20: このサイトの作品はサイトの作品のまま・ほかはFANZAへ直接（external）・画像やURLがFANZAでない・未成年を連想させる・同じ作品は入れない・タイプでないジャンルは読まない',
+    hm && hm.items.length === 2 && hm.items[0] === own && hm.items[1].external === true && hm.items[1].maker.name === '素人メーカー' && hm.items[1].floor === 'amateur'
+      && !GT.amateur.has('中出し') && GT.doujin.size === 0 && L.normalizeFloorGenreTops(null).amateur.size === 0, JSON.stringify(hm?.items?.map((i) => i.cid)));
+  // 週間・月間: 3作品の記録（10/10 から3日分）
+  const items = [
+    { floor: 'amateur', cid: 'a1', rank: 1, dateKey: '2026-09-01', upcoming: false },
+    { floor: 'amateur', cid: 'a2', rank: 2, dateKey: '2026-09-01', upcoming: false },
+    { floor: 'amateur', cid: 'a3', rank: 3, dateKey: '2026-09-01', upcoming: false },
+    { floor: 'amateur', cid: 'a4', rank: null, dateKey: '2026-11-01', upcoming: true },
+  ];
+  const H = L.normalizeFloorRankHistory({ amateur: {
+    a1: { d: '2026-10-10', r: [1, 0, 0] }, a2: { d: '2026-10-10', r: [3, 2, 2] }, a3: { d: '2026-10-11', r: [5, 1] }, a4: { d: '2026-10-10', r: [1, 1, 1] }, gone: { d: '2026-10-10', r: [1, 1, 1] },
+  } }).amateur;
+  const wk = L.floorPeriodRanking(items, H, '2026-10-12', 7);
+  check('週間: 期間の毎日の順位に「301−順位」の点を足した順（圏外は0点）・発売前の作品・いまの売り場に無い作品は入れない・記録の始まりから数える',
+    wk.list.map((r) => `${r.item.cid}:${r.points}:${r.days}:${r.best}`).join() === 'a2:896:3:2,a3:596:2:1,a1:300:1:1' && wk.from === '2026-10-10' && wk.to === '2026-10-12' && wk.recorded === 3,
+    JSON.stringify(wk.list.map((r) => [r.item.cid, r.points])));
+  check('週間・月間を検索エンジンに出すのは、期間の日数ぶんの記録がそろい、10本以上のとき', !L.floorPeriodIndexable(wk, 7) && L.floorPeriodIndexable({ recorded: 7, list: Array(10).fill({}) }, 7) && !L.floorPeriodIndexable({ recorded: 7, list: Array(9).fill({}) }, 7));
+  check('週間・月間の場所と日数', L.floorPeriodPath('amateur', 'weekly') === '/amateur/ranking/weekly/' && L.FLOOR_PERIODS.map((p) => `${p.span}:${p.days}`).join() === 'weekly:7,monthly:30'
+    && L.floorPeriodRanking(items, H, '', 7).list.length === 0 && L.floorPeriodRanking(items, null, '2026-10-12', 7).list.length === 0);
+  check('ファイルの数の見積もりに、素人の週間・月間の2ページを入れる', L.floorFileCount({ key: 'amateur', items: [1] }, []) === L.floorFileCount({ key: 'cinema', items: [1] }, []) + 2);
+}
 
 console.log('\n■ ページの場所・タイトル・ファイルの数');
 check('場所: /doujin/・/doujin/ranking/・/doujin/sale/・/doujin/item/<品番>/・/game/maker/<id>/',

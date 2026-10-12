@@ -6319,3 +6319,24 @@ a.tf-name {
   background: var(--pop);
   color: var(--ink);
 }
+
+/* 素人の「女の子のタイプから探す」（属性・雰囲気・体型の組ごとに、ジャンルのページへのチップ。2026-10-12） */
+.type-group + .type-group {
+  margin-top: 12px;
+}
+
+.type-group-title {
+  margin: 12px 0 6px;
+  color: var(--paper-dim);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 女の子ランキング（日刊）の下の「週間・月間」 */
+.rank-periods {
+  margin-top: 14px;
+}
+
+.type-group .genre-chips {
+  margin-top: 0;
+}

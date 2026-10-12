@@ -19,7 +19,7 @@ import { SEARCH_MORE_SIZE, buildSearchIndexes } from './search.js';
 import { TEN_YEN_ALWAYS, TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenIndexable, tenYenState } from './ten-yen.js';
 import { FLOOR_REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, normalizeReviews, topRated } from './reviews.js';
 import { normalizeReadings } from './kana.js';
-import { FLOOR_KEYS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
+import { FLOOR_KEYS, FLOOR_PERIODS, FLOORS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorPeriodRanking, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorGenreTops, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
@@ -141,6 +141,14 @@ export const floorEntityRankings = Object.fromEntries(FLOOR_KEYS.map((k) => {
   if (author.length >= 10) out.author = author;
   return [k, out];
 }));
+/** 素人の週間・月間の女の子ランキング（人気の動きの記録から。lib/floors.js の floorPeriodRanking。2026-10-12）: { amateur: { weekly: {…}, monthly: {…} } }。ほかの売り場は {} */
+export const floorPeriodRankings = Object.fromEntries(FLOOR_KEYS.map((k) => [k, FLOORS[k].girls
+  ? Object.fromEntries(FLOOR_PERIODS.map((p) => [p.span, floorPeriodRanking(floors[k].items, floorRankHistory[k], floors[k].updated, p.days)]))
+  : {}]));
+/** 「FANZA素人で人気の○○ TOP20」（女の子のタイプごと。scripts/genre_tops.py が毎日集める floor_genre_tops.json。まだ無ければ空。2026-10-12） */
+const floorGenreTopShards = import.meta.glob('../data/floor_genre_tops.json', { eager: true, import: 'default' });
+export const floorGenreTops = normalizeFloorGenreTops(floorGenreTopShards['../data/floor_genre_tops.json'] ?? null,
+  Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floors[k].items.map((i) => [i.cid, i]))])));
 /** 運命の作品の候補（売り場ごと。トップはページの中に、作品ページは /data/<売り場>-gacha.json を読む） */
 export const floorGachaPools = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorGachaPool(floors[k].items)]));
 /** 作品検索の索引（/data/<売り場>-index.json と、検索のページの「はじめの一覧」） */

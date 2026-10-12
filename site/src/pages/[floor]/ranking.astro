@@ -6,7 +6,7 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
 import FloorMoreNav from '../../components/FloorMoreNav.astro';
 import { activeFloors, floorRankHistory, floors } from '../../lib/data.js';
-import { FLOORS, FLOOR_RANKING_LIMIT, floorItemListLd, floorPath, floorRankNote, floorRanking, floorRankingPath, priceNote } from '../../lib/floors.js';
+import { FLOORS, FLOOR_PERIODS, FLOOR_RANKING_LIMIT, floorItemListLd, floorPath, floorPeriodPath, floorRankNote, floorRanking, floorRankingName, floorRankingPath, priceNote } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
 
@@ -22,8 +22,10 @@ const day = data.updated ? dateParts(data.updated) : null;
 const trail = [
   { name: 'トップ', path: '/' },
   { name: f.label, path: floorPath(key) },
-  { name: '人気ランキング', path: floorRankingPath(key) },
+  { name: floorRankingName(key), path: floorRankingPath(key) },
 ];
+// 素人は「女の子ランキング（日刊）」（作品のタイトルが女の子の名前。運営者の希望「公式サイトの日刊女の子ランキングのように」。2026-10-12）
+const name = f.girls ? '女の子ランキング（日刊）' : '人気ランキング';
 const noindex = list.length === 0 || !listIndexable(list);
 // 前日からの動きと、最近30日の最高順位（人気の動きの記録。scripts/floor_history.py。2026-10-09）
 const hist = floorRankHistory[key];
@@ -32,7 +34,7 @@ const hasNotes = notes.some(Boolean);
 ---
 
 <Base
-  title={`${f.label}の人気ランキングTOP${list.length}【${day ? `${day.m}月${day.d}日` : '毎日'}更新】｜${SITE_NAME}`}
+  title={`${f.label}${f.girls ? ' ' : 'の'}${name}TOP${list.length}【${day ? `${day.m}月${day.d}日` : '毎日'}更新】｜${SITE_NAME}`}
   description={`${f.label}の${f.kind}を、その日のFANZAの人気順に${list.length}本並べたランキングです。${hasNotes ? '前日からの順位の動き・最近30日の最高順位、' : ''}価格・セール中の作品・${f.maker}も。毎日、日付が変わったあとに更新します。`}
   path={floorRankingPath(key)}
   noindex={noindex}
@@ -42,8 +44,13 @@ const hasNotes = notes.some(Boolean);
     <Breadcrumb trail={trail} />
 
     <section class="hero">
-      <h1 class="hero-title">{f.label}の人気ランキング</h1>
+      <h1 class="hero-title">{f.girls ? name : `${f.label}の人気ランキング`}</h1>
       <p class="hero-lead">その日のFANZAの人気順です（毎日入れかわります）。</p>
+      {f.girls && (
+        <nav class="sale-jump genre-chips" aria-label="週間・月間">
+          {FLOOR_PERIODS.map((p) => <a class="chip-link" href={floorPeriodPath(key, p.span)}>{p.name}ランキング</a>)}
+        </nav>
+      )}
     </section>
 
     <section class="section" aria-labelledby="fl-ranking-title">

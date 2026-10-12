@@ -19,7 +19,8 @@ export const FLOORS = {
   doujin: { key: 'doujin', label: 'FANZA同人', short: '同人', maker: 'サークル', makerUnit: 'サークル', kind: '同人作品', frame: 'wide', detail: 'wide' },
   game: { key: 'game', label: 'FANZAゲーム', short: 'ゲーム', maker: 'ブランド', makerUnit: 'ブランド', kind: 'PCゲーム', frame: 'cover', detail: 'tall', authors: true },
   anime: { key: 'anime', label: 'FANZAアニメ', short: 'アニメ', maker: 'メーカー', makerUnit: '社', kind: 'アダルトアニメ', frame: 'cover', detail: 'spread' },
-  amateur: { key: 'amateur', label: 'FANZA素人', short: '素人', maker: 'メーカー', makerUnit: '社', kind: '素人作品', frame: 'square', detail: 'square', people: true },
+  // girls: 素人ならではの「女の子のタイプから探す」「女の子ランキング（日刊・週間・月間）」（運営者の希望。2026-10-12）
+  amateur: { key: 'amateur', label: 'FANZA素人', short: '素人', maker: 'メーカー', makerUnit: '社', kind: '素人作品', frame: 'square', detail: 'square', people: true, girls: true },
   cinema: { key: 'cinema', label: 'FANZA成人映画', short: '成人映画', maker: 'メーカー', makerUnit: '社', kind: '成人映画', frame: 'cover', detail: 'spread', people: true },
   comic: { key: 'comic', label: 'FANZAコミック', short: 'コミック', maker: '出版社', makerUnit: '社', kind: 'アダルトコミック', frame: 'cover', detail: 'tall', authors: true },
   photo: { key: 'photo', label: 'FANZA写真集', short: '写真集', maker: '出版社', makerUnit: '社', kind: '写真集', frame: 'cover', detail: 'tall', authors: true, people: true },
@@ -117,8 +118,11 @@ export function normalizeFloor(raw, key, today) {
     const actress = names(r.actress, 8);
     const maker = entry(r.maker_id, r.maker);
     const series = entry(r.series_id, r.series);
+    // レーベル（素人は「電影シロウト-バズ-」のような、メーカーの中の名前。2026-10-12）。メーカーと同じ名前なら持たない（同じことを2回出さない）
+    const labelEntry = entry(r.label_id, r.label);
+    const label = labelEntry && labelEntry.name !== maker?.name ? labelEntry : null;
     // 未成年を連想させる作品は出さない（集めるときにも外している。二重の備え）
-    if ([title, ...genres, ...formats, ...sales, ...authors, ...actress, maker?.name, series?.name].some(minor)) continue;
+    if ([title, ...genres, ...formats, ...sales, ...authors, ...actress, maker?.name, series?.name, labelEntry?.name].some(minor)) continue;
     seen.add(cid);
     // 見放題（VR見放題）の価格は、作品の値段ではないので出さない
     const price = FLOORS[key]?.noPrice ? null : yen(r.price);
@@ -143,6 +147,9 @@ export function normalizeFloor(raw, key, today) {
       sampleMovie: safeHttpsUrl(r.sample_movie, FANZA_HOSTS),
       trialUrl: safeHttpsUrl(r.trial_url, FANZA_LINK_HOSTS),
       series,
+      label,
+      // 収録時間（分。動画の売り場だけ。2026-10-12）。無ければ null
+      duration: Number.isInteger(r.duration) && r.duration >= 1 && r.duration <= 1440 ? r.duration : null,
       genres,
       formats,
       sales,
@@ -247,8 +254,81 @@ export const FLOOR_GENRE_OK = ['巨乳', '人妻・主婦', '人妻', '熟女', 
   '浮気', '未亡人', 'アイドル・芸能人', 'スポーツ', 'SF', 'ホラー', 'ミステリー', '歴史', '和風', 'ダークファンタジー', 'ケモミミ',
   '獣人', '天使・悪魔', 'お嬢様・令嬢', '王女・姫', '主従', '上司・部下',
   // 新しい売り場（アニメ・素人・成人映画・写真集・VR見放題。2026-10-10）で多い、おだやかなもの（動画のジャンルのページ TAG_PAGE_GENRES にもあるもの）
-  '美乳', '巨尻', 'グラビア', 'ドラマ'];
+  '美乳', '巨尻', 'グラビア', 'ドラマ',
+  // 素人の「女の子のタイプ」（GIRL_TYPES。2026-10-12）
+  '女子大生', '清楚', 'くびれ', '美脚', '長身', '色白', '黒髪', 'ぽっちゃり'];
 const GENRE_OK = new Set(FLOOR_GENRE_OK);
+
+/**
+ * 素人の「女の子のタイプから探す」（運営者の希望「公式サイトの『女の子のタイプから探す』のように」。2026-10-12）。
+ * FANZA公式のAPIには、素人の年齢・身長・スリーサイズ・カップが無い（scripts/probe_api.py の 17）ので、FANZAのジャンルをタイプとして並べる。
+ * scripts/floor_data.py の GIRL_TYPES と同じ（tests で突き合わせ）。どのジャンルも FLOOR_GENRE_OK にある（ジャンルのページがあるもの）
+ */
+export const GIRL_TYPES = [
+  { name: '属性', genres: ['人妻・主婦', '熟女', 'お姉さん', '女子大生', 'OL'] },
+  { name: '雰囲気', genres: ['清楚', 'ギャル', '色白', '黒髪'] },
+  { name: '体型', genres: ['巨乳', '美乳', '巨尻', 'スレンダー', 'くびれ', '美脚', '長身', 'ぽっちゃり'] },
+];
+const GIRL_TYPE_SET = new Set(GIRL_TYPES.flatMap((g) => g.genres));
+/** 女の子のタイプを出す売り場か */
+export const hasGirlTypes = (key) => Boolean(FLOORS[key]?.girls);
+/** その売り場のジャンルが、女の子のタイプか */
+export const isGirlType = (key, genre) => hasGirlTypes(key) && GIRL_TYPE_SET.has(genre);
+
+/**
+ * 女の子のタイプの並び（ページのあるタイプだけ）。genreGroups: その売り場のジャンルのページ（floorCollections の genre）
+ * → [{ name: 属性, types: [{ name, path, total }] }]（タイプが1つも無い組は出さない）
+ */
+export function girlTypeGroups(key, genreGroups) {
+  if (!hasGirlTypes(key)) return [];
+  const byName = new Map((genreGroups ?? []).map((g) => [g.name, g]));
+  return GIRL_TYPES.map((g) => ({
+    name: g.name,
+    types: g.genres.filter((n) => byName.has(n)).map((n) => ({ name: n, path: byName.get(n).path, total: byName.get(n).total })),
+  })).filter((g) => g.types.length > 0);
+}
+
+/**
+ * 「FANZA素人で人気の○○ TOP20」（scripts/genre_tops.py の floor_genre_tops.json。タイプごとに、FANZA全体の人気順の上から。2026-10-12）。
+ * raw: { updated, amateur: { タイプ: { id, date, items: [{ c, t, d, m, i, u }] } } } / byCid: { 売り場: Map(cid → このサイトの作品) }
+ * → { 売り場: Map(タイプ → { date, items: [作品（このサイトに無い作品は external: true。表紙・名前・メーカー・FANZAへのリンクだけ）] }) }
+ * 未成年を連想させる名前・FANZA(DMM)の https でないURL・画像の無い作品は入れない
+ */
+export function normalizeFloorGenreTops(raw, byCid = {}) {
+  const out = {};
+  const data = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  for (const key of Object.keys(FLOORS)) {
+    const map = new Map();
+    const genres = data[key] && typeof data[key] === 'object' && !Array.isArray(data[key]) ? data[key] : {};
+    for (const [name, g] of Object.entries(genres)) {
+      if (!isGirlType(key, name) || !g || !Array.isArray(g.items) || !isDay(String(g.date ?? ''))) continue;
+      const items = [];
+      const seen = new Set();
+      for (const r of g.items) {
+        if (!r || typeof r !== 'object' || !CID.test(String(r.c ?? '')) || seen.has(r.c)) continue;
+        const own = byCid[key]?.get(r.c);
+        if (own) {
+          seen.add(r.c);
+          items.push(own);
+          continue;
+        }
+        const title = String(r.t ?? '').trim();
+        const url = safeHttpsUrl(r.u, FANZA_LINK_HOSTS);
+        const image = safeHttpsUrl(picsUrl(r.i), FANZA_HOSTS);
+        const maker = typeof r.m === 'string' && r.m.trim() ? r.m.trim() : '';
+        if (!title || minor(title) || minor(maker) || !url || !image || !isDay(String(r.d ?? ''))) continue;
+        seen.add(r.c);
+        items.push({
+          floor: key, cid: r.c, title, url, image_url: image, date: r.d, dateKey: r.d, maker: maker ? { id: 0, name: maker } : null,
+          authors: [], actress: [], genres: [name], formats: [], sales: [], review: null, comment: '', rank: null, upcoming: false, external: true,
+        });
+      }
+      if (items.length > 0) map.set(name, { date: g.date, items: items.slice(0, 20) });
+    }
+    out[key] = map;
+  }
+  return out;
+}
 
 /** 中身のジャンルの多い順（数えるのは作品の数。おだやかなジャンル FLOOR_GENRE_OK だけ。上から limit 個）: [{ name, count }] */
 export function topGenres(items, limit = 8) {
@@ -562,6 +642,59 @@ export function floorRankNote(hist, day, since = '') {
   if (hist.best && hist.best.rank < cur) parts.push(`最高${hist.best.rank}位`);
   return parts.join('｜');
 }
+
+// ---- 素人の「女の子ランキング」（日刊・週間・月間。運営者の希望「公式サイトの日刊女の子ランキングのように」。2026-10-12） ----
+// 日刊は、ふだんの人気ランキング（その日のFANZAの人気順）。素人は、作品のタイトルが女の子の名前なので「女の子ランキング」と呼ぶ。
+// 週間・月間は、FANZAのAPIに無いので、このサイトの人気の動きの記録（floor_rank_history.json。毎日の上位300本の順位）から数える:
+// その期間の毎日の順位に「301 − 順位」の点を足した順（圏外・記録の無い日は0点）。数えた事実だけで、予想はしない
+
+/** 人気ランキングの呼び名（素人は「女の子ランキング」） */
+export const floorRankingName = (key) => (FLOORS[key]?.girls ? '女の子ランキング' : '人気ランキング');
+/** 週間・月間（日数・呼び名・URLの印） */
+export const FLOOR_PERIODS = [
+  { span: 'weekly', days: 7, name: '週間' },
+  { span: 'monthly', days: 30, name: '月間' },
+];
+/** 週間・月間のランキングのページ */
+export const floorPeriodPath = (key, span) => `${floorRankingPath(key)}${span}/`;
+
+/**
+ * 週間・月間のランキング（hist: その売り場の人気の動きの記録 Map(cid → 記録)・day: データの日・days: 日数）。
+ * → { list: [{ item, points, days: 上位300本に入った日数, best: 期間の中の最高順位 }], from: 数えはじめの日（記録の始まりより前にはしない）, to: day, recorded: 記録のある日数 }
+ * 発売前の作品・いまこの売り場に無い作品は入れない（ページが無いため）
+ */
+export function floorPeriodRanking(items, hist, day, days, limit = FLOOR_RANKING_LIMIT) {
+  if (!isDay(day) || !hist || days < 1) return { list: [], from: '', to: '', recorded: 0 };
+  const start = addDays(day, -(days - 1));
+  const recorded = new Set();
+  const rows = [];
+  for (const item of items) {
+    if (item.upcoming) continue;
+    const h = hist.get(item.cid);
+    if (!h) continue;
+    let points = 0;
+    let inDays = 0;
+    let best = null;
+    for (let i = 0; i < days; i++) {
+      const d = addDays(start, i);
+      const r = floorRankOn(h, d);
+      if (r === null) continue;
+      recorded.add(d);
+      if (r > 0) {
+        points += FLOOR_TREND_TRACK + 1 - r;
+        inDays++;
+        if (best === null || r < best) best = r;
+      }
+    }
+    if (points > 0) rows.push({ item, points, days: inDays, best });
+  }
+  rows.sort((a, b) => b.points - a.points || a.best - b.best || byRank(a.item, b.item));
+  const first = [...recorded].sort()[0] ?? day;
+  return { list: rows.slice(0, limit), from: first > start ? first : start, to: day, recorded: recorded.size };
+}
+
+/** 週間・月間のランキングを検索エンジンに出してよいか: 期間の日数ぶんの記録がそろい、10本以上並ぶとき（そろうまでは、数えた日数を書いて noindex） */
+export const floorPeriodIndexable = (r, days) => r.recorded >= days && r.list.length >= 10;
 
 /** 作品ページの「人気の動き」の文（f: 売り場の設定）。一度も上位300本に入っていない・順位の分かる日が2日に満たない（記録を始めたばかり）ときは [] */
 export function floorTrendLines(hist, f) {
@@ -932,4 +1065,5 @@ export function floorSearchRow(row, key) {
 export const floorFileCount = (floor, makers, collections = {}, salePages = []) => (floor.items.length > 0
   ? floor.items.length + makers.length + 5 + salePages.length + FLOOR_COLLECTION_KINDS.reduce((n, k) => n + (collections[k]?.length ? collections[k].length + 1 : 0), 0)
     + 2 + 3 // 人気サークル/ブランド・作家ランキング（2）＋作品検索のページ・索引・運命の作品の候補（3）
+    + (FLOORS[floor.key]?.girls ? FLOOR_PERIODS.length : 0) // 素人の週間・月間の女の子ランキング（2026-10-12）
   : 0);

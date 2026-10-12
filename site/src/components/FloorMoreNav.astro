@@ -1,7 +1,7 @@
 ---
 // 同人・ゲームの「ほかのランキング」（ランキングのページのいちばん下。2026-10-09）。
 // 動画のトップの「作品を探す」と同じ、同じ幅のボタンの並び（.hero-jump。1行に3つ。いまのページは出さない）
-import { DOUJIN_TYPES, FLOORS, floorEntityLabel, floorEntityRankingPath, floorRankingPath } from '../lib/floors.js';
+import { DOUJIN_TYPES, FLOORS, FLOOR_PERIODS, floorEntityLabel, floorEntityRankingPath, floorPeriodPath, floorRankingPath } from '../lib/floors.js';
 import { floorCollectionGroups, floorEntityRankings, floorReviewRankings } from '../lib/data.js';
 import { REVIEW_RANKING_MIN_ITEMS, floorReviewRankingPath } from '../lib/reviews.js';
 
@@ -9,7 +9,9 @@ const { floorKey, current = '' } = Astro.props;
 const f = FLOORS[floorKey];
 const ranks = floorEntityRankings[floorKey];
 const links = [
-  { key: 'works', name: '作品', href: floorRankingPath(floorKey) },
+  // 素人は「女の子ランキング」の日刊・週間・月間（2026-10-12）
+  { key: 'works', name: f.girls ? '日刊' : '作品', href: floorRankingPath(floorKey) },
+  ...(f.girls ? FLOOR_PERIODS.map((p) => ({ key: p.span, name: p.name, href: floorPeriodPath(floorKey, p.span) })) : []),
   ...(floorReviewRankings[floorKey].length >= REVIEW_RANKING_MIN_ITEMS ? [{ key: 'review', name: '高評価', href: floorReviewRankingPath(floorKey) }] : []),
   ...['maker', 'author'].filter((by) => ranks[by]?.length > 0).map((by) => ({ key: by, name: floorEntityLabel(f, by), href: floorEntityRankingPath(floorKey, by) })),
   ...floorCollectionGroups[floorKey].type.map((g) => ({ key: g.slug, name: DOUJIN_TYPES.find((t) => t.slug === g.slug)?.short ?? g.name, href: g.path })),

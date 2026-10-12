@@ -267,11 +267,115 @@ def probe_daily_sale():
     say(f"- 日替わりの順位: {sorted(d[0] for d in daily)}")
 
 
+def probe_floor_extras():
+    """17) 素人の「女の子」の情報と、売り場ごとに使える並び（運営者の希望「素人のページを1,000本に拡充。日刊女の子ランキング・
+    女の子のタイプ（年齢・身長・スリーサイズ・カップ）から探す」「ほかの売り場も、独自のランキングが取れる情報があれば」。2026-10-12）。
+    値は出さず、項目の形・数だけ出す（スリーサイズなどの項目があれば、名前と「入っている作品の数」だけ）"""
+    import time
+    from collections import Counter
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import doujin_game as D
+    import floor_data as F
+    now = datetime.now(JST)
+    lte = now.strftime("%Y-%m-%dT23:59:59")
+    say("## 17a) 素人の作品の形（人気順の上位100本）")
+    res, err = call("ItemList", {"site": "FANZA", "service": "digital", "floor": "videoc", "sort": "rank", "hits": 100, "offset": 1, "lte_date": lte})
+    if err:
+        say(f"- 取れませんでした: {err}")
+    else:
+        items = res.get("items") or []
+        say(f"- 全体 {res.get('total_count')}本・読めた {len(items)}本")
+        top = Counter(k for x in items for k in x)
+        say(f"- 作品の項目（入っている本数）: {dict(top)}")
+        info = Counter(k for x in items for k in (x.get('iteminfo') or {}))
+        say(f"- iteminfo の項目: {dict(info)}")
+        if items:
+            say(f"- 1件目の形: {shape(items[0])}")
+            say(f"- 1件目の iteminfo の形: {shape(items[0].get('iteminfo') or {})}")
+        body = re.compile(r"size|bust|waist|hip|height|cup|age|birth|body|type|名前|サイズ|年齢|身長", re.I)
+        found = Counter()
+        def walk(v, path):
+            if isinstance(v, dict):
+                for k, w in v.items():
+                    if body.search(str(k)):
+                        found[path + "." + str(k)] += 1
+                    walk(w, path + "." + str(k))
+            elif isinstance(v, list):
+                for w in v[:5]:
+                    walk(w, path + "[]")
+        for x in items:
+            walk(x, "item")
+        say(f"- 体型・年齢らしい項目の名前（入っている本数）: {dict(found) or 'なし'}")
+        say(f"- タイトルの文字数（上位10本）: {[len(str(x.get('title') or '')) for x in items[:10]]}")
+        say(f"- 出演者・監督・レーベル・シリーズが入っている本数: 出演者 {sum(1 for x in items if (x.get('iteminfo') or {}).get('actress'))}・監督 {sum(1 for x in items if (x.get('iteminfo') or {}).get('director'))}・レーベル {sum(1 for x in items if (x.get('iteminfo') or {}).get('label'))}・シリーズ {sum(1 for x in items if (x.get('iteminfo') or {}).get('series'))}")
+        say(f"- 収録時間（volume）の形: {Counter(type(x.get('volume')).__name__ for x in items)}・レビュー: {sum(1 for x in items if x.get('review'))}本")
+
+    say("## 17b) 素人: 人気順の上位2,500本で、入れてよい作品の数（1,000本に必要な深さ）")
+    picked, scanned, blocked, reasons, depth = 0, 0, 0, Counter(), None
+    for off in range(1, 2501, 100):
+        time.sleep(0.25)
+        res, err = call("ItemList", {"site": "FANZA", "service": "digital", "floor": "videoc", "sort": "rank", "hits": 100, "offset": off, "lte_date": lte})
+        if err:
+            say(f"- {off}本目から取れませんでした: {err}")
+            break
+        for pos, raw in enumerate(res.get("items") or []):
+            scanned += 1
+            why = D.blocked_reason(raw)
+            if why:
+                blocked += 1
+                reasons[why] += 1
+            else:
+                picked += 1
+                if picked == 1000 and depth is None:
+                    depth = off + pos
+    say(f"- 読んだ {scanned}本・入れてよい {picked}本・入れない {blocked}本（{dict(reasons)}）・1,000本目の位置 {depth}")
+
+    say("## 17c) 売り場ごとの並び（人気順・評価の高い順・新しい順の全体の本数と、評価の高い順の上位5本のレビューの件数）")
+    for key, conf in F.FLOORS.items():
+        base = {"site": "FANZA", "service": conf["service"], "floor": conf["floor"], "hits": 20, "offset": 1, "lte_date": lte}
+        out = []
+        for sort in ("rank", "review", "date"):
+            time.sleep(0.25)
+            res, err = call("ItemList", dict(base, sort=sort))
+            if err:
+                out.append(f"{sort}: ×（{err[:60]}）")
+                continue
+            items = res.get("items") or []
+            ok = [x for x in items if not D.blocked_reason(x)]
+            revs = [(x.get("review") or {}).get("count") for x in ok[:5]]
+            out.append(f"{sort}: 全体{res.get('total_count')}・20本中入れてよい{len(ok)}本" + (f"・レビュー件数{revs}" if sort == "review" else ""))
+        say(f"- {conf['label']}: " + " / ".join(out))
+
+    say("## 17d) 売り場ごとのジャンル（GenreSearch）と、ジャンルで絞った人気順（article=genre）が使えるか")
+    for key, conf in F.FLOORS.items():
+        time.sleep(0.25)
+        res, err = call("GenreSearch", {"floor_id": conf["floor_id"], "hits": 500, "offset": 1})
+        if err:
+            say(f"- {conf['label']}: ジャンルの一覧 ×（{err[:60]}）")
+            continue
+        genres = res.get("genre") or []
+        gid = None
+        for g in genres:
+            if str(g.get("name")) in ("巨乳", "人妻・主婦", "中出し", "美少女", "ファンタジー", "恋愛"):
+                gid = g.get("genre_id")
+                break
+        line = f"- {conf['label']}: ジャンル {res.get('total_count')}個"
+        if gid:
+            time.sleep(0.25)
+            r2, e2 = call("ItemList", {"site": "FANZA", "service": conf["service"], "floor": conf["floor"], "sort": "rank", "hits": 20, "offset": 1, "lte_date": lte, "article": "genre", "article_id": gid})
+            line += f"・ジャンルで絞った人気順: " + (f"×（{e2[:60]}）" if e2 else f"全体{r2.get('total_count')}本・20本中入れてよい{sum(1 for x in (r2.get('items') or []) if not D.blocked_reason(x))}本")
+        say(line)
+
+
 def main():
     if not API_ID:
         sys.exit("❌ API_ID が設定されていません")
     if os.environ.get("PROBE_ONLY") == "13":
         probe_ten_yen()
+        finish()
+        return
+    if os.environ.get("PROBE_ONLY") == "17":
+        probe_floor_extras()
         finish()
         return
     if os.environ.get("PROBE_ONLY") == "16":
