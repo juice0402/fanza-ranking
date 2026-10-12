@@ -3,7 +3,9 @@
 // 同人: 値引きの分かる作品（いまの価格と通常の価格。FANZAのAPIの prices）を、人気の高い順に。終わりの日はAPIに無い（空）ので書かない。
 // ゲーム: FANZAが作品に付けた「セール・クーポンの対象」の札（値引きの額はAPIに無い。いまの価格だけ）。
 // 形は動画のトップの「セール中の特集」と同じ（運営者の希望「動画のページと、ほぼ同じ要領で」。2026-10-09）: セールごと（ゲーム）・割引ごと（同人）のカード → セール中の人気作品 → クーポン（ゲーム）。
-// どちらも、毎日の更新のときの情報なので「○日の時点」「くわしくはFANZAで」を必ず添える
+// 素人・アニメ・成人映画: FANZAのキャンペーン（「○○他30％OFF」など）の名前ごと（運営者の「素人のセールも、動画みたいに『○○セール』ごとに」。2026-10-12）。
+//   このサイトに無い対象作品も、人気の高い順に（scripts/floor_sales.py の floor_sale.json。作品ページは無いので、FANZAへ直接）
+// どれも、毎日の更新のときの情報なので「○日の時点」「くわしくはFANZAで」を必ず添える
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import FloorCard from '../../components/FloorCard.astro';
@@ -11,30 +13,37 @@ import FloorSaleCards from '../../components/FloorSaleCards.astro';
 import TenYenHero from '../../components/TenYenHero.astro';
 import { tenYenPath } from '../../lib/ten-yen.js';
 import { inlineScript } from '../../lib/assets.js';
-import { activeFloors, floorSaleHistory, floorSalePageGroups, floors, tenYenFloors, tenYenNow } from '../../lib/data.js';
-import { FLOORS, FLOOR_SALE_LIMIT, couponTags, floorItemListLd, floorMaxOff, floorPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, isSaleTag, offInTitle, priceNote, saleBadgeOf, saleTagGroups } from '../../lib/floors.js';
+import { activeFloors, floorHasSale, floorSale, floorSaleHistory, floorSalePageGroups, floors, tenYenFloors, tenYenNow } from '../../lib/data.js';
+import { FLOORS, FLOOR_SALE_LIMIT, campaignEndIso, couponTags, floorItemListLd, floorMaxOff, floorPath, floorSaleHistoryPath, floorSaleCount, floorSaleItems, floorSalePath, floorSaleShelf, isSaleTag, offInTitle, priceNote, saleBadgeOf, saleTagGroups } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SALE_PATH } from '../../lib/sale.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../lib/items.js';
 
 export function getStaticPaths() {
-  return activeFloors.filter((k) => floorSaleItems(floors[k].items).length > 0).map((floor) => ({ params: { floor } }));
+  return activeFloors.filter(floorHasSale).map((floor) => ({ params: { floor } }));
 }
 
 const { floor: key } = Astro.params;
 const f = FLOORS[key];
 const data = floors[key];
 const sale = floorSaleItems(data.items);
-const maxOff = floorMaxOff(sale);
+// キャンペーンの名前ごとの売り場（素人・アニメ・成人映画）
+const camp = Boolean(f.campaigns);
 const groups = key === 'game' ? saleTagGroups(data.items, 0) : [];
-// ゲームの最大の割引は、セールの名前の「最大○%OFF」から（APIに値引きの額が無いため）
-const topOff = key === 'game' ? Math.max(0, ...groups.map((g) => offInTitle(g.title))) : maxOff;
 // クーポン・ポイント還元（ゲーム。ほぼ全部の作品に付くので、作品は並べず、名前と本数だけ）
 const coupons = key === 'game' ? couponTags(data.items) : [];
-const list = sale.slice(0, FLOOR_SALE_LIMIT);
+// セール中の人気作品（キャンペーンの売り場は、このサイトに無い対象作品も入れて）
+const list = floorSaleShelf(data.items, key, floorSale, FLOOR_SALE_LIMIT);
 const shown = list;
-// セールごと（ゲーム）・割引ごと（同人）のページ（2026-10-09）
+// セールごと（ゲーム）・割引ごと（同人）・キャンペーンごと（素人・アニメ・成人映画）のページ（2026-10-09・2026-10-12）
 const salePages = floorSalePageGroups[key];
+// セール中の本数: キャンペーンの売り場は、キャンペーンごとの対象の本数（FANZAの人気順の上から数えたもの）の合計
+const saleCount = floorSaleCount(data.items, key, salePages);
+const maxOff = Math.max(floorMaxOff(sale), floorMaxOff(list));
+// 終わりの時刻のあるキャンペーン（すぎたらブラウザで隠す。public/sale.js）
+const hasEnds = salePages.some((p) => p.end);
+// ゲームの最大の割引は、セールの名前の「最大○%OFF」から（APIに値引きの額が無いため）
+const topOff = key === 'game' ? Math.max(0, ...groups.map((g) => offInTitle(g.title))) : maxOff;
 const day = data.updated ? dateParts(data.updated) : null;
 const dayLabel = day ? `${day.m}月${day.d}日` : '毎日';
 const trail = [
@@ -42,26 +51,32 @@ const trail = [
   { name: f.label, path: floorPath(key) },
   { name: 'セール中の作品', path: floorSalePath(key) },
 ];
-const noindex = shown.length === 0 || !listIndexable(shown);
+// 検索エンジンに出すのは、このサイトの作品（作品ページのある作品）にコメントのある作品があるときだけ（sitemap と同じ）
+const ownShown = shown.filter((i) => !i.external);
+const noindex = ownShown.length === 0 || !listIndexable(ownShown);
 // この売り場の10円セールの開催中は、タイトルの先頭に出す（2026-10-09）
 const tenLive = tenYenNow.counts[key] > 0 ? `${f.label} 10円セール開催中・` : '';
 const title = tenLive + (key === 'game'
   ? `FANZAゲームのセール中の作品【${dayLabel}更新】${groups[0] ? `${groups[0].title}ほか` : ''}${sale.length}本｜${SITE_NAME}`
-  : `${f.label}のセール中の作品【${dayLabel}更新】${maxOff ? `最大${maxOff}%OFF・` : ''}${sale.length}本｜${SITE_NAME}`);
+  : camp && salePages[0]
+    ? `${f.label}のセール中の作品【${dayLabel}更新】${salePages[0].name}${salePages.length > 1 ? `ほか${salePages.length - 1}件` : ''}・${saleCount.toLocaleString('ja-JP')}本｜${SITE_NAME}`
+    : `${f.label}のセール中の作品【${dayLabel}更新】${maxOff ? `最大${maxOff}%OFF・` : ''}${sale.length}本｜${SITE_NAME}`);
 const description = key === 'game'
   ? `FANZAゲーム（PCゲーム）で、いま値下げのセール中の人気作品${sale.length}本を、セールごとにまとめています（${groups.map((g) => g.title).slice(0, 3).join('・')}）。クーポン・ポイント還元の対象も。毎日、日付が変わったあとに更新します。`
-  : `${f.label}で、いまセール中の人気作品${sale.length}本${maxOff ? `（最大${maxOff}%OFF）` : ''}を、人気の高い順にまとめています。いまの価格と通常の価格も。毎日、日付が変わったあとに更新します。`;
+  : camp && salePages[0]
+    ? `${f.label}で、いま開催中のセール${salePages.length}件（${salePages.map((p) => p.name).slice(0, 3).join('・')}）の対象作品${saleCount.toLocaleString('ja-JP')}本を、セールごと・人気の高い順にまとめています。いまの価格と通常の価格・いつまでかも。毎日更新します。`
+    : `${f.label}で、いまセール中の人気作品${sale.length}本${maxOff ? `（最大${maxOff}%OFF）` : ''}を、人気の高い順にまとめています。いまの価格と通常の価格も。毎日、日付が変わったあとに更新します。`;
 const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${f.label}のセール中の作品`, url: SITE_URL + floorSalePath(key), ...(data.updated ? { dateModified: data.updated } : {}) };
 ---
 
 <Base title={title} description={description} path={floorSalePath(key)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd, floorItemListLd(shown, SITE_URL)]} tenYenBar={false}>
-  {tenYenNow.total > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
+  {(tenYenNow.total > 0 || hasEnds) && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
     <section class="hero">
       <h1 class="hero-title">{f.label}のセール</h1>
-      <p class="page-facts">{sale.length}本{topOff > 0 && `・最大${topOff}%OFF`}{data.updated && `・${dayLabel}時点`}</p>
+      <p class="page-facts">{saleCount.toLocaleString('ja-JP')}本{camp && salePages.length > 0 && `・セール${salePages.length}件`}{topOff > 0 && `・最大${topOff}%OFF`}{data.updated && `・${dayLabel}時点`}</p>
       <p class="hero-links"><a class="spec-link" href={floorSaleHistoryPath(key)}>{f.label}のセールはいつ？</a>{tenYenFloors.includes(key) && <a class="spec-link" href={tenYenPath(key)}>{f.label}の10円セール</a>}<a class="spec-link" href={SALE_PATH}>FANZA動画のセール</a></p>
     </section>
 
@@ -70,8 +85,8 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
     {salePages.length > 0 && (
       <section class="section" aria-labelledby="fl-sale-kinds-title">
         <div class="section-head">
-          <h2 id="fl-sale-kinds-title" class="section-title">{key === 'game' ? 'セールごと' : '割引ごと'}</h2>
-          <p class="section-note">{key === 'game' ? 'FANZAのセールの名前' : '通常の価格からの割引'}</p>
+          <h2 id="fl-sale-kinds-title" class="section-title">{key === 'game' || camp ? 'セールごと' : '割引ごと'}</h2>
+          <p class="section-note">{key === 'game' ? 'FANZAのセールの名前' : camp ? '終わりが近い順' : '通常の価格からの割引'}</p>
         </div>
         <FloorSaleCards pages={salePages} key={key} />
       </section>
@@ -80,10 +95,13 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
     <section class="section" aria-labelledby="fl-sale-list-title">
       <div class="section-head">
         <h2 id="fl-sale-list-title" class="section-title">セール中の人気作品</h2>
-        <p class="section-note">人気の高い順{sale.length > list.length && `（上位${list.length}本）`}</p>
+        <p class="section-note">人気の高い順{saleCount > list.length && `（上位${list.length}本）`}</p>
       </div>
       <ul class="shelf">
-        {list.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} eager={i < 4} /></li>)}
+        {list.map((item, i) => {
+          const end = camp ? salePages.find((p) => p.name === item.campaign?.title)?.end ?? '' : '';
+          return <li class="shelf-cell" data-sale-end={campaignEndIso(end) || undefined}><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} eager={i < 4} external={item.external} /></li>;
+        })}
       </ul>
     </section>
 

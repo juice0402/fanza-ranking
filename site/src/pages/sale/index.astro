@@ -11,7 +11,7 @@ import ItemCard from '../../components/ItemCard.astro';
 import CampaignFacts from '../../components/CampaignFacts.astro';
 import TenYenHero from '../../components/TenYenHero.astro';
 import { TEN_YEN_PATH } from '../../lib/ten-yen.js';
-import { all, today, sale, saleWorks, contentGenres, saleCampaignBySlug, activeFloors, floors, tenYenNow } from '../../lib/data.js';
+import { all, today, sale, saleWorks, contentGenres, saleCampaignBySlug, activeFloors, floorHasSale, floors, tenYenNow } from '../../lib/data.js';
 import { FLOORS, floorSaleItems, floorSalePath } from '../../lib/floors.js';
 import { SALE_HISTORY_PATH, SALE_PATH, isTenYenCampaign, campaignSlug, endIso, endLabel, endSoonTag, saleAnchor, saleBadge, saleGroups, salePriceNote } from '../../lib/sale.js';
 import { listIndexable } from '../../lib/plan.js';
@@ -60,7 +60,7 @@ import { inlineScript } from '../../lib/assets.js';
       <p class="hero-links"><a class="spec-link" href={SALE_HISTORY_PATH}>FANZAのセールはいつ？これまでのセールの履歴</a></p>
       <p class="hero-links"><a class="spec-link" href={TEN_YEN_PATH}>FANZAの10円セール{tenYenNow.total > 0 ? '（開催中）' : '（開催状況・これまでの開催）'}</a></p>
       {/* FANZA同人・FANZAゲームのセール（2026-10-09） */}
-      {activeFloors.filter((k) => floorSaleItems(floors[k].items).length > 0).map((k) => (
+      {activeFloors.filter(floorHasSale).map((k) => (
         <p class="hero-links"><a class="spec-link" href={floorSalePath(k)}>{FLOORS[k].label}のセールはこちら</a></p>
       ))}
     </section>

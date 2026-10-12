@@ -18,10 +18,12 @@ import { phraseZwsp } from './phrase.js';
 export const FLOORS = {
   doujin: { key: 'doujin', label: 'FANZA同人', short: '同人', maker: 'サークル', makerUnit: 'サークル', kind: '同人作品', frame: 'wide', detail: 'wide' },
   game: { key: 'game', label: 'FANZAゲーム', short: 'ゲーム', maker: 'ブランド', makerUnit: 'ブランド', kind: 'PCゲーム', frame: 'cover', detail: 'tall', authors: true },
-  anime: { key: 'anime', label: 'FANZAアニメ', short: 'アニメ', maker: 'メーカー', makerUnit: '社', kind: 'アダルトアニメ', frame: 'cover', detail: 'spread' },
+  // campaigns: セール（キャンペーン）の名前ごとのページ（/…/sale/<印>/。「○○他50％OFF」のような名前のあるキャンペーンが付く売り場。運営者の「素人のセールも、
+  // 動画みたいに『○○セール』ごとに」。2026-10-12。対象の本数・このサイトに無い対象作品は scripts/floor_sales.py の floor_sale.json）
+  anime: { key: 'anime', label: 'FANZAアニメ', short: 'アニメ', maker: 'メーカー', makerUnit: '社', kind: 'アダルトアニメ', frame: 'cover', detail: 'spread', campaigns: true },
   // girls: 素人ならではの「女の子のタイプから探す」「女の子ランキング（日刊・週間・月間）」（運営者の希望。2026-10-12）
-  amateur: { key: 'amateur', label: 'FANZA素人', short: '素人', maker: 'メーカー', makerUnit: '社', kind: '素人作品', frame: 'square', detail: 'square', people: true, girls: true },
-  cinema: { key: 'cinema', label: 'FANZA成人映画', short: '成人映画', maker: 'メーカー', makerUnit: '社', kind: '成人映画', frame: 'cover', detail: 'spread', people: true },
+  amateur: { key: 'amateur', label: 'FANZA素人', short: '素人', maker: 'メーカー', makerUnit: '社', kind: '素人作品', frame: 'square', detail: 'square', people: true, girls: true, campaigns: true },
+  cinema: { key: 'cinema', label: 'FANZA成人映画', short: '成人映画', maker: 'メーカー', makerUnit: '社', kind: '成人映画', frame: 'cover', detail: 'spread', people: true, campaigns: true },
   comic: { key: 'comic', label: 'FANZAコミック', short: 'コミック', maker: '出版社', makerUnit: '社', kind: 'アダルトコミック', frame: 'cover', detail: 'tall', authors: true },
   photo: { key: 'photo', label: 'FANZA写真集', short: '写真集', maker: '出版社', makerUnit: '社', kind: '写真集', frame: 'cover', detail: 'tall', authors: true, people: true },
   vr: { key: 'vr', label: 'FANZA VR見放題', short: 'VR見放題', maker: 'メーカー', makerUnit: '社', kind: 'VR作品', frame: 'cover', detail: 'spread', people: true, noPrice: true },
@@ -579,7 +581,8 @@ export function collectionLinksFor(item, groups) {
 }
 
 /** 一覧のページの構造化データ（ItemList。作品ページへのリンクを、並びの順に limit 本） */
-export function floorItemListLd(items, siteUrl, limit = 20) {
+export function floorItemListLd(list, siteUrl, limit = 20) {
+  const items = list.filter((i) => !i.external); // このサイトに作品ページの無い作品（FANZAへ直接）は入れない
   return {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -742,7 +745,8 @@ export function offInTitle(title) {
  * セールのページ: [{ kind: 'tag'|'off', slug, path, name, heading, off, items（人気の高い順・全部）, total }]。
  * ゲーム: 値下げのセールの札ごと（対象が3本以上。対象の多い順）。同人: 割引ごと（90%OFF以上・70%OFF以上・半額以上。3本以上）
  */
-export function floorSalePages(items, key) {
+export function floorSalePages(items, key, floorSale = null) {
+  if (FLOORS[key]?.campaigns) return floorCampaignPages(items, key, floorSale?.[key]);
   if (key === 'game') {
     return saleTagGroups(items, Infinity)
       .filter((g) => g.total >= FLOOR_SALE_PAGE_MIN)
@@ -759,6 +763,93 @@ export function floorSalePages(items, key) {
   }).filter((p) => p.total >= FLOOR_SALE_PAGE_MIN);
 }
 
+/** "2026-10-13 23:59"・"2026-10-13T23:59:59" → "2026-10-13 23:59"（形が違えば ''） */
+const dateTime = (v) => {
+  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/.exec(String(v ?? ''));
+  return m ? `${m[1]} ${m[2]}` : '';
+};
+
+/**
+ * 売り場のセール（キャンペーン）の名前ごとの本数と、このサイトに無い対象作品（data/floor_sale.json。scripts/floor_sales.py。2026-10-12）→
+ * { checked, 売り場: { date, campaigns: [{ title, begin, end, n（FANZAの人気順の上から数えた対象の本数） }], extras: [作品（external: true）] } }。
+ * byCid: { 売り場: Map(cid → このサイトの作品) }（このサイトにある作品は extras に入れない）。作品は normalizeFloor と同じ見張り
+ * （未成年を連想させる名前・FANZA(DMM)の https でないURLは捨てる）。予約・表紙の無い作品・キャンペーンの無い作品も捨てる
+ */
+export function normalizeFloorSale(raw, byCid = {}, today = '9999-12-31') {
+  const data = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const out = { checked: dateTime(data.checked) };
+  for (const key of FLOOR_KEYS) {
+    const fl = FLOORS[key].campaigns && data[key] && typeof data[key] === 'object' && !Array.isArray(data[key]) ? data[key] : {};
+    const campaigns = (Array.isArray(fl.campaigns) ? fl.campaigns : [])
+      .filter((c) => c && typeof c === 'object')
+      .map((c) => ({ title: String(c.title ?? '').trim().slice(0, 40), begin: dateTime(c.begin), end: dateTime(c.end), n: Number.isInteger(c.n) && c.n > 0 ? c.n : 0 }))
+      .filter((c) => c.title && c.end && c.n > 0 && !minor(c.title));
+    const rows = (Array.isArray(fl.extra) ? fl.extra : []).filter((r) => r && typeof r === 'object' && Number.isInteger(r.rank) && r.rank > 0);
+    const ranks = Object.fromEntries(rows.map((r) => [String(r.cid), r.rank]));
+    const extras = normalizeFloor({ items: rows, ranks }, key, today).items
+      .filter((i) => !i.upcoming && i.campaign && !minor(i.campaign.title) && i.image_url && !byCid[key]?.has(i.cid))
+      .map((i) => ({ ...i, external: true }));
+    out[key] = { date: isDay(fl.date) ? fl.date : '', campaigns, extras };
+  }
+  return out;
+}
+
+/**
+ * セール（キャンペーン）の名前ごとのページ（名前のあるキャンペーンが付く売り場。FLOORS の campaigns。2026-10-12）:
+ * このサイトの作品（その日のキャンペーン）と、このサイトに無い対象作品（floor_sale.json）を、名前ごとに人気の高い順に。
+ * 本数は、FANZAの人気順の上から数えた対象の本数（無ければ、並べた作品の数）。終わりが近い順・同じなら本数の多い順。並べる作品が FLOOR_SALE_PAGE_MIN 本以上の名前だけ
+ */
+export function floorCampaignPages(items, key, meta) {
+  const map = new Map();
+  const get = (title) => {
+    if (!map.has(title)) map.set(title, { title, list: [], n: 0, begin: '', end: '' });
+    return map.get(title);
+  };
+  for (const c of meta?.campaigns ?? []) {
+    const p = get(c.title);
+    p.n += c.n;
+    if (!p.end || c.end < p.end) p.end = c.end; // 同じ名前が2つ同時に開いていたら、早く終わるほう（動画の特集ごとのページと同じ）
+    if (c.begin && (!p.begin || c.begin < p.begin)) p.begin = c.begin;
+  }
+  const own = new Set();
+  for (const i of items) {
+    if (i.upcoming || !i.campaign?.title || minor(i.campaign.title)) continue;
+    get(i.campaign.title).list.push(i);
+    own.add(i.cid);
+  }
+  for (const e of meta?.extras ?? []) if (!own.has(e.cid)) get(e.campaign.title).list.push(e);
+  return [...map.values()]
+    .filter((p) => p.list.length >= FLOOR_SALE_PAGE_MIN)
+    .map((p) => {
+      const list = [...p.list].sort(byRank);
+      const slug = entitySlug(p.title);
+      return {
+        kind: 'camp', slug, path: floorSalePagePath(key, slug), name: p.title, heading: p.title, off: offInTitle(p.title) || floorMaxOff(list),
+        items: list, total: Math.max(list.length, p.n), counted: p.n >= list.length, begin: p.begin, end: p.end,
+      };
+    })
+    .sort((a, b) => (a.end || '9999').localeCompare(b.end || '9999') || b.total - a.total || (a.name < b.name ? -1 : 1));
+}
+
+/** セールのページの「セール中の人気作品」（キャンペーンの売り場は、このサイトに無い対象作品も入れて、人気の高い順） */
+export function floorSaleShelf(items, key, floorSale = null, limit = FLOOR_SALE_LIMIT) {
+  const own = floorSaleItems(items);
+  if (!FLOORS[key]?.campaigns) return own.slice(0, limit);
+  const have = new Set(own.map((i) => i.cid));
+  return [...own, ...(floorSale?.[key]?.extras ?? []).filter((e) => !have.has(e.cid))].sort(byRank).slice(0, limit);
+}
+
+/** セール中の本数（キャンペーンの売り場は、キャンペーンごとの対象の本数＝FANZAの人気順の上から数えたもの、の合計。ほかは、このサイトのセール中の作品の数） */
+export const floorSaleCount = (items, key, pages = []) => {
+  const own = floorSaleItems(items).length;
+  return FLOORS[key]?.campaigns ? Math.max(own, pages.reduce((n, p) => n + p.total, 0)) : own;
+};
+
+/** "2026-10-13 23:59" → "10月13日 23:59" */
+export const campaignEndLabel = (end) => (end ? `${+end.slice(5, 7)}月${+end.slice(8, 10)}日 ${end.slice(11, 16)}` : '');
+/** 終わりの時刻の印（public/sale.js が、すぎたら隠す。lib/sale.js の endIso と同じ形） */
+export const campaignEndIso = (end) => (end ? `${end.slice(0, 10)}T${end.slice(11, 16)}:59+09:00` : '');
+
 /** 作品ページの札の行き先: セールのページがあれば、そのページ。無ければセールのページの中の見出し（saleTagHref） */
 export function saleTagLink(key, t, pagesBySlug) {
   if (isSaleTag(t)) {
@@ -770,6 +861,7 @@ export function saleTagLink(key, t, pagesBySlug) {
 
 /** セールのページのタイトル（検索に出る名前）。dayLabel: 「10月9日」 */
 export function floorSalePageTitle(f, page, dayLabel, siteName) {
+  if (page.kind === 'camp') return `${page.name}の対象${f.kind}一覧【${page.end ? `${+page.end.slice(5, 7)}月${+page.end.slice(8, 10)}日まで` : `${dayLabel}更新`}】（${page.total.toLocaleString('ja-JP')}本）｜${siteName}`;
   return page.kind === 'tag'
     ? `${page.name}の対象${f.kind}一覧【${dayLabel}更新】（${page.total}本）｜${siteName}`
     : `${f.label} ${page.name}のセール作品一覧【${dayLabel}更新】（${page.total}本）｜${siteName}`;

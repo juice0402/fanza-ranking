@@ -26,6 +26,9 @@ python3 tests/test_claude_monthly.py || failed=1
 step "FANZA同人・FANZAゲームを集める道具 (Python)"
 python3 tests/test_doujin_game.py || failed=1
 
+step "売り場のセール（キャンペーンごと）を集める道具 (Python)"
+python3 tests/test_floor_sales.py || failed=1
+
 step "10円セールを集める道具 (Python)"
 python3 tests/test_ten_yen.py || failed=1
 

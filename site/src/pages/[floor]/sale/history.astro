@@ -6,16 +6,16 @@
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import SaleBars from '../../../components/SaleBars.astro';
-import { activeFloors, floorSaleHistory, floorSalePageBySlug, floors } from '../../../lib/data.js';
+import { activeFloors, floorHasSale, floorSaleHistory, floorSalePageBySlug, floorSalePageGroups, floors } from '../../../lib/data.js';
 import {
-  FLOORS, floorMaxOff, floorSaleHistoryIndexable, floorPath, floorSaleDayChart, floorSaleFacts, floorSaleHistoryPath, floorSaleItems, floorSalePath, isSaleTag, offBands, offInTitle, saleTagGroups,
+  FLOORS, campaignEndLabel, floorMaxOff, floorSaleHistoryIndexable, floorPath, floorSaleDayChart, floorSaleFacts, floorSaleHistoryPath, floorSaleItems, floorSalePath, isSaleTag, offBands, offInTitle, saleTagGroups,
 } from '../../../lib/floors.js';
 import { barSpan, dayTicks } from '../../../lib/sale.js';
 import { SITE_NAME, SITE_URL, addDays, breadcrumbLd, daysBetween, entitySlug, formatDateJp } from '../../../lib/items.js';
 
 export function getStaticPaths() {
-  // セールのページがある売り場だけ（見放題・いまセール中の作品が無い売り場には作らない。2026-10-10）
-  return activeFloors.filter((k) => !FLOORS[k].noPrice && floorSaleItems(floors[k].items).length > 0).map((floor) => ({ params: { floor } }));
+  // セールのページがある売り場だけ（見放題・いまセール中の作品もセールごとのページも無い売り場には作らない。2026-10-10）
+  return activeFloors.filter(floorHasSale).map((floor) => ({ params: { floor } }));
 }
 
 const { floor: key } = Astro.params;
@@ -28,14 +28,19 @@ const facts = floorSaleFacts(floorSaleHistory[key], data.updated ? { d: data.upd
 const md = (d) => `${+d.slice(5, 7)}月${+d.slice(8, 10)}日`;
 const chart = floorSaleDayChart(facts.list);
 const pageOf = (title) => floorSalePageBySlug[key].get(entitySlug(title));
-// いま開催中のセール（ゲーム）は、きょうのデータから（記録はまだ無いこともあるので）。対象の多い順
-const nowTags = key === 'game' ? saleTagGroups(data.items, 0) : [];
+// いま開催中のセール（ゲーム）は、きょうのデータから（記録はまだ無いこともあるので）。対象の多い順。
+// キャンペーンの売り場（素人・アニメ・成人映画。2026-10-12）は、キャンペーンごとのページ（終わりが近い順・いつまで）
+const camp = Boolean(f.campaigns);
+const useTags = key === 'game' || camp;
+const nowTags = key === 'game'
+  ? saleTagGroups(data.items, 0)
+  : camp ? floorSalePageGroups[key].map((p) => ({ title: p.name, total: p.total, end: p.end })) : [];
 
 // ゲーム: セールの名前ごとの帯（最近30日。少なくとも7日の窓）。いまも見かけるセールが先（対象の多い順）、そのあと終わったセール（最近まで見かけた順）
 const last = facts.last;
 const from = last ? [[addDays(last, -29), facts.first].sort().at(-1), addDays(last, -6)].sort()[0] : '';
 const winDays = last ? daysBetween(last, from) + 1 : 0;
-const tagRows = key === 'game' && last
+const tagRows = useTags && last
   ? [...facts.ongoing, ...facts.ended]
     .filter((t) => t.last >= from)
     .slice(0, 30)
@@ -54,7 +59,7 @@ const tagRows = key === 'game' && last
     })
   : [];
 const barsChart = winDays ? { days: winDays, t: winDays - 1, ticks: dayTicks(from, winDays, last, { step: winDays > 14 ? 5 : 1, anchor: last }) } : null;
-const bands = key === 'game' ? [] : offBands(data.items);
+const bands = useTags ? [] : offBands(data.items);
 
 const trail = [
   { name: 'トップ', path: '/' },
@@ -92,12 +97,12 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'WebPage', name: `${
           <dt>いまセール中の{f.kind}は？</dt>
           <dd><span class="faq-key">{sale.length}本</span><span class="faq-text">{last && `${md(last)}の時点`}{todayMax > 0 && `・最大${todayMax}%OFF`}。<a class="spec-link" href={floorSalePath(key)}>セール中の作品を見る</a></span></dd>
         </div>
-        {key === 'game' && (
+        {useTags && (
           <div class="faq-row">
             <dt>いま開催中のセールは？</dt>
             {nowTags.length > 0
-              ? <dd><span class="faq-key">{nowTags.length}件</span><span class="faq-text">{nowTags.slice(0, 3).map((t, n) => <>{n > 0 && '・'}{pageOf(t.title) ? <a class="spec-link" href={pageOf(t.title).path}>{t.title}</a> : t.title}（{t.total}本）</>)}{nowTags.length > 3 && 'など'}（このサイトに載っているゲームの中で）。</span></dd>
-              : <dd><span class="faq-key">0件</span><span class="faq-text">いまは、このサイトに載っているゲームで開催中のセールはありません。</span></dd>}
+              ? <dd><span class="faq-key">{nowTags.length}件</span><span class="faq-text">{nowTags.slice(0, 3).map((t, n) => <>{n > 0 && '・'}{pageOf(t.title) ? <a class="spec-link" href={pageOf(t.title).path}>{t.title}</a> : t.title}（{t.end ? `${campaignEndLabel(t.end)}まで・` : ''}{t.total.toLocaleString('ja-JP')}本）</>)}{nowTags.length > 3 && 'など'}{key === 'game' ? '（このサイトに載っているゲームの中で）' : ''}。</span></dd>
+              : <dd><span class="faq-key">0件</span><span class="faq-text">いまは、{key === 'game' ? 'このサイトに載っているゲームで' : ''}開催中のセールはありません。</span></dd>}
           </div>
         )}
         {facts.days > 0 && (
@@ -172,7 +177,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'WebPage', name: `${
     )}
 
     <p class="section-note run-note">
-      記録は{facts.first ? formatDateJp(facts.first) : '毎日の更新'}から（それより前の記録は、ほかのサイトから写していません）。本数と割引は、その日の更新の時点のFANZAの情報で、このサイトに載っている{f.label}の作品（{data.items.length}本）から数えています。
+      記録は{facts.first ? formatDateJp(facts.first) : '毎日の更新'}から（それより前の記録は、ほかのサイトから写していません）。本数と割引は、その日の更新の時点のFANZAの情報で、このサイトに載っている{f.label}の作品（{data.items.length}本）から数えています{camp && '（セールの記録の対象の本数は、FANZAの人気順の上から数えたものです）'}。
     </p>
     <p class="more camp-more">
       <a class="btn btn-quiet" href={floorSalePath(key)}>セール中の作品を見る</a>

@@ -213,6 +213,12 @@ def merge_sale_history(hist, key, today_str, day, tags):
     floor = hist.setdefault(key, {"days": [], "tags": []})
     floor["days"] = [d for d in floor["days"] if d["d"] != today_str and (days_between(d["d"], today_str) or 0) < SALE_KEEP_DAYS] + [day]
     floor["days"].sort(key=lambda d: d["d"])
+    merge_tags(hist, key, today_str, tags)
+
+
+def merge_tags(hist, key, today_str, tags):
+    """セールの名前の記録だけを足す（見かけた日・本数（多いほう）・割引）。毎日の本数（days）には触らない"""
+    floor = hist.setdefault(key, {"days": [], "tags": []})
     known = {(t["title"], t["begin"]): t for t in floor["tags"]}
     for t in tags:
         row = known.get((t["title"], t["begin"]))
@@ -235,6 +241,19 @@ def save_sale_history(hist):
         tags = ",\n".join(json.dumps(t, ensure_ascii=False, separators=(",", ":")) for t in floor["tags"])
         parts.append(f'{json.dumps(key)}:{{"days":[\n{days}\n],"tags":[\n{tags}\n]}}')
     _write(sale_history_path(), f'{{"updated":{json.dumps(hist.get("updated", ""))},\n' + ",\n".join(parts) + "}\n")
+
+
+def record_campaigns(key, today_str, tags):
+    """scripts/floor_sales.py から: 人気順を深くまで読んで数えた、キャンペーンごとの本数を、セールの名前の記録に足す（2026-10-12）。
+    tags: [{"title", "begin"（日付）, "count", "off"}]。記録が壊れていたら、上書きせずにやめる。結果の要約の文を返す"""
+    try:
+        sales = load_sale_history()
+    except ValueError as e:
+        print(f"::warning title=セールの記録を読めませんでした::{e}。上書きを防ぐため、きょうは記録しません")
+        return "セールの記録は読めなかったので、きょうは記録しない"
+    merge_tags(sales, key, today_str, tags)
+    save_sale_history(sales)
+    return f"セールの名前 {len(tags)}件を記録"
 
 
 def record(key, data, today_str, trusted):

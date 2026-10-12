@@ -16,7 +16,7 @@ import TenYenHero from '../../components/TenYenHero.astro';
 import { activeFloors, floorCollectionGroups, floorEntityRankings, floorGachaPools, floorMakerGroups, floorRankHistory, floorSaleHistory, floorSalePageGroups, floors, tenYenNow } from '../../lib/data.js';
 import {
   DOUJIN_TYPES, FLOORS, FLOOR_HUB_SHOWN, floorCollectionIndexPath, floorEntityLabel, floorEntityRankingPath, floorItemListLd, floorMakerIndexPath, floorMaxOff, floorNewPopular,
-  floorPath, floorRankNote, floorRanking, floorRankingName, floorRankingPath, floorGirlsPath, FLOOR_PERIODS, floorPeriodPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, floorSearchHint, floorSearchPath, floorTopics, floorUpcoming, hubThemes, priceNote,
+  floorPath, floorRankNote, floorRanking, floorRankingName, floorRankingPath, floorGirlsPath, FLOOR_PERIODS, floorPeriodPath, floorSaleCount, floorSaleHistoryPath, floorSaleItems, floorSalePath, floorSearchHint, floorSearchPath, floorTopics, floorUpcoming, hubThemes, priceNote,
 } from '../../lib/floors.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../../lib/items.js';
@@ -71,7 +71,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 ---
 
 <Base title={title} description={description} path={floorPath(key)} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd, floorItemListLd(ranking, SITE_URL, 15)]} tenYenBar={false}>
-  {tenYenNow.total > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
+  {(tenYenNow.total > 0 || salePages.slice(0, 4).some((p) => p.end)) && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
@@ -162,7 +162,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
         <section class="section" aria-labelledby="fl-sale-title">
           <div class="section-head">
             <h2 id="fl-sale-title" class="section-title">セール中</h2>
-            <a class="subsection-more" href={floorSalePath(key)}>{sale.length}本を見る</a>
+            <a class="subsection-more" href={floorSalePath(key)}>{floorSaleCount(items, key, salePages).toLocaleString('ja-JP')}本を見る</a>
           </div>
           <FloorSaleCards pages={salePages.slice(0, 4)} key={key} />
           <p class="section-note sale-note"><a class="spec-link" href={floorSaleHistoryPath(key)}>{f.label}のセールはいつ？</a></p>

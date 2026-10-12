@@ -367,11 +367,76 @@ def probe_floor_extras():
         say(line)
 
 
+def probe_floor_campaigns():
+    """18) 売り場ごとのセール（キャンペーン）の名前と本数（運営者の「素人のセールも、動画みたいに『○○セール』が何種類かあると思う」。2026-10-12）。
+    人気順（発売済み）を上から読み（素人は5万本＝APIの上限まで）、キャンペーンの名前・期間ごとに、本数・入れてよい本数・
+    人気順のいちばん上の位置・上位1,000/5,000/1万/2万本の中の本数を数える。値引きの分かる作品でキャンペーンの無いものも数える"""
+    import time
+    from collections import Counter, defaultdict
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import doujin_game as D
+    import floor_data as F
+    now = datetime.now(JST)
+    lte = now.strftime("%Y-%m-%dT23:59:59")
+    limits = {"amateur": 50000, "anime": 50000, "cinema": 50000, "comic": 5000, "photo": 5000, "doujin": 5000}
+    for key, limit in limits.items():
+        conf = F.FLOORS[key]
+        say(f"## 18) {conf['label']}のセール（人気順の上位{limit}本まで・{now.strftime('%H:%M')}の時点）")
+        stat = defaultdict(lambda: {"n": 0, "ok": 0, "top": None, "b": Counter(), "off": Counter()})
+        nocamp, calls, fails, total, off, t0, scanned = 0, 0, 0, None, 1, time.time(), 0
+        while off <= limit and fails < 3:
+            time.sleep(0.2)
+            res, err = call("ItemList", {"site": "FANZA", "service": conf["service"], "floor": conf["floor"], "sort": "rank", "hits": 100, "offset": off, "lte_date": lte})
+            calls += 1
+            if err:
+                fails += 1
+                continue
+            fails = 0
+            total = total or res.get("total_count")
+            items = res.get("items") or []
+            for pos, x in enumerate(items):
+                scanned += 1
+                rank = off + pos
+                prices = x.get("prices") if isinstance(x.get("prices"), dict) else {}
+                try:
+                    price, lp = int(str(prices.get("price") or "").replace(",", "").rstrip("~〜")), int(str(prices.get("list_price") or "").replace(",", ""))
+                except ValueError:
+                    price = lp = None
+                camps = [c for c in (x.get("campaign") or []) if isinstance(c, dict) and str(c.get("title") or "").strip()]
+                if not camps:
+                    if price and lp and price < lp:
+                        nocamp += 1
+                    continue
+                for c in camps[:3]:
+                    k = (str(c["title"]).strip()[:60], str(c.get("date_begin") or "")[:16], str(c.get("date_end") or "")[:16])
+                    s = stat[k]
+                    s["n"] += 1
+                    if not D.blocked_reason(x):
+                        s["ok"] += 1
+                    s["top"] = rank if s["top"] is None else min(s["top"], rank)
+                    for b in (1000, 5000, 10000, 20000):
+                        if rank <= b:
+                            s["b"][b] += 1
+                    if price and lp and price < lp:
+                        s["off"][round((1 - price / lp) * 100)] += 1
+            if len(items) < 100:
+                break
+            off += 100
+        camps_n = len(stat)
+        say(f"- 読んだ {scanned}本（{calls}回・{int(time.time() - t0)}秒）・全体 {total}・失敗で止まった {fails >= 3}・キャンペーン {camps_n}件・値引きなのにキャンペーンの無い作品 {nocamp}本")
+        for (title, begin, end), s in sorted(stat.items(), key=lambda kv: -kv[1]["n"])[:25]:
+            say(f"- {title}｜{begin}〜{end}｜{s['n']}本（入れてよい{s['ok']}）・いちばん上{s['top']}位・上位1千{s['b'][1000]}/5千{s['b'][5000]}/1万{s['b'][10000]}/2万{s['b'][20000]}・割引{dict(s['off'].most_common(3))}")
+
+
 def main():
     if not API_ID:
         sys.exit("❌ API_ID が設定されていません")
     if os.environ.get("PROBE_ONLY") == "13":
         probe_ten_yen()
+        finish()
+        return
+    if os.environ.get("PROBE_ONLY") == "18":
+        probe_floor_campaigns()
         finish()
         return
     if os.environ.get("PROBE_ONLY") == "17":

@@ -11,15 +11,15 @@ import FloorMiniShelf from '../../../components/FloorMiniShelf.astro';
 import RankTrend from '../../../components/RankTrend.astro';
 import GachaCorner from '../../../components/GachaCorner.astro';
 import SampleMovie from '../../../components/SampleMovie.astro';
-import { actressByName, activeFloors, floorCollectionGroups, floorMakerById, floorRankHistory, floorSalePageBySlug, floorSalePageGroups, floors, tenYenInfo, floorReviewRankOf } from '../../../lib/data.js';
+import { actressByName, activeFloors, floorHasSale, floorCollectionGroups, floorMakerById, floorRankHistory, floorSalePageBySlug, floorSalePageGroups, floors, tenYenInfo, floorReviewRankOf } from '../../../lib/data.js';
 import { floorReviewRankingPath } from '../../../lib/reviews.js';
 import { tenYenPath } from '../../../lib/ten-yen.js';
 import { endIso, endLabel } from '../../../lib/sale.js';
 import { inlineScript } from '../../../lib/assets.js';
 import {
-  DOUJIN_IMG_ONERROR, FLOORS, FLOOR_SAMPLES, FLOOR_TREND_TRACK, collectionLinksFor, floorTrendCaption, floorTrendLines, saleTagLink, floorItemDescription, floorItemPath, floorItemTitle, floorPath, floorSaleItems, floorSalePath, popularInFloorGenre, priceNote, sameMaker,
+  DOUJIN_IMG_ONERROR, FLOORS, campaignEndLabel, FLOOR_SAMPLES, FLOOR_TREND_TRACK, collectionLinksFor, floorTrendCaption, floorTrendLines, saleTagLink, floorItemDescription, floorItemPath, floorItemTitle, floorPath, floorSalePath, popularInFloorGenre, priceNote, sameMaker,
 } from '../../../lib/floors.js';
-import { breadcrumbLd, formatDateJp, SITE_NAME, truncate } from '../../../lib/items.js';
+import { breadcrumbLd, entitySlug, formatDateJp, SITE_NAME, truncate } from '../../../lib/items.js';
 import { assetUrl } from '../../../lib/assets.js';
 
 export function getStaticPaths() {
@@ -51,9 +51,11 @@ const links = collectionLinksFor(item, floorCollectionGroups[key]);
 // 形式（同人）の人気ランキングでの順位（順位のある作品だけ）
 const typePos = links.type && item.rank ? links.type.items.findIndex((i) => i.cid === item.cid) + 1 : 0;
 // セールのページがある売り場だけ、セールの札からセールのページへリンクする（リンク切れを作らない）
-const hasSalePage = floorSaleItems(items).length > 0;
+const hasSalePage = floorHasSale(key);
 // セールごと（ゲーム）・割引ごと（同人）のページ（2026-10-09）。同人は、その作品の割引が入るいちばん上の割引のページ
 const bandPage = key === 'doujin' && item.off > 0 ? floorSalePageGroups[key].find((p) => item.off >= p.off) ?? null : null;
+// キャンペーンの名前ごとのページ（素人・アニメ・成人映画。2026-10-12）
+const campPage = f.campaigns && item.campaign ? floorSalePageBySlug[key].get(entitySlug(item.campaign.title)) ?? null : null;
 // 人気の動き（毎日の順位の記録。上位300本に入ったことのある作品だけ。2026-10-09）
 const hist = floorRankHistory[key].get(item.cid);
 const trendLines = floorTrendLines(hist, f);
@@ -193,7 +195,7 @@ const tenNow = tenYenInfo(key, item.cid);
           {item.off > 0 && item.campaign && item.sales.length === 0 && (
             <>
               <dt class="spec-term">セール</dt>
-              <dd class="spec-desc"><a class="spec-link" href={floorSalePath(key)}>{item.campaign.title}</a>{item.campaign.begin && `（${formatDateJp(item.campaign.begin)}から）`}{bandPage && <> <a class="spec-link spec-sub" href={bandPage.path}>{bandPage.name}</a></>}</dd>
+              <dd class="spec-desc"><a class="spec-link" href={campPage?.path ?? floorSalePath(key)}>{item.campaign.title}</a>{campPage?.end ? `（${campaignEndLabel(campPage.end)}まで）` : item.campaign.begin && `（${formatDateJp(item.campaign.begin)}から）`}{bandPage && <> <a class="spec-link spec-sub" href={bandPage.path}>{bandPage.name}</a></>}</dd>
             </>
           )}
         </dl>

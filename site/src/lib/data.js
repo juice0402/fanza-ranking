@@ -19,7 +19,7 @@ import { SEARCH_MORE_SIZE, buildSearchIndexes } from './search.js';
 import { TEN_YEN_ALWAYS, TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenIndexable, tenYenState } from './ten-yen.js';
 import { FLOOR_REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, normalizeReviews, topRated } from './reviews.js';
 import { normalizeReadings } from './kana.js';
-import { FLOOR_KEYS, FLOOR_PERIODS, FLOORS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorPeriodRanking, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorGenreTops, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
+import { FLOOR_KEYS, FLOOR_PERIODS, FLOORS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorPeriodRanking, floorSaleItems, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorGenreTops, normalizeFloorSale, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
@@ -120,8 +120,17 @@ export const floorMakerGroups = Object.fromEntries(FLOOR_KEYS.map((k) => [k, flo
 export const floorMakerById = Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floorMakerGroups[k].map((g) => [g.id, g]))]));
 /** 売り場ごとのコレクション（ジャンル・シリーズ・作家・発売月。lib/floors.js の floorCollections。2026-10-09） */
 export const floorCollectionGroups = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorCollections(floors[k].items, k, today)]));
-/** 売り場ごとのセールのページ（ゲームはセールの札ごと・同人は割引ごと。lib/floors.js の floorSalePages。2026-10-09） */
-export const floorSalePageGroups = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorSalePages(floors[k].items, k)]));
+/**
+ * 売り場のセール（キャンペーン）の名前ごとの本数と、このサイトに無い対象作品（scripts/floor_sales.py の floor_sale.json。素人・アニメ・成人映画。
+ * 運営者の「素人のセールも、動画みたいに『○○セール』ごとに」。2026-10-12。まだ無ければ空）
+ */
+const floorSaleShards = import.meta.glob('../data/floor_sale.json', { eager: true, import: 'default' });
+export const floorSale = normalizeFloorSale(floorSaleShards['../data/floor_sale.json'] ?? null,
+  Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Set(floors[k].items.map((i) => i.cid))])), today);
+/** 売り場ごとのセールのページ（ゲームはセールの札ごと・同人は割引ごと・素人/アニメ/成人映画はキャンペーンの名前ごと。lib/floors.js の floorSalePages。2026-10-09） */
+export const floorSalePageGroups = Object.fromEntries(FLOOR_KEYS.map((k) => [k, floorSalePages(floors[k].items, k, floorSale)]));
+/** セールのページ（/<売り場>/sale/）・「セールはいつ？」を作る売り場か: いまセール中の作品か、セールごとのページがある（見放題は無し） */
+export const floorHasSale = (k) => !FLOORS[k].noPrice && (floorSaleItems(floors[k].items).length > 0 || floorSalePageGroups[k].length > 0);
 export const floorSalePageBySlug = Object.fromEntries(FLOOR_KEYS.map((k) => [k, new Map(floorSalePageGroups[k].map((p) => [p.slug, p]))]));
 // 人気の動き（毎日の順位）・セールの記録（scripts/floor_history.py が毎日足す。まだ無くてもビルドは止まらない）
 const floorHistShards = import.meta.glob('../data/floor_{rank,sale}_history.json', { eager: true, import: 'default' });

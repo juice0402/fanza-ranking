@@ -8,7 +8,7 @@ import Base from '../layouts/Base.astro';
 import Breadcrumb from './Breadcrumb.astro';
 import ItemCard from './ItemCard.astro';
 import FloorCard from './FloorCard.astro';
-import { activeFloors, all, floors, floorSalePageGroups, paged, sale, saleCampaignPages, today, tenYen, tenYenFloors } from '../lib/data.js';
+import { activeFloors, all, floorHasSale, floors, floorSalePageGroups, paged, sale, saleCampaignPages, today, tenYen, tenYenFloors } from '../lib/data.js';
 import { FLOORS, floorPath, floorSaleHistoryPath, floorSaleItems, floorSalePath, priceNote, saleBadgeOf } from '../lib/floors.js';
 import { SALE_HISTORY_PATH, SALE_PATH, endIso, endLabel, offPercent, onSaleItems, saleBadge, salePriceNote } from '../lib/sale.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, filterAttrs } from '../lib/items.js';
@@ -77,7 +77,7 @@ const deals = live ? [] : keys.filter((k) => !hub || TEN_YEN_DEAL_KEYS.includes(
 const saleLinks = [
   ...(hub || key === 'video' ? [{ path: SALE_PATH, label: `FANZA動画のセール${saleCampaignPages.filter((p) => p.active).length ? `（開催中${saleCampaignPages.filter((p) => p.active).length}件）` : ''}` }] : []),
   // （セールのページがある売り場だけ。見放題など、セール中の作品が無い売り場にはページが無い。2026-10-10）
-  ...activeFloors.filter((k) => (hub || k === key) && floorSaleItems(floors[k].items).length > 0).map((k) => ({ path: floorSalePath(k), label: `${FLOORS[k].label}のセール${floorSalePageGroups[k].length ? `（${floorSalePageGroups[k].length}件）` : ''}` })),
+  ...activeFloors.filter((k) => (hub || k === key) && floorHasSale(k)).map((k) => ({ path: floorSalePath(k), label: `${FLOORS[k].label}のセール${floorSalePageGroups[k].length ? `（${floorSalePageGroups[k].length}件）` : ''}` })),
   ...(hub ? [{ path: SALE_HISTORY_PATH, label: 'FANZAのセールはいつ？' }] : [{ path: floorSaleHistoryPath(key), label: `${FLOORS[key].label}のセールはいつ？` }]),
 ];
 

@@ -211,7 +211,13 @@ check("sale-refresh.yml: 全部の売り場も10時すぎに集め直す（失�
       "python scripts/doujin_game.py --update" in sr and sr.index("python get_new_releases.py --sales-only") < sr.index("python scripts/doujin_game.py")
       and "continue-on-error: true" in sr[sr.rindex("- name:", 0, sr.index("python scripts/doujin_game.py")):sr.index("python scripts/doujin_game.py")]
       and set(_sr_files) == {"site/src/data/sale.json", "site/src/data/sale_history.json", "site/src/data/floor_rank_history.json", "site/src/data/floor_sale_history.json",
-                             *(f"site/src/data/{k}.json" for k in _FD.FLOORS)}, _sr_files)
+                             "site/src/data/floor_sale.json", *(f"site/src/data/{k}.json" for k in _FD.FLOORS)}, _sr_files)
+# 素人・アニメ・成人映画のキャンペーンごと（運営者の「素人のセールも、動画みたいに『○○セール』ごとに」。2026-10-12）: 0:35 と 10:17 の両方・失敗しても止めない・保存の前
+_fsl = sr.index("python scripts/floor_sales.py --update")
+_fsl_step = sr[sr.rindex("- name:", 0, _fsl):_fsl]
+check("sale-refresh.yml: 素人などのキャンペーンごとの本数と対象作品も、0:35・10:17 の両方で集める（失敗しても止めない・保存の前）",
+      "continue-on-error: true" in _fsl_step and "if:" not in _fsl_step and _fsl < sr.index("Commit and deploy if changed")
+      and "python scripts/floor_sales.py --update" in read(".github", "workflows", "refresh-data.yml"))
 check("sale-refresh.yml: 0:35 にも動画のセールを読み直す（0時に入れかわる日替わりセール）。売り場の集め直しは 0:35 には動かさない（0:05 の毎日の更新が集める）",
       "- cron: '35 15 * * *'" in sr and "if: github.event.schedule != '35 15 * * *'" in sr[sr.rindex("- name:", 0, sr.index("python scripts/doujin_game.py")):sr.index("python scripts/doujin_game.py")]
       and "if:" not in sr[sr.rindex("- name:", 0, sr.index("python get_new_releases.py --sales-only")):sr.index("python get_new_releases.py --sales-only")])
