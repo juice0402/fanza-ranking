@@ -18,7 +18,7 @@
 - Python の標準ライブラリだけ。
 
 使い方:
-  python scripts/agency_links.py --update          7日たっていれば集め直して保存する（毎日の更新から）
+  python scripts/agency_links.py --update          月曜（か、7日たった日）なら集め直して保存する（毎日の更新から）
   python scripts/agency_links.py --update --force  すぐ集め直して保存する（「Refresh FANZA Data」から）
 """
 import html as htmllib
@@ -95,6 +95,17 @@ _lock = threading.Lock()
 
 def jst_today():
     return datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+
+
+def weekly_due(last, today):
+    """集め直す日か: 月曜（日曜から月曜に日付が変わったあとの毎日の更新。運営者の希望「週次は日曜から月曜の日付変更のタイミング」。2026-10-13）か、
+    前に集めてから REFRESH_DAYS 日たった日（月曜に集められなかったときの予備）。同じ日に2回は集めない。前に集めた日が分からなければ集める"""
+    age = days_between(last, today)
+    if age is None:
+        return True
+    if age < 1:
+        return False
+    return age >= REFRESH_DAYS or date.fromisoformat(today).weekday() == 0
 
 
 def days_between(a, b):
@@ -489,9 +500,8 @@ def main(argv):
     except (OSError, ValueError) as e:
         print(f"agencies.json が読めないので、上書きしません: {e}")
         return 1
-    age = days_between(previous.get("updated"), today)
-    if "--force" not in argv and age is not None and age < REFRESH_DAYS:
-        print(f"所属事務所: 前に集めてから {age} 日なので、まだ集め直しません（{REFRESH_DAYS} 日ごと）")
+    if "--force" not in argv and not weekly_due(previous.get("updated"), today):
+        print(f"所属事務所: 前に集めたのは {previous.get('updated')} なので、まだ集め直しません（毎週月曜。月曜に集められなかったときは {REFRESH_DAYS} 日たった日）")
         return 0
     table = fanza_names()
     # 事務所ごとに同時に読む（それぞれのサイトへは2秒ずつ間をあける。全部を順番に読むと40分ほどかかったため）

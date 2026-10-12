@@ -160,17 +160,25 @@ def dump(data):
     return ",\n".join(parts) + "}\n"
 
 
+def weekly_due(last, today_str):
+    """集める日か: 月曜（日曜から月曜に日付が変わったあとの毎日の更新。運営者の希望「週次は日曜から月曜の日付変更のタイミング」。2026-10-13）か、
+    前に集めてから EVERY_DAYS 日たった日（月曜に集められなかったときの予備）。同じ日に2回は集めない（ValueError は呼ぶ側で）"""
+    today = datetime.strptime(today_str, "%Y-%m-%d")
+    age = (today - datetime.strptime(last, "%Y-%m-%d")).days
+    return age >= 1 and (age >= EVERY_DAYS or today.weekday() == 0)
+
+
 def update(today_str, call=None, path=PATH, force=False, want=None, max_calls=MAX_CALLS):
     """集めて保存する → 結果の要約の行。
-    集めるのは、前に集めてから7日たった日か、途中まで読んだ一覧（next）がある日だけ（--force なら、いつでも）。
+    集めるのは、月曜（か、前に集めてから7日たった日）か、途中まで読んだ一覧（next）がある日だけ（--force なら、いつでも）。
     1回に読むのは max_calls 回まで。読みきれなかった一覧は、次の日に続きから（next）。
     want: このサイトに載っている名前（テスト用。ふだんは wanted()）"""
     call = call or G.call_api
     old = load(path)
     if not force and old["updated"] and not old["next"]:
         try:
-            if datetime.strptime(today_str, "%Y-%m-%d") - datetime.strptime(old["updated"], "%Y-%m-%d") < timedelta(days=EVERY_DAYS):
-                return [f"- 前に集めてから{EVERY_DAYS}日たっていないので、お休み（前回 {old['updated']}）"]
+            if not weekly_due(old["updated"], today_str):
+                return [f"- 月曜ではなく、前に集めてから{EVERY_DAYS}日たっていないので、お休み（前回 {old['updated']}）"]
         except ValueError:
             pass
     want = want if want is not None else wanted()

@@ -79,6 +79,8 @@ check("読み終えたら next が空になり updated が進む・前に集め�
       and data["doujin"]["maker"] == {"500": "さーくるえー"} and data["game"]["author"] == {"作家B": "さっかびー"}, data)
 calls.clear()
 check("前に集めてから7日たっていない日は、何もしない", "お休み" in R.update("2026-10-15", call=fake, want=want)[0] and calls == [])
+check("月曜は集める（日曜から月曜に日付が変わったあとの毎日の更新。2026-10-13）・同じ日に2回は集めない・月曜でなくても7日たてば集める",
+      R.weekly_due("2026-10-15", "2026-10-19") and not R.weekly_due("2026-10-19", "2026-10-19") and R.weekly_due("2026-10-12", "2026-10-20") and not R.weekly_due("2026-10-14", "2026-10-18"))
 want2 = {k: {kind: set(v) for kind, v in kinds.items()} for k, kinds in want.items()}
 want2["video"]["maker"] = {"ムーディーズ"}
 

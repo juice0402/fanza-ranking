@@ -31,8 +31,10 @@ FANZAの新作・予約作品を毎日自動で集め、ひとことコメント
 | 毎日 0:20 | Claude の予約タスク: コメントを仕上げる（1日40件。手順は `docs/claude-comments.md`） | `new_releases.json`・`catalog/`・売り場のファイル |
 | 毎日 0:35・10:17 | `sale-refresh.yml`: 動画のセールの読み直し（はじめは上位1万本だけ）・10:17 は売り場の集め直し・0:35 は素人/アニメ/成人映画のキャンペーンごと | `sale.json`・`sale_history.json`・`floor_sale.json` |
 | 毎日 10:12・12:12・16:12・20:12 | `ten-yen.yml`: 10円セールが変わったときだけ保存して公開 | `ten_yen.json` |
-| 毎週月曜 0:50 | Claude の予約タスク: 週のまとめ記事（`docs/claude-roundups.md`） | `roundups.json` |
-| 毎月1日 1:25 | Claude の予約タスク: 月のまとめ記事（`docs/claude-monthly.md`） | `monthly.json` |
+| 毎週月曜 0:01 | `health.yml`: 見張り番（この7日の更新・公開・コメント・過去作品の数・リポジトリの大きさ。Claude を使わない。おかしいときだけ ⚠️ と GitHub の知らせ） | なし（読むだけ） |
+| 毎週月曜 0:50 | Claude の予約タスク: 週のまとめ記事（`docs/claude-roundups.md`）。月が変わって最初の月曜は、月のまとめ記事（`docs/claude-monthly.md`）も同じPRで。見張り番の結果も報告 | `roundups.json`・`monthly.json` |
+
+週1回の仕事は、日曜から月曜に日付が変わったあとにそろえる（運営者の希望。2026-10-13）: 所属事務所・読みがなも、月曜 0:05 の毎日の更新で集める（月曜に集められなかったときは7日たった日）。
 
 Gemini を使うのは `get_new_releases.py` のコメントの下書きだけ（守ること8）。ほかの道具・取り直し（`refresh-data.yml`）は使わない。
 
@@ -44,8 +46,9 @@ Gemini を使うのは `get_new_releases.py` のコメントの下書きだけ�
 - `scripts/ten_yen.py` — 10円セール ／ `scripts/readings.py` — 読みがな ／ `scripts/genre_tops.py` — ジャンルの人気TOP20
 - `scripts/agency_links.py`・`agency_events.py` — 所属事務所とSNS・女優のイベント情報（事務所の公式サイトから。守ること9）
 - `scripts/check.sh`（`quiet_step.sh`）— テスト一式 ／ `scripts/wait_run.py` — GitHub の実行を待つ ／ `scripts/already_updated.sh` — 今日の更新が済んだか
+- `scripts/health.py`（`health.yml`）— 週1回の見張り番（毎週月曜 0:01。Claude を使わない。`--last` で結果を1行ずつ）
 - `scripts/screens.mjs`（`screens.yml`）— 画面の写真と形のくずれの点検（GitHub の上で撮る）／ `scripts/probe_api.py`（`probe-api.yml`）— API の応答の形を調べる
-- `.github/workflows/` — update・sale-refresh・ten-yen・ci・deploy（`scripts/deploy_pages.sh`）・refresh-data（取り直しだけ。手動）・probe-api・screens
+- `.github/workflows/` — update・sale-refresh・ten-yen・ci・deploy（`scripts/deploy_pages.sh`）・health（見張り番）・refresh-data（取り直しだけ。手動）・probe-api・screens
 - `site/` — サイト本体（Astro 7・静的出力）。`src/config.js` がサイト名・URL・件数・ファイル数の上限（`FILE_BUDGET`。Cloudflare Pages の無料プランは2万ファイルまで）の設定
 - `site/src/lib/` — 画面に依存しない部品（テストは `tests/test_*.mjs`）。`data.js`（読み込み）・`items.js`（並べ替え・構造化データ・規約の表記）・`plan.js`（ファイル数の計画）・`floors.js`（売り場）・`sale.js`・`ten-yen.js`・`topics.js`（トップ）・`search.js`・`profiles.js`・`insights.js`・`reviews.js`・`kana.js`・`phrase.js`（文節の改行）など
 - `site/src/pages/`・`components/`・`layouts/Base.astro`・`styles/site.css` — ページ・部品・全ページ共通の部分・デザイン
@@ -73,7 +76,7 @@ cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
 ## 守ること
 
 1. **main へ直接 push しない。** ブランチ（`claude/...`）→ PR。PRの作成は `gh api repos/juice0402/fanza-ranking/pulls`（REST）を使う（Claude Code環境では GraphQL が使えず `gh pr create` は失敗する）。毎日更新の GitHub Actions（`update.yml`）だけは、データファイルだけを main に直接 commit する。
-   - 例外の許可: 予約タスクの**コメント更新PR（`new_releases.json` と、過去作品の `site/src/data/catalog/` の中のファイルと、売り場の `doujin.json`・`game.json`・`anime.json`・`amateur.json`・`cinema.json`・`comic.json`・`photo.json`・`vr.json` だけを変えるもの）は、CIが緑なら Claude 自身が Merge してよい**（運営者の許可済み。過去作品のコメントは、2026-10-04 夜に、運営者の「5万件くらい網羅したい」に合わせて加え、報告した。同人・ゲームのコメントは、2026-10-09 に、運営者の「動画35・同人4・ゲーム1の割合で執筆を」に合わせて加えた。新しい売り場のコメントは、2026-10-10 に、運営者の「上限は40のまま、1件ずつ」に合わせて加えた）。同じく、**週のまとめ記事のPR（`roundups.json` だけを変えるもの）も、CIが緑なら Claude 自身が Merge してよい**（運営者の「そっち側でできることは極力やっていい」という包括的な許可にもとづき、2026-10-03 に追加して運営者へ報告した。やめてほしいと言われたら、この文を消す）。**月のまとめ記事のPR（`monthly.json` だけを変えるもの）も同じ**（運営者の希望「月のまとめ記事＋予約タスク」にもとづき、2026-10-07 に追加して運営者へ報告した）。コード・デザインを変えるPRは、運営者に知らせてからMergeする。
+   - 例外の許可: 予約タスクの**コメント更新PR（`new_releases.json` と、過去作品の `site/src/data/catalog/` の中のファイルと、売り場の `doujin.json`・`game.json`・`anime.json`・`amateur.json`・`cinema.json`・`comic.json`・`photo.json`・`vr.json` だけを変えるもの）は、CIが緑なら Claude 自身が Merge してよい**（運営者の許可済み。過去作品のコメントは、2026-10-04 夜に、運営者の「5万件くらい網羅したい」に合わせて加え、報告した。同人・ゲームのコメントは、2026-10-09 に、運営者の「動画35・同人4・ゲーム1の割合で執筆を」に合わせて加えた。新しい売り場のコメントは、2026-10-10 に、運営者の「上限は40のまま、1件ずつ」に合わせて加えた）。同じく、**週のまとめ記事のPR（`roundups.json` だけを変えるもの）も、CIが緑なら Claude 自身が Merge してよい**（運営者の「そっち側でできることは極力やっていい」という包括的な許可にもとづき、2026-10-03 に追加して運営者へ報告した。やめてほしいと言われたら、この文を消す）。**月のまとめ記事のPR（`monthly.json` だけを変えるもの）と、週と月のまとめを1つにしたPR（`roundups.json`・`monthly.json` だけを変えるもの）も同じ**（運営者の希望「月のまとめ記事＋予約タスク」にもとづき、2026-10-07 に追加して運営者へ報告した。2026-10-13 から、月のまとめは毎週月曜の予約タスクが同じPRで書く）。コード・デザインを変えるPRは、運営者に知らせてからMergeする。
 2. **秘密情報をコードやログに書かない。** 使うのは GitHub Secrets の `API_ID` / `AFFILIATE_ID` / `GEMINI_API_KEY` と、公開用の `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`（`deploy.yml` と CI のプレビューだけに渡す）のみ。リポジトリは公開なので、一度でも書くと履歴に残る。Geminiのキーは URL ではなくヘッダ（`x-goog-api-key`）で渡す。
 3. **規約の表記を消さない。** 全ページに「広告（アフィリエイト）表記」「18歳確認」「RTAラベル」「Powered by FANZA Webサービス」。AIコメントの注記も残す。`tests/verify_dist.py` が全ページを検査する。
    - **FANZA のクレジットは、DMMの規定のHTMLを1文字も変えない**（DMMアフィリエイト公式の「クレジット表示」の FANZA クレジット・テキスト形式 `Powered by <a href="https://affiliate.dmm.com/api/">FANZA Webサービス</a>`。改変すると API の利用を止められることがある。運営者が公式のページで確かめた。2026-10-07）。`items.js` の `DMM_CREDIT_HTML` を、フッターの `<p class="foot-credit">` に `set:html` でそのまま入れる。class・target・rel を足さない。文節の区切りも入れない（`lib/phrase.js` が `foot-credit` の中を飛ばす）。見た目は CSS の `.foot-credit a` で整える。`tests/verify_dist.py` が全ページで1文字ずつ突き合わせる
