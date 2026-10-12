@@ -28,6 +28,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import unicodedata
 from datetime import datetime, timedelta, timezone
@@ -465,8 +466,14 @@ def cmd_list(args):
         if x.get("comment_kind") in (DRAFT_KIND, FINAL_KIND):
             row["draft"] = x.get("comment") or ""  # 仕上げる前の文（Gemini の下書きなど）。そのまま使わず、書き直す
         rows.append(row)
+    video_cids = {x["cid"] for x in items} | set(catalog)
     for key, x in floor_shown:
-        rows.append(floor_row(key, x, today))
+        row = floor_row(key, x, today)
+        if x["cid"] in video_cids:
+            # 同じ品番が動画（毎日の更新の作品・過去作品）にもある（VR見放題の 13dsvr01627 など）。apply が売り場のほうに書くように、
+            # 「売り場:品番」で出す（2026-10-13。前は apply が過去作品のほうに書き込んでいた）
+            row["cid"] = f"{key}:{x['cid']}"
+        rows.append(row)
     floor_left = {k: len(v) for k, v in floor_todo.items()}
     print(dumps_lines({"today": today, "total_pending": len(todo) + len(catalog_todo) + sum(floor_left.values()), "catalog_pending": len(catalog_todo),
                        "doujin_pending": floor_left.get("doujin", 0), "game_pending": floor_left.get("game", 0), "floor_pending": floor_left, "shown": len(rows), "items": rows}))
@@ -617,6 +624,58 @@ def read_comments_file(path):
     sys.exit('❌ コメントのファイルは {"cid": "コメント"} の形にしてください')
 
 
+def _git(cwd, *args):
+    """git を動かして、出力（bytes）を返す。動かない・失敗したら None"""
+    try:
+        r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
+def comments_before_today(paths, stamp):
+    """今日（stamp。日本時間）の0時より前の、最後の記録（git）での {ファイル: {cid: コメント}}。
+    git が使えない・その時刻より前の記録が無い（浅い clone）・リポジトリの外のファイルなら None"""
+    if not paths:
+        return {}
+    top = _git(os.path.dirname(os.path.abspath(paths[0])), "rev-parse", "--show-toplevel")
+    if not top:
+        return None
+    top = top.decode("utf-8").strip()
+    base = _git(top, "rev-list", "-n", "1", f"--before={stamp}T00:00:00+09:00", "HEAD")
+    if not base or not base.strip():
+        return None
+    base = base.decode("utf-8").strip()
+    out = {}
+    for path in paths:
+        rel = os.path.relpath(os.path.abspath(path), top)
+        if rel.startswith(".."):
+            return None
+        raw = _git(top, "show", f"{base}:{rel.replace(os.sep, '/')}")
+        rows = []
+        if raw:
+            try:
+                data = json.loads(raw.decode("utf-8"))
+            except ValueError:
+                data = None
+            rows = data.get("items") if isinstance(data, dict) else data
+        out[path] = {x.get("cid"): x.get("comment") for x in rows or [] if isinstance(x, dict)}
+    return out
+
+
+def claude_done_today(cands, stamp):
+    """今日 Claude が仕上げた件数（1日の上限 DAILY_LIMIT に数える分）。cands は、Claude のコメントで更新日が今日の (ファイル, 作品)。
+    毎日の更新は、出演者・ジャンルなどを補った作品の更新日（updated）を今日にするので、更新日だけで数えると、前の日までに書いた
+    コメントまで数えてしまう（2026-10-13 の予約タスクで、40件の枠のうち9件がそれで減った）。今日の0時より前の記録とくらべて、
+    コメントが新しく付いた・変わった作品だけを数える。git が使えないときは、前と同じく更新日だけで数える"""
+    if not cands:
+        return 0
+    base = comments_before_today(sorted({path for path, _ in cands}), stamp)
+    if base is None:
+        return len(cands)
+    return sum(1 for path, x in cands if base.get(path, {}).get(x["cid"]) != x.get("comment"))
+
+
 def cmd_apply(args):
     stamp = args.today or jst_today()  # 更新日に入れる日付
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", stamp):
@@ -634,12 +693,19 @@ def cmd_apply(args):
     floor_of = {cid: key for key, data in floors.items() for cid in data["items"] if cid not in by_cid and cid not in catalog}  # 同人・ゲームの作品 cid → 売り場
     errors = []
     texts = {}
+    where = {}  # list の cid（「売り場:品番」もある）→ (品番, 売り場。動画なら None)
     for cid, comment in mapping.items():
-        floor = floor_of.get(cid)
-        item = by_cid.get(cid) or (catalog[cid][1] if cid in catalog else None) or (floors[floor]["items"][cid] if floor else None)
+        floor, plain = floor_of.get(cid), cid
+        if ":" in cid and cid.split(":", 1)[0] in F.FLOORS:
+            # 「売り場:品番」（同じ品番が動画にもある売り場の作品。list がこの形で出す）
+            floor, plain = cid.split(":", 1)
+            item = floors.get(floor, {"items": {}})["items"].get(plain)
+        else:
+            item = by_cid.get(cid) or (catalog[cid][1] if cid in catalog else None) or (floors[floor]["items"][cid] if floor else None)
         if item is None:
             errors.append((cid, ["保存データ（毎日の更新の作品・過去作品・同人・ゲーム）にない cid です"]))
             continue
+        where[cid] = (plain, floor)
         if item.get("comment_kind") == FINAL_KIND and not stale_status_word(item, stamp) and (floor or not info_added(item)) and not args.rewrite:
             errors.append((cid, ["Claude が仕上げたコメントが、すでに付いています（上書きしません。書き直せるのは、定型文・Gemini の下書き・発売日をすぎて予約やこれから先の言い方が残っているもの・仕上げたあとに出演者や情報が増えたものだけ）"]))
             continue
@@ -660,8 +726,12 @@ def cmd_apply(args):
 
     # 1日に仕上げるのは DAILY_LIMIT 件まで（急いで大量に書くと、型どおりの文になりやすい。残りは次の日に回す）
     if not args.rewrite and not args.no_daily_limit:
-        done_today = sum(1 for x in [*items, *(row for _, row in catalog.values()), *(x for d in floors.values() for x in d["items"].values())]
-                         if x.get("comment_kind") == FINAL_KIND and x.get("updated") == stamp and x["cid"] not in texts)
+        writing = {where[c][0] for c in texts}
+        cands = [(path, x) for path, x in [*((DATA_PATH, x) for x in items),
+                                           *((os.path.join(CATALOG_DIR, name), row) for name, row in catalog.values()),
+                                           *((floor_file(k), x) for k, d in floors.items() for x in d["items"].values())]
+                 if x.get("comment_kind") == FINAL_KIND and x.get("updated") == stamp and x["cid"] not in writing]
+        done_today = claude_done_today(cands, stamp)
         if done_today + len(texts) > DAILY_LIMIT:
             errors.append(("(まとめて)", [f"今日（{stamp}）はもう {done_today} 件を仕上げています。1日に仕上げるのは {DAILY_LIMIT} 件までです"
                                           f"（今回は {max(0, DAILY_LIMIT - done_today)} 件まで。残りは次の日に回してください）"]))
@@ -702,18 +772,19 @@ def cmd_apply(args):
 
     changed_shards = set()
     changed_floors = set()
-    for cid, text in texts.items():
-        target = by_cid.get(cid)
-        if target is None and cid in catalog:  # 過去作品
+    for key, text in texts.items():
+        cid, floor = where[key]
+        target = None if floor else by_cid.get(cid)
+        if floor:  # 同人・ゲームなどの売り場
+            changed_floors.add(floor)
+            target = floors[floor]["items"][cid]
+        elif target is None:  # 過去作品
             name, target = catalog[cid]
             changed_shards.add(name)
-        elif target is None:  # 同人・ゲーム
-            changed_floors.add(floor_of[cid])
-            target = floors[floor_of[cid]]["items"][cid]
         target["comment"] = text
         target["comment_kind"] = FINAL_KIND
         target["updated"] = stamp  # コメントを変えた日（sitemap の lastmod に使う）
-    if any(cid in by_cid for cid in texts):
+    if any(not floor and cid in by_cid for cid, floor in where.values()):
         save_raw(items)
     for name in sorted(changed_shards):
         save_catalog_shard(name, shards[name])
@@ -726,16 +797,16 @@ def cmd_apply(args):
     ok = ok and all(len(check_shards.get(n, [])) == len(shards[n]) and all(x["cid"] == y["cid"] for x, y in zip(check_shards[n], shards[n])) for n in changed_shards)
     check_floors = load_floors()
     ok = ok and all(set(check_floors.get(k, {"items": {}})["items"]) == set(floors[k]["items"])
-                    and all(check_floors[k]["items"][c]["comment"] == texts[c] for c in texts if floor_of.get(c) == k) for k in changed_floors)
+                    and all(check_floors[k]["items"][where[c][0]]["comment"] == texts[c] for c in texts if where[c][1] == k) for k in changed_floors)
     if not ok:
         sys.exit("❌ 書き込み後の確認に失敗しました。git で変更を取り消してください")
     left = len(pending_items(check, stamp))
     kinds = [x.get("comment_kind") for x in pending_items(check, stamp)]
     catalog_left = len(pending_items([x for _, x in catalog_index(check_shards, {x["cid"] for x in check}).values()], stamp))
     floor_left = {k: len(floor_pending(d, stamp)) for k, d in check_floors.items()}
-    written = "".join(f"・{FLOOR_REASON.get(k, k)} {sum(1 for c in texts if floor_of.get(c) == k)}件" for k in F.FLOORS if any(floor_of.get(c) == k for c in texts) or k in ("doujin", "game"))
+    written = "".join(f"・{FLOOR_REASON.get(k, k)} {sum(1 for c in texts if where[c][1] == k)}件" for k in F.FLOORS if any(where[c][1] == k for c in texts) or k in ("doujin", "game"))
     remain = "・".join(f"{FLOOR_REASON.get(k, k)}: {floor_left.get(k, 0)}本" for k in F.FLOORS if k in floor_left or k in ("doujin", "game"))
-    print(f"✅ {len(texts)}件のコメントを書き込みました（うち過去作品 {sum(1 for c in texts if c in catalog)}件{written}。まだ仕上げていない作品: 残り{left}件。"
+    print(f"✅ {len(texts)}件のコメントを書き込みました（うち過去作品 {sum(1 for c in texts if not where[c][1] and where[c][0] in catalog)}件{written}。まだ仕上げていない作品: 残り{left}件。"
           f"うち定型文 {kinds.count('template')}件・Gemini の下書き {kinds.count(DRAFT_KIND)}件。コメントがまだ無い過去作品: {catalog_left}本・{remain}）")
 
 
