@@ -607,6 +607,52 @@ code_q = ("import claude_comments as c, sys; sys.argv=['x','apply',sys.argv[1],'
 r = subprocess.run([sys.executable, "-c", code_q, write_comments("floor4.json", {"d_900005": payload_f["d_900001"].replace("サークル1", "サークル5")})],
                    capture_output=True, text=True, env=envq, encoding="utf-8")
 check("apply: 1日の上限には、同人・ゲームに書いた分も数える", r.returncode == 1 and "もう 2 件を仕上げています" in r.stdout, r.stdout)
+
+print("\n■ 同じ品番が動画にもある売り場の作品は「売り場:品番」で出して、売り場のほうに書く（2026-10-13。VR見放題の 13dsvr01627 が過去作品のほうに書かれた）")
+twin = pending[0]["cid"]
+dj["items"][twin] = floor_item(twin, 20)
+dj["ranks"][twin] = 1
+FD.save_floor(os.path.join(tmp, "doujin.json"), dj)
+lst_t = json.loads(run("list", "--today", "2026-11-03", "--limit", "40").stdout)
+twin_rows = [r for r in lst_t["items"] if r.get("floor") == "doujin" and r["cid"].endswith(twin)]
+check("list: 動画にもある品番の売り場の作品は「売り場:品番」", [r["cid"] for r in twin_rows] == ["doujin:" + twin], [r["cid"] for r in lst_t["items"] if r.get("floor")])
+check("list: ほかの売り場の作品は、品番のまま", all(":" not in r["cid"] for r in lst_t["items"] if r.get("floor") and not r["cid"].endswith(twin)))
+video_before = {x["cid"]: x["comment"] for x in read_data()}[twin]
+text_t = "魔法の森を舞台に、作ったサークル20が描く、ふたりの暮らしの物語です。ファンタジーの世界で少しずつ近づいていく関係を、恋愛を軸にしたおだやかな展開で追いかけます。シリーズの1冊として、読みやすい一作です。"
+r = run("apply", write_comments("twin.json", {"doujin:" + twin: text_t}), "--today", "2026-11-03")
+check("apply: 「売り場:品番」は、売り場のほうに書く（動画の作品は変えない）", r.returncode == 0
+      and FD.load_floor(os.path.join(tmp, "doujin.json"))["items"][twin]["comment"] == text_t
+      and {x["cid"]: x["comment"] for x in read_data()}[twin] == video_before and "同人 1件" in r.stdout, r.stdout + r.stderr)
+r = run("apply", write_comments("twin2.json", {"vr:" + twin: text_t}), "--today", "2026-11-03", "--dry-run")
+check("apply: その売り場に無い品番は断る", r.returncode == 1 and "にない cid" in r.stdout, r.stdout)
+del dj["items"][twin], dj["ranks"][twin]
+FD.save_floor(os.path.join(tmp, "doujin.json"), dj)
+
+print("\n■ 1日の上限は、今日の0時より前の記録（git）とくらべて、今日書いたコメントだけを数える（2026-10-13。毎日の更新が更新日を今日にした分まで数えていた）")
+grepo = tempfile.mkdtemp(dir=tmp)
+gitc = lambda *a, date=None: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *a], cwd=grepo, check=True, capture_output=True,
+                                            env=dict(os.environ, **({"GIT_COMMITTER_DATE": date, "GIT_AUTHOR_DATE": date} if date else {})))
+gitc("init", "-q")
+va, fa = os.path.join(grepo, "new_releases.json"), os.path.join(grepo, "doujin.json")
+put = lambda path, data: open(path, "w", encoding="utf-8").write(json.dumps(data, ensure_ascii=False, indent=1))
+put(va, [{"cid": "a", "comment": "前の日に書いたコメント", "comment_kind": "claude", "updated": "2026-11-03"}, {"cid": "b", "comment": "下書き", "comment_kind": "ai", "updated": "2026-11-03"}])
+put(fa, {"updated": "x", "items": [{"cid": "f", "comment": "", "comment_kind": "none", "updated": "2026-11-03"}]})
+gitc("add", "-A"); gitc("commit", "-qm", "きのう", date="2026-11-04T20:00:00+09:00")
+put(va, [{"cid": "a", "comment": "前の日に書いたコメント", "comment_kind": "claude", "updated": "2026-11-05"}, {"cid": "b", "comment": "今日の0時すぎに書いた", "comment_kind": "claude", "updated": "2026-11-05"}])
+gitc("add", "-A"); gitc("commit", "-qm", "今日の0時すぎの Merge", date="2026-11-05T00:40:00+09:00")
+put(va, [{"cid": "a", "comment": "前の日に書いたコメント", "comment_kind": "claude", "updated": "2026-11-05"}, {"cid": "b", "comment": "今日の0時すぎに書いた", "comment_kind": "claude", "updated": "2026-11-05"},
+         {"cid": "c", "comment": "いま書いた", "comment_kind": "claude", "updated": "2026-11-05"}])
+put(fa, {"updated": "x", "items": [{"cid": "f", "comment": "売り場にいま書いた", "comment_kind": "claude", "updated": "2026-11-05"}]})
+cands = [(va, x) for x in json.load(open(va, encoding="utf-8"))] + [(fa, x) for x in json.load(open(fa, encoding="utf-8"))["items"]]
+check("更新日だけが今日になった作品（a）は数えず、今日書いた作品（b: 0時すぎの Merge・c: まだ保存前・f: 売り場）だけ数える",
+      cc_mod.claude_done_today(cands, "2026-11-05") == 3, cc_mod.claude_done_today(cands, "2026-11-05"))
+check("今日の0時より前の記録が無いとき（浅い clone など）は、前と同じく更新日で数える", cc_mod.claude_done_today(cands, "2026-11-01") == 4)
+other = tempfile.mkdtemp(dir=tmp)
+put(os.path.join(other, "x.json"), [])
+check("git の外のファイルなら、前と同じく更新日で数える", cc_mod.claude_done_today([(os.path.join(other, "x.json"), {"cid": "z", "comment": "c"})], "2026-11-05") == 1)
+check("対象が無ければ 0", cc_mod.claude_done_today([], "2026-11-05") == 0)
+check("apply は、この数え方で1日の上限を見る", "done_today = claude_done_today(cands, stamp)" in open(SCRIPT, encoding="utf-8").read())
+
 open(os.path.join(tmp, "game.json"), "w", encoding="utf-8").write("{broken")
 r = run("list")
 check("同人・ゲームのファイルが壊れていたら、止める（書き戻して壊さないように）", r.returncode != 0 and "ゲーム" in (r.stdout + r.stderr), r.stdout + r.stderr)
