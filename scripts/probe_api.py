@@ -484,11 +484,67 @@ def probe_limited_sale():
     say(f"- 見本（セールらしい札。順位・品番・価格・定価・札・キャンペーン）: {samples_tag}")
 
 
+def probe_sale_ends():
+    """20) 素人の期間限定セールの作品がAPIでどう見えるか（キーワードで直接さがす。人気順の5万本より下にあるかも）と、
+    売り場ごとのセールの終わりの日時がAPIにあるか（運営者の「FANZAは、どの売り場もセールの期間（何時何分まで）を出している」。2026-10-12 夜）。
+    作品のタイトル・名前は出さない（品番・人気順の位置・価格・キャンペーンの形だけ）"""
+    import time
+    from collections import Counter
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import get_new_releases as G
+    now = datetime.now(JST)
+    lte = now.strftime("%Y-%m-%dT23:59:59")
+    say(f"## 20a) 素人の期間限定セール（{now.strftime('%H:%M')}の時点・FANZAの期間限定セールの一覧に出ていた作品の名前の一部で、キーワード検索）")
+    for kw in ("HONO", "cerine"):
+        time.sleep(0.3)
+        res, err = call("ItemList", {"site": "FANZA", "service": "digital", "floor": "videoc", "hits": 20, "offset": 1, "keyword": kw, "sort": "rank"})
+        if err:
+            say(f"- 「{kw}」: ×（{err[:80]}）")
+            continue
+        rows = []
+        for x in res.get("items") or []:
+            pr = x.get("prices") if isinstance(x.get("prices"), dict) else {}
+            dl = pr.get("deliveries") or {}
+            dls = dl.get("delivery") if isinstance(dl, dict) else dl
+            dls = dls if isinstance(dls, list) else ([dls] if dls else [])
+            rows.append((str(x.get("content_id")), pr.get("price"), pr.get("list_price"), [(d.get("type"), d.get("price"), d.get("list_price")) for d in dls if isinstance(d, dict)][:3],
+                         [(str(c.get("title"))[:20], str(c.get("date_begin"))[:16], str(c.get("date_end"))[:16]) for c in x.get("campaign") or [] if isinstance(c, dict)], sorted(pr.keys())))
+        say(f"- 「{kw}」: 全体{res.get('total_count')}本・{rows[:8]}")
+
+    say("## 20b) 売り場ごとのセールの終わりの日時（人気順の上から。キャンペーンの date_end があるか・キャンペーンの項目の名前・セールの札の名前に日時があるか）")
+    for key, svc, flr, pages in (("doujin", "doujin", "digital_doujin", 30), ("game", "pcgame", "digital_pcgame", 10), ("anime", "digital", "anime", 5), ("videoa", "digital", "videoa", 10)):
+        camp_n, end_n, keys, ends, sale_tags = 0, 0, Counter(), Counter(), Counter()
+        for off in range(1, pages * 100, 100):
+            time.sleep(0.3)
+            res, err = call("ItemList", {"site": "FANZA", "service": svc, "floor": flr, "sort": "rank", "hits": 100, "offset": off, "lte_date": lte})
+            if err:
+                break
+            for x in res.get("items") or []:
+                for c in x.get("campaign") or []:
+                    if not isinstance(c, dict):
+                        continue
+                    camp_n += 1
+                    keys[tuple(sorted(c.keys()))] += 1
+                    e = str(c.get("date_end") or "")
+                    if e:
+                        end_n += 1
+                        ends[e[11:16] if len(e) >= 16 else e] += 1
+                for g in ((x.get("iteminfo") or {}).get("genre") or []):
+                    n = str((g or {}).get("name") or "")
+                    if re.search(r"セール|OFF|期間|まで|\d+/\d+|\d+月", n):
+                        sale_tags[re.sub(r"[0-9]", "#", n)[:30]] += 1
+        say(f"- {key}: キャンペーン {camp_n}件・終わりの日時あり {end_n}件・終わりの時刻 {dict(ends.most_common(5))}・項目 {dict(keys.most_common(3))}・セールらしい札（数字は#） {dict(sale_tags.most_common(6))}")
+
+
 def main():
     if not API_ID:
         sys.exit("❌ API_ID が設定されていません")
     if os.environ.get("PROBE_ONLY") == "13":
         probe_ten_yen()
+        finish()
+        return
+    if os.environ.get("PROBE_ONLY") == "20":
+        probe_sale_ends()
         finish()
         return
     if os.environ.get("PROBE_ONLY") == "19":
