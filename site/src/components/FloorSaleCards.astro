@@ -1,9 +1,12 @@
 ---
 // 同人・ゲームのセールのカード（動画のトップの「セール中の特集」SaleCampaigns.astro と同じ見た目・同じ CSS。2026-10-09）。
-// ゲームはセールの札ごと、同人は割引ごと（lib/floors.js の floorSalePages）。1枚に、名前・本数・おもなサークル/ブランド・人気作品の表紙（重ねて3枚）・「○%OFF」の札。
-// タップで、そのセールのページ
+// ゲームはセールの札ごと、同人は割引ごと、素人・アニメ・成人映画はキャンペーンの名前ごと（lib/floors.js の floorSalePages）。
+// 1枚に、名前・本数（キャンペーンは「いつまで」と、きょう・あすなら札）・おもなサークル/ブランド・人気作品の表紙（重ねて3枚）・「○%OFF」の札。
+// タップで、そのセールのページ。キャンペーンのカードには終わりの時刻の印（data-sale-end）を付け、すぎたらブラウザで隠す（public/sale.js。ページの先頭に入れておくこと）
 import FloorImg from './FloorImg.astro';
-import { FLOORS, topMakersIn } from '../lib/floors.js';
+import { FLOORS, campaignEndIso, campaignEndLabel, topMakersIn } from '../lib/floors.js';
+import { endSoonTag } from '../lib/sale.js';
+import { today } from '../lib/data.js';
 
 // pages: floorSalePages の結果（見せる分だけ）、key: 売り場
 const { pages, key } = Astro.props;
@@ -14,7 +17,7 @@ const f = FLOORS[key];
   {pages.map((p) => {
     const makers = topMakersIn(p.items, 2).filter((m) => m.count >= 2);
     return (
-      <li class="camp">
+      <li class="camp" data-sale-end={campaignEndIso(p.end) || undefined}>
         <a class="camp-link" href={p.path}>
           <span class="camp-art" aria-hidden="true">
             {p.items.slice(0, 3).map((w) => (
@@ -26,7 +29,10 @@ const f = FLOORS[key];
           </span>
           <span class="camp-body">
             <span class="camp-title">{p.kind === 'off' ? `${p.name}の${f.kind}` : p.name}</span>
-            <span class="camp-when"><span>{p.total.toLocaleString('ja-JP')}本</span></span>
+            <span class="camp-when">
+              {p.end && endSoonTag(p.end, today) && <span class="camp-soon">{endSoonTag(p.end, today)}</span>}
+              <span>{p.end && `${campaignEndLabel(p.end)}まで・`}{p.total.toLocaleString('ja-JP')}本</span>
+            </span>
             {makers.length > 0 && <span class="camp-makers">{f.maker}：{makers.map((m) => m.name).join('・')}{makers.length < p.total && ' など'}</span>}
           </span>
         </a>

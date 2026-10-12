@@ -2950,9 +2950,21 @@ for _fk in _FD.FLOORS:
               and not css_has(".type-block .medals", r"max-width"))
     # セールごと（ゲーム）・割引ごと（同人）のページ（運営者の希望「セールの充実」。2026-10-09）: 対象が3本以上のものだけ
     _released = [x for x in _fshow if str(x["date"])[:10] <= JST_TODAY]
+    _camp_floor = bool(_FD.FLOORS[_fk].get("campaign_calls"))
     if _fk == "game":
         _tagc = Counter(t_ for x in _released for t_ in _cnames(x["sales"], 8) if "セール" in t_ and not re.search(r"クーポン|還元", t_))
         _sp_want = {_cslug(t_) for t_, n_ in _tagc.items() if n_ >= 3}
+    elif _camp_floor:
+        # 素人・アニメ・成人映画: キャンペーンの名前ごと（このサイトの作品のキャンペーン＋floor_sale.json のこのサイトに無い対象作品。3本以上。2026-10-12）
+        import floor_sales as _FSL  # noqa: E402
+        _fsd = (_FSL.load(_FSL.PATH).get(_fk) or {}) if os.path.isfile(_FSL.PATH) else {}
+        _own_c = {x["cid"] for x in _fshow}
+        _ok_name = lambda t_: bool(t_) and _tbr({"title": t_}) != "minor"  # noqa: E731
+        _campc = Counter(x["campaign"]["title"] for x in _released if x.get("campaign") and _ok_name(x["campaign"]["title"]))
+        _campc.update(r_["campaign"]["title"] for r_ in _fsd.get("extra", [])
+                      if r_["cid"] not in _own_c and str(r_["date"])[:10] <= JST_TODAY and _ok_name(r_["campaign"]["title"])
+                      and not any(_tbr({"title": t_}) == "minor" for t_ in [r_["title"], *r_["genres"], r_["maker"], *r_["actress"]] if t_))
+        _sp_want = {_cslug(t_) for t_, n_ in _campc.items() if n_ >= 3}
     else:
         _offs = [min(99, int((1 - x["price"] / x["list_price"]) * 100 + 0.5)) for x in _released
                  if isinstance(x["price"], int) and isinstance(x["list_price"], int) and 0 < x["price"] < x["list_price"] < 10_000_000]
@@ -2960,7 +2972,7 @@ for _fk in _FD.FLOORS:
     _sp_pages = {os.path.basename(os.path.dirname(p_)): p_ for p_ in glob.glob(os.path.join(DIST, _fk, "sale", "*", "index.html"))}
     _sp_pages.pop("history", None)
     _sp_pages.pop("10yen", None)  # 10円セールのページ（下の「10円セール」で調べる）
-    check(f"{_flabel}: セールのページ（{'セールの札ごと' if _fk == 'game' else '割引ごと'}・{len(_sp_pages)}ページ）は、対象が3本以上のものだけ", set(_sp_pages) == _sp_want, (sorted(_sp_want - set(_sp_pages))[:3], sorted(set(_sp_pages) - _sp_want)[:3]))
+    check(f"{_flabel}: セールのページ（{'セールの札ごと' if _fk == 'game' else 'キャンペーンの名前ごと' if _camp_floor else '割引ごと'}・{len(_sp_pages)}ページ）は、対象が3本以上のものだけ", set(_sp_pages) == _sp_want, (sorted(_sp_want - set(_sp_pages))[:3], sorted(set(_sp_pages) - _sp_want)[:3]))
     _sp_bad = []
     for s_, p_ in _sp_pages.items():
         h_ = read(p_)
@@ -2969,6 +2981,9 @@ for _fk in _FD.FLOORS:
             _sp_bad.append((path_, "注記"))
         if ('name="robots" content="noindex' in read_raw(p_)) == (path_ in sm_paths):
             _sp_bad.append((path_, "sitemap"))
+        # キャンペーンのページ: 終わりの時刻の印があるなら、終わったら隠すスクリプトが先に入っている・「終わりました」の行がある
+        if "data-sale-end=" in read_raw(p_) and (not sale_js_ok(read_raw(p_)) or (_camp_floor and 'data-sale-over="' not in read_raw(p_))):
+            _sp_bad.append((path_, "sale.js"))
     check(f"{_flabel}: セールのページに「○日の時点」「FANZAの作品ページで確かめて」の注記がある・sitemap に入っている ⇔ noindex でない", not _sp_bad, _sp_bad[:3])
     # 「セールはいつ？」（/…/sale/history/）: データから数えた事実だけ。記録が7日に満たないあいだは noindex
     _hist_page = os.path.join(DIST, _fk, "sale", "history", "index.html")
@@ -2994,6 +3009,9 @@ for _fk in _FD.FLOORS:
     if os.path.isfile(_sale_page):
         _sh = read(_sale_page)
         check(f"{_flabel}: セールのページに「○日の時点」の注記と、FANZA動画のセールへのリンクがある", "の時点の情報です" in _sh and 'href="/sale/"' in _sh)
+        # 終わりの時刻の印（キャンペーン）があるページには、終わったら隠すスクリプトが先に入っている（売り場のトップ・セールのページ。2026-10-12）
+        _late = [rel(p_) for p_ in (_sale_page, os.path.join(DIST, _fk, "index.html")) if os.path.isfile(p_) and "data-sale-end=" in read_raw(p_) and not sale_js_ok(read_raw(p_))]
+        check(f"{_flabel}: 終わりの時刻の印のある売り場のトップ・セールのページに、終わったら隠すスクリプト（sale.js）が先に入っている", not _late, _late)
 check("サイトの「セール・キャンペーン」（/sale/）から、同人・ゲームのセールのページへリンクしている（ページがあるものだけ）",
       all((f'href="/{k_}/sale/"' in read_raw(os.path.join(DIST, "sale", "index.html"))) == os.path.isfile(os.path.join(DIST, k_, "sale", "index.html")) for k_ in _FD.FLOORS))
 check("同人・ゲームの見出しに出すジャンルの一覧（floors.js）に、行為・未成年を連想させる言葉が無い",

@@ -27,7 +27,10 @@ DATA_DIR = os.path.join(ROOT, "site", "src", "data")
 # 新しい売り場（運営者の希望「アニメ動画・素人・成人映画・FANZAブックス（コミック・写真集）・VR見放題も。各100、素人は見たい人が多いので500」。2026-10-10）。
 # floor_id: FloorList の id（読みがなの一覧に使う）・author_search: 作家の一覧（AuthorSearch）が使える売り場・upcoming: 予約の人気順も入れる本数・
 # max_calls: 1日に一覧を取る回数の上限（未成年を連想させる作品が多い売り場は多め。2026-10-10 に本物で確かめた割合: 素人 58%・コミック 65%・アニメ 54%）・
-# duration: 収録時間（APIの volume）を保存する売り場（動画の売り場だけ。ブックスの volume は別の意味なので使わない。2026-10-12）
+# duration: 収録時間（APIの volume）を保存する売り場（動画の売り場だけ。ブックスの volume は別の意味なので使わない。2026-10-12）・
+# campaign_calls: セール（キャンペーン）ごとのページのために、人気順を読む回数（scripts/floor_sales.py。名前のあるキャンペーンが付く売り場だけ。
+#   運営者の「素人のセールも、動画みたいに『○○セール』ごとに」。2026-10-12。同人の「50%OFF」はサークルごとの名前の無い値引きなので割引ごと、ゲームは札ごとのまま。
+#   ブックスはAPIにキャンペーンが出ない・VR見放題は月額なので無し＝probe_api.py の 18）
 FLOORS = {
     "doujin": {
         "label": "FANZA同人", "service": "doujin", "floor": "digital_doujin", "floor_id": 81, "target": 1000, "max_calls": 40, "upcoming": 0,
@@ -39,15 +42,18 @@ FLOORS = {
     },
     "anime": {
         "label": "FANZAアニメ", "service": "digital", "floor": "anime", "floor_id": 46, "target": 100, "max_calls": 8, "upcoming": 12, "duration": True,
+        "campaign_calls": 100,
         "env": "ANIME_PATH", "file": "anime.json", "samples": 8,
     },
     # 素人は 1,000本（運営者の希望「素人のページを1,000本ほどに拡充」。2026-10-12。未成年を連想させる作品を外すと、1,000本目は人気順の約1,800本目＝probe_api.py の 17）
     "amateur": {
         "label": "FANZA素人", "service": "digital", "floor": "videoc", "floor_id": 44, "target": 1000, "max_calls": 30, "upcoming": 0, "duration": True,
+        "campaign_calls": 500,
         "env": "AMATEUR_PATH", "file": "amateur.json", "samples": 8,
     },
     "cinema": {
         "label": "FANZA成人映画", "service": "digital", "floor": "nikkatsu", "floor_id": 45, "target": 100, "max_calls": 6, "upcoming": 0, "duration": True,
+        "campaign_calls": 100,
         "env": "CINEMA_PATH", "file": "cinema.json", "samples": 8,
     },
     "comic": {

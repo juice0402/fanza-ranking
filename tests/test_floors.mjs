@@ -424,5 +424,70 @@ check('素人の運命の作品・検索の行: 正方形の表紙を縮めた�
   && JSON.stringify(FS.rowView(L.floorSearchIndex(amF.items, 'amateur', {}).items[0], 'amateur', 'square')) === JSON.stringify(Object.fromEntries(Object.entries(L.floorSearchRow(L.floorSearchIndex(amF.items, 'amateur', {}).items[0], 'amateur')).filter(([k]) => k !== 'rank'))));
 check('ブックスの表紙: スマホの小さな表紙は表紙の小さい版（ebook-assets の …ps.jpg）', FS.thumbUrl('comic', 'https://ebook-assets.dmm.co.jp/digital/e-book/b1/b1pl.jpg', true, 'cover').endsWith('b1ps.jpg'));
 
+console.log('■ キャンペーンの名前ごとのセールのページ（素人・アニメ・成人映画。運営者の「素人のセールも、動画みたいに『○○セール』ごとに」。2026-10-12）');
+{
+  const amRow = (n, extra = {}) => ({
+    cid: `amt${String(n).padStart(5, '0')}`, title: `作った素人作品その${n}`, url: `https://al.fanza.co.jp/?lurl=a${n}&af_id=t-990`,
+    image_url: `https://pics.dmm.co.jp/digital/amateur/amt${n}/amt${n}jp.jpg`, date: '2026-09-20 10:00:00', maker: `作ったメーカー${n % 2}`, maker_id: 300 + (n % 2),
+    actress: ['作った名前'], genres: ['巨乳'], formats: [], sales: [], price: 343, list_price: 490, campaign: { title: '作ったメーカー他30％OFF', begin: '2026-10-07' }, ...extra,
+  });
+  const own = L.normalizeFloor({ updated: '2026-10-12', ranks: { amt00001: 5, amt00002: 9, amt00003: 40 }, items: [amRow(1), amRow(2), amRow(3, { campaign: null, price: 490 })] }, 'amateur', '2026-10-12');
+  const rawSale = {
+    checked: '2026-10-12 10:20',
+    amateur: {
+      date: '2026-10-12', scanned: 50000,
+      campaigns: [
+        { title: '作ったメーカー他30％OFF', begin: '2026-10-07 00:10', end: '2026-10-13 23:59', n: 1404 },
+        { title: '作った日替わりセール', begin: '2026-10-12 00:00', end: '2026-10-12 23:59', n: 51 },
+        { title: '放課後セール', begin: '', end: '2026-10-20 23:59', n: 9 },
+        { title: '形の違う終わり', begin: '', end: 'そのうち', n: 9 },
+      ],
+      extra: [
+        { ...amRow(11), rank: 7 }, { ...amRow(12), rank: 120 }, { ...amRow(1), rank: 5 },
+        { ...amRow(21, { campaign: { title: '作った日替わりセール', begin: '2026-10-12' }, price: 100, list_price: 500 }), rank: 30000 },
+        { ...amRow(22, { campaign: { title: '作った日替わりセール', begin: '2026-10-12' } }), rank: 31000 },
+        { ...amRow(23, { campaign: { title: '作った日替わりセール', begin: '2026-10-12' } }), rank: 32000 },
+        { ...amRow(24, { title: '放課後のなにか' }), rank: 8 },
+        { ...amRow(25, { url: 'https://evil.example/x' }), rank: 9 },
+        { ...amRow(26, { date: '2026-11-01 10:00:00' }), rank: 10 },
+        { ...amRow(27), rank: 0 },
+      ],
+    },
+    doujin: { campaigns: [{ title: '50%OFF', begin: '', end: '2026-10-20 23:59', n: 3 }], extra: [{ ...amRow(31), rank: 1 }] },
+  };
+  const byCid = { amateur: new Set(own.items.map((i) => i.cid)) };
+  const fs_ = L.normalizeFloorSale(rawSale, byCid, '2026-10-12');
+  check('読み込み: 確かめた時刻・キャンペーン（名前・始まり・終わり・本数。未成年を連想させる名前・終わりの形が違うものは捨てる）',
+    fs_.checked === '2026-10-12 10:20' && JSON.stringify(fs_.amateur.campaigns.map((c) => c.title)) === JSON.stringify(['作ったメーカー他30％OFF', '作った日替わりセール'])
+    && fs_.amateur.campaigns[0].end === '2026-10-13 23:59' && fs_.amateur.campaigns[0].n === 1404, fs_.amateur.campaigns);
+  check('読み込み: このサイトに無い作品だけ（このサイトの作品・未成年を連想させる作品・FANZAでないURL・予約・順位の無い作品は捨てる）・作品ページの無い印 external',
+    JSON.stringify(fs_.amateur.extras.map((i) => i.cid).sort()) === JSON.stringify(['amt00011', 'amt00012', 'amt00021', 'amt00022', 'amt00023'])
+    && fs_.amateur.extras.every((i) => i.external && i.floor === 'amateur' && i.rank > 0), fs_.amateur.extras.map((i) => i.cid));
+  check('読み込み: キャンペーンの売り場でない売り場（同人）は空', fs_.doujin.campaigns.length === 0 && fs_.doujin.extras.length === 0);
+  check('ファイルが無くても止まらない', L.normalizeFloorSale(null).amateur.extras.length === 0 && L.normalizeFloorSale(null).checked === '');
+  const pages = L.floorSalePages(own.items, 'amateur', fs_);
+  const hoi = pages.find((p) => p.name === '作ったメーカー他30％OFF');
+  const daily = pages.find((p) => p.name === '作った日替わりセール');
+  check('キャンペーンの名前ごとのページ: 終わりが近い順・このサイトの作品＋このサイトに無い作品を人気の高い順・本数はFANZAの人気順で数えた本数',
+    pages.length === 2 && pages[0] === daily && hoi.kind === 'camp' && JSON.stringify(hoi.items.map((i) => i.cid)) === JSON.stringify(['amt00001', 'amt00011', 'amt00002', 'amt00012'])
+    && hoi.total === 1404 && hoi.counted && hoi.end === '2026-10-13 23:59' && hoi.off === 30 && hoi.path === `/amateur/sale/${hoi.slug}/` && /^[0-9a-f]{10}$/.test(hoi.slug),
+    pages.map((p) => [p.name, p.items.map((i) => i.cid), p.total]));
+  check('キャンペーンのページの最大の割引: 名前に無ければ、作品の割引から', daily.off === 80 && daily.total === 51);
+  const fewer = L.floorSalePages(own.items, 'amateur', { amateur: { campaigns: [{ title: '作ったメーカー他30％OFF', begin: '', end: '2026-10-13 23:59', n: 1 }], extras: fs_.amateur.extras.slice(0, 1) } });
+  check('数えた本数より並べる作品が多いときは、並べる作品の数（「対象」とは書かない）', fewer[0].total === 3 && !fewer[0].counted, fewer.map((p) => [p.total, p.counted]));
+  check('並べる作品が3本に満たない名前には、ページを作らない', L.floorSalePages(own.items.slice(0, 1), 'amateur', { amateur: { campaigns: [], extras: [] } }).length === 0);
+  check('ファイルが無い日も、このサイトの作品のキャンペーンで作る（3本以上）',
+    L.floorSalePages([...own.items, ...fs_.amateur.extras.slice(0, 2).map((i) => ({ ...i, external: false }))], 'amateur', null).length === 1);
+  const shelf = L.floorSaleShelf(own.items, 'amateur', fs_, 4);
+  check('セールのページの「セール中の人気作品」: キャンペーンの売り場は、このサイトに無い対象作品も入れて人気の高い順',
+    JSON.stringify(shelf.map((i) => i.cid)) === JSON.stringify(['amt00001', 'amt00011', 'amt00002', 'amt00012']), shelf.map((i) => i.cid));
+  check('セール中の本数: キャンペーンの売り場は、キャンペーンごとの本数の合計', L.floorSaleCount(own.items, 'amateur', pages) === 1404 + 51 && L.floorSaleCount(own.items, 'doujin', pages) === 2);
+  check('同人・ゲームは、今までどおり（割引ごと・札ごと）', L.floorSalePages(own.items, 'doujin', fs_).every((p) => p.kind === 'off'));
+  check('構造化データの ItemList に、作品ページの無い作品は入れない', L.floorItemListLd(hoi.items, 'https://x').itemListElement.length === 2);
+  check('タイトル: 「○○の対象素人作品一覧【10月13日まで】（1,404本）」', L.floorSalePageTitle(L.FLOORS.amateur, hoi, '10月12日', 'S') === '作ったメーカー他30％OFFの対象素人作品一覧【10月13日まで】（1,404本）｜S', L.floorSalePageTitle(L.FLOORS.amateur, hoi, '10月12日', 'S'));
+  check('終わりの表示と印', L.campaignEndLabel('2026-10-13 23:59') === '10月13日 23:59' && L.campaignEndIso('2026-10-13 23:59') === '2026-10-13T23:59:59+09:00' && L.campaignEndIso('') === '');
+  check('キャンペーンの売り場: 素人・アニメ・成人映画', JSON.stringify(L.FLOOR_KEYS.filter((k) => L.FLOORS[k].campaigns)) === JSON.stringify(['anime', 'amateur', 'cinema']));
+}
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

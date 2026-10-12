@@ -53,7 +53,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 75  # 名簿（最大400回）と過去作品（最大500回）を一度に取ると、20分ほどかかる。所属事務所も集め直すと、さらに10分ほど
+    timeout-minutes: 110  # 名簿（最大400回）と過去作品（最大500回）を一度に取ると、20分ほどかかる。所属事務所も集め直すと、さらに10分ほど。素人などのキャンペーンで25分ほど
     steps:
       - uses: actions/checkout@v4
 
@@ -102,6 +102,15 @@ jobs:
           API_ID: ${{ secrets.API_ID }}
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
         run: python scripts/doujin_game.py --update
+
+      # 素人・アニメ・成人映画のキャンペーンごとの本数と対象作品（scripts/floor_sales.py。2026-10-12。素人は5万本を読むので20分ほど）
+      - name: Refresh floor campaigns
+        continue-on-error: true
+        timeout-minutes: 35
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+        run: python scripts/floor_sales.py --update
 
       # 読みがな（Gemini は使わない。失敗しても、ほかの取り直しは残す。「読みがな」を 1 にしたときは、7日たっていなくても集める）
       - name: Refresh readings

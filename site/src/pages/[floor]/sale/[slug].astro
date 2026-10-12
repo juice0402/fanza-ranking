@@ -2,15 +2,20 @@
 // FANZA同人・FANZAゲームの、セールごとのページ（運営者の希望「動画と同じレベルの仕組みを同人とゲームにも。SEO対策も徹底的に」→「セールの充実」。2026-10-09）。
 //   ゲーム: FANZAが付けた値下げのセールの札ごと（/game/sale/<印>/。「最大90%OFFセール【感謝祭オータム2026】」など。対象が3本以上）
 //   同人: 割引ごと（/doujin/sale/off50/＝半額以上・off70・off90。3本以上）
+//   素人・アニメ・成人映画: FANZAのキャンペーンの名前ごと（/amateur/sale/<印>/。「○○他30％OFF」など。運営者の「素人のセールも、動画みたいに『○○セール』ごとに」。2026-10-12）。
+//     このサイトに無い対象作品も並べる（scripts/floor_sales.py の floor_sale.json。作品ページは無いので、FANZAへ直接）。いつまで（終わりの時刻をすぎたら、
+//     ブラウザで作品を隠して「このセールは終わりました」を出す。public/sale.js）・対象の本数（FANZAの人気順の上から数えたもの）
 // 中身: 対象の本数・最大の割引・このサイトが見かけ始めた日（セールの記録）→ 人気の高い順に60本 → おもなサークル/ブランド・多いジャンル → ほかのセール。
 // 毎日の更新のときの情報なので「○日の時点」「くわしくはFANZAで」を必ず添える。並べる作品にコメントのある作品が無いあいだは、検索エンジンに出さない
 import Base from '../../../layouts/Base.astro';
 import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorCard from '../../../components/FloorCard.astro';
 import FloorSaleCards from '../../../components/FloorSaleCards.astro';
-import { activeFloors, floorCollectionGroups, floorMakerById, floorSaleHistory, floorSalePageGroups, floors } from '../../../lib/data.js';
+import { activeFloors, floorCollectionGroups, floorMakerById, floorSaleHistory, floorSalePageGroups, floors, today } from '../../../lib/data.js';
+import { endSoonTag } from '../../../lib/sale.js';
+import { inlineScript } from '../../../lib/assets.js';
 import {
-  FLOORS, FLOOR_SALE_PAGE_LIST, floorItemListLd, floorSalePageIndexable, floorMaxOff, floorPath, floorSaleHistoryPath, floorSalePageTitle, floorSalePath, priceNote, saleBadgeOf, topGenres, topMakersIn,
+  FLOORS, FLOOR_SALE_PAGE_LIST, campaignEndIso, campaignEndLabel, floorItemListLd, floorSalePageIndexable, floorMaxOff, floorPath, floorSaleHistoryPath, floorSalePageTitle, floorSalePath, priceNote, saleBadgeOf, topGenres, topMakersIn,
 } from '../../../lib/floors.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../../lib/items.js';
 
@@ -22,8 +27,14 @@ const { page, floor: key } = Astro.props;
 const f = FLOORS[key];
 const data = floors[key];
 const shown = page.items.slice(0, FLOOR_SALE_PAGE_LIST);
-const maxOff = page.kind === 'tag' ? page.off : floorMaxOff(page.items);
-const seen = page.kind === 'tag' ? floorSaleHistory[key].tags.find((t) => t.title === page.name) : null;
+const maxOff = page.kind === 'off' ? floorMaxOff(page.items) : page.kind === 'camp' ? Math.max(page.off, floorMaxOff(page.items)) : page.off;
+// このサイトが見かけ始めた日（セールの記録。キャンペーンは、始まりの日の早い回）
+const seen = page.kind === 'off' ? null : floorSaleHistory[key].tags.filter((t) => t.title === page.name).sort((a, b) => (a.first < b.first ? -1 : 1))[0] ?? null;
+const camp = page.kind === 'camp';
+const endLabel = camp ? campaignEndLabel(page.end) : '';
+const soon = camp && page.end ? endSoonTag(page.end, today) : '';
+// このサイトに作品ページの無い対象作品の数（FANZAへ直接）
+const outside = shown.filter((i) => i.external).length;
 const md = (d) => `${+d.slice(5, 7)}月${+d.slice(8, 10)}日`;
 const genreByName = new Map(floorCollectionGroups[key].genre.map((g) => [g.name, g]));
 const genres = topGenres(page.items, 8).filter((g) => g.count >= 2).map((g) => ({ ...g, path: genreByName.get(g.name)?.path }));
@@ -38,7 +49,9 @@ const trail = [
   { name: page.name, path: page.path },
 ];
 const noindex = !floorSalePageIndexable(page);
-const description = (page.kind === 'tag'
+const description = (camp
+  ? `${f.label}の「${page.name}」の対象作品${page.counted ? '' : 'のうち、このサイトで見つけた'}${page.total.toLocaleString('ja-JP')}本を、人気の高い順にまとめています。${endLabel ? `${endLabel}まで。` : ''}`
+  : page.kind === 'tag'
   ? `${f.label}の「${page.name}」の対象になっている人気作品${page.total}本を、人気の高い順にまとめています。`
   : `${f.label}で${page.name}のセール中の人気作品${page.total}本を、人気の高い順にまとめています（最大${maxOff}%OFF）。`)
   + (makers.length ? `おもな${f.maker}は${makers.slice(0, 3).map((m) => m.name).join('・')}。` : '')
@@ -54,12 +67,26 @@ const pageLd = {
 ---
 
 <Base title={floorSalePageTitle(f, page, dayLabel, SITE_NAME)} description={description} path={page.path} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd, floorItemListLd(shown, SITE_URL)]}>
+  {(page.end || others.some((p) => p.end)) && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
     <Breadcrumb trail={trail} />
 
     <section class="hero">
       <h1 class="hero-title">{page.heading}</h1>
-      <p class="page-facts">{page.total}本{maxOff > 0 && `・最大${maxOff}%OFF`}{data.updated && `・${dayLabel}時点`}</p>
+      {camp && page.end
+        ? (
+          <>
+            {/* キャンペーン: 動画の特集ごとのページと同じ形（いつまで・最大の割引・対象の本数。終わったら「終わりました」） */}
+            <p class="camp-status" data-sale-end={campaignEndIso(page.end)}>
+              {soon && <span class="camp-soon">{soon}</span>}
+              <strong>{endLabel}まで</strong>
+              {maxOff > 0 && <>・<strong>最大{maxOff}%OFF</strong></>}
+              {page.counted ? `・対象${page.total.toLocaleString('ja-JP')}本` : `・${page.total.toLocaleString('ja-JP')}本`}{data.updated && `・${dayLabel}時点`}
+            </p>
+            <p class="camp-status sale-over" data-sale-over={campaignEndIso(page.end)} hidden>このセールは終わりました（{endLabel}まで）。</p>
+          </>
+        )
+        : <p class="page-facts">{page.total.toLocaleString('ja-JP')}本{maxOff > 0 && `・最大${maxOff}%OFF`}{data.updated && `・${dayLabel}時点`}</p>}
       <p class="hero-links"><a class="spec-link" href={floorSalePath(key)}>{f.label}のセール中の作品</a><a class="spec-link" href={floorSaleHistoryPath(key)}>セールはいつ？</a></p>
     </section>
 
@@ -91,12 +118,13 @@ const pageLd = {
 
     <section class="section" aria-labelledby="fl-salepage-works-title">
       <div class="section-head">
-        <h2 id="fl-salepage-works-title" class="section-title">対象の作品（{page.total}本）</h2>
+        <h2 id="fl-salepage-works-title" class="section-title">対象の作品（{page.total.toLocaleString('ja-JP')}本）</h2>
         <p class="section-note">人気の高い順{page.total > shown.length && `（上位${shown.length}本）`}</p>
       </div>
-      <ul class="shelf">
-        {shown.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} eager={i < 4} /></li>)}
+      <ul class="shelf" data-sale-group={page.end ? '' : undefined}>
+        {shown.map((item, i) => <li class="shelf-cell" data-sale-end={campaignEndIso(page.end) || undefined}><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} eager={i < 4} external={item.external} /></li>)}
       </ul>
+      {outside > 0 && <p class="section-note">このサイトに作品のページが無い作品（{outside}本）は、FANZAの作品ページへ直接つながります。</p>}
     </section>
 
     {others.length > 0 && (

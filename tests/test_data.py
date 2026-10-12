@@ -606,6 +606,30 @@ else:
         check("floor_genre_tops.json: 未成年を連想させる作品は無い・FANZAのURL", not [r["t"] for r in _fgt_rows if cc.title_block_reason({"title": r["t"]}) == "minor"]
               and all(str(r["u"]).startswith("https://") and str(r["i"]).startswith("https://") for r in _fgt_rows))
 
+# ---- 売り場のセール（キャンペーンごと。floor_sale.json。scripts/floor_sales.py が毎日 0:35・10:17。2026-10-12 から） ----
+print("\n■ 売り場のセール（キャンペーンごと。floor_sale.json）")
+import floor_sales as FS  # noqa: E402
+from collections import Counter  # noqa: E402
+FLOOR_SALE = os.path.join(ROOT, "site", "src", "data", "floor_sale.json")
+if not os.path.exists(FLOOR_SALE):
+    print("  （floor_sale.json はまだありません。日中のセールの読み直しで作られます）")
+else:
+    try:
+        fsale = FS.load(FLOOR_SALE)
+        fsale_text = open(FLOOR_SALE, encoding="utf-8").read()
+    except ValueError as e:
+        fsale = None
+        check("floor_sale.json を読める", False, str(e))
+    if fsale is not None:
+        raw_fs = json.loads(fsale_text)
+        check("floor_sale.json: 確かめた日時・キャンペーンの売り場（素人・アニメ・成人映画）だけ・書き直しても1文字も変わらない（壊れた行が無い）",
+              re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$", raw_fs.get("checked", "")) and set(raw_fs) <= {"checked", *FS.KEYS} and FS.dump(fsale) == fsale_text)
+        _fs_rows = [r for k in FS.KEYS for r in (fsale.get(k) or {}).get("extra", [])]
+        check("floor_sale.json: 未成年を連想させる作品・キャンペーンの名前は無い・このサイトに無い作品はキャンペーンごとに60本まで",
+              not [r["title"] for r in _fs_rows if cc.title_block_reason({"title": r["title"]}) == "minor"]
+              and not [c["title"] for k in FS.KEYS for c in (fsale.get(k) or {}).get("campaigns", []) if cc.title_block_reason({"title": c["title"]}) == "minor"]
+              and all(n <= FS.EXTRA_PER_CAMPAIGN for n in Counter((k, r["campaign"]["title"]) for k in FS.KEYS for r in (fsale.get(k) or {}).get("extra", [])).values()))
+
 # ---- 10円セール（ten_yen.json。scripts/ten_yen.py が毎日と、開催中は1日に数回。2026-10-09 から） ----
 print("\n■ 10円セール（ten_yen.json）")
 import ten_yen as TY  # noqa: E402
