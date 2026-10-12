@@ -140,6 +140,18 @@ CONFIG_JS = os.path.join(ROOT, "site", "src", "config.js")
 FORMAT_TAG = re.compile(r"^[0-9A-Za-z]{1,6}$")
 
 
+def dumps_lines(obj, depth=0):
+    """list の出力を、1行に1件の JSON にする（字下げの空白を減らして、Claude が読む量を減らす。
+    運営者の希望「クロードのトークンをできるだけ節約したい」。2026-10-13）。読みこめば、前と同じ中身"""
+    def flat(x):
+        return json.dumps(x, ensure_ascii=False, separators=(",", ":"))
+    if isinstance(obj, dict) and depth < 2 and any(isinstance(v, (dict, list)) for v in obj.values()):
+        return "{\n" + ",\n".join(flat(k) + ":" + dumps_lines(v, depth + 1) for k, v in obj.items()) + "\n}"
+    if isinstance(obj, list) and obj and all(isinstance(x, dict) for x in obj):
+        return "[\n" + ",\n".join(flat(x) for x in obj) + "\n]"
+    return flat(obj)
+
+
 def jst_today():
     return datetime.now(JST).strftime("%Y-%m-%d")
 
@@ -456,9 +468,8 @@ def cmd_list(args):
     for key, x in floor_shown:
         rows.append(floor_row(key, x, today))
     floor_left = {k: len(v) for k, v in floor_todo.items()}
-    print(json.dumps({"today": today, "total_pending": len(todo) + len(catalog_todo) + sum(floor_left.values()), "catalog_pending": len(catalog_todo),
-                      "doujin_pending": floor_left.get("doujin", 0), "game_pending": floor_left.get("game", 0), "floor_pending": floor_left, "shown": len(rows), "items": rows},
-                     ensure_ascii=False, indent=1))
+    print(dumps_lines({"today": today, "total_pending": len(todo) + len(catalog_todo) + sum(floor_left.values()), "catalog_pending": len(catalog_todo),
+                       "doujin_pending": floor_left.get("doujin", 0), "game_pending": floor_left.get("game", 0), "floor_pending": floor_left, "shown": len(rows), "items": rows}))
 
 
 def floor_row(key, x, today):
