@@ -17,24 +17,18 @@
 - **過去作品**（`reason: 過去作品`・`catalog: true`）: 毎日の更新が FANZAの人気順に集めている発売済みの作品（`site/src/data/catalog/YYYY-MM.json`）で、コメントがまだ無いもの。上の5つを先に出し、40件の枠が余ったら、**FANZAの人気順の順位が上の作品から**（全体の人気順と新着の人気順の、上のほう）出る（質の高い作品から書く。順位そのものは出さないし、コメントにも書かない）。**コメントが付くまで、その作品ページは検索エンジンに出ない**（noindex）ので、書くとページが検索に出るようになる。書き方は同じ（発売済みの作品として書く）
 - **FANZA同人・FANZAゲームなどの売り場**（`reason: 同人` / `ゲーム` / `アニメ` / `素人` / `成人映画` / `コミック` / `写真集` / `VR見放題`・`floor: doujin` / `game` / `anime` / `amateur` / `cinema` / `comic` / `photo` / `vr`。同人・ゲームは 2026-10-09、ほかは 2026-10-10 から）: 毎日の更新が FANZAの人気順に集めている売り場の作品（`site/src/data/doujin.json`・`game.json`・`anime.json`・`amateur.json`・`cinema.json`・`comic.json`・`photo.json`・`vr.json`）で、コメントがまだ無いもの。**1日40件のうち、同人4件・ゲーム1件・アニメ・素人・成人映画・コミック・写真集・VR見放題は各1件＝動画は29件**（運営者の希望「動画35本・同人4本・ゲーム1本」（2026-10-09）→「上限は40のまま、新しい売り場に1件ずつ」（2026-10-10）。`list --limit 40` が、いつもこの割合で出す。対象が足りない日は、残りを動画に回す）。人気順の順位が上の作品から。書き方は下の「同人・ゲームの書き方」「新しい売り場の書き方」。コメントが付くまで、その作品ページは検索エンジンに出ない
 
-```
- 0:05  GitHub Actions（get_new_releases.py）… 新作を取得 → Gemini が下書き（書けなかった作品は定型文）→ 公開
- 0:20  Claude の予約タスク … （0:05 の更新が遅れていたら、先に更新を動かして待つ）→ 下書き・定型文を、Claude が書き上げる → PR → CIが緑ならMerge → 公開（GitHub Actions の Deploy。10〜15分。下書きが出ているのは30分ほど）
-```
+Claude が書き上げたコメントは `comment_kind: "claude"`（画面では下書きと同じ見た目。フッターの「自動で作成」の注記の対象）。書き込んだ作品の `updated`（sitemap の `lastmod`）は `apply` が今日の日付にする。仕上げ済みの作品は上書きしない（「予約の言い方が残っている」ものだけ書き直せる。発売日が変わってコメントに古い日付があれば、毎日の更新が定型文に戻す）。
 
-Claude が書き上げたコメントは `comment_kind: "claude"` にします（画面ではGeminiの下書きと同じ見た目。フッターの「ひとことコメントは…自動で作成」の注記の対象）。書き込んだ作品の `updated`（更新日。sitemap の `lastmod` に使う）は、`apply` が今日の日付に自動で更新します。
-仕上げ済み（`claude`）の作品は上書きしません（上の「予約の言い方が残っている」ものだけ、書き直せます）。発売日がFANZAで変わったとき、コメントに古い日付が書いてあれば、毎日の更新が定型文に戻すので、その日のうちに書き直されます。
+予約タスクの名前は「毎日のAIコメント書き足し（Claude）」（自動承認・ふだんのチャットと同じ利用枠）。手順を変えるときは、このファイルを直せば反映される（予約タスクが毎回読む）。
 
-予約タスクの名前は「毎日のAIコメント書き足し（Claude）」です（実行は自動承認の設定）。予約タスクもふだんのチャットと同じClaudeの利用枠を使います。止める・時間を変える・手順を変えるときは、Claudeに頼んでください（手順そのものは、予約タスクが毎回このファイルを読むので、このファイルを直せば反映されます）。
+**トークンの節約**（運営者の希望「クロードのトークンをできるだけ節約したい」。2026-10-13）: CLAUDE.md は自動で読み込まれるので開き直さない。この手順書も1回読めば足りる。GitHub の実行を待つのは `scripts/wait_run.py` を1回（何度も見に行かない）。`gh api` は `--jq` で要る所だけ出す。
 
 ## 手順
 
-1. リポジトリ `juice0402/fanza-ranking` を使える状態にする（無ければ add_repo → clone）。`main` を最新にして、作業用のブランチを作る
-   `git fetch origin main && git checkout -B claude/comments-$(TZ=Asia/Tokyo date +%Y%m%d-%H%M) origin/main`（ブランチ名に時刻まで入れる。同じ日にやり直したとき、前の名前のブランチが残っていても、ぶつからないように。GitHub のブランチは Claude の環境からは消せない）
-   - **今日の更新（0:05）が済んでいるかを確かめる**: `bash scripts/already_updated.sh origin/main`（GitHub の定時実行は、混んでいると数時間遅れることがある。2026-10-04 は 0:05 の予定が 3:58 に動いた）
-     - 「済んでいます」なら、そのまま手順2へ
-     - 「まだです」なら、更新が動いている最中かを見る: `gh api "repos/juice0402/fanza-ranking/actions/workflows/update.yml/runs?per_page=3" --jq '.workflow_runs[] | .status + " " + .created_at'`。`queued` か `in_progress` があれば、それが終わるのを待つ。無ければ、更新を動かす: `gh api -X POST repos/juice0402/fanza-ranking/actions/workflows/update.yml/dispatches -f ref=main`（遅れて来た定時実行も、行き違いで頼んだ手動実行も、順番待ちのあとで更新が済んでいるのを見て何もしないので、二重にはならない）
-     - 30秒ごとに様子を見て、終わったら（`completed`）、もう一度 `git fetch origin main && git rebase origin/main`（まだ何も書いていなければ `git reset --hard origin/main` でもよい）で取り込み直す。20分たっても終わらない・失敗したときは、いまのデータのまま続けて、報告に書く
+1. リポジトリ `juice0402/fanza-ranking` を使える状態にする（無ければ add_repo → clone）
+   - **今日の更新（0:05）が済むのを待つ**: `python3 scripts/wait_run.py update`（Bash の timeout は 600000）。GitHub の定時実行は、混んでいると数時間遅れることがある（2026-10-04 は 0:05 の予定が 3:58 に動いた）。この道具が、済んでいるかを調べ、まだなら動いている更新を待つ（動いていなければ、更新を動かしてから待つ。遅れて来た定時実行も、行き違いで頼んだ手動実行も、済んでいるのを見て何もしないので、二重にはならない）
+     - `✅` なら次へ。`⏳`（まだ）なら同じコマンドをもう一度（合わせて3回・約27分まで）。`❌`（今日の更新の失敗）や、3回待っても終わらないときは、いまのデータのまま続けて、報告に書く
+   - `main` を最新にして、作業用のブランチを作る: `git fetch -q origin main && git checkout -q -B claude/comments-$(TZ=Asia/Tokyo date +%Y%m%d-%H%M) origin/main`（ブランチ名に時刻まで入れる。同じ日にやり直したとき、前の名前のブランチが残っていても、ぶつからないように。GitHub のブランチは Claude の環境からは消せない）
 2. 対象を出す: `python3 scripts/claude_comments.py list --limit 40`
    - `total_pending` が 0 なら、**何も変更せず、PRも作らずに終了**（「対象なし」と報告）。過去作品が集まってくると、ほぼ毎日、枠（40件）いっぱいまで出る（`catalog_pending` は、コメントがまだ無い過去作品の数）
    - **1日に書くのは40件まで**（多い日は、残りを次の日に回す。急がなくてよい。list で40件を書き終えたら、もう一度 list しない。`apply` も、その日に仕上げた件数を数えて、40件をこえる分は断る）
@@ -44,17 +38,16 @@ Claude が書き上げたコメントは `comment_kind: "claude"` にします�
 4. 点検して書き込む: `python3 scripts/claude_comments.py apply ファイル.json`
    - 先に `--dry-run` で点検してもよい。問題があると**何も書き込まれず**、理由が出る。直してもう一度実行する
    - 警告（書き出し・言い回しの偏り）が出たら、なるべく書き分けてから書き込む
-5. `bash scripts/check.sh` を実行して全部成功することを確認する
+5. `bash scripts/check.sh` を実行して、最後が「✅ ぜんぶ成功」であることを確認する（成功したテストは1行ずつ。失敗したテストだけ ❌ の行と理由が出る）
 6. `git status` で、変わったのが **`site/src/data/new_releases.json`・`site/src/data/catalog/` の中のファイル・売り場のファイル（`site/src/data/doujin.json`・`game.json`・`anime.json`・`amateur.json`・`cinema.json`・`comic.json`・`photo.json`・`vr.json`）だけ**であることを確認する。他のファイルが変わっていたらコミットしない
-7. コミット → ブランチをpush → PRを作る（`gh api repos/juice0402/fanza-ranking/pulls`。CLAUDE.md の守ること1・2）
+7. コミット → ブランチをpush → PRを作る（CLAUDE.md の守ること1・2）: `gh api repos/juice0402/fanza-ranking/pulls -f title="…" -f head=<ブランチ> -f base=main -f body="…" --jq '.number'`（答えの全体は数万文字あるので、`--jq` で番号だけ出す）
    - コミットメッセージ: `コメントの仕上げ（Claude）: N件`（データだけのPRなので、プレビューは作られない。待つのは CI（check）だけ。Cloudflare のビルドは使わないので、`[CI Skip]` は要らない）
    - PRのタイトル: `コメントの仕上げ（Claude）: N件`
-8. CIが終わるまで待つ（`gh api repos/juice0402/fanza-ranking/commits/<ブランチの先頭>/check-runs` で `conclusion` を見る。数分）
-   - **緑ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: コメントの仕上げ（Claude）: N件" -f commit_message=""`。Merge すると、公開（`deploy.yml`）が自動で動く）
-   - 赤・時間切れ・衝突（Mergeできない）のときは**Mergeしない**。PRを開いたまま、理由を報告して終了する。衝突のときは、ブランチを捨てて手順1からやり直してよい（1回だけ）
-9. Merge したら、公開（Deploy）が終わるのを待つ（ビルド・点検・アップロードで10〜15分）: `gh api "repos/juice0402/fanza-ranking/actions/workflows/deploy.yml/runs?branch=main&per_page=3" --jq '.workflow_runs[] | .status + " " + (.conclusion // "") + " " + .head_sha[0:7]'`
-   - Merge のコミットの実行が `completed success` なら公開済み。`cancelled` は、あとの公開（いちばん新しい実行）に含まれたということなので、そちらを見る
-   - `failure` なら、理由を注釈で見て報告する（`gh api repos/juice0402/fanza-ranking/check-runs/<id>/annotations`。サイトは前の公開のまま）。30分たっても終わらなければ「公開を確認できず」と報告する
+8. CIが終わるまで待つ: `python3 scripts/wait_run.py ci $(git rev-parse HEAD)`（Bash の timeout は 600000。CI は10分ほど。`⏳` なら同じコマンドをもう一度。合わせて30分まで）
+   - **`✅` ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: コメントの仕上げ（Claude）: N件" -f commit_message="" --jq '.sha'`。出てくるのが Merge のコミット。Merge すると、公開（`deploy.yml`）が自動で動く）
+   - `❌`（赤）・時間切れ・衝突（Mergeできない）のときは**Mergeしない**（`❌` の行に失敗の理由が出る）。PRを開いたまま、理由を報告して終了する。衝突のときは、ブランチを捨てて手順1からやり直してよい（1回だけ）
+9. Merge したら、公開（Deploy）が終わるのを待つ: `python3 scripts/wait_run.py deploy <Merge のコミット>`（Bash の timeout は 600000。ビルド・点検・アップロードで10〜15分。`⏳` なら同じコマンドをもう一度。合わせて30分まで）
+   - `✅` なら公開済み（あとの Merge の公開に含まれたときも `✅`）。`❌` なら、出てきた理由を報告する（サイトは前の公開のまま）。30分たっても終わらなければ「公開を確認できず」と報告する
 10. 最後に報告する: 何件書いたか（下書きの仕上げ・定型文・予約の言い方の書き直し・過去作品・売り場（同人・ゲーム・アニメ・素人・成人映画・コミック・写真集・VR見放題）、それぞれ）／PR番号／CIの結果／Mergeしたか／公開（Deploy）の結果／残りの件数（毎日の更新の作品・過去作品・売り場ごと）
 
 Mergeしてよいのは、**このコメント更新のPR（データファイルだけを変えるもの）で、CIが緑のとき**だけです（運営者の許可済み）。

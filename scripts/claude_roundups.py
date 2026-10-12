@@ -342,7 +342,7 @@ def cmd_list(args):
                 "best_rank": (rank_stats(hist[x["cid"]]) or [None])[0] if x["cid"] in hist else None,
                 "no_pick": cc.title_block_reason(x) == "minor",
             } for x in rows]
-    print(json.dumps(out, ensure_ascii=False, indent=1))
+    print(cc.dumps_lines(out))  # 1行に1件（Claude が読む量を減らす。2026-10-13）
 
 
 # ------------------------------------------------------------------

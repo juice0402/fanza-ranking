@@ -23,7 +23,7 @@
 
 ## 手順
 
-1. リポジトリ `juice0402/fanza-ranking` を使える状態にする（無ければ add_repo → clone）。`main` を最新にして、作業用のブランチを作る
+1. リポジトリ `juice0402/fanza-ranking` を使える状態にする（無ければ add_repo → clone。CLAUDE.md は自動で読み込まれるので開き直さない。トークンの節約。2026-10-13）。`main` を最新にして、作業用のブランチを作る
    `git fetch origin main && git checkout -B claude/roundup-$(TZ=Asia/Tokyo date +%Y%m%d-%H%M) origin/main`（ブランチ名に時刻まで入れる。同じ日にやり直したとき、前の名前のブランチが残っていても、ぶつからないように。GitHub のブランチは Claude の環境からは消せない）
 2. 対象を出す: `python3 scripts/claude_roundups.py list`
    - `status` が `ready` 以外（`not_finished`・`already_written`・`too_few_items`）なら、**何も変更せず、PRも作らずに終了**（理由を報告）
@@ -35,15 +35,15 @@
    ```
 4. 点検して書き込む: `python3 scripts/claude_roundups.py apply ファイル.json`
    - 先に `--dry-run` で点検してもよい。問題があると**何も書き込まれず**、理由が出る。直してもう一度実行する
-5. `bash scripts/check.sh` を実行して全部成功することを確認する
+5. `bash scripts/check.sh` を実行して、最後が「✅ ぜんぶ成功」であることを確認する（成功したテストは1行ずつ。失敗したテストだけ ❌ の行と理由が出る）
 6. `git status` で、変わったのが **`site/src/data/roundups.json` だけ**であることを確認する。他のファイルが変わっていたらコミットしない
-7. コミット → ブランチをpush → PRを作る（`gh api repos/juice0402/fanza-ranking/pulls`。CLAUDE.md の守ること1・2）
+7. コミット → ブランチをpush → PRを作る（CLAUDE.md の守ること1・2）: `gh api repos/juice0402/fanza-ranking/pulls -f title="…" -f head=<ブランチ> -f base=main -f body="…" --jq '.number'`（答えの全体は数万文字あるので、`--jq` で番号だけ出す）
    - コミットメッセージ: `週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日`（データだけのPRなので、プレビューは作られない。待つのは CI（check）だけ。Cloudflare のビルドは使わないので、`[CI Skip]` は要らない）
    - PRのタイトル: `週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日`
-8. CIが終わるまで待つ（`gh api repos/juice0402/fanza-ranking/commits/<ブランチの先頭>/check-runs` で `conclusion` を見る。数分）
-   - **緑ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: 週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日" -f commit_message=""`。Merge すると、公開（`deploy.yml`）が自動で動く）
-   - 赤・時間切れ・衝突（Mergeできない）のときは**Mergeしない**。PRを開いたまま、理由を報告して終了する。衝突のときは、ブランチを捨てて手順1からやり直してよい（1回だけ）
-9. Merge したら、公開（Deploy）が終わるのを待ってから（ビルド・点検・アップロードで10〜15分。`gh api "repos/juice0402/fanza-ranking/actions/workflows/deploy.yml/runs?branch=main&per_page=3" --jq '.workflow_runs[] | .status + " " + (.conclusion // "") + " " + .head_sha[0:7]'` が、Merge のコミット（かそれより新しいもの）で `completed success`。`cancelled` は、あとの公開に含まれたということ）、本番の `https://fanza-ranking.pages.dev/weekly/<週の月曜日>/?cb=日時` を WebFetch で見て、記事が出ているかを確認する（`?cb=` を付けないと古い内容が返ることがある）。見られなかったら「未確認」と書く
+8. CIが終わるまで待つ: `python3 scripts/wait_run.py ci $(git rev-parse HEAD)`（Bash の timeout は 600000。CI は10分ほど。`⏳` なら同じコマンドをもう一度。合わせて30分まで）
+   - **`✅` ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: 週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日" -f commit_message="" --jq '.sha'`。出てくるのが Merge のコミット。Merge すると、公開（`deploy.yml`）が自動で動く）
+   - `❌`（赤）・時間切れ・衝突（Mergeできない）のときは**Mergeしない**（`❌` の行に失敗の理由が出る）。PRを開いたまま、理由を報告して終了する。衝突のときは、ブランチを捨てて手順1からやり直してよい（1回だけ）
+9. Merge したら、公開（Deploy）が終わるのを待つ: `python3 scripts/wait_run.py deploy <Merge のコミット>`（Bash の timeout は 600000。ビルド・点検・アップロードで10〜15分。`⏳` なら同じコマンドをもう一度。合わせて30分まで。あとの Merge の公開に含まれたときも `✅`）。`✅` なら、本番の `https://fanza-ranking.pages.dev/weekly/<週の月曜日>/?cb=日時` を WebFetch で見て、記事が出ているかを確認する（`?cb=` を付けないと古い内容が返ることがある。WebFetch の prompt は「記事の見出しと導入文の最初の1文だけを答えて」のように短く）。`❌` なら理由を報告する（サイトは前の公開のまま）。見られなかったら「未確認」と書く
 10. 最後に報告する: どの週の記事か／PR番号／CIの結果／Mergeしたか／本番で確認できたか
 
 Mergeしてよいのは、**このまとめ記事のPR（`roundups.json` だけを変えるもの）で、CIが緑のとき**だけです（運営者の包括的な許可にもとづく。CLAUDE.md の守ること1）。

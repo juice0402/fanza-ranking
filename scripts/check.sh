@@ -1,143 +1,120 @@
 #!/usr/bin/env bash
 # まとめて確認するコマンド（どこから実行してもOK）
 #
-#   bash scripts/check.sh           テストだけ（数秒。パソコン/タブレットで手軽に）
-#   bash scripts/check.sh --build   テスト + サイトを実際にビルドして点検（Node.js が必要）
+#   bash scripts/check.sh             テストだけ（数秒。パソコン/タブレットで手軽に）
+#   bash scripts/check.sh --build     テスト + サイトを実際にビルドして点検（Node.js が必要）
+#   bash scripts/check.sh --verbose   テストの出力を全部出す（ふだんは、成功は1行ずつ・失敗だけくわしく。scripts/quiet_step.sh）
 #
+# GitHub Actions（CI）では、記録を残すため、いつも全部出す。
 # 1つでも失敗すると、最後に「失敗」と出て終了コード 1 になります。
 
 cd "$(dirname "$0")/.." || exit 1
 failed=0
+build=0
+verbose=0
+for arg in "$@"; do
+  case "$arg" in
+    --build) build=1 ;;
+    --verbose|-v) verbose=1 ;;
+  esac
+done
+[ -n "${CI:-}" ] && verbose=1
+. scripts/quiet_step.sh
 
-step() { echo; echo "━━ $1"; }
+run "毎日の更新スクリプト (Python)" python3 tests/test_script.py
 
-step "毎日の更新スクリプト (Python)"
-python3 tests/test_script.py || failed=1
+run "Claudeのコメント差し替えの道具 (Python)" python3 tests/test_claude_comments.py
 
-step "Claudeのコメント差し替えの道具 (Python)"
-python3 tests/test_claude_comments.py || failed=1
+run "Claudeの週のまとめ記事の道具 (Python)" python3 tests/test_claude_roundups.py
 
-step "Claudeの週のまとめ記事の道具 (Python)"
-python3 tests/test_claude_roundups.py || failed=1
+run "Claudeの月のまとめ記事の道具 (Python)" python3 tests/test_claude_monthly.py
 
-step "Claudeの月のまとめ記事の道具 (Python)"
-python3 tests/test_claude_monthly.py || failed=1
+run "FANZA同人・FANZAゲームを集める道具 (Python)" python3 tests/test_doujin_game.py
 
-step "FANZA同人・FANZAゲームを集める道具 (Python)"
-python3 tests/test_doujin_game.py || failed=1
+run "売り場のセール（キャンペーンごと）を集める道具 (Python)" python3 tests/test_floor_sales.py
 
-step "売り場のセール（キャンペーンごと）を集める道具 (Python)"
-python3 tests/test_floor_sales.py || failed=1
+run "10円セールを集める道具 (Python)" python3 tests/test_ten_yen.py
 
-step "10円セールを集める道具 (Python)"
-python3 tests/test_ten_yen.py || failed=1
+run "FANZAのレビューの評価を集める道具 (Python)" python3 tests/test_reviews.py
 
-step "FANZAのレビューの評価を集める道具 (Python)"
-python3 tests/test_reviews.py || failed=1
+run "読みがな（ジャンル・メーカー・シリーズ・作家）を集める道具 (Python)" python3 tests/test_readings.py
 
-step "読みがな（ジャンル・メーカー・シリーズ・作家）を集める道具 (Python)"
-python3 tests/test_readings.py || failed=1
+run "ジャンルの「FANZA全体で人気の作品」を集める道具 (Python)" python3 tests/test_genre_tops.py
 
-step "ジャンルの「FANZA全体で人気の作品」を集める道具 (Python)"
-python3 tests/test_genre_tops.py || failed=1
+run "公開のしくみ（Cloudflare Pages への直接アップロード）" python3 tests/test_deploy.py
 
-step "公開のしくみ（Cloudflare Pages への直接アップロード）"
-python3 tests/test_deploy.py || failed=1
+run "保存データの形式" python3 tests/test_data.py
 
-step "保存データの形式"
-python3 tests/test_data.py || failed=1
+run "トークンを節約する道具（待つ道具・テストの出力・一覧の出力） (Python)" python3 tests/test_tools.py
 
-step "サイトの部品 (Node.js)"
-node tests/test_items.mjs || failed=1
+run "サイトの部品 (Node.js)" node tests/test_items.mjs
 
-step "品番・作品ページの情報欄・月ごと/ジャンルごとのページの部品 (Node.js)"
-node tests/test_seo.mjs || failed=1
+run "品番・作品ページの情報欄・月ごと/ジャンルごとのページの部品 (Node.js)" node tests/test_seo.mjs
 
-step "作品ページの「次に見るもの」の部品 (Node.js)"
-node tests/test_stay.mjs || failed=1
+run "作品ページの「次に見るもの」の部品 (Node.js)" node tests/test_stay.mjs
 
-step "RSS（新着のお知らせの配信）の部品 (Node.js)"
-node tests/test_feed.mjs || failed=1
+run "RSS（新着のお知らせの配信）の部品 (Node.js)" node tests/test_feed.mjs
 
-step "人気の動き・シリーズ/レーベル・内部リンクの部品 (Node.js)"
-node tests/test_insights.mjs || failed=1
+run "人気の動き・シリーズ/レーベル・内部リンクの部品 (Node.js)" node tests/test_insights.mjs
 
-step "週のまとめ記事の部品 (Node.js + Pythonとの突き合わせ)"
-node tests/test_roundups.mjs || failed=1
+run "週のまとめ記事の部品 (Node.js + Pythonとの突き合わせ)" node tests/test_roundups.mjs
 
-step "月のまとめ記事の部品 (Node.js + Pythonとの突き合わせ)"
-node tests/test_monthly.mjs || failed=1
+run "月のまとめ記事の部品 (Node.js + Pythonとの突き合わせ)" node tests/test_monthly.mjs
 
-step "サンプル画像の拡大表示 (Node.js)"
-node tests/test_lightbox.mjs || failed=1
+run "サンプル画像の拡大表示 (Node.js)" node tests/test_lightbox.mjs
 
-step "発売日カレンダー (.ics) の部品 (Node.js)"
-node tests/test_calendar.mjs || failed=1
+run "発売日カレンダー (.ics) の部品 (Node.js)" node tests/test_calendar.mjs
 
-step "お気に入りの部品 (Node.js)"
-node tests/test_favorites.mjs || failed=1
+run "お気に入りの部品 (Node.js)" node tests/test_favorites.mjs
 
-step "所属事務所・SNSの道具 (Python)"
-python3 tests/test_agencies.py || failed=1
+run "所属事務所・SNSの道具 (Python)" python3 tests/test_agencies.py
 
-step "所属事務所・SNSの部品 (Node.js)"
-node tests/test_agencies.mjs || failed=1
+run "所属事務所・SNSの部品 (Node.js)" node tests/test_agencies.mjs
 
-step "女優のイベント情報の道具 (Python) と部品 (Node.js)"
-python3 tests/test_events.py || failed=1
-node tests/test_events.mjs || failed=1
+run "女優のイベント情報の道具 (Python)" python3 tests/test_events.py
+run "女優のイベント情報の部品 (Node.js)" node tests/test_events.mjs
 
-step "出演者プロフィール・売れ筋・出演者検索の部品 (Node.js)"
-node tests/test_profiles.mjs || failed=1
+run "出演者プロフィール・売れ筋・出演者検索の部品 (Node.js)" node tests/test_profiles.mjs
 
-step "サンプル動画の枠の部品 (Node.js)"
-node tests/test_movie.mjs || failed=1
+run "サンプル動画の枠の部品 (Node.js)" node tests/test_movie.mjs
 
-step "作品検索・「VR作品を隠す」の部品 (Node.js)"
-node tests/test_search.mjs || failed=1
+run "作品検索・「VR作品を隠す」の部品 (Node.js)" node tests/test_search.mjs
 
-step "日本語の文節改行の部品 (Node.js)"
-node tests/test_phrase.mjs || failed=1
+run "日本語の文節改行の部品 (Node.js)" node tests/test_phrase.mjs
 
-step "サイトのファイル数の計画（過去作品が増えても2万ファイル以内） (Node.js)"
-node tests/test_plan.mjs || failed=1
+run "サイトのファイル数の計画（過去作品が増えても2万ファイル以内） (Node.js)" node tests/test_plan.mjs
 
-step "人気順（新着の人気順・全体の人気順）の部品 (Node.js)"
-node tests/test_popularity.mjs || failed=1
+run "人気順（新着の人気順・全体の人気順）の部品 (Node.js)" node tests/test_popularity.mjs
 
-step "FANZA同人・FANZAゲームのページの部品 (Node.js)"
-node tests/test_floors.mjs || failed=1
+run "FANZA同人・FANZAゲームのページの部品 (Node.js)" node tests/test_floors.mjs
 
-step "セール・キャンペーンの部品 (Node.js)"
-node tests/test_sale.mjs || failed=1
+run "セール・キャンペーンの部品 (Node.js)" node tests/test_sale.mjs
 
-step "10円セールの部品 (Node.js + Pythonとの突き合わせ)"
-node tests/test_ten_yen.mjs || failed=1
+run "10円セールの部品 (Node.js + Pythonとの突き合わせ)" node tests/test_ten_yen.mjs
 
-step "レビューの評価・高評価ランキングの部品 (Node.js + Pythonとの突き合わせ)"
-node tests/test_reviews.mjs || failed=1
+run "レビューの評価・高評価ランキングの部品 (Node.js + Pythonとの突き合わせ)" node tests/test_reviews.mjs
 
-step "読みがな・50音で探す・ひらがなの作品検索の部品 (Node.js)"
-node tests/test_kana.mjs || failed=1
-node tests/test_topics.mjs || failed=1
-node tests/test_gacha.mjs || failed=1
+run "読みがな・50音で探す・ひらがなの作品検索の部品 (Node.js)" node tests/test_kana.mjs
+run "トップの「きょうの〜」の部品 (Node.js)" node tests/test_topics.mjs
+run "運命の作品の部品 (Node.js)" node tests/test_gacha.mjs
 
-if [ "${1:-}" = "--build" ]; then
-  step "サイトのビルド"
-  if (cd site && npm ci --no-audit --no-fund && npm run build); then
-    step "ビルド結果の点検"
-    python3 tests/verify_dist.py || failed=1
-  else
-    failed=1
+if [ "$build" = 1 ]; then
+  if run "サイトのビルド" bash -c 'cd site && npm ci --no-audit --no-fund && npm run build'; then
+    run "ビルド結果の点検" python3 tests/verify_dist.py
   fi
 fi
 
 find . -name __pycache__ -type d -not -path "./site/node_modules/*" -prune -exec rm -rf {} + 2>/dev/null
+rm -rf "$QUIET_LOG_DIR"
 
 echo
 if [ "$failed" -eq 0 ]; then
   echo "✅ ぜんぶ成功"
 else
-  echo "❌ 失敗があります（上のログを確認）"
+  if [ "$verbose" = 1 ]; then
+    echo "❌ 失敗があります（上のログを確認）"
+  else
+    echo "❌ 失敗があります（上の ❌ の行。全部の出力は bash scripts/check.sh --verbose）"
+  fi
   exit 1
 fi
