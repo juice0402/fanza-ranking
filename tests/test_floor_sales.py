@@ -75,24 +75,32 @@ def load_text(text):
         return S.load(p)
 
 
-def run(rows, site=(), keys=("amateur",), fail_at=(), old=None, calls=None):
-    """テスト用のファイルに集める → (保存したか, 要約, ファイルの中身, 文字)"""
+LAST = {}
+
+
+def run(rows, site=(), keys=("amateur",), fail_at=(), old=None, calls=None, now=NOW, quick=None, site_titles=()):
+    """テスト用のファイルに集める → (保存したか, 要約, ファイルの中身, 文字)。APIを呼んだ回数は LAST["calls"]"""
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, "floor_sale.json")
         os.environ["FLOOR_SALE_HISTORY_PATH"] = os.path.join(tmp, "floor_sale_history.json")
         if old is not None:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(old)
-        saved_site = S.site_cids
+        saved_site, saved_titles, saved_quick = S.site_cids, S.site_campaign_titles, S.QUICK_CALLS
         S.site_cids = lambda key: set(site)
+        S.site_campaign_titles = lambda key: set(site_titles)
+        if quick:
+            S.QUICK_CALLS = quick
         before = F.FLOORS["amateur"]["campaign_calls"]
         if calls:
             F.FLOORS["amateur"]["campaign_calls"] = calls
+        api = FakeAPI(rows, fail_at)
         try:
-            saved, lines = S.update(NOW, list(keys), FakeAPI(rows, fail_at), path)
+            saved, lines = S.update(now, list(keys), api, path)
         finally:
-            S.site_cids = saved_site
+            S.site_cids, S.site_campaign_titles, S.QUICK_CALLS = saved_site, saved_titles, saved_quick
             F.FLOORS["amateur"]["campaign_calls"] = before
+        LAST["calls"] = len(api.calls)
         text = open(path, encoding="utf-8").read() if os.path.exists(path) else ""
         hist = open(os.environ["FLOOR_SALE_HISTORY_PATH"], encoding="utf-8").read() if os.path.exists(os.environ["FLOOR_SALE_HISTORY_PATH"]) else ""
         del os.environ["FLOOR_SALE_HISTORY_PATH"]
@@ -170,6 +178,39 @@ with tempfile.TemporaryDirectory() as tmp:
     got = S.load(p)
 check("名前・終わりの形が違うキャンペーン、品番・URLの形が違う作品は捨てる",
       len(got["amateur"]["campaigns"]) == len(am["campaigns"]) and len(got["amateur"]["extra"]) == len(ex), (len(got["amateur"]["campaigns"]), len(got["amateur"]["extra"])))
+
+print("■ はじめは上位1万本だけ（セールの顔ぶれが前と同じなら、そこでやめる。運営者の「先に終わったかどうかを見れば」。2026-10-12）")
+# 上位100本（テストでは1回分）にキャンペーンの作品があり、その下にもある売り場（300本。最後まで読むと4回＝4回目が空）
+deep = [raw(n, HOIHOI if n % 3 == 0 else None) for n in range(1, 301)]
+saved_a, lines_a, data_a, text_a, _ = run(deep, quick=1)
+check("前のデータが無い日は、最後まで読む（5万本まで読んだ日を full に）", LAST["calls"] == 4 and data_a["amateur"]["full"] == "2026-10-12"
+      and data_a["amateur"]["campaigns"][0]["n"] == 100, (LAST["calls"], data_a["amateur"]["campaigns"]))
+NEXT = datetime(2026, 10, 13, 0, 35, tzinfo=S.G.JST)
+saved_b, lines_b, data_b, text_b, hist_b = run(deep, quick=1, old=text_a, now=NEXT)
+check("次の日、顔ぶれが同じなら、上位1万本だけ（1回）でやめる・本数は前に5万本まで数えたまま・full の日も前のまま",
+      LAST["calls"] == 1 and data_b["amateur"]["campaigns"][0]["n"] == 100 and data_b["amateur"]["full"] == "2026-10-12" and data_b["amateur"]["date"] == "2026-10-13"
+      and any("顔ぶれが前と同じ" in l for l in lines_b), (LAST["calls"], lines_b))
+check("このサイトに無い作品は、上位1万本で見かけたもの（新しい順位）を先に、足りない分は前のデータから（60本まで）",
+      len(data_b["amateur"]["extra"]) == 60 and [r["cid"] for r in data_b["amateur"]["extra"]] == [r["cid"] for r in data_a["amateur"]["extra"]][:60]
+      and '"count":100' in hist_b, len(data_b["amateur"]["extra"]))
+check("顔ぶれが同じでも、このサイトに入った作品は外す", all(r["cid"] != "amt00003" for r in run(deep, quick=1, old=text_a, now=NEXT, site={"amt00003"})[2]["amateur"]["extra"]))
+_, lines_c, data_c, _, _ = run(deep, quick=1, old=text_a, now=datetime(2026, 10, 15, 0, 35, tzinfo=S.G.JST))
+check("前に最後まで読んでから3日たったら、最後まで読む", LAST["calls"] == 4 and data_c["amateur"]["full"] == "2026-10-15" and any("3日" in l for l in lines_c), lines_c)
+fresh_rows = list(deep)
+fresh_rows[1] = raw(2, LATER)
+_, lines_d, data_d, _, _ = run(fresh_rows, quick=1, old=text_a, now=datetime(2026, 10, 13, 0, 35, tzinfo=S.G.JST).replace(day=13))
+check("上位1万本に新しいセールがあれば、最後まで読む", LAST["calls"] == 4 and any("新しいセール" in l for l in lines_d) and len(data_d["amateur"]["campaigns"]) == 2, lines_d)
+ended_old = text_a.replace("2026-10-13 23:59", "2026-10-12 23:59")
+_, lines_e, _, _, _ = run(deep, quick=1, old=ended_old, now=NEXT)
+check("前のセールのどれかが終わっていたら、最後まで読む", LAST["calls"] == 4 and any("終わったセール" in l for l in lines_e), lines_e)
+gone_rows = [raw(n, HOIHOI if n % 3 == 0 and n > 100 else None) for n in range(1, 301)]
+_, lines_f, _, _, _ = run(gone_rows, quick=1, old=text_a, now=NEXT)
+check("前は上位1万本に作品があったセールを、上位1万本で見かけなかったら、最後まで読む", LAST["calls"] == 4 and any("見かけなくなった" in l for l in lines_f), lines_f)
+deep_only_old = text_a
+_, lines_g, _, _, _ = run(gone_rows, quick=1, old=run(gone_rows, quick=1)[3], now=NEXT)
+check("もともと上位1万本より下にしか作品の無いセールは、上位1万本で見かけなくても、そのまま（最後まで読まない）", LAST["calls"] == 1, lines_g)
+_, lines_h, _, _, _ = run(gone_rows, quick=1, old=run(gone_rows, quick=1)[3], now=NEXT, site_titles={HOIHOI["title"]})
+check("このサイトの作品に付いているセールを、上位1万本で見かけなかったら、最後まで読む", LAST["calls"] == 4, lines_h)
 
 print(f"\n{passed} 件成功 / {failed} 件失敗")
 sys.exit(1 if failed else 0)

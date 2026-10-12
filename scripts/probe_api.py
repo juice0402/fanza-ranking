@@ -428,11 +428,71 @@ def probe_floor_campaigns():
             say(f"- {title}｜{begin}〜{end}｜{s['n']}本（入れてよい{s['ok']}）・いちばん上{s['top']}位・上位1千{s['b'][1000]}/5千{s['b'][5000]}/1万{s['b'][10000]}/2万{s['b'][20000]}・割引{dict(s['off'].most_common(3))}")
 
 
+def probe_limited_sale():
+    """19) 素人の「期間限定セール」がAPIでどう見えるか（運営者の「FANZAの素人のセールの絞り込みに『期間限定セール』がある。タグに『セール』とだけ
+    書いてある作品が、たぶんそれ」。2026-10-12 夜）。人気順を5万本まで読み、キャンペーンの名前（期間ごと）・ジャンルの札にセール/OFF/期間限定がある作品・
+    キャンペーンが無いのに値引きされている作品を数え、品番・価格・ジャンルの札・キャンペーンの形の見本を出す（品番・価格・札の名前だけ。個人の情報は無い）"""
+    import time
+    from collections import Counter
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import get_new_releases as G
+    now = datetime.now(JST)
+    lte = now.strftime("%Y-%m-%dT23:59:59")
+    say(f"## 19) 素人の期間限定セール（{now.strftime('%H:%M')}の時点・人気順の上位5万本）")
+    camps, tags, nocamp_n, samples_tag, samples_nocamp, scanned, calls, fails, off, t0 = Counter(), Counter(), 0, [], [], 0, 0, 0, 1, time.time()
+    deliv = Counter()
+    while off <= 50000 and fails < 3:
+        time.sleep(0.2)
+        res, err = call("ItemList", {"site": "FANZA", "service": "digital", "floor": "videoc", "sort": "rank", "hits": 100, "offset": off, "lte_date": lte})
+        calls += 1
+        if err:
+            fails += 1
+            continue
+        fails = 0
+        items = res.get("items") or []
+        for pos, x in enumerate(items):
+            scanned += 1
+            for c in x.get("campaign") or []:
+                if isinstance(c, dict):
+                    camps[(str(c.get("title"))[:40], str(c.get("date_begin"))[:16], str(c.get("date_end"))[:16])] += 1
+            gnames = [str(g.get("name")) for g in ((x.get("iteminfo") or {}).get("genre") or []) if isinstance(g, dict)]
+            st = [g for g in gnames if re.search(r"セール|OFF|ＯＦＦ|期間限定|特価|割引", g)]
+            for g in st:
+                tags[g] += 1
+            prices = x.get("prices") if isinstance(x.get("prices"), dict) else {}
+            price, lp = G.parse_yen(prices.get("price")), G.parse_yen(prices.get("list_price"))
+            dl = prices.get("deliveries") or {}
+            dls = dl.get("delivery") if isinstance(dl, dict) else dl
+            dls = dls if isinstance(dls, list) else ([dls] if dls else [])
+            dl_off = [d for d in dls if isinstance(d, dict) and G.parse_yen(d.get("price")) and G.parse_yen(d.get("list_price")) and G.parse_yen(d.get("price")) < G.parse_yen(d.get("list_price"))]
+            if dl_off:
+                deliv["配信形式のどれかが値引き"] += 1
+            if not x.get("campaign") and ((price and lp and price < lp) or dl_off):
+                nocamp_n += 1
+                if len(samples_nocamp) < 6:
+                    samples_nocamp.append((off + pos, str(x.get("content_id")), price, lp, [(d.get("type"), d.get("price"), d.get("list_price")) for d in dls][:4], st))
+            if st and len(samples_tag) < 6:
+                samples_tag.append((off + pos, str(x.get("content_id")), price, lp, st, [str(c.get("title"))[:30] for c in x.get("campaign") or [] if isinstance(c, dict)]))
+        if len(items) < 100:
+            break
+        off += 100
+    say(f"- 読んだ {scanned}本（{calls}回・{int(time.time() - t0)}秒）・失敗で止まった {fails >= 3}")
+    say(f"- キャンペーン（名前・始まり・終わり）: {dict(camps.most_common(10))}")
+    say(f"- ジャンルの札でセールらしいもの: {dict(tags.most_common(10))}")
+    say(f"- キャンペーンが無いのに値引きされている作品: {nocamp_n}本・{dict(deliv)}")
+    say(f"- 見本（キャンペーン無しの値引き。順位・品番・価格・定価・配信形式・札）: {samples_nocamp}")
+    say(f"- 見本（セールらしい札。順位・品番・価格・定価・札・キャンペーン）: {samples_tag}")
+
+
 def main():
     if not API_ID:
         sys.exit("❌ API_ID が設定されていません")
     if os.environ.get("PROBE_ONLY") == "13":
         probe_ten_yen()
+        finish()
+        return
+    if os.environ.get("PROBE_ONLY") == "19":
+        probe_limited_sale()
         finish()
         return
     if os.environ.get("PROBE_ONLY") == "18":
