@@ -213,6 +213,10 @@ with tempfile.TemporaryDirectory() as tmp:
     open(path, "w").write("{壊れた")
     check("ファイルが壊れていたら、上書きしないで止まる", run(["--update", "--force"]) == 1 and open(path).read() == "{壊れた")
     check("--update が無ければ、使い方を出すだけ", run([]) == 2)
+    check("月曜は集め直す（日曜から月曜に日付が変わったあとの毎日の更新。2026-10-13）・同じ日に2回は集めない",
+          A.weekly_due("2026-10-08", "2026-10-12") and not A.weekly_due("2026-10-12", "2026-10-12") and not A.weekly_due("2026-10-12", "2026-10-13"))
+    check("月曜に集められなかったときは、7日たった日に集める・前に集めた日が分からなければ集める",
+          A.weekly_due("2026-10-12", "2026-10-20") and not A.weekly_due("2026-10-13", "2026-10-18") and A.weekly_due(None, "2026-10-14"))
     open(path, "w").write(A.dump_dataset({"updated": "2026-10-01", "sites": [{"key": "mines", "checked": "2026-10-01", "profiles": 10}],
                                           "rows": [{"name": "残る人", "agency": "mines", "source": "https://mines-pro.jp/model/1", "seen": "2026-10-01"}]}))
     A.collect_site = lambda site, table: (_ for _ in ()).throw(RuntimeError("こわれた")) if site["key"] == "mines" else ({"roster_ok": True, "read": 1, "found": 1, "errors": []}, [])

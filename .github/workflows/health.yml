@@ -1,0 +1,32 @@
+name: Health (weekly)
+
+# 週1回の見張り番（運営者の希望「週1回の点検にしよう。タイミングは日曜日から月曜日に日付が変わるとき」。2026-10-13。scripts/health.py）。
+# Claude を使わずに、この7日（月曜〜日曜）の運用の数字（毎日の更新の記録・公開などの失敗と時間・コメントの仕上げ・過去作品の数・
+# リポジトリの大きさ）を見て、おかしいときだけ注釈（⚠️）を出して失敗にする（GitHub から知らせが届く）。サイトのデータには何も書かない。
+# 結果は、毎週月曜 0:50 の Claude の予約タスク（週のまとめ）が `python3 scripts/health.py --last` で1行ずつ報告に書く。
+# 手動でも動かせる（Actions の画面の「Run workflow」）
+on:
+  schedule:
+    - cron: '1 15 * * 0'  # 日本時間 月曜 0:01（日曜から月曜に日付が変わるとき）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 400  # この7日の「データ更新」の記録と、7日前の過去作品の数を見るため
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check the last 7 days
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/health.py

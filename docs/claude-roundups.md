@@ -6,8 +6,12 @@
 ```
  0:05  GitHub Actions … 新作を取得（月曜の新作もここで入る）
  0:20  Claude の予約タスク（毎日）… 定型文の作品にコメントを書く
- 0:50  Claude の予約タスク（毎週月曜）… 前の週のまとめ記事を書く → PR → CIが緑ならMerge → 公開
+ 0:50  Claude の予約タスク（毎週月曜）… 前の週のまとめ記事を書く（月が変わって最初の月曜は、前の月のまとめ記事も）→ PR → CIが緑ならMerge → 公開
 ```
+
+**月のまとめ記事も、この予約タスクが書く**（2026-10-13 から。運営者の希望「週次・月次は、日曜から月曜に日付が変わるタイミングに」。前は毎月1日 1:25 の別の予約タスクだった。
+同じ回にまとめると、リポジトリの用意・CI・公開を待つのが1回で済む＝トークンの節約）。毎回 `claude_monthly.py list` を見て、`ready` のとき（月が変わって最初の月曜）だけ、
+`docs/claude-monthly.md` の「書き方」で書いて、同じPRに入れる。毎週月曜 0:01 の見張り番（`health.yml`）の結果も、報告に1行ずつ書く。
 
 記事の中身は3つです。
 
@@ -25,8 +29,8 @@
 
 1. リポジトリ `juice0402/fanza-ranking` を使える状態にする（無ければ add_repo → clone。CLAUDE.md は自動で読み込まれるので開き直さない。トークンの節約。2026-10-13）。`main` を最新にして、作業用のブランチを作る
    `git fetch origin main && git checkout -B claude/roundup-$(TZ=Asia/Tokyo date +%Y%m%d-%H%M) origin/main`（ブランチ名に時刻まで入れる。同じ日にやり直したとき、前の名前のブランチが残っていても、ぶつからないように。GitHub のブランチは Claude の環境からは消せない）
-2. 対象を出す: `python3 scripts/claude_roundups.py list`
-   - `status` が `ready` 以外（`not_finished`・`already_written`・`too_few_items`）なら、**何も変更せず、PRも作らずに終了**（理由を報告）
+2. 対象を出す: `python3 scripts/claude_roundups.py list` と `python3 scripts/claude_monthly.py list`（月のまとめ。`ready` 以外のときは短い答えだけ）
+   - どちらも `status` が `ready` 以外（`not_finished`・`already_written`・`too_few_items`）なら、**何も変更せず、PRも作らずに**、手順10の報告へ（理由を報告）。片方だけ `ready` なら、そちらだけ書く
    - 出力には作品タイトルを含めません（出演者・メーカー・形式・発売日・収録時間・ジャンル（サイトのジャンルのページの一覧にあるものだけ）・デビュー作か・新着の人気順の最高順位だけ）。週の集計（本数・日別・メーカー・出演者・形式）も出ます
    - `trend` に傾向の数字が出ます: `total`・`prev_total`（前の週の本数）・`vr`・`prev_vr`・`debut`（デビュー作の本数）・`genres`（ジャンルごとの `count` と前の週の `prev`）・`popular`（この週に発売された作品の、新着の人気順の最高順位 `best`・その日 `best_date`・10位以内の日数 `days10`・100位以内の日数 `days100`・メーカー・出演者。過去作品の作品も入る）・`popular_ranked`（人気順に入った作品の数）・`popular_makers`（上位10本に2本以上あるメーカー）
 3. 下の「書き方」に沿って、記事を書き、次の形のJSONファイルにする（作業用の置き場に。リポジトリには入れない）
@@ -35,18 +39,19 @@
    ```
 4. 点検して書き込む: `python3 scripts/claude_roundups.py apply ファイル.json`
    - 先に `--dry-run` で点検してもよい。問題があると**何も書き込まれず**、理由が出る。直してもう一度実行する
+   - 月のまとめが `ready` なら、`docs/claude-monthly.md` の手順3・4と「書き方」で書いて、`python3 scripts/claude_monthly.py apply ファイル.json` で書き込む（同じブランチ）
 5. `bash scripts/check.sh` を実行して、最後が「✅ ぜんぶ成功」であることを確認する（成功したテストは1行ずつ。失敗したテストだけ ❌ の行と理由が出る）
-6. `git status` で、変わったのが **`site/src/data/roundups.json` だけ**であることを確認する。他のファイルが変わっていたらコミットしない
+6. `git status` で、変わったのが **`site/src/data/roundups.json`・`site/src/data/monthly.json` だけ**であることを確認する。他のファイルが変わっていたらコミットしない
 7. コミット → ブランチをpush → PRを作る（CLAUDE.md の守ること1・2）: `gh api repos/juice0402/fanza-ranking/pulls -f title="…" -f head=<ブランチ> -f base=main -f body="…" --jq '.number'`（答えの全体は数万文字あるので、`--jq` で番号だけ出す）
    - コミットメッセージ: `週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日`（データだけのPRなので、プレビューは作られない。待つのは CI（check）だけ。Cloudflare のビルドは使わないので、`[CI Skip]` は要らない）
-   - PRのタイトル: `週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日`
+   - PRのタイトル: `週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日`（月のまとめも書いたときは、うしろに `＋月のまとめ: 2026年10月`。コミットメッセージも同じ）
 8. CIが終わるまで待つ: `python3 scripts/wait_run.py ci $(git rev-parse HEAD)`（Bash の timeout は 600000。CI は10分ほど。`⏳` なら同じコマンドをもう一度。合わせて30分まで）
    - **`✅` ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: 週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日" -f commit_message="" --jq '.sha'`。出てくるのが Merge のコミット。Merge すると、公開（`deploy.yml`）が自動で動く）
    - `❌`（赤）・時間切れ・衝突（Mergeできない）のときは**Mergeしない**（`❌` の行に失敗の理由が出る）。PRを開いたまま、理由を報告して終了する。衝突のときは、ブランチを捨てて手順1からやり直してよい（1回だけ）
 9. Merge したら、公開（Deploy）が終わるのを待つ: `python3 scripts/wait_run.py deploy <Merge のコミット>`（Bash の timeout は 600000。ビルド・点検・アップロードで10〜15分。`⏳` なら同じコマンドをもう一度。合わせて30分まで。あとの Merge の公開に含まれたときも `✅`）。`✅` なら、本番の `https://fanza-ranking.pages.dev/weekly/<週の月曜日>/?cb=日時` を WebFetch で見て、記事が出ているかを確認する（`?cb=` を付けないと古い内容が返ることがある。WebFetch の prompt は「記事の見出しと導入文の最初の1文だけを答えて」のように短く）。`❌` なら理由を報告する（サイトは前の公開のまま）。見られなかったら「未確認」と書く
-10. 最後に報告する: どの週の記事か／PR番号／CIの結果／Mergeしたか／本番で確認できたか
+10. 最後に報告する: どの週の記事か／月のまとめを書いたか（どの月か。書かなかったときは理由）／PR番号／CIの結果／Mergeしたか／本番で確認できたか（月のまとめは `/month/<YYYY-MM>/` も）／見張り番の結果（`python3 scripts/health.py --last` の行をそのまま。⚠️ があれば報告のいちばん上にも）
 
-Mergeしてよいのは、**このまとめ記事のPR（`roundups.json` だけを変えるもの）で、CIが緑のとき**だけです（運営者の包括的な許可にもとづく。CLAUDE.md の守ること1）。
+Mergeしてよいのは、**このまとめ記事のPR（`roundups.json`・`monthly.json` だけを変えるもの）で、CIが緑のとき**だけです（運営者の包括的な許可にもとづく。CLAUDE.md の守ること1）。
 
 ## 書き方
 
