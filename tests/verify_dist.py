@@ -2994,9 +2994,16 @@ for _fk in _FD.FLOORS:
             _sp_bad.append((path_, "注記"))
         if ('name="robots" content="noindex' in read_raw(p_)) == (path_ in sm_paths):
             _sp_bad.append((path_, "sitemap"))
-        # キャンペーンのページ: 終わりの時刻の印があるなら、終わったら隠すスクリプトが先に入っている・「終わりました」の行がある
-        if "data-sale-end=" in read_raw(p_) and (not sale_js_ok(read_raw(p_)) or (_camp_floor and 'data-sale-over="' not in read_raw(p_))):
+        # キャンペーンのページ: 終わりの時刻の印があるなら、終わったら隠すスクリプトが先に入っている。
+        #   「終わりました」の行は、そのページのキャンペーンの終わりの時刻が分かっているとき（見出しの下の行に印がある）だけ。
+        #   0:00 すぎに始まったばかりのキャンペーンは、毎日の更新で作品には付いていても、floor_sale.json に終わりの時刻がまだ無く、
+        #   印は「ほかのセール」のカードにだけ付く（2026-10-16 の「売れ筋！素人30％OFF」。これで公開が2回止まった）
+        raw_ = read_raw(p_)
+        own_end_ = re.search(r'<p class="camp-status"[^>]*\sdata-sale-end=', raw_)
+        if "data-sale-end=" in raw_ and not sale_js_ok(raw_):
             _sp_bad.append((path_, "sale.js"))
+        if _camp_floor and bool(own_end_) != ('data-sale-over="' in raw_):  # 終わりの時刻がある ⇔ 「終わりました」の行がある
+            _sp_bad.append((path_, "終わりました"))
     check(f"{_flabel}: セールのページに「○日の時点」「FANZAの作品ページで確かめて」の注記がある・sitemap に入っている ⇔ noindex でない", not _sp_bad, _sp_bad[:3])
     # 「セールはいつ？」（/…/sale/history/）: データから数えた事実だけ。記録が7日に満たないあいだは noindex
     _hist_page = os.path.join(DIST, _fk, "sale", "history", "index.html")
