@@ -5,12 +5,15 @@ Google は IndexNow に入っていないので、いまのまま sitemap と Se
 鍵は公開してよい値で、site/public/<鍵>.txt（中身は鍵だけ）に置いてある。秘密情報は使わない。
 
 本番（main）の公開のときだけ、.github/workflows/deploy.yml が動かす:
-  python3 scripts/indexnow.py prepare --out <えらんだページの書き出し先>
+  python3 scripts/indexnow.py prepare --out <えらんだページの書き出し先> --retry <前に断られたページ>
       アップロードの前。sitemap.xml のページと「最後に変わった日」（lastmod）を、本番にある前回の記録
       （/indexnow-pages.json）とくらべて、知らせるページをえらぶ。今回の記録を site/dist に置く（サイトといっしょに公開。
       リポジトリにはコミットしない＝main にコミットを足さない）
-  python3 scripts/indexnow.py send --list <えらんだページ> --uploaded <アップロード済みの印>
-      アップロードが済んだあと（印があるときだけ）。えらんだページを1万件ずつ知らせる
+  python3 scripts/indexnow.py send --list <えらんだページ> --uploaded <アップロード済みの印> --retry-out <断られたページ>
+      アップロードが済んだあと（印があるときだけ）。えらんだページを1万件ずつ知らせる。
+      受け付けてもらえなかったページ（断られた・つながらない）は --retry-out に書き、deploy.yml が GitHub の Actions の
+      置き場（cache）にとっておく。次の公開の prepare が --retry で読んで、もう一度えらぶ（はじめて断られてから14日まで。2026-10-17。
+      はじめての公開で、鍵の確認が済む前に 403「SiteVerificationNotCompleted」で断られ、送った扱いになってしまったため）
 
 えらび方（運営者の「ランキングの数字が変わっただけのページを、毎日ぜんぶ送らない。送るのは、新しいページと、
 コメントやまとめ記事が入ったページが中心」）。sitemap に無いページ（noindex）は送らない:
@@ -42,6 +45,8 @@ ENDPOINT = os.environ.get("INDEXNOW_ENDPOINT", "https://api.indexnow.org/indexno
 RECORD = "indexnow-pages.json"  # 前回の記録（サイトのいちばん上に、サイトといっしょに公開する）
 BATCH = 10_000                  # 1回に送れるのは1万件まで（IndexNow の決まり）
 HOLD_DAYS = 7                   # 一覧・ランキングなどは、前に知らせてから7日たつまで待つ
+RETRY_DAYS = 14                 # 断られたページを送り直すのは、はじめて断られてから14日まで
+VERSION = 2                     # 記録の版。古い版の記録は「まだ無い」とみなして、全部を知らせ直す（v1 のときの初回は、断られたまま送った扱いになったため）
 RETRY_WAIT = float(os.environ.get("INDEXNOW_RETRY_WAIT", "10"))
 JST = datetime.timezone(datetime.timedelta(hours=9))
 # lastmod が変わったら、すぐ知らせるページ（中身＝コメント・記事が変わったときに lastmod が変わるもの）
@@ -106,7 +111,7 @@ def fetch_record(url, tries=3, wait=None):
             with urllib.request.urlopen(req, timeout=30) as res:
                 data = json.loads(res.read().decode("utf-8"))
             if valid_record(data):
-                return "ok", data["pages"]
+                return ("ok", data["pages"]) if data.get("v") == VERSION else ("none", None)
             return "error", "前回の記録の形がおかしい"
         except urllib.error.HTTPError as e:
             if e.code == 404:
@@ -153,7 +158,19 @@ def breakdown(count, first):
     return "・".join(f"{names[k]} {count[k]:,}" for k in names if count[k]) or "なし"
 
 
-def prepare(out, today=None, live_url=None):
+def load_retry(path, now, today):
+    """前に断られたページ（URL → はじめて断られた日）。sitemap に今もあって、14日たっていないものだけ"""
+    try:
+        data = json.load(open(path, encoding="utf-8")) if path else {}
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {u: d for u, d in data.items() if isinstance(u, str) and isinstance(d, str) and u.startswith(SITE_URL + "/")
+            and u[len(SITE_URL):] in now and days_between(d, today) < RETRY_DAYS}
+
+
+def prepare(out, retry_path=None, today=None, live_url=None):
     today = today or today_jst()
     sitemap = os.path.join(DIST, "sitemap.xml")
     if not os.path.exists(sitemap):
@@ -164,15 +181,22 @@ def prepare(out, today=None, live_url=None):
     if status == "error":
         # 前回が分からないときは、全部を送り直さない（同じページを何千件も送らないように）。今回の状態を記録して、次から続ける
         send, record, count = [], {p: [m, today] for p, m in now.items()}, {}
-        note = f"前回の記録を読めなかったので、今回は知らせません（{prev}）"
+        note = f"前回の記録を読めなかったので、新しく変わったページは今回は知らせません（{prev}）"
     else:
         send, record, count = choose(now, prev if status == "ok" else None, today, monthly_written())
         note = breakdown(count, status == "none")
+    # 前に断られたページ（記録の上では知らせた扱いになっている）を、もう一度えらぶ
+    urls = [SITE_URL + p for p in send]
+    retry = load_retry(retry_path, now, today)
+    again = [u for u in sorted(retry) if u not in set(urls)]
+    if again:
+        urls += again
+        note += f"・前に断られたページ {len(again):,}"
     with open(os.path.join(DIST, RECORD), "w", encoding="utf-8") as f:
-        json.dump({"v": 1, "updated": today, "pages": record}, f, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        json.dump({"v": VERSION, "updated": today, "pages": record}, f, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     with open(out, "w", encoding="utf-8") as f:
-        json.dump({"urls": [SITE_URL + p for p in send], "note": note, "total": len(now)}, f, ensure_ascii=False)
-    print(f"知らせるページ {len(send):,}件（{note}）／ sitemap の全 {len(now):,}件")
+        json.dump({"urls": urls, "note": note, "total": len(now), "first": retry}, f, ensure_ascii=False)
+    print(f"知らせるページ {len(urls):,}件（{note}）／ sitemap の全 {len(now):,}件")
     return 0
 
 
@@ -202,18 +226,33 @@ def post(urls, key, endpoint=None):
         return 0, str(getattr(e, "reason", e))[:120]
 
 
-def send(list_path, uploaded):
+def keep_retry(path, failed, first, today):
+    """受け付けてもらえなかったページを書き出す（次の公開で送り直す）。deploy.yml が、これを GitHub の置き場にとっておく"""
+    if not path:
+        return
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({u: first.get(u, today) for u in failed}, f, ensure_ascii=False)
+    out = os.environ.get("GITHUB_OUTPUT")
+    if out:
+        with open(out, "a", encoding="utf-8") as f:
+            f.write("retry=written\n")
+
+
+def send(list_path, uploaded, retry_out=None, today=None):
+    today = today or today_jst()
     if not uploaded or not os.path.exists(uploaded):
         print("本番に公開されていないので、知らせません")
         return 0
     try:
         data = json.load(open(list_path, encoding="utf-8"))
         urls = [u for u in data["urls"] if u.startswith(SITE_URL + "/")]
+        first = data.get("first") if isinstance(data.get("first"), dict) else {}
     except (OSError, ValueError, KeyError, TypeError):
         notice("知らせるページをえらべていなかったので、知らせませんでした", "warning")
         return 0
     note = str(data.get("note", ""))
     if not urls:
+        keep_retry(retry_out, [], first, today)
         if "読めなかった" in note:
             notice(note, "warning")
         else:
@@ -222,6 +261,7 @@ def send(list_path, uploaded):
     try:
         key = find_key()
     except RuntimeError as e:
+        keep_retry(retry_out, urls, first, today)
         notice(f"知らせられませんでした: {e}", "warning")
         return 0
     batches = [urls[i:i + BATCH] for i in range(0, len(urls), BATCH)]
@@ -237,12 +277,13 @@ def send(list_path, uploaded):
         else:
             why = text.strip().replace("\n", " ")[:120]
             break
+    keep_retry(retry_out, urls[sent:], first, today)  # 受け付けてもらえなかったところから後ろ（次の公開で送り直す）
     how = f"1万件ずつ{len(batches)}回・" if len(batches) > 1 else ""
     ret = "・".join(str(c) if c else "つながらない" for c in codes)
     if sent == len(urls):
         notice(f"{sent:,}件を知らせました（{note}。{how}返事 {ret}）")
     else:
-        notice(f"{len(urls):,}件のうち {sent:,}件だけ知らせました（{how}返事 {ret}。{why}）", "warning")
+        notice(f"{len(urls):,}件のうち {sent:,}件だけ知らせました（{how}返事 {ret}。残りは次の公開で送り直します。{why}）", "warning")
     return 0
 
 
@@ -251,15 +292,17 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd")
     p1 = sub.add_parser("prepare")
     p1.add_argument("--out", required=True)
+    p1.add_argument("--retry", default="")
     p2 = sub.add_parser("send")
     p2.add_argument("--list", required=True)
     p2.add_argument("--uploaded", required=True)
+    p2.add_argument("--retry-out", default="")
     a = ap.parse_args(argv)
     if a.cmd is None:
         ap.print_help()
         return 2
     try:
-        return prepare(a.out) if a.cmd == "prepare" else send(a.list, a.uploaded)
+        return prepare(a.out, a.retry) if a.cmd == "prepare" else send(a.list, a.uploaded, a.retry_out)
     except Exception as e:  # 知らせに失敗しても、公開は止めない
         notice(f"うまく動きませんでした（{type(e).__name__}: {str(e)[:120]}）", "warning")
         return 0

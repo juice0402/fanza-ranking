@@ -10,6 +10,8 @@ __pycache__/
 
 # スクリプトが書き込み途中に作る一時ファイル
 *.json.tmp
+# IndexNow の送り直しの一覧（公開のときに GitHub の Actions の置き場へ。コミットしない）
+.indexnow-retry.json
 
 # 環境変数・個人設定（秘密情報を入れたファイルは絶対にコミットしない）
 .env

@@ -21,7 +21,7 @@ FANZAの新作・予約作品を毎日自動で集め、ひとことコメント
 **公開は GitHub Actions が行う**（`deploy.yml`。ビルド → 全ページの点検 `tests/verify_dist.py` → Cloudflare Pages に直接アップロード＝Direct Upload。Cloudflare のビルド（月500回を「あそびトーク」と共有）は使わない。2026-10-09 から）。
 - main に入ると本番に公開される。毎日の更新・取り直しは、データを保存したあとに `deploy.yml` を動かす（ワークフローが保存したコミットでは、ほかのワークフローが自動では動かないため）。点検に落ちたら公開しない（前の公開のまま）。
 - コード・デザインを変えるPR（`site/` の中。データ `site/src/data/` は除く）は、CI が**プレビュー**（`<ブランチ名>.fanza-ranking.pages.dev`。URL は check の注釈と要約）を作る。データだけ・手順書やテストだけのPRには作らない。
-- **検索エンジンへのお知らせ（IndexNow。2026-10-17）**: 本番の公開のたびに `deploy.yml` が `scripts/indexnow.py` で、新しいページ・コメントや記事が入ったページ（一覧・ランキングなどは7日に1回まで）を Bing などへ知らせる（1万件ずつ。前回の記録は本番の `/indexnow-pages.json`。main にはコミットしない。鍵は `site/public/<鍵>.txt`。Google は sitemap と Search Console のまま。くわしくは docs/architecture.md の「公開」）
+- **検索エンジンへのお知らせ（IndexNow。2026-10-17）**: 本番の公開のたびに `deploy.yml` が `scripts/indexnow.py` で、新しいページ・コメントや記事が入ったページ（一覧・ランキングなどは7日に1回まで）を Bing などへ知らせる（1万件ずつ。前回の記録は本番の `/indexnow-pages.json`。受け付けてもらえなかったページは Actions の置き場（cache）にとっておき、次の公開で送り直す。main にはコミットしない。鍵は `site/public/<鍵>.txt`。Google は sitemap と Search Console のまま。くわしくは docs/architecture.md の「公開」）
 - Cloudflare 側の自動ビルドは止めてある（2026-10-09。ダッシュボードの「ブランチコントロール」。戻すときはそこをオンに）。コミット・Merge のメッセージに `[CI Skip]` は要らない（入れても何も変わらない）。
 
 ## 仕組み（時刻は日本時間。くわしくは docs/architecture.md の「データの流れ」）
