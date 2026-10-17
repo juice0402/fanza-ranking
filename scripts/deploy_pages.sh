@@ -104,6 +104,9 @@ if [ "$mode" = "preview" ]; then
 fi
 
 say "### ✅ 本番に公開しました（${files}ファイル）"
+# アップロード済みの印（IndexNow で検索エンジンに知らせてよい。scripts/indexnow.py send。2026-10-17）。
+# 下の確認の途中で、あとの公開に止められても、知らせる手順は動くので、ここで付けておく
+if [ -n "${UPLOADED_MARK:-}" ]; then : > "$UPLOADED_MARK"; fi
 
 # 本当に新しくなったかを確かめる（sitemap.xml が、いま作ったものと同じになるまで待つ）。
 # 同じにならなくても失敗にはしない（Cloudflare の側で少し遅れることがあるため）。注意書きだけ出す

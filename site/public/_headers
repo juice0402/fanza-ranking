@@ -27,3 +27,11 @@
 # 中身が変わると URL も変わる。1年間ブラウザに置いてよい（毎回「新しくなっていないか」を確かめに行かない。運営者の「読み込みのストレスをフリーに」。2026-10-05）
 /*.js
   Cache-Control: public, max-age=31536000, immutable
+
+# IndexNow（検索エンジンへのお知らせ。scripts/indexnow.py。2026-10-17）: 前回知らせたページの記録と、鍵のファイル。
+# 検索結果には出さない。記録は、次の公開のときに読むので、いつも新しいものを返す
+/indexnow-pages.json
+  X-Robots-Tag: noindex
+  Cache-Control: no-cache
+/24342c173fabe227637b0714c6cfc4fb.txt
+  X-Robots-Tag: noindex
