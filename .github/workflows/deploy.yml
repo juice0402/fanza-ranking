@@ -50,18 +50,37 @@ jobs:
           (cd site && npm ci --no-audit --no-fund && npm run build) 2>&1 | tee "$RUNNER_TEMP/build.log"
           python3 tests/verify_dist.py 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
+      # 検索エンジンに知らせるページをえらぶ（本番のときだけ。scripts/indexnow.py。2026-10-17）。
+      # 本番にある前回の記録（/indexnow-pages.json）とくらべて、新しいページ・コメントや記事が入ったページ（一覧などは7日に1回まで）をえらび、
+      # 今回の記録をサイトといっしょに公開する（main にはコミットしない）。うまく動かなくても公開は止めない
+      - name: Choose pages to tell search engines (IndexNow)
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        shell: bash
+        run: python3 scripts/indexnow.py prepare --out "$RUNNER_TEMP/indexnow-urls.json"
+
       - name: Upload to Cloudflare Pages
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           REF_NAME: ${{ github.ref_name }}
+          UPLOADED_MARK: ${{ runner.temp }}/uploaded
         run: |
           if [ "$REF_NAME" = "main" ]; then
             bash scripts/deploy_pages.sh production
           else
             bash scripts/deploy_pages.sh preview "$REF_NAME"
           fi
+
+      # 検索エンジンに知らせる（IndexNow。Bing・Yandex・Naver・Seznam・Yep。Google は sitemap と Search Console のまま）。
+      # 本番にアップロードできたときだけ（印 uploaded）。あとの公開に止められたときも、アップロード済みなら知らせる（always()）。
+      # 1万件ずつ送り、結果は注記に1行。失敗しても公開は止めない
+      - name: Tell search engines (IndexNow)
+        if: always() && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        shell: bash
+        run: python3 scripts/indexnow.py send --list "$RUNNER_TEMP/indexnow-urls.json" --uploaded "$RUNNER_TEMP/uploaded"
 
       # 失敗したときだけ、ログの大事なところを「注釈」に出す（ログ全体を開かなくても、理由が読める）
       - name: Show why it failed

@@ -220,6 +220,11 @@ print("\n■ ファイル数（Cloudflare Pages の無料プランは2万ファ�
 dist_files = sum(len(fs) for _, _, fs in os.walk(DIST))
 print(f"   ファイル {dist_files} ／ 作品ページ {len(paged)} ／ 作品 {len(everything)}本（過去作品 {len(catalog)}本）")
 check(f"サイト全体のファイル数（{dist_files}）が {FILE_LIMIT} 以内", dist_files <= FILE_LIMIT, dist_files)
+# IndexNow（検索エンジンへのお知らせ。scripts/indexnow.py。2026-10-17）の鍵: いちばん上に「<鍵>.txt」（中身は鍵だけ）が1つ。
+# 前回の記録（indexnow-pages.json）は、点検のあとで公開の手順が置くので、ここには無い。どちらも sitemap には入れない
+_inkeys = [f[:-4] for f in os.listdir(DIST) if re.fullmatch(r"[A-Za-z0-9]{32}\.txt", f) and read_raw(os.path.join(DIST, f)).strip() == f[:-4]]
+check("IndexNow の鍵のファイル（/<鍵>.txt。中身は鍵だけ）が1つある・sitemap に入っていない",
+      len(_inkeys) == 1 and _inkeys[0] not in read_raw(os.path.join(DIST, "sitemap.xml")) and "indexnow-pages" not in read_raw(os.path.join(DIST, "sitemap.xml")), _inkeys)
 
 
 def page_rank(cid):

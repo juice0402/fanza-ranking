@@ -43,6 +43,8 @@ run "ジャンルの「FANZA全体で人気の作品」を集める道具 (Pytho
 
 run "公開のしくみ（Cloudflare Pages への直接アップロード）" python3 tests/test_deploy.py
 
+run "検索エンジンへのお知らせ（IndexNow） (Python)" python3 tests/test_indexnow.py
+
 run "保存データの形式" python3 tests/test_data.py
 
 run "トークンを節約する道具（待つ道具・テストの出力・一覧の出力） (Python)" python3 tests/test_tools.py
