@@ -53,11 +53,21 @@ jobs:
       # 検索エンジンに知らせるページをえらぶ（本番のときだけ。scripts/indexnow.py。2026-10-17）。
       # 本番にある前回の記録（/indexnow-pages.json）とくらべて、新しいページ・コメントや記事が入ったページ（一覧などは7日に1回まで）をえらび、
       # 今回の記録をサイトといっしょに公開する（main にはコミットしない）。うまく動かなくても公開は止めない
+      # 前の公開で受け付けてもらえなかったページ（GitHub の Actions の置き場 cache。いちばん新しいもの）を読む → 今回もう一度えらぶ
+      - name: Restore pages to send again (IndexNow)
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        uses: actions/cache/restore@v4
+        with:
+          path: .indexnow-retry.json
+          key: indexnow-retry-${{ github.run_id }}
+          restore-keys: indexnow-retry-
+
       - name: Choose pages to tell search engines (IndexNow)
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         shell: bash
-        run: python3 scripts/indexnow.py prepare --out "$RUNNER_TEMP/indexnow-urls.json"
+        run: python3 scripts/indexnow.py prepare --out "$RUNNER_TEMP/indexnow-urls.json" --retry .indexnow-retry.json
 
       - name: Upload to Cloudflare Pages
         shell: bash
@@ -77,10 +87,20 @@ jobs:
       # 本番にアップロードできたときだけ（印 uploaded）。あとの公開に止められたときも、アップロード済みなら知らせる（always()）。
       # 1万件ずつ送り、結果は注記に1行。失敗しても公開は止めない
       - name: Tell search engines (IndexNow)
+        id: indexnow
         if: always() && github.ref == 'refs/heads/main'
         continue-on-error: true
         shell: bash
-        run: python3 scripts/indexnow.py send --list "$RUNNER_TEMP/indexnow-urls.json" --uploaded "$RUNNER_TEMP/uploaded"
+        run: python3 scripts/indexnow.py send --list "$RUNNER_TEMP/indexnow-urls.json" --uploaded "$RUNNER_TEMP/uploaded" --retry-out .indexnow-retry.json
+
+      # 受け付けてもらえなかったページを、次の公開のためにとっておく（全部受け付けられたら空。知らせる手順が動いたときだけ。main にはコミットしない）
+      - name: Keep pages to send again (IndexNow)
+        if: always() && steps.indexnow.outputs.retry == 'written'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: .indexnow-retry.json
+          key: indexnow-retry-${{ github.run_id }}-${{ github.run_attempt }}
 
       # 失敗したときだけ、ログの大事なところを「注釈」に出す（ログ全体を開かなくても、理由が読める）
       - name: Show why it failed

@@ -163,6 +163,42 @@ check("前回の記録を読めないときは、全部を送り直さない（�
       code == 0 and code2 == 0 and not state["posts"] and "::warning" in out2 and "読めなかった" in out2
       and len(json.load(open(os.path.join(dist, "indexnow-pages.json"), encoding="utf-8"))["pages"]) == 12_346, out + out2)
 
+print("\n■ 受け付けてもらえなかったページの送り直し（GitHub の Actions の置き場 cache にとっておく）")
+recf = os.path.join(dist, "indexnow-pages.json")
+retryf = os.path.join(tmp, "retry.json")
+ghout = os.path.join(tmp, "gh_output")
+env["GITHUB_OUTPUT"] = ghout
+new2 = f"<url><loc>{S}/item/new2/</loc><lastmod>2026-10-17</lastmod></url>"
+open(os.path.join(dist, "sitemap.xml"), "w", encoding="utf-8").write(f'<?xml version="1.0"?><urlset>{many}{new2}</urlset>')
+state.update(record=json.load(open(recf, encoding="utf-8")), record_code=200, posts=[], codes=[403])
+run("prepare", "--out", listf, "--retry", retryf)
+code, out = run("send", "--list", listf, "--uploaded", mark, "--retry-out", retryf)
+kept = json.load(open(retryf, encoding="utf-8"))
+check("断られたページを書き出し、置き場にとっておく合図（retry=written）を出す",
+      list(kept) == [S + "/item/new2/"] and "retry=written" in open(ghout, encoding="utf-8").read() and "次の公開で送り直します" in out, (kept, out))
+state.update(record=json.load(open(recf, encoding="utf-8")), posts=[], codes=[200])
+code, out = run("prepare", "--out", listf, "--retry", retryf)
+lst = json.load(open(listf, encoding="utf-8"))
+check("次の公開で、記録の上では送った扱いのページを、もう一度えらぶ", lst["urls"] == [S + "/item/new2/"] and "前に断られたページ 1" in lst["note"], lst)
+code, out = run("send", "--list", listf, "--uploaded", mark, "--retry-out", retryf)
+check("受け付けてもらえたら、送り直しの一覧は空になる", state["posts"] and state["posts"][0][1]["urlList"] == [S + "/item/new2/"]
+      and json.load(open(retryf, encoding="utf-8")) == {}, out)
+json.dump({S + "/item/new2/": "2026-01-01", S + "/item/gone/": indexnow.today_jst()}, open(retryf, "w", encoding="utf-8"))
+state.update(record=json.load(open(recf, encoding="utf-8")))
+run("prepare", "--out", listf, "--retry", retryf)
+check("はじめて断られてから14日たったページ・sitemap から消えたページは、送り直さない", json.load(open(listf, encoding="utf-8"))["urls"] == [])
+open(retryf, "w").write("keep")
+os.remove(ghout)
+os.remove(mark)
+code, out = run("send", "--list", listf, "--uploaded", mark, "--retry-out", retryf)
+check("公開されなかったときは、送り直しの一覧を書きかえない（置き場の前のものをそのまま使う）",
+      open(retryf).read() == "keep" and not os.path.exists(ghout), out)
+open(mark, "w").close()
+state.update(record={"v": 1, "pages": state["record"]["pages"]}, posts=[])
+run("prepare", "--out", listf)
+check("古い版（v1）の記録は「まだ無い」とみなして、全部を知らせ直す", len(json.load(open(listf, encoding="utf-8"))["urls"]) == 12_346
+      and json.load(open(recf, encoding="utf-8"))["v"] == indexnow.VERSION)
+
 os.remove(listf)
 code, out = run("send", "--list", listf, "--uploaded", mark)
 check("えらべていなかったら（えらぶ手順が失敗）、知らせない・失敗にもしない", code == 0 and "::warning" in out, out)
@@ -177,9 +213,14 @@ check("えらぶのは、全ページの点検のあと・アップロードの�
       and re.search(r"Choose pages[^\n]*\n\s*if: github.ref == 'refs/heads/main'\n\s*continue-on-error: true", dep))
 check("知らせるのは、アップロードのあと。あとの公開に止められても、アップロード済みなら知らせる（always()）・本番だけ・失敗しても止めない",
       dep.index("bash scripts/deploy_pages.sh production") < dep.index("indexnow.py send")
-      and re.search(r"Tell search engines[^\n]*\n\s*if: always\(\) && github.ref == 'refs/heads/main'\n\s*continue-on-error: true", dep)
+      and re.search(r"Tell search engines[^\n]*\n(?:\s*id: indexnow\n)?\s*if: always\(\) && github.ref == 'refs/heads/main'\n\s*continue-on-error: true", dep)
       and 'UPLOADED_MARK: ${{ runner.temp }}/uploaded' in dep and '--uploaded "$RUNNER_TEMP/uploaded"' in dep)
 check("main にコミットを足さない（記録はサイトといっしょに公開）", "git push" not in dep and "git commit" not in dep)
+check("送り直しの一覧: えらぶ前に置き場から読み、知らせたあとでとっておく（知らせる手順が動いたときだけ）",
+      dep.index("actions/cache/restore@v4") < dep.index("indexnow.py prepare") < dep.index("indexnow.py send") < dep.index("actions/cache/save@v4")
+      and "--retry .indexnow-retry.json" in dep and "--retry-out .indexnow-retry.json" in dep and "restore-keys: indexnow-retry-" in dep
+      and "if: always() && steps.indexnow.outputs.retry == 'written'" in dep and dep.count("path: .indexnow-retry.json") == 2
+      and ".indexnow-retry.json" in open(os.path.join(ROOT, ".gitignore"), encoding="utf-8").read())
 sh = open(os.path.join(ROOT, "scripts", "deploy_pages.sh"), encoding="utf-8").read()
 check("deploy_pages.sh: 本番のアップロードに成功したあと（確かめる前）に、印を付ける",
       sh.index('if [ "$rc" -ne 0 ]') < sh.index('本番に公開しました') < sh.index(': > "$UPLOADED_MARK"') < sh.index("本当に新しくなったか"))
