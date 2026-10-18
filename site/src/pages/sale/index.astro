@@ -80,7 +80,7 @@ import { inlineScript } from '../../lib/assets.js';
             <section class="section sale-camp" aria-labelledby={saleAnchor(g.k)} data-sale-group data-vr-group>
               <div class="section-head">
                 <h2 id={saleAnchor(g.k)} class="section-title">{pageOfCamp(g) ? <a class="title-link" href={pageOfCamp(g)}>{g.title}</a> : g.title}</h2>
-                <p class="section-note">{endSoonTag(g.end, today) && <span class="camp-soon">{endSoonTag(g.end, today)}</span>} {endLabel(g.end)}まで{g.maxOff && `・最大${g.maxOff}%OFF`}・{g.total}本{g.total > g.items.length && `（上位${g.items.length}本）`}</p>
+                <p class="section-note">{endSoonTag(g.end, today) && <span class="camp-soon">{endSoonTag(g.end, today)}</span>} {endLabel(g.end)}まで{g.maxOff && `・最大${g.maxOff}%OFF`}・{g.total}本</p>
               </div>
               <CampaignFacts group={g} />
               <ul class="shelf">
