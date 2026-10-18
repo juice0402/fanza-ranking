@@ -1278,6 +1278,24 @@ with contextlib.redirect_stdout(io.StringIO()):
     n_shrink2 = m_c2.prune_catalog(st_shrink2)
 check("深さの中の作品がたくさん見えなくなったときは、これまでどおり外さない", n_shrink2 == 0 and len(st_shrink2["items"]) == 30, n_shrink2)
 m_c2.CATALOG_LIMIT = saved_limit
+# 前の一回りで外れるはずだった作品がたまっていても、外す（2026-10-19。前は全部を「一度に外れる数」に数えていたので、
+# 毎回「多すぎる」になって、いつまでも外れず、コメントの無い過去作品が深さの2倍をこえた）
+def _st_backlog(n_keep, n_old, n_fresh):
+    items_, ranks_ = {}, {}
+    for i_, c_ in enumerate(list(crow2)[:n_keep + n_old + n_fresh]):
+        items_[c_] = dict(crow2[c_][1], comment_kind="none")
+        ranks_[c_] = [5 + i_, 5] if i_ < n_keep else [5 + i_, 1] if i_ < n_keep + n_old else [5 + i_, 3]  # いま見かけた・ずっと前に見かけたきり・前の前の一回りで見かけたきり
+    return {"items": items_, "ranks": ranks_, "cursor": 101, "cycle": 5, "cycle_done": ""}
+st_b = _st_backlog(10, 15, 2)
+with contextlib.redirect_stdout(io.StringIO()):
+    n_b = m_c2.prune_catalog(st_b)
+check("前から見かけていない作品がたまっていても（全体の半分以上）、まとめて外す（新しく外れる分が少ないとき）", n_b == 17 and len(st_b["items"]) == 10, (n_b, len(st_b["items"])))
+st_b2 = _st_backlog(10, 15, 9)
+buf_b2 = io.StringIO()
+with contextlib.redirect_stdout(buf_b2):
+    n_b2 = m_c2.prune_catalog(st_b2)
+check("新しく外れる作品が多すぎる（2割をこえる）ときは、その分だけ残し、前から見かけていない作品は外す",
+      n_b2 == 15 and len(st_b2["items"]) == 19 and "多すぎ" in buf_b2.getvalue(), (n_b2, len(st_b2["items"])))
 
 # 失敗のとき
 broken_name = sorted(os.listdir(cat_dir))[0]
