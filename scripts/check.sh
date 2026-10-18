@@ -45,6 +45,8 @@ run "公開のしくみ（Cloudflare Pages への直接アップロード）" py
 
 run "検索エンジンへのお知らせ（IndexNow） (Python)" python3 tests/test_indexnow.py
 
+run "AIっぽさゼロの点検（サイトの作りに、AIによく出る絵文字・矢印・言い方が無いか） (Python)" python3 tests/test_ai_style.py
+
 run "保存データの形式" python3 tests/test_data.py
 
 run "トークンを節約する道具（待つ道具・テストの出力・一覧の出力） (Python)" python3 tests/test_tools.py

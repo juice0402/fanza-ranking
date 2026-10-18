@@ -17,7 +17,7 @@ const hrefOf = campaignHrefOf;
   <section class="section" aria-labelledby="onsale-title" data-sale-group>
     <div class="section-head">
       <h2 id="onsale-title" class="section-title">セール中の作品</h2>
-      <p class="section-note">{items.length}本{maxOff && `・最大${maxOff}%OFF`}{items.length > shown && `（人気の高い${shown}本）`}{sale.date && `｜${md(sale.date)}時点`}</p>
+      <p class="section-note">{items.length}本{maxOff && `・最大${maxOff}%OFF`}{items.length > shown && `（上位${shown}本）`}{sale.date && `｜${md(sale.date)}時点`}</p>
     </div>
     <WorkRows items={items.slice(0, shown)} note={note} saleEnd={(i) => endIso(i.sale.end)} />
     {camps.length > 0 && (

@@ -68,7 +68,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
         )
         : <p class="camp-status">いまは開催していません{lastRun && `（前回: ${runRange(lastRun)}）`}</p>}
       {g && <p class="camp-status sale-over" data-sale-over={endIso(g.end)} hidden>この特集は終わりました（{endLabel(g.end)}まで）。</p>}
-      <p class="hero-lead">
+      <p class="hero-lead note-source">
         {sale.date && `${formatDateJp(sale.date)}の時点の情報です。`}くわしくはFANZAの作品ページで確かめてください。
       </p>
       {tenYenCamp && <p class="hero-links"><a class="spec-link" href={TEN_YEN_PATH}>10円セールの作品は、まとめのページへ（動画・同人・ゲームなど）</a></p>}
@@ -117,7 +117,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
             </tbody>
           </table>
         </div>
-        <p class="section-note run-note">記録は{formatDateJp(SALE_HISTORY_START)}から。本数は、その特集の対象作品のうち、このサイトに載っている作品の数です。</p>
+        <p class="section-note run-note note-source">記録は{formatDateJp(SALE_HISTORY_START)}から。本数は、このサイトに載っている作品の数です。</p>
       </section>
     )}
 

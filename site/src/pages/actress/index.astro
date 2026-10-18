@@ -63,11 +63,7 @@ import { assetUrl } from '../../lib/assets.js';
 
     <section class="hero">
       <h1 class="hero-title">女優検索</h1>
-      <p class="hero-lead">
-        {hasSearch
-          ? <>FANZA公式のプロフィールが載っている{fmt(cov.total)}人から、名前・年齢・スリーサイズ・カップ・所属で探せます。</>
-          : <>掲載している作品が{ENTITY_MIN_ITEMS}本以上ある出演者の一覧です。作品数の多い順に並べています。</>}
-      </p>
+      <p class="hero-lead">{hasSearch ? <>FANZAの{fmt(cov.total)}人を、名前・年齢・体型で探せます。</> : <>作品が{ENTITY_MIN_ITEMS}本以上ある出演者です。</>}</p>
     </section>
 
     {hasSearch && (
@@ -189,7 +185,7 @@ import { assetUrl } from '../../lib/assets.js';
                     <span class="actress-row-text">
                       <span class="actress-row-name">{g.name}</span>
                       {spec && <span class="actress-row-spec">{spec}</span>}
-                      <span class="actress-row-meta">掲載{g.items.length}本 ›</span>
+                      <span class="actress-row-meta">掲載{g.items.length}本</span>
                     </span>
                   </a>
                 </li>

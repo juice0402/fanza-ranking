@@ -38,10 +38,10 @@ const index = kanaIndex(groups.map((g) => ({ name: g.name, path: g.path, count: 
 
     <section class="hero">
       <h1 class="hero-title">{f.maker}から探す</h1>
-      <p class="hero-lead">掲載している作品が{FLOOR_MAKER_MIN}本以上ある{f.maker}を、{index.show ? '作品数の多い順と50音順' : '作品数の多い順'}で探せます。</p>
+      <p class="hero-lead">作品が{FLOOR_MAKER_MIN}本以上ある{f.maker}です。</p>
     </section>
 
     <NameIndex index={index} label={f.maker} prefix="fl-maker-kana" />
-    <p class="section-note">本数は、このサイトに載っている作品から数えています。</p>
+    <p class="section-note">本数は、このサイトに載っている作品の数です。</p>
   </div>
 </Base>

@@ -16,7 +16,7 @@ const Heading = level;
 <section id="gacha" class:list={['corner-block', 'gacha', 'gacha-solo', floor ? frameClass(floor) : {}]} aria-labelledby="gacha-title" {...(src ? { 'data-src': src } : {})} {...(exclude ? { 'data-exclude': exclude } : {})} {...(floor ? { 'data-nofilter': '' } : {})}>
   <div class="corner-head">
     <Heading id="gacha-title" class="corner-title">運命の作品</Heading>
-    <p class="section-note">まだ決まらない人へ。人気の作品から3本えらびます</p>
+    <p class="section-note">人気の作品から3本を選びます</p>
   </div>
   <div class="slot">
     <ol class="slot-reels" aria-live="polite">

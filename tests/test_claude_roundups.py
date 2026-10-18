@@ -323,7 +323,7 @@ ok_numbers = good_article(picks=[
     g["picks"][1], g["picks"][2]])
 r = run("apply", article_file("ok_numbers.json", ok_numbers), "--dry-run", "--today", "2026-10-05")
 check("VR・8K のような英数字のかたまりは、数字としては数えない", r.returncode == 0, r.stdout + r.stderr)
-name_note = {"cid": "wk08", "note": "NO.99みゆさんが出演する作品で、10月1日に発売されました。メーカーの記載はなく、気になる方は発売日のチェックをおすすめします。"}
+name_note = {"cid": "wk08", "note": "NO.99みゆさんが出演する作品で、10月1日に発売されました。メーカーの記載はなく、発売日は作品ページで確かめられます。"}
 r = run("apply", article_file("ok_name.json", good_article(picks=[g["picks"][0], g["picks"][1], name_note])), "--dry-run", "--today", "2026-10-05")
 check("出演者名の中の数字（NO.99みゆ の 99）は、数字として数えない", r.returncode == 0, r.stdout + r.stderr)
 r = run("apply", path, "--dry-run", "--today", "2026-10-05")

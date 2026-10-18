@@ -48,10 +48,10 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 
     <section class="hero">
       <h1 class="hero-title">{c.find}</h1>
-      <p class="hero-lead">{kind === 'month' ? '新しい月から並べています。' : ordered ? `${f.label}ならではの${c.label}です。` : index.show ? '作品数の多い順と50音順で探せます。' : '作品数の多い順です。'}ほかの言葉では<a class="spec-link" href={floorSearchPath(key)}>作品検索</a>で探せます。</p>
+      <p class="hero-lead">{kind === 'month' ? '新しい月から。' : ordered ? `${f.label}ならではの${c.label}。` : '作品の多い順。'}<a class="spec-link" href={floorSearchPath(key)}>作品検索</a>でも探せます。</p>
     </section>
 
     <NameIndex index={index} label={c.label} prefix="fl-col-kana" />
-    <p class="section-note">本数は、このサイトに載っている作品から数えています。</p>
+    <p class="section-note">本数は、このサイトに載っている作品の数です。</p>
   </div>
 </Base>

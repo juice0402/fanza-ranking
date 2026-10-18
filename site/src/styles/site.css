@@ -3932,10 +3932,6 @@ a.reel-card:hover .reel-title {
   text-decoration: none;
 }
 
-.side-link::after {
-  content: '›';
-  color: var(--paper-dim);
-}
 
 .side-link:hover,
 .backnumber-link:hover {
@@ -6061,7 +6057,7 @@ a.tf-name {
   margin-top: 24px;
   padding: 18px 16px 16px;
   border-radius: var(--r-panel);
-  background: linear-gradient(160deg, #a90c31 0%, var(--hot) 55%, #e0264d 100%);
+  background: var(--hot);
   outline: 2px dashed rgba(255, 255, 255, 0.32);
   outline-offset: -7px;
   color: #fff;

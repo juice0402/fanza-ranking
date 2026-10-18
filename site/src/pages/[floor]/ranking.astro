@@ -45,7 +45,7 @@ const hasNotes = notes.some(Boolean);
 
     <section class="hero">
       <h1 class="hero-title">{f.girls ? name : `${f.label}の人気ランキング`}</h1>
-      <p class="hero-lead">その日のFANZAの人気順です（毎日入れかわります）。</p>
+      <p class="hero-lead">その日のFANZAの人気順です。</p>
       {f.girls && (
         <nav class="sale-jump genre-chips" aria-label="週間・月間">
           {FLOOR_PERIODS.map((p) => <a class="chip-link" href={floorPeriodPath(key, p.span)}>{p.name}ランキング</a>)}
