@@ -19,7 +19,7 @@ const mdText = (md) => `${+md.slice(0, 2)}月${+md.slice(3, 5)}日`;
 const whenText = (b) => (b.days === 0 ? 'きょうが誕生日' : b.days === 1 ? `あす${mdText(b.md)}が誕生日` : `${mdText(b.md)}が誕生日（あと${b.days}日）`);
 ---
 
-<div id="pick-corner" class="corner" aria-label="おすすめ">
+<div id="pick-corner" class="corner" aria-label="今週のデビュー作と誕生日の近い女優">
   {debuts.length > 0 && (
     <section id="debuts" class="corner-block" aria-labelledby="debuts-title" data-rank-section>
       <div class="corner-head">

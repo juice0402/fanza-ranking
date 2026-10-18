@@ -224,6 +224,9 @@ rejected("改行が入っている", {t0["cid"]: good_comment(t0)[:30] + "\n" + 
 rejected("URLが入っている", {t0["cid"]: good_comment(t0) + " https://example.com/"}, "URL")
 rejected("絵文字が入っている", {t0["cid"]: good_comment(t0) + "😊"}, "絵文字")
 rejected("飾りの記号（★）が入っている", {t0["cid"]: good_comment(t0) + "★"}, "絵文字や飾り")
+for w in ["ぜひどうぞ。", "おすすめです。", "簡単に見られます。", "見どころのポイントです。", "——"]:
+    rejected(f"AIの文章によく出る言い方（{w}）", {t0["cid"]: good_comment(t0) + w}, "AIの文章によく出る言い方")
+check("「ポイント還元」（FANZAのキャンペーンの名前）はよい", not any("AIの文章" in x for x in cc_mod.text_problems("最大16%ポイント還元の対象です", 1, 100)))
 rejected("マークダウンの記号が入っている", {t0["cid"]: "**" + good_comment(t0)}, "使えない記号")
 rejected("直接的な言葉が入っている", {t0["cid"]: good_comment(t0) + "中出し"}, "使えない言葉")
 rejected("未成年をにおわせる言葉が入っている", {t0["cid"]: good_comment(t0) + "少女のような"}, "使えない言葉")

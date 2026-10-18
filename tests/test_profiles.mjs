@@ -246,7 +246,7 @@ check('はじめの一覧（条件なし・作品の多い順の、はじめの3
   [serverFirst.total, clientFirst.length, serverFirst.rows.slice(0, 3).map((v) => v.key).join(' '), clientFirst.slice(0, 3).map((v) => v.key).join(' ')].join(' / '));
 check('はじめの一覧: 索引が空・壊れていても落ちない', P.actressFirstPage({ actresses: [] }).total === 0 && P.actressFirstPage(null).rows.length === 0 && P.actressFirstPage({ actresses: [null, 5, { n: '' }] }).total === 0);
 check('ブラウザの検索は、ページの「はじめの一覧」（data-first）がいまの条件と同じなら作り直さず、索引を待たずに検索欄を使える', searchSource.includes("list.getAttribute('data-first') === '1'") && searchSource.includes("'読み込み中…'") && searchSource.includes('TYPING_WAIT_MS'));
-check('検索結果の「FANZAで全作品を見る」に、（広告）の文字を付けない（広告であることは、全ページのヘッダー・フッターに出している）', searchSource.includes("'FANZAで全作品を見る ›'") && !searchSource.includes('（広告）'));
+check('検索結果の「FANZAで全作品を見る」に、（広告）の文字を付けない（広告であることは、全ページのヘッダー・フッターに出している）', searchSource.includes("'FANZAで全作品を見る'") && !searchSource.includes('（広告）'));
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

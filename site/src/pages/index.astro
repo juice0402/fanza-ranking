@@ -137,7 +137,7 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
           <div class="today-sec-head">
             <h2 id="ranking-title" class="today-sec-title">{topIsNew ? 'きょうの新着人気TOP3' : '売れ筋TOP3'}</h2>
             <p class="section-note">
-              {topIsNew ? 'この1週間に発売された作品の人気順' : 'FANZAの人気順'}｜{topDay.m}月{topDay.d}日時点<span class="rank-vr-note" hidden>｜VRを除く</span>
+              {topIsNew ? 'この1週間の新作の人気順' : 'FANZAの人気順'}｜{topDay.m}月{topDay.d}日時点<span class="rank-vr-note" hidden>｜VRを除く</span>
             </p>
           </div>
           <TopThree entries={top} />

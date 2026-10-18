@@ -84,7 +84,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'WebPage', name: `${
 
     <section class="hero">
       <h1 class="hero-title">{f.label}のセールはいつ？</h1>
-      <p class="hero-lead">このサイトが毎日記録している、セールの記録です{facts.first && `（${formatDateJp(facts.first)}から）`}。</p>
+      <p class="hero-lead">このサイトが毎日つけているセールの記録です。</p>
       {last && <p class="page-updated">{formatDateJp(last)}更新</p>}
     </section>
 
@@ -176,9 +176,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'WebPage', name: `${
       </section>
     )}
 
-    <p class="section-note run-note">
-      記録は{facts.first ? formatDateJp(facts.first) : '毎日の更新'}から（それより前の記録は、ほかのサイトから写していません）。本数と割引は、その日の更新の時点のFANZAの情報で、このサイトに載っている{f.label}の作品（{data.items.length}本）から数えています{camp && '（セールの記録の対象の本数は、FANZAの人気順の上から数えたものです）'}。
-    </p>
+    <p class="section-note run-note note-source">記録は{facts.first ? formatDateJp(facts.first) : '毎日の更新'}から。本数と割引は、その日の時点のFANZAの情報です。</p>
     <p class="more camp-more">
       <a class="btn btn-quiet" href={floorSalePath(key)}>セール中の作品を見る</a>
     </p>

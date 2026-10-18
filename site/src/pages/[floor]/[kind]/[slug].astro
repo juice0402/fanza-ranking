@@ -134,9 +134,9 @@ const pageLd = {
 
     {group.kind === 'month' && (
       <nav class="month-nav" aria-label="ほかの月">
-        {older ? <a class="month-nav-link" href={older.path}>← {older.name}</a> : <span></span>}
+        {older ? <a class="month-nav-link" href={older.path}>{older.name}</a> : <span></span>}
         <a class="month-nav-link" href={floorCollectionIndexPath(key, 'month')}>月の一覧</a>
-        {newer ? <a class="month-nav-link" href={newer.path}>{newer.name} →</a> : <span></span>}
+        {newer ? <a class="month-nav-link" href={newer.path}>{newer.name}</a> : <span></span>}
       </nav>
     )}
     {otherTypes.length > 0 && (

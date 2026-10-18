@@ -45,7 +45,7 @@ const hasNotes = notes.some(Boolean);
 
     <section class="hero">
       <h1 class="hero-title">{f.girls ? name : `${f.label}の人気ランキング`}</h1>
-      <p class="hero-lead">その日のFANZAの人気順です（毎日入れかわります）。</p>
+      <p class="hero-lead">その日のFANZAの人気順です。</p>
       {f.girls && (
         <nav class="sale-jump genre-chips" aria-label="週間・月間">
           {FLOOR_PERIODS.map((p) => <a class="chip-link" href={floorPeriodPath(key, p.span)}>{p.name}ランキング</a>)}
@@ -56,7 +56,7 @@ const hasNotes = notes.some(Boolean);
     <section class="section" aria-labelledby="fl-ranking-title">
       <div class="section-head">
         <h2 id="fl-ranking-title" class="section-title">人気順 TOP{list.length}</h2>
-        {data.updated && <p class="section-note">{formatDateJp(data.updated)}のFANZAの人気順{hasNotes && '（▲▼は前の日から・最高は最近30日）'}</p>}
+        {data.updated && <p class="section-note">{formatDateJp(data.updated)}の人気順{hasNotes && '。▲▼は前の日との差'}</p>}
       </div>
       <ul class="shelf">
         {list.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} rankNote={notes[i]} /></li>)}

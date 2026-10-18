@@ -335,7 +335,7 @@
       img: imageUrl(row.i, ctx.img),
       spec: specText(row),
       agency: agencyLabel(row, ctx.agencies),
-      meta: page ? 'このサイトの作品 ' + row.k + '本 ›' : row.k ? 'このサイトの作品 ' + row.k + '本・FANZAで全作品を見る ›' : 'FANZAで全作品を見る ›',
+      meta: page ? 'このサイトの作品 ' + row.k + '本' : row.k ? 'このサイトの作品 ' + row.k + '本・FANZAで全作品を見る' : 'FANZAで全作品を見る',
     };
   }
 

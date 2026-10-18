@@ -374,7 +374,7 @@ export function actressRowView(row, index) {
     img: searchImageUrl(row.i, index.img),
     spec: compactSpec({ age: row.a ?? null, height: row.h ?? null, bust: row.b ?? null, cup: row.c ?? '', waist: row.wa ?? null, hip: row.hi ?? null }),
     agency: agencyName ? `所属：${agencyName}` : '',
-    meta: page ? `このサイトの作品 ${row.k}本 ›` : row.k ? `このサイトの作品 ${row.k}本・FANZAで全作品を見る ›` : 'FANZAで全作品を見る ›',
+    meta: page ? `このサイトの作品 ${row.k}本` : row.k ? `このサイトの作品 ${row.k}本・FANZAで全作品を見る` : 'FANZAで全作品を見る',
   };
 }
 

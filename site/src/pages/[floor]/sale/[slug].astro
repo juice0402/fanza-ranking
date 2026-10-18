@@ -124,7 +124,7 @@ const pageLd = {
       <ul class="shelf" data-sale-group={page.end ? '' : undefined}>
         {shown.map((item, i) => <li class="shelf-cell" data-sale-end={campaignEndIso(page.end) || undefined}><FloorCard item={item} badge={saleBadgeOf(item)} note={priceNote(item)} eager={i < 4} external={item.external} /></li>)}
       </ul>
-      {outside > 0 && <p class="section-note">このサイトに作品のページが無い作品（{outside}本）は、FANZAの作品ページへ直接つながります。</p>}
+      {outside > 0 && <p class="section-note">うち{outside}本は、FANZAへ直接つながります。</p>}
     </section>
 
     {others.length > 0 && (
@@ -136,6 +136,6 @@ const pageLd = {
       </section>
     )}
 
-    <p class="section-note run-note">価格・セールは{dayLabel}の時点の情報です。終わる日・くわしい条件は、FANZAの作品ページで確かめてください。</p>
+    <p class="section-note run-note note-source">価格・セールは{dayLabel}の時点の情報です。FANZAの作品ページで確かめてください。</p>
   </div>
 </Base>

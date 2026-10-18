@@ -32,7 +32,7 @@ const trail = [
 
     <section class="hero">
       <h1 class="hero-title">メーカーから探す</h1>
-      <p class="hero-lead">掲載している作品が{ENTITY_MIN_ITEMS}本以上あるメーカーを、{index.show ? '作品数の多い順と50音順' : '作品数の多い順'}で探せます。{more > 0 && `（上位${shown.length}社。ほかの${more}社のページは、作品ページのメーカー名から開けます）`}</p>
+      <p class="hero-lead">作品が{ENTITY_MIN_ITEMS}本以上あるメーカー{more > 0 && `の上位${shown.length}社`}です。</p>
     </section>
 
     <NameIndex index={index} label="メーカー" prefix="maker-kana" empty="まだ一覧に載せられるメーカーがありません。毎日の更新をお待ちください。" />

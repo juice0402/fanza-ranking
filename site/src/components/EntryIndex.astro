@@ -33,7 +33,7 @@ const index = kanaIndex(groups.map((g) => ({ name: g.name, path: g.path, count: 
 
     <section class="hero">
       <h1 class="hero-title">{word}から探す</h1>
-      <p class="hero-lead">掲載している作品が3本以上ある{word}を、{index.show ? '作品数の多い順と50音順' : '作品数の多い順'}で探せます。</p>
+      <p class="hero-lead">作品が3本以上ある{word}です。</p>
     </section>
 
     <NameIndex index={index} label={word} prefix={`${kind}-kana`} empty={`まだ一覧に載せられる${word}がありません。毎日の更新をお待ちください。`} />

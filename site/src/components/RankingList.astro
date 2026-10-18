@@ -19,16 +19,14 @@ const { list, date, trail } = Astro.props;
 
   <section class="hero">
     <h1 class="hero-title">新着の人気ランキング</h1>
-    <p class="hero-lead">
-      {`最近${NEW_RANK_DAYS === 7 ? '1週間' : `${NEW_RANK_DAYS}日`}に発売された作品の、その日の人気順です（毎日入れかわります）。`}
-    </p>
+    <p class="hero-lead">{`最近${NEW_RANK_DAYS === 7 ? '1週間' : `${NEW_RANK_DAYS}日`}の新作の、その日の人気順です。`}</p>
     {reviewRanking.length >= REVIEW_RANKING_MIN_ITEMS && <p class="hero-links"><a class="spec-link" href={REVIEW_RANKING_PATH}>レビューの評価が高い作品は、高評価ランキングへ</a></p>}
   </section>
 
   <section class="section" aria-labelledby="ranking-title">
     <div class="section-head">
       <h2 id="ranking-title" class="section-title">新着の人気順{list.length > 0 && ` TOP${list.length}`}</h2>
-      {date && <p class="section-note">{formatDateJp(date)}のFANZAの人気順（▲▼は前の日から・最高は記録を始めてからの最高順位）</p>}
+      {date && <p class="section-note">{formatDateJp(date)}の人気順。▲▼は前の日との差</p>}
     </div>
     {list.length > 0
       ? (

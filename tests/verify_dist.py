@@ -552,6 +552,22 @@ def age_on(birthday, today):
 
 all_html = sorted(glob.glob(os.path.join(DIST, "**", "*.html"), recursive=True))  # 404 を含む、すべてのHTML
 
+print("\n■ 説明の行の長さ（運営者の「サイト作りの原則」: 画面の説明は1行。2026-10-18）")
+# 見出しの下の説明（hero-lead。14px）と小さな注記（section-note。12px）は、スマホ（幅390px）で1行＝全角24字・28字まで（英数字は半分）。
+# 出どころ・時点・「FANZAで確かめて」の注記（note-source）だけは2行＝48字まで。数字や名前しだいで長くなることがあるので、
+# 失敗にはせず（毎日の公開を止めない）、注意と GitHub の注記に出す
+_units = lambda t_: sum(0.5 if ord(c_) < 128 else 1 for c_ in t_)  # noqa: E731
+_long = {}
+for p in all_html:
+    for m in re.finditer(r'<p class="((?:hero-lead|section-note)[^"]*)"[^>]*>(.*?)</p>', read(p), re.S):
+        t_ = re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"<[^>]+>", "", m.group(2)))).strip()
+        if _units(t_) > (48 if "note-source" in m.group(1).split() else 24 if m.group(1).startswith("hero-lead") else 28):
+            _long.setdefault(re.sub(r"[0-9,]+", "#", t_), (os.path.relpath(p, DIST), t_))
+warn(f"説明の行は1行（見出しの下は全角24字・注記は28字）まで・出どころなどの注記は2行まで（長い文 {len(_long)}種類）", not _long,
+     [f"{w_[0]}: {w_[1][:40]}" for w_ in list(_long.values())[:5]])
+if _long:
+    print("::warning title=説明の行が長い（サイト作りの原則）::" + " ／ ".join(f"{w_[0]}: {w_[1][:40]}" for w_ in list(_long.values())[:40]))
+
 print("\n■ サンプル動画（作品ページ）")
 check("動画の枠の縮小スクリプト（movie.js）が公開されている", os.path.isfile(os.path.join(DIST, "movie.js")))
 bad_movie = []
@@ -1780,9 +1796,9 @@ if vr_tag:
     check("VR作品のページでは、「VR作品を隠す」を選んでいても作品を隠さない（data-vr を付けない。全部が消えて空になるため）", "data-vr" not in re.sub(r"data-vr-(toggle|group)", "", read(vr_tag)), os.path.relpath(vr_tag, DIST))
 related_pages = [p for p in glob.glob(os.path.join(DIST, "item", "*", "index.html")) if 'id="related-title"' in read(p)]
 check("作品ページの「同じ出演者・メーカーの作品」は、VRを隠して全部が消えたら見出しごと隠せる（data-vr-group）", related_pages and all(re.search(r'<section[^>]*aria-labelledby="related-title"[^>]*data-vr-group', read(p)) for p in related_pages), len(related_pages))
-# 見た目の統一: 角の丸みは3つの決まった値（--r-pill / --r-panel / --r-media）だけ。丸（50%）は顔写真・丸ボタン用
+# 見た目の統一: 角の丸みは3つの決まった値（--r-tag / --r-panel / --r-media）だけ。丸（50%）は顔写真・丸ボタン用
 css_src = read(os.path.join(ROOT, "site", "src", "styles", "site.css"))
-odd_radius = [m.group(0) for m in re.finditer(r"border-radius\s*:\s*([^;]+);", css_src) if not re.fullmatch(r"(var\(--r-(pill|panel|media)\)\s*)+0?\s*0?|50%", m.group(1).strip().replace(" 0 0", ""))]
+odd_radius = [m.group(0) for m in re.finditer(r"border-radius\s*:\s*([^;]+);", css_src) if not re.fullmatch(r"(var\(--r-(tag|panel|media)\)\s*)+0?\s*0?|50%", m.group(1).strip().replace(" 0 0", ""))]
 check("CSS: 角の丸みは、決めた3つ（押せるもの・枠・画像）と丸（50%）だけ（サイト全体の見た目をそろえる）", not odd_radius, odd_radius[:3])
 # 一覧のカードの「FANZAで見る」は控えめなボタン（.btn-card）。赤いボタン（.btn-hot）は、ページごとの一番の行き先だけ
 hot_in_cards = []

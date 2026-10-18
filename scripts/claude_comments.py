@@ -71,6 +71,10 @@ MINOR_WORDS = ["未成年", "少女", "ロリ", "児童", "幼", "女子高生",
                # 学校・子どもの生活を連想させる場面の言葉（2026-10-04 の試運転で、「職業体験」「学園」「家庭教師」に触れたコメントがあったため）
                "学園", "職業体験", "家庭教師", "放課後", "部活", "修学旅行", "体操着", "ブルマ", "スク水", "ランドセル", "保健室", "通学", "登校", "下校", "塾", "女の子", "いじめっ子", "J系"]
 FORBIDDEN_CHARS = "<>*#"
+# AIの文章によく出る言い方（運営者の「サイト作りの原則」の「AIっぽさゼロ」。2026-10-18）。コメント・週/月のまとめのどこにも使わない。
+# 「ポイント」は、FANZAのキャンペーンの名前の「ポイント還元」だけはよい
+AI_STYLE_WORDS = ["おすすめ", "オススメ", "お勧め", "ぜひ", "是非", "便利", "簡単", "安心", "コツ", "しましょう", "ひと目で", "するだけ", "——"]
+AI_STYLE_RE = re.compile("|".join(map(re.escape, AI_STYLE_WORDS)) + r"|ポイント(?!還元)")
 # コメントは保存したままずっと表示されるので、日がたつと古くなる言い方は使わない（日付で書く）
 RELATIVE_TIME_WORDS = ["今日", "本日", "明日", "昨日", "今週", "来週", "先週", "今夜", "今朝", "今月", "来月"]
 
@@ -534,6 +538,9 @@ def text_problems(text, min_len, max_len, allow_newlines=False):
     stale = [w for w in RELATIVE_TIME_WORDS if w in text]
     if stale:
         problems.append("日がたつと古くなる言い方があります（日付で書いてください）: " + "、".join(stale))
+    ai_like = sorted(set(AI_STYLE_RE.findall(text)))
+    if ai_like:
+        problems.append("AIの文章によく出る言い方があります（ふつうの言葉で、具体的に書いてください）: " + "、".join(ai_like))
     low = unicodedata.normalize("NFKC", text).lower()  # 全角の英数字（ＪＫ など）も半角にそろえて調べる
     hit = [w for w in EXPLICIT_WORDS + MINOR_WORDS if w.lower() in low]
     if hit:

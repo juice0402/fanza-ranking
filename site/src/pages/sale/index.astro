@@ -54,9 +54,7 @@ import { inlineScript } from '../../lib/assets.js';
 
     <section class="hero">
       <h1 class="hero-title">開催中のFANZAセール</h1>
-      <p class="hero-lead">
-        いまセール中の作品を、終わりが近い順に。{sale.date && `${formatDateJp(sale.date)}の時点の情報です（くわしくはFANZAの作品ページで確かめてください）。`}
-      </p>
+      <p class="hero-lead note-source">終わりが近い順です。{sale.date && `${formatDateJp(sale.date)}の時点の情報です。FANZAの作品ページで確かめてください。`}</p>
       <p class="hero-links"><a class="spec-link" href={SALE_HISTORY_PATH}>FANZAのセールはいつ？これまでのセールの履歴</a></p>
       <p class="hero-links"><a class="spec-link" href={TEN_YEN_PATH}>FANZAの10円セール{tenYenNow.total > 0 ? '（開催中）' : '（開催状況・これまでの開催）'}</a></p>
       {/* FANZA同人・FANZAゲームのセール（2026-10-09） */}
@@ -82,10 +80,7 @@ import { inlineScript } from '../../lib/assets.js';
             <section class="section sale-camp" aria-labelledby={saleAnchor(g.k)} data-sale-group data-vr-group>
               <div class="section-head">
                 <h2 id={saleAnchor(g.k)} class="section-title">{pageOfCamp(g) ? <a class="title-link" href={pageOfCamp(g)}>{g.title}</a> : g.title}</h2>
-                <p class="section-note">
-                  {endSoonTag(g.end, today) && <span class="camp-soon">{endSoonTag(g.end, today)}</span>}
-                  {endLabel(g.end)}まで{g.maxOff && `・最大${g.maxOff}%OFF`}・{g.total}本{g.total > g.items.length && `（人気の高い${g.items.length}本）`}
-                </p>
+                <p class="section-note">{endSoonTag(g.end, today) && <span class="camp-soon">{endSoonTag(g.end, today)}</span>} {endLabel(g.end)}まで{g.maxOff && `・最大${g.maxOff}%OFF`}・{g.total}本</p>
               </div>
               <CampaignFacts group={g} />
               <ul class="shelf">
@@ -100,7 +95,7 @@ import { inlineScript } from '../../lib/assets.js';
               )}
             </section>
           ))}
-          <p class="section-note">本数は、このサイトに載っている作品（ぜんぶで{total}本）から数えています。</p>
+          <p class="section-note">本数は、このサイトの作品{total}本から数えています。</p>
         </>
       )
       : <p class="empty">いま、このサイトに載っている作品で、セール・キャンペーン中のものはありません。毎日、日付が変わったあとに更新します。</p>}
