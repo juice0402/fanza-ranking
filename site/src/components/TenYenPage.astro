@@ -130,7 +130,7 @@ const hasEnds = listed.some((i) => i.tenYen.end);
           </p>
         )}
       {live && end && <p class="ten-status sale-over" data-sale-over={end} hidden>この10円セールは終わりました（{until || endLabel(s.end)}）。</p>}
-      <p class="hero-lead">{at ? `${at}の時点の情報です。` : ''}{live ? '価格・終わりの日時は、FANZAの作品ページで確かめてください。' : '開催が始まると、このページに10円の作品が並びます。'}</p>
+      <p class="hero-lead note-source">{at ? `${at}の時点の情報です。` : ''}{live ? 'FANZAの作品ページで確かめてください。' : '開催が始まると、このページに10円の作品が並びます。'}</p>
       {hub && live && s.live.length > 1 && (
         <nav class="sale-jump genre-chips" aria-label="売り場">
           {s.live.map((k) => <a class="chip-link" href={`#ten-${k}`}>{TEN_YEN_SHORT[k]}<span class="chip-count">{s.counts[k]}</span></a>)}

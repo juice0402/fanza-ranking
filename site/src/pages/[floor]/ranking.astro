@@ -56,7 +56,7 @@ const hasNotes = notes.some(Boolean);
     <section class="section" aria-labelledby="fl-ranking-title">
       <div class="section-head">
         <h2 id="fl-ranking-title" class="section-title">人気順 TOP{list.length}</h2>
-        {data.updated && <p class="section-note">{formatDateJp(data.updated)}のFANZAの人気順{hasNotes && '（▲▼は前の日から・最高は最近30日）'}</p>}
+        {data.updated && <p class="section-note">{formatDateJp(data.updated)}の人気順{hasNotes && '。▲▼は前の日との差'}</p>}
       </div>
       <ul class="shelf">
         {list.map((item, i) => <li class="shelf-cell"><FloorCard item={item} badge={`${i + 1}位`} eager={i < 4} note={priceNote(item)} rankNote={notes[i]} /></li>)}

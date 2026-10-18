@@ -566,7 +566,7 @@ for p in all_html:
 warn(f"説明の行は1行（全角24字）まで・出どころなどの注記は2行まで（長い文 {len(_long)}種類）", not _long,
      [f"{w_[0]}: {w_[1][:40]}" for w_ in list(_long.values())[:5]])
 if _long:
-    print("::warning title=説明の行が長い（サイト作りの原則）::" + " ／ ".join(f"{w_[0]}: {w_[1][:40]}" for w_ in list(_long.values())[:8]))
+    print("::warning title=説明の行が長い（サイト作りの原則）::" + " ／ ".join(f"{w_[0]}: {w_[1][:40]}" for w_ in list(_long.values())[:40]))
 
 print("\n■ サンプル動画（作品ページ）")
 check("動画の枠の縮小スクリプト（movie.js）が公開されている", os.path.isfile(os.path.join(DIST, "movie.js")))

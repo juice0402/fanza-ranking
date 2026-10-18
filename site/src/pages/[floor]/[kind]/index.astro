@@ -48,7 +48,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 
     <section class="hero">
       <h1 class="hero-title">{c.find}</h1>
-      <p class="hero-lead">{kind === 'month' ? '新しい月から。' : ordered ? `${f.label}ならではの${c.label}。` : '作品の多い順。'}<a class="spec-link" href={floorSearchPath(key)}>作品検索</a>でも探せます。</p>
+      <p class="hero-lead">{kind === 'month' ? '新しい月から。' : ordered ? `${f.label.replace(/^FANZA/, '')}ならではの${c.label}。` : '作品の多い順。'}<a class="spec-link" href={floorSearchPath(key)}>作品検索</a>でも探せます。</p>
     </section>
 
     <NameIndex index={index} label={c.label} prefix="fl-col-kana" />
