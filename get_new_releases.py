@@ -1885,16 +1885,20 @@ def prune_catalog(state):
     1回だけ見かけなかった作品は外さない（順位が毎日少しずつ入れ替わるので、続きから取るあいだに取りこぼすことがあるため）。
     Claude がコメントを書いた作品は外さない（作品ページとコメントがあるので、コレクションに残す）"""
     done = state["cycle"]  # 終わった一回りの番号
-    gone = [cid for cid, item in state["items"].items()
-            if state["ranks"].get(cid, [0, done])[1] < done - 1 and item.get("comment_kind") != "claude"]
-    # 一度に外れるのは、ふつうは少し（順位の入れ替わりで、上位から外れた分だけ）。多すぎるときは、APIの答えがおかしかったものとして、外さない。
-    # ただし、最後に見かけた順位が、いまの深さ（CATALOG_LIMIT）より下の作品は、深さを浅くしたこと（2026-10-09 に1.5万本→1万本）で
-    # 見かけなくなっただけなので、この数には入れない（入れると、深さを変えたあと、いつまでも外れない）
-    beyond = sum(1 for cid in gone if state["ranks"].get(cid, [CATALOG_MAX_OFFSET])[0] > CATALOG_LIMIT)
-    if len(gone) - beyond > len(state["items"]) * CATALOG_PRUNE_MAX_SHARE:
-        print(f"  ⚠️ 人気の上位から外れた作品が多すぎます（{len(gone)}本 / {len(state['items'])}本）。念のため、今回は外しません")
-        print(f"::warning title=過去作品を外すのをやめました::人気の上位から外れた作品が多すぎます（{len(gone)}本）。APIの答えがおかしかった可能性があるので、今回は外していません")
-        return 0
+    seen = lambda cid: state["ranks"].get(cid, [0, done])[1]  # noqa: E731  最後に見かけた一回り
+    gone = [cid for cid, item in state["items"].items() if seen(cid) < done - 1 and item.get("comment_kind") != "claude"]
+    # 一度に外れるのは、ふつうは少し（順位の入れ替わりで、上位から外れた分だけ）。多すぎるときは、APIの答えがおかしかったものとして外さない。
+    # 数えるのは、この一回りで新しく外れる作品（前の前の一回りまでは見かけていた作品）だけ。それより前から見かけていない作品は、
+    # 前の一回りで外れているはずだった分なので、数に入れずに外す（2026-10-19。前は全部を数えていたので、外れるはずの作品がたまって
+    # 毎回「多すぎる」になり、いつまでも外れず、コメントの無い過去作品が深さの2倍をこえた。週1回の見張り番が見つけた）。
+    # また、最後に見かけた順位が、いまの深さ（CATALOG_LIMIT）より下の作品は、深さを浅くしたこと（2026-10-09 に1.5万本→1万本）で
+    # 見かけなくなっただけなので、この数には入れない
+    fresh = [cid for cid in gone if seen(cid) == done - 2]
+    beyond = sum(1 for cid in fresh if state["ranks"].get(cid, [CATALOG_MAX_OFFSET])[0] > CATALOG_LIMIT)
+    if len(fresh) - beyond > len(state["items"]) * CATALOG_PRUNE_MAX_SHARE:
+        gone = [cid for cid in gone if seen(cid) < done - 2]  # 新しく外れる分は残す。前から見かけていない分だけ外す
+        print(f"  ⚠️ 人気の上位から新しく外れた作品が多すぎます（{len(fresh)}本 / {len(state['items'])}本）。念のため、今回はその分を外しません（前から見かけていない{len(gone)}本だけ外します）")
+        print(f"::warning title=過去作品を外すのを一部やめました::人気の上位から新しく外れた作品が多すぎます（{len(fresh)}本）。APIの答えがおかしかったかもしれないので、その分は次の一回りで確かめます")
     for cid in gone:
         del state["items"][cid]
         state["ranks"].pop(cid, None)
