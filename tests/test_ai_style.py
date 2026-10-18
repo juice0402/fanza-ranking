@@ -76,6 +76,11 @@ css = code_only(open(CSS, encoding="utf-8").read())
 check("右はしの矢印の飾り（content: '›' など）が無い", not re.search(r"content:\s*['\"][›»→>]['\"]", css),
       re.findall(r"content:\s*['\"][›»→>]['\"]", css)[:3])
 check("英語の大文字の小見出し（text-transform: uppercase）が無い", "uppercase" not in css)
+_tag = re.search(r"--r-tag:\s*(\d+)px", css)
+_panel = re.search(r"--r-panel:\s*(\d+)px", css)
+check("押せるもの・枠の角は小さく（ボタンは角ばった札＝4px まで・枠は6px まで。カプセルの丸にしない）",
+      bool(_tag and _panel) and int(_tag.group(1)) <= 4 and int(_panel.group(1)) <= 6 and not re.search(r"border-radius:\s*(9{2,}|[1-9]\d{2,})px", css),
+      (_tag and _tag.group(0), _panel and _panel.group(0)))
 check("あちこちでふわっと出てくる動きが無い（動きは1つまで）", len(re.findall(r"@keyframes", css)) <= 1, len(re.findall(r"@keyframes", css)))
 
 print("\n■ この点検そのもの")

@@ -33,11 +33,12 @@
   --trio-max: 760px;
 
   /* 角の丸みは、この3つだけを使う（サイト全体の見た目をそろえるため）
-     ・押せるもの（ボタン・チップ・切り替え・ページ送り）… 丸い端（--r-pill）
-     ・枠（パネル・入力欄・一覧の箱・ひとこと）… --r-panel
+     ・押せるもの（ボタン・チップ・切り替え・ページ送り）… --r-tag（角ばった札。お店の値札・棚札の形。運営者の「検索まわりのボタン、もろクロードの丸み」→
+       3案（丸・角ばった札・四角いPOP）を本物の画面でくらべて「角ばった札」に。2026-10-18。カプセルの丸にはしない）
+     ・枠（パネル・入力欄・一覧の箱・ひとこと）… --r-panel（同じ日に 10px → 4px）
      ・画像（表紙・サンプル・動画の枠）… --r-media */
-  --r-pill: 999px;
-  --r-panel: 10px;
+  --r-tag: 3px;
+  --r-panel: 4px;
   --r-media: 4px;
 
   /* パッケージ画像（800×538）の「表紙」だけを切り出す比率。表紙は右端の約379px（高さ538）で、左にある背表紙の分を含めない。
@@ -283,7 +284,7 @@ summary:focus-visible {
   gap: 6px;
   max-width: var(--trio-max); /* TOP3 と同じ幅まで（タブレットで、TOP3 とそろう） */
   padding: 4px 4px 4px 14px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--paper);
   color: var(--ink);
 }
@@ -333,7 +334,7 @@ summary:focus-visible {
   min-height: 44px;
   padding: 0 20px;
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--hot);
   color: #fff;
   font: 400 15px/1 var(--font-display);
@@ -386,7 +387,7 @@ summary:focus-visible {
   min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
@@ -667,7 +668,7 @@ summary:focus-visible {
   min-height: 44px;
   padding: 0 18px;
   border: 1px solid transparent;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   font: 700 14px/1.2 var(--font-body);
   text-align: center;
   text-decoration: none;
@@ -759,7 +760,7 @@ summary:focus-visible {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   font-weight: 700;
   text-decoration: none;
   background: var(--fill);
@@ -897,7 +898,7 @@ summary:focus-visible {
 .chip {
   padding: 1px 10px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   font-size: 12px;
   background: var(--fill);
 }
@@ -1115,7 +1116,7 @@ summary:focus-visible {
   min-width: 1.7em;
   margin-right: 5px;
   padding: 0 4px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--pop);
   color: var(--ink);
   font-size: 11px;
@@ -1833,7 +1834,7 @@ summary:focus-visible {
 .pick-badge {
   padding: 1px 8px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   color: var(--paper);
   font-size: 11px;
   line-height: 1.6;
@@ -2078,7 +2079,7 @@ html.lightbox-open {
   min-width: 64px;
   margin: 0;
   padding: 3px 12px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: rgba(36, 27, 48, 0.85);
   font-size: 13px;
   text-align: center;
@@ -2093,7 +2094,7 @@ html.lightbox-open {
   min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--fill);
   color: var(--paper);
   font: 700 14px/1.2 var(--font-body);
@@ -2283,7 +2284,7 @@ html.lightbox-open {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--fill);
   color: var(--paper-dim);
   font: 700 12px/1 var(--font-body);
@@ -2626,7 +2627,7 @@ html.lightbox-open {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   color: var(--paper);
   font: 700 14px/1 var(--font-body);
 }
@@ -3000,7 +3001,7 @@ html.lightbox-open {
   right: 4px;
   z-index: 2;
   padding: 0 7px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--ink);
   box-shadow: 0 0 0 1px var(--line);
   color: var(--paper-dim);
@@ -3301,7 +3302,7 @@ html.lightbox-open {
 
 .topic-tag {
   padding: 1px 9px 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--paper);
   color: var(--ink);
   font-size: 11px;
@@ -3983,7 +3984,7 @@ a.reel-card:hover .reel-title {
   min-height: 44px;
   padding: 0 16px 0 12px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--fill);
   color: var(--paper);
   font: 700 13px/1.2 var(--font-body);
@@ -4295,7 +4296,7 @@ html:not(.js) .actress-search,
   min-height: 40px;
   padding: 0 14px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--fill);
   color: var(--paper);
   font: 700 13px/1 var(--font-body);
@@ -4439,7 +4440,7 @@ html:not(.js) .actress-search,
   min-height: 40px;
   padding: 0 14px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--fill);
   color: var(--paper);
   font: 700 13px/1.2 var(--font-body);
@@ -4636,7 +4637,7 @@ html:not(.js) .actress-search,
 .camp-soon {
   display: inline-block;
   padding: 1px 8px 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--hot);
   color: #fff;
   font-size: 11px;
@@ -4805,7 +4806,7 @@ html:not(.js) .actress-search,
   display: inline-block;
   margin-right: 8px;
   padding: 2px 10px 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--pop);
   color: var(--ink);
   font: 700 13px/1.6 var(--font-body);
@@ -4880,7 +4881,7 @@ html:not(.js) .actress-search,
 
 .event-kind {
   padding: 1px 9px 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--pop);
   color: var(--ink);
   font-size: 11px;
@@ -5169,7 +5170,7 @@ html:not(.js) .actress-search,
   place-items: center;
   width: 60px; /* 回数の桁が違っても、名前の頭がそろうように */
   padding: 4px 6px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--pop);
   color: var(--ink);
   font: 400 14px/1.3 var(--font-display);
@@ -5234,7 +5235,7 @@ html:not(.js) .actress-search,
 .bars-tick.is-today {
   z-index: 1;
   padding: 0 7px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--pop);
   color: var(--ink);
   font-weight: 700;
@@ -5279,7 +5280,7 @@ html:not(.js) .actress-search,
 
 .bars-off {
   padding: 1px 7px 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--hot);
   color: #fff;
   font-size: 11px;
@@ -5931,7 +5932,7 @@ a.tf-name {
   display: inline-block;
   margin-left: 8px;
   padding: 0 7px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   box-shadow: 0 0 0 1px var(--line);
   color: var(--paper-dim);
   font-size: 11px;
@@ -6041,7 +6042,7 @@ a.tf-name {
   flex: none;
   margin-left: auto;
   padding: 5px 14px 4px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--pop);
   color: var(--ink);
   font-size: 13px;
@@ -6302,7 +6303,7 @@ a.tf-name {
 
 .ten-pill {
   padding: 4px 12px 3px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tag);
   background: var(--hot);
   color: #fff;
   font-size: 13px;
