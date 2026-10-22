@@ -352,33 +352,43 @@ summary:focus-visible {
 
 /* 探し方のリンク（新着の人気ランキング・ジャンル・出演者・メーカー…）。
    スマホ: 1つ目の「新着の人気ランキング」は横いっぱい、ほかは3つずつ同じ幅で（最後の行は、残りで横いっぱいに分ける＝すき間が空かない） */
+/* 探し方のリンク（新着の人気ランキング・ジャンル検索・女優検索など）: 同じ大きさの四角いボタンを並べず、下線の文字のリンク（2026-10-22。
+   AIっぽさゼロの決まり）。いちばん上の1つ（新着の人気ランキング・素人の女の子ランキング/女の子検索）だけ黄色。押せる高さ（40px）はそのまま */
 .hero-jump {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 0 20px;
   max-width: var(--trio-max);
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .hero-jump .chip-link {
-  flex: 1 1 calc((100% - 16px) / 3);
-  justify-content: center;
-  padding: 0 8px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--paper);
+  font-size: 14px;
+  text-decoration: underline;
+  text-decoration-color: var(--edge);
+  text-underline-offset: 5px;
   white-space: nowrap;
+}
+
+.hero-jump .chip-link:hover {
+  text-decoration-color: currentColor;
 }
 
 .hero-jump .chip-link-wide {
   flex-basis: 100%;
-  border-color: rgba(255, 210, 63, 0.55);
+  color: var(--pop);
+  font-size: 15px;
 }
 
-.hero-jump .chip-link-wide:hover {
-  border-color: var(--pop);
-}
-
-/* 素人の「女の子ランキング」「女の子検索」: 目立つ枠のまま、半分ずつの幅で1行に（2026-10-12） */
+/* 素人の「女の子ランキング」「女の子検索」: 黄色の文字のまま、1行に2つ（2026-10-12） */
 .hero-jump .chip-link-half {
-  flex-basis: calc((100% - 8px) / 2);
+  flex-basis: auto;
 }
 
 .chip-link {
@@ -678,7 +688,8 @@ summary:focus-visible {
 }
 
 /* 一覧のカードの「FANZAで見る」。赤い大きなボタンは、ページごとの一番の行き先（作品ページの「FANZAで詳細を見る」など）だけにして、
-   カードのほうは控えめな枠のボタンにする（たくさん並ぶので、赤が続いて見づらくならないように）。外のサイトへ行く印（↗）を添える */
+   カードのほうは控えめな枠のボタンにする（たくさん並ぶので、赤が続いて見づらくならないように）。
+   右に「↗」は付けない（2026-10-22。AIっぽさゼロの決まり「右はしの矢印」。外のサイトへ行くことは「FANZAで」の言葉でわかる） */
 .btn-card {
   margin-top: auto; /* ひとことが無いカードでも、ボタンをカードのいちばん下にそろえる */
   border-color: var(--edge);
@@ -694,13 +705,6 @@ summary:focus-visible {
 
 .item > :nth-last-child(2):not(.item-cover) {
   margin-bottom: 10px;
-}
-
-.btn-card::after {
-  content: '↗';
-  margin-left: 6px;
-  color: var(--paper-dim);
-  font-weight: 400;
 }
 
 .btn-card:hover {
@@ -3079,22 +3083,16 @@ html.lightbox-open {
   box-shadow: 0 0 0 2px var(--line);
 }
 
+/* 順位（1・2・3）: 丸・四角の右下に、数字だけ（2026-10-22 から。前は黄色い丸の札＝AIっぽさゼロの決まり「小さなバッジ」）。
+   地を付けないので、どの写真・表紙の上でも読めるように、黒い影をつける */
 .hot-rank {
   position: absolute;
-  right: -2px;
-  bottom: -2px;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  width: clamp(24px, 18cqi, 40px); /* 丸・四角が大きい画面（タブレット）では、順位の丸も大きく */
-  height: auto;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: var(--pop);
-  box-shadow: 0 0 0 2px var(--ink);
-  color: var(--ink);
-  font: 400 14px/1 var(--font-display);
-  font-size: clamp(13px, 9cqi, 20px);
+  right: 2px;
+  bottom: 0;
+  color: #fff;
+  font: 400 18px/1 var(--font-display);
+  font-size: clamp(17px, 13cqi, 28px); /* 丸・四角が大きい画面（タブレット）では、数字も大きく */
+  text-shadow: 0 0 2px #000, 0 0 6px rgba(0, 0, 0, 0.9), 1px 2px 0 #000;
 }
 
 .hot-name {
@@ -4573,18 +4571,16 @@ html:not(.js) .actress-search,
 }
 
 /* 値引きの赤札（特集の名前の「30％OFF」など）。表紙の下のふちに貼る（顔を隠さないように） */
+/* 「○%OFF」: 表紙の左下に、文字だけ（2026-10-22 から。前は赤い傾いた札）。黒い影で、どの表紙の上でも読めるように */
 .camp-off {
   position: absolute;
-  bottom: -8px;
-  left: -4px;
+  bottom: 5px;
+  left: 5px;
   z-index: 4;
-  padding: 2px 7px 1px;
-  background: var(--hot);
-  box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.35);
   color: #fff;
-  font: 400 13px/1.4 var(--font-display);
+  font: 400 14px/1.2 var(--font-display);
   white-space: nowrap;
-  transform: rotate(-5deg);
+  text-shadow: 0 0 2px #000, 0 0 6px rgba(0, 0, 0, 0.9), 1px 2px 0 #000;
 }
 
 .camp-body {

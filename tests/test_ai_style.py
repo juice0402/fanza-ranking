@@ -73,8 +73,8 @@ check("AIの文章によく出る言い方（おすすめ・ぜひ・便利・�
 
 print("\n■ デザイン（site.css）")
 css = code_only(open(CSS, encoding="utf-8").read())
-check("右はしの矢印の飾り（content: '›' など）が無い", not re.search(r"content:\s*['\"][›»→>]['\"]", css),
-      re.findall(r"content:\s*['\"][›»→>]['\"]", css)[:3])
+check("右はしの矢印の飾り（content: '›' '↗' など）が無い", not re.search(r"content:\s*['\"][›»→↗>]['\"]", css),
+      re.findall(r"content:\s*['\"][›»→↗>]['\"]", css)[:3])
 check("英語の大文字の小見出し（text-transform: uppercase）が無い", "uppercase" not in css)
 _tag = re.search(r"--r-tag:\s*(\d+)px", css)
 _panel = re.search(r"--r-panel:\s*(\d+)px", css)
@@ -100,6 +100,9 @@ filled = [sel for sel, body in css_rules(css)
           if re.search(r":checked|aria-pressed=['\"]true|aria-current", sel) and not re.search(r"::?(before|after)|-mark", sel)
           and re.search(r"(?<![-\w])background(-color)?\s*:\s*var\(--(pop|paper)\)", body)]
 check("切りかえ・絞り込みは、えらんだものだけ地をぬる四角いボタンにしない（印の「○」「□」で示す）", not filled, filled[:3])
+_jump = " ".join(body for sel, body in css_rules(css) if sel == ".hero-jump .chip-link")
+check("トップ・売り場の探し方のリンク（.hero-jump）は、同じ大きさの四角いボタンを並べた形にしない（枠と地をつけない）",
+      bool(_jump) and re.search(r"border\s*:\s*0", _jump) and re.search(r"background\s*:\s*none", _jump), _jump[:120])
 hits = scan(re.compile(r">\s*(見る|詳しく|くわしく|詳細)\s*<|['\"](見る|詳しく|くわしく)['\"]"))
 check("行の右はしに置く小さな「見る」「詳しく」のボタンが無い（ボタンの言葉は「FANZAで見る」のように何をするかを書く）", not hits, hits[:5])
 hits = scan(re.compile(r"\bNEW\b|準備中|近日公開|COMING SOON|pop-(new|wait)"))
