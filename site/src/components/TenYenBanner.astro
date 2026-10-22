@@ -22,7 +22,6 @@ const hideJs = end ? `(function(){var b=document.getElementById('ten-bar');if(b&
         <strong class="ten-bar-title">10円セール開催中</strong>
         <span class="ten-bar-meta">{countsText(s)}{until && `｜${until}`}</span>
       </span>
-      <span class="ten-bar-go">見る</span>
     </a>
     {hideJs && <script is:inline set:html={hideJs} />}
   </>

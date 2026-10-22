@@ -480,8 +480,6 @@
     var src = smallImageUrl(rowImage(row));
     if (src) cover.appendChild(thumbImage(src));
     var status = statusOf(row.d, today, newDays);
-    if (status === 'new') cover.appendChild(el('span', 'pop pop-new', '新作'));
-    if (status === 'wait') cover.appendChild(el('span', 'pop pop-wait', '予約'));
     article.appendChild(cover);
 
     var heading = el('h3', 'item-title');
@@ -498,7 +496,8 @@
     var castLine = names(el('p', 'item-cast ph-js'), shown.names, '、', '出演者の記載なし');
     if (shown.more > 0) castLine.appendChild(document.createTextNode(' ほか' + shown.more + '名'));
     article.appendChild(castLine);
-    var meta = el('p', 'item-meta ph-js', jp(row.d) + '発売' + (row.m ? '・' : ''));
+    // 予約は、表紙のシールではなく「発売予定」の文字で（2026-10-22）
+    var meta = el('p', 'item-meta ph-js', jp(row.d) + (status === 'wait' ? '発売予定' : '発売') + (row.m ? '・' : ''));
     if (row.m) names(meta, [row.m], '', '');
     article.appendChild(meta);
     li.appendChild(article);

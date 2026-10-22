@@ -2,7 +2,7 @@
    FANZA新作情報 — レンタルビデオ店の「新作棚」をイメージしたデザイン
    - 発売日ごとの「仕切り板」タブ
    - カバー左端の縦書き「背ラベル」（メーカー名）
-   - 「新作」「予約」のPOPシール
+   - 切りかえ・絞り込みは、申込用紙の「○」「□」と文字（2026-10-22 から。表紙の「新作」「予約」のPOPシールはやめた）
    色や書体を変えたいときは、まず下の :root の値を書き換えてね。
    ========================================================== */
 
@@ -574,27 +574,6 @@ summary:focus-visible {
   }
 }
 
-.pop {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 2;
-  padding: 3px 9px 2px;
-  box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.35);
-  font: 400 12px/1.4 var(--font-display);
-  transform: rotate(4deg);
-}
-
-.pop-new {
-  background: var(--pop);
-  color: var(--ink);
-}
-
-.pop-wait {
-  background: var(--hot);
-  color: #fff;
-}
-
 .item-title {
   display: -webkit-box;
   margin: 10px 0 2px;
@@ -752,28 +731,29 @@ summary:focus-visible {
   list-style: none;
 }
 
+/* ページ送りは、数字だけ（2026-10-22。AIっぽさゼロの決まり: 同じ四角いボタンを並べて、いまのものだけ色をぬる形にしない）。
+   いまのページは、黄色の下線。押せる広さ（44px）はそのまま */
 .pager-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 44px;
   min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--edge);
-  border-radius: var(--r-tag);
+  padding: 0 8px;
   font-weight: 700;
   text-decoration: none;
-  background: var(--fill);
 }
 
 .pager-link:hover {
-  border-color: var(--paper);
+  text-decoration: underline;
+  text-underline-offset: 6px;
 }
 
 .pager-link[aria-current='page'] {
-  border-color: var(--paper);
-  background: var(--paper);
-  color: var(--ink);
+  color: var(--pop);
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 6px;
 }
 
 .pager-gap {
@@ -930,13 +910,11 @@ summary:focus-visible {
   color: var(--ink);
 }
 
+/* 札にせず、小さな見出しの文字（2026-10-22） */
 .note-card-label {
-  display: inline-block;
-  margin: 0 0 8px;
-  padding: 2px 10px;
-  border-radius: var(--r-media);
-  background: var(--ink);
-  color: var(--paper);
+  display: block;
+  margin: 0 0 6px;
+  color: #5d5068;
   font: 400 12px/1.5 var(--font-display);
 }
 
@@ -1156,7 +1134,15 @@ summary:focus-visible {
 }
 
 /* 見出しの横の「○○を見る」（作品ページの「同じシリーズの作品」「○○で人気の作品」。2026-10-07） */
+/* 見出しの右はしに置かず、見出しのすぐ下の行に（2026-10-22。AIっぽさゼロの決まり「行の右はしの小さな『見る』」） */
+:is(.section-head, .subsection-head, .today-sec-head):has(> .subsection-more) {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+
 .subsection-more {
+  flex-basis: 100%;
+  order: 9;
   color: var(--paper-dim);
   font-size: 13px;
   text-underline-offset: 3px;
@@ -1827,16 +1813,18 @@ summary:focus-visible {
 .pick-badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 0;
   margin: 6px 0 0;
 }
 
+/* 札にせず、「・」でつないだ文字（2026-10-22） */
+.pick-badge + .pick-badge::before {
+  content: '・';
+}
+
 .pick-badge {
-  padding: 1px 8px;
-  border: 1px solid var(--edge);
-  border-radius: var(--r-tag);
-  color: var(--paper);
-  font-size: 11px;
+  color: var(--paper-dim);
+  font-size: 12px;
   line-height: 1.6;
   white-space: nowrap;
 }
@@ -1844,8 +1832,6 @@ summary:focus-visible {
 .pick-note {
   grid-area: note;
   margin: 12px 0 0;
-  padding-left: 10px;
-  border-left: 2px solid var(--pop);
   font-size: 14px;
   line-height: 1.8;
 }
@@ -2601,14 +2587,15 @@ html.lightbox-open {
 .as-cup-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 0 16px;
 }
 
 .as-cup {
   position: relative;
 }
 
-/* チェックボックスは見えないところに置いて、丸いボタンの見た目で押す（キーボード・読み上げでは、チェックボックスとして使える） */
+/* チェックボックスは見えないところに置いて、申込用紙の「□」の見た目で押す（キーボード・読み上げでは、チェックボックスとして使える。2026-10-22 から。
+   前は色をぬる四角いボタンだった＝AIっぽさゼロの決まりで使わない形） */
 .as-cup input {
   position: absolute;
   inset: 0;
@@ -2620,22 +2607,14 @@ html.lightbox-open {
 }
 
 .as-cup span {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 44px;
+  gap: 7px;
   min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--edge);
-  border-radius: var(--r-tag);
+  padding: 0 4px 0 0;
   color: var(--paper);
   font: 700 14px/1 var(--font-body);
-}
-
-.as-cup input:checked + span {
-  border-color: var(--pop);
-  background: var(--pop);
-  color: var(--ink);
 }
 
 .as-cup input:focus-visible + span {
@@ -2643,7 +2622,7 @@ html.lightbox-open {
   outline-offset: 2px;
 }
 
-/* スリーサイズの幅（「80〜84」など。カップと同じ丸いボタン）。見出しの下に、いちばん人数の多い幅を小さく添える（サイズ感の目安） */
+/* スリーサイズの幅（「80〜84」など。カップと同じ「□」）。見出しの下に、いちばん人数の多い幅を小さく添える（サイズ感の目安） */
 .as-size-hint {
   display: block;
   margin-top: 2px;
@@ -2653,7 +2632,6 @@ html.lightbox-open {
 }
 
 .as-sizes .as-cup span {
-  padding: 0 14px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2770,19 +2748,16 @@ html.lightbox-open {
 
 /* ---------- 順位の札（人気ランキング・セールの作品カード） ---------- */
 
+/* 順位・割引（「1位」「30%OFF」）: 表紙の左上に、文字だけ（2026-10-22 から。前は赤い傾いた札＝AIっぽさゼロの決まり「小さなバッジをあちこちに」）。
+   地を付けないので、どんな表紙の上でも読めるように、黒い影をつける */
 .rank-badge {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 6px;
+  left: 7px;
   z-index: 2;
-  min-width: 36px;
-  padding: 3px 9px 2px;
-  background: var(--hot);
-  box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.35);
   color: #fff;
-  font: 400 14px/1.4 var(--font-display);
-  text-align: center;
-  transform: rotate(-4deg);
+  font: 400 17px/1 var(--font-display);
+  text-shadow: 0 0 2px #000, 0 0 6px rgba(0, 0, 0, 0.9), 1px 2px 0 #000;
 }
 
 /* ---------- トップ: きょうのFANZA新作（日付・新着人気TOP3・いま人気の女優・人気のジャンル・きょうの話題） ----------
@@ -2951,6 +2926,7 @@ html.lightbox-open {
   color: #23180a;
   font: 400 12px/1 var(--font-display);
   letter-spacing: -0.04em;
+  text-shadow: none;
   transform: none;
 }
 
@@ -3016,9 +2992,7 @@ html.lightbox-open {
 }
 
 .move-new {
-  background: var(--pop);
-  box-shadow: none;
-  color: var(--ink);
+  color: var(--pop);
 }
 
 .medal-title {
@@ -3300,29 +3274,23 @@ html.lightbox-open {
   min-width: 0;
 }
 
+/* 話題の種類（「急上昇」など）は、札にせず小さな文字だけ（2026-10-22） */
 .topic-tag {
-  padding: 1px 9px 0;
-  border-radius: var(--r-tag);
-  background: var(--paper);
-  color: var(--ink);
+  color: var(--paper-dim);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.6;
 }
 
-/* 札の色: 急上昇・もうすぐ終わる・セールで人気 は赤、きょう発売・予約に初登場・セール開始・イベント は黄色、ほかは紙の色 */
+/* 文字の色: 急上昇・もうすぐ終わる・セールで人気・きょう発売・予約に初登場・セール開始・イベント は黄色、ほかは控えめな色 */
 .topic-rise .topic-tag,
 .topic-sale .topic-tag,
-.topic-salehot .topic-tag {
-  background: var(--hot);
-  color: #fff;
-}
-
+.topic-salehot .topic-tag,
 .topic-today .topic-tag,
 .topic-entry .topic-tag,
 .topic-salenew .topic-tag,
 .topic-event .topic-tag {
-  background: var(--pop);
+  color: var(--pop);
 }
 
 /* 顔写真も作品の表紙も無いイベントの話題は、カレンダーの印 */
@@ -3979,19 +3947,18 @@ a.reel-card:hover .reel-title {
 .vr-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   white-space: nowrap; /* スイッチの中では折り返さない（スイッチどうしは、入らなければ次の行へ） */
   min-height: 44px;
-  padding: 0 16px 0 12px;
-  border: 1px solid var(--edge);
-  border-radius: var(--r-tag);
-  background: var(--fill);
+  padding: 0 6px 0 0; /* 枠と地は付けない（2026-10-22。並べた四角いボタンに見えないように。印の「□」と文字だけ） */
+  border: 0;
+  background: none;
   color: var(--paper);
   font: 700 13px/1.2 var(--font-body);
   cursor: pointer;
 }
 
-.vr-toggle:hover {
+.vr-toggle:hover .vr-toggle-mark {
   border-color: var(--paper);
 }
 
@@ -4002,14 +3969,6 @@ a.reel-card:hover .reel-title {
   height: 18px;
   border: 2px solid var(--paper-dim);
   border-radius: var(--r-media);
-}
-
-.vr-toggle[aria-pressed='true'],
-.hide-vr .vr-toggle[data-vr-toggle],
-.only-solo .vr-toggle[data-solo-toggle] {
-  border-color: var(--pop);
-  background: rgba(255, 210, 63, 0.12);
-  color: var(--pop);
 }
 
 .vr-toggle[aria-pressed='true'] .vr-toggle-mark,
@@ -4207,13 +4166,6 @@ html:not(.js) .actress-search,
   margin: 2px 0 0;
 }
 
-.ws-row .pop {
-  top: 4px;
-  right: 4px;
-  padding: 1px 5px 0;
-  font-size: 10px;
-}
-
 
 @supports not ((container-type: inline-size) and selector(:has(*))) {
   @media (min-width: 640px) {
@@ -4272,7 +4224,7 @@ html:not(.js) .actress-search,
 .seg-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 0 18px;
 }
 
 .seg-opt {
@@ -4290,23 +4242,16 @@ html:not(.js) .actress-search,
   cursor: pointer;
 }
 
+/* 申込用紙の「○」と文字（2026-10-22 から。前は色をぬる四角いボタンを並べた切りかえ＝AIっぽさゼロの決まりで使わない形） */
 .seg-opt > span {
   display: inline-flex;
   align-items: center;
+  gap: 7px;
   min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid var(--edge);
-  border-radius: var(--r-tag);
-  background: var(--fill);
+  padding: 0 4px 0 0;
   color: var(--paper);
   font: 700 13px/1 var(--font-body);
   white-space: nowrap;
-}
-
-.seg-opt input:checked + span {
-  border-color: var(--pop);
-  background: var(--pop);
-  color: var(--ink);
 }
 
 .seg-opt input:focus-visible + span {
@@ -4314,7 +4259,55 @@ html:not(.js) .actress-search,
   outline-offset: 2px;
 }
 
-.seg-opt:hover input:not(:checked) + span {
+.seg-opt:hover input:not(:checked) + span::before {
+  border-color: var(--paper);
+}
+
+/* 切りかえ・絞り込みの印（2026-10-22）: 発売・並び順は「○」、カップ・サイズ・ジャンルは「□」。
+   VR・単体のスイッチ（.vr-toggle-mark）と同じ大きさと線。えらんだものだけ黄色（文字の色はそのまま。目立たせるのは印だけ） */
+.seg-opt > span::before,
+.as-cup span::before,
+.tag-btn::before {
+  content: '';
+  flex: none;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--paper-dim);
+  border-radius: var(--r-media);
+}
+
+.seg-opt > span::before {
+  border-radius: 50%;
+}
+
+.seg-opt input:checked + span::before {
+  border-color: var(--pop);
+  background: var(--pop);
+  box-shadow: inset 0 0 0 3px var(--ink);
+}
+
+.as-cup input:checked + span::before,
+.tag-btn[aria-pressed='true']::before {
+  border-color: var(--pop);
+  background: var(--pop);
+}
+
+.as-cup input:checked + span::after,
+.tag-btn[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 6px;
+  height: 11px;
+  box-sizing: border-box;
+  border: solid var(--ink);
+  border-width: 0 2px 2px 0;
+  transform: translateY(-62%) rotate(45deg);
+}
+
+.as-cup input:hover:not(:checked) + span::before {
   border-color: var(--paper);
 }
 
@@ -4341,7 +4334,7 @@ html:not(.js) .actress-search,
 .ws-tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 0 16px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -4433,28 +4426,23 @@ html:not(.js) .actress-search,
   font-size: 12px;
 }
 
+/* ジャンルの絞り込みは「□」と文字（2026-10-22 から。前は押すと色がぬられる四角いボタン） */
 .tag-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid var(--edge);
-  border-radius: var(--r-tag);
-  background: var(--fill);
+  padding: 0 4px 0 0;
+  border: 0;
+  background: none;
   color: var(--paper);
   font: 700 13px/1.2 var(--font-body);
   cursor: pointer;
 }
 
-.tag-btn:hover:not(:disabled) {
+.tag-btn:hover:not(:disabled)::before {
   border-color: var(--paper);
-}
-
-.tag-btn[aria-pressed='true'] {
-  border-color: var(--pop);
-  background: var(--pop);
-  color: var(--ink);
 }
 
 .tag-btn:disabled {
@@ -4466,10 +4454,6 @@ html:not(.js) .actress-search,
   color: var(--paper-dim);
   font-size: 12px;
   font-weight: 400;
-}
-
-.tag-btn[aria-pressed='true'] .tag-count {
-  color: var(--ink);
 }
 
 .ws-list {
@@ -4633,14 +4617,11 @@ html:not(.js) .actress-search,
   line-height: 1.5;
 }
 
-/* 「きょうまで」「あすまで」の札（トップのカードと、セールのページの見出しの横） */
+/* 「きょうまで」「あすまで」（トップのカードと、セールのページの見出しの横）。札にせず、黄色の太字だけ（2026-10-22） */
 .camp-soon {
   display: inline-block;
-  padding: 1px 8px 0;
-  border-radius: var(--r-tag);
-  background: var(--hot);
-  color: #fff;
-  font-size: 11px;
+  color: var(--pop);
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.6;
   white-space: nowrap;
@@ -4805,10 +4786,7 @@ html:not(.js) .actress-search,
 .event-soon {
   display: inline-block;
   margin-right: 8px;
-  padding: 2px 10px 0;
-  border-radius: var(--r-tag);
-  background: var(--pop);
-  color: var(--ink);
+  color: var(--pop);
   font: 700 13px/1.6 var(--font-body);
   vertical-align: 3px;
 }
@@ -4831,8 +4809,9 @@ html:not(.js) .actress-search,
 
 /* トップの「きょうの話題」から来たときの、そのイベントの行 */
 .event-row:target {
-  box-shadow: inset 3px 0 0 var(--pop);
+  padding-right: 12px;
   padding-left: 12px;
+  background: rgba(255, 210, 63, 0.1);
 }
 
 .is-dated .event-row {
@@ -5802,12 +5781,9 @@ a.tf-name {
 
 .item-cover.is-wide .rank-badge {
   top: auto;
-  bottom: -10px;
+  bottom: -8px;
   left: 6px;
-  min-width: 0;
-  padding: 2px 7px 1px;
-  font-size: 12px;
-  transform: rotate(-3deg);
+  font-size: 14px;
 }
 
 /* 札のある棚は、札の無いカードもタイトルを同じだけ下げる（同じ行のタイトルの高さをそろえる。2026-10-09） */
@@ -5931,9 +5907,6 @@ a.tf-name {
 .erank-move {
   display: inline-block;
   margin-left: 8px;
-  padding: 0 7px;
-  border-radius: var(--r-tag);
-  box-shadow: 0 0 0 1px var(--line);
   color: var(--paper-dim);
   font-size: 11px;
   font-weight: 700;
@@ -5946,9 +5919,7 @@ a.tf-name {
 }
 
 .erank-move.move-new {
-  background: var(--pop);
-  box-shadow: none;
-  color: var(--ink);
+  color: var(--pop);
 }
 
 /* 同人の横長の表紙の行は、表紙の列を少し広く */
@@ -6006,7 +5977,7 @@ a.tf-name {
   align-items: center;
   gap: 10px;
   padding: 8px max(var(--gutter), calc((100% - var(--maxw)) / 2 + var(--gutter)));
-  background: repeating-linear-gradient(-45deg, var(--hot) 0 14px, #c40f38 14px 28px);
+  background: var(--hot);
   color: #fff;
   text-decoration: none;
 }
@@ -6030,6 +6001,9 @@ a.tf-name {
 
 .ten-bar-title {
   font: 400 15px/1.35 var(--font-display);
+  text-decoration: underline; /* 帯ぜんたいが押せる（右はしの「見る」は付けない。2026-10-22） */
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
 
 .ten-bar-meta {
@@ -6038,20 +6012,7 @@ a.tf-name {
   opacity: 0.92;
 }
 
-.ten-bar-go {
-  flex: none;
-  margin-left: auto;
-  padding: 5px 14px 4px;
-  border-radius: var(--r-tag);
-  background: var(--pop);
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 800;
-}
 
-.ten-bar:hover .ten-bar-go {
-  background: #fff;
-}
 
 /* 大きな案内（トップ・売り場のトップ・セールのページ） */
 .ten-hero {
@@ -6301,18 +6262,14 @@ a.tf-name {
   display: none;
 }
 
+/* 札にせず、文字だけ（2026-10-22） */
 .ten-pill {
-  padding: 4px 12px 3px;
-  border-radius: var(--r-tag);
-  background: var(--hot);
-  color: #fff;
+  color: var(--pop);
   font-size: 13px;
   font-weight: 800;
 }
 
 .ten-pill.is-off {
-  border: 1px solid var(--edge);
-  background: var(--fill);
   color: var(--paper-dim);
 }
 
