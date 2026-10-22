@@ -3,7 +3,7 @@
 # Cloudflare 側のビルド（月500回を「あそびトーク」と共有）を使わないため。ビルドと全ページの点検は GitHub Actions で済ませておく。
 #
 #   bash scripts/deploy_pages.sh production
-#       本番（main）へ。https://fanza-ranking.pages.dev/ が新しくなる
+#       本番（main）へ。https://av-sale-guide.com/ が新しくなる
 #   bash scripts/deploy_pages.sh preview <ブランチ名> [比べる元]
 #       プレビューへ（<ブランチ名>.fanza-ranking.pages.dev。本番は変わらない）。
 #       比べる元（例 HEAD^1）を渡すと、サイトの作り（site/ の中。データ site/src/data/ は除く）が変わっていないときは作らない
@@ -18,7 +18,7 @@ cd "$(dirname "$0")/.." || exit 1
 PROJECT="${PAGES_PROJECT:-fanza-ranking}"            # Cloudflare Pages のプロジェクトの名前（URL の fanza-ranking.pages.dev）
 DIST="${DIST_DIR:-site/dist}"
 WRANGLER="${WRANGLER:-npx --yes wrangler@4}"          # テストでは、にせものに差しかえる
-LIVE_URL="${LIVE_URL-https://fanza-ranking.pages.dev}"  # 本番で、公開されたかを確かめる先（空なら確かめない）
+LIVE_URL="${LIVE_URL-https://av-sale-guide.com}"  # 本番で、公開されたかを確かめる先（空なら確かめない）
 CHECK_TRIES="${CHECK_TRIES:-10}"
 CHECK_WAIT="${CHECK_WAIT:-15}"
 export WRANGLER_SEND_METRICS=false

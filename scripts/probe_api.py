@@ -678,7 +678,7 @@ def main():
                 if not u:
                     continue
                 st, ln, sz, body = fetch_img(u)
-                st2, ln2, _, _ = fetch_img(u, "https://fanza-ranking.pages.dev/")
+                st2, ln2, _, _ = fetch_img(u, "https://av-sale-guide.com/")
                 line = f"  - {k}: 状態 {st} {ln}バイト {sz} / ほかのサイトから {st2} {ln2}バイト"
                 if "ebook-assets.dmm.co.jp/" in u:
                     alt = u.replace("https://ebook-assets.dmm.co.jp/", "https://pics.dmm.co.jp/")
@@ -913,7 +913,7 @@ def main():
         say("- サンプル動画のURLが無いのでスキップ")
     else:
         try:
-            req = urllib.request.Request(movie, headers={"User-Agent": "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1", "Referer": "https://fanza-ranking.pages.dev/"})
+            req = urllib.request.Request(movie, headers={"User-Agent": "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1", "Referer": "https://av-sale-guide.com/"})
             with urllib.request.urlopen(req, timeout=30) as res:
                 head = {k.lower(): v for k, v in res.headers.items()}
                 body = res.read(200000).decode("utf-8", "replace")
