@@ -1,0 +1,68 @@
+[
+ {
+  "path": "/",
+  "width": 390,
+  "issues": [
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 416,
+    "text": "きのう1位から2つ下がった"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 446,
+    "text": "弥生みづき、虹村ゆみ、尾崎えりか ほか12名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 393,
+    "text": "尾崎えりか"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 422,
+    "text": "椿りか、有村のぞみ、春陽モカ ほか14名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 415,
+    "text": "巴ひかり、弥生みづき、末広純 ほか7名"
+   }
+  ]
+ },
+ {
+  "path": "/doujin/",
+  "width": 390,
+  "issues": [
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 404,
+    "text": "きのうと同じ順位"
+   }
+  ]
+ },
+ {
+  "path": "/sale/",
+  "width": 390,
+  "issues": [
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 511,
+    "text": "百瀬あすか、青田悠華、愛瀬ゆう（愛瀬ゆうり） ほか3名"
+   },
+   {
+    "kind": "orphan",
+    "el": "h3.item-title",
+    "text": "50%OFF：夫婦で挑戦！夫がAV女優の凄テクを20分我慢できたら賞金！イカされ",
+    "lines": 6
+   }
+  ]
+ }
+]
