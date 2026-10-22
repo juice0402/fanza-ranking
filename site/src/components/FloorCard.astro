@@ -24,7 +24,6 @@ const line = makerLine(item);
   <a class:list={['item-cover', frameClass(item.floor)]} href={href} tabindex="-1" aria-hidden="true" {...outbound}>
     <FloorImg floor={item.floor} url={item.image_url} kind="card" loading={eager ? 'eager' : 'lazy'} />
     {badge && <span class="rank-badge">{badge}</span>}
-    {item.upcoming && <span class="pop pop-wait">予約</span>}
   </a>
   <Heading class="item-title">{badge && <span class="visually-hidden">{badge}：</span>}{item.upcoming && <span class="visually-hidden">予約：</span>}<a class="item-title-link" href={href} {...outbound}>{item.title}</a></Heading>
   {line && <p class="item-cast">{line}</p>}
@@ -32,5 +31,5 @@ const line = makerLine(item);
   {rankNote && <p class="item-note is-rank">{rankNote}</p>}
   {note && <p class="item-note">{note}</p>}
   {item.comment && <p class="item-comment">{item.comment}</p>}
-  <a class="btn btn-card btn-block" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで見る</a>
+  <a class="btn btn-card btn-block" href={item.url} target="_blank" rel="sponsored nofollow noopener noreferrer">{item.upcoming ? 'FANZAで予約する' : 'FANZAで見る'}</a>
 </article>

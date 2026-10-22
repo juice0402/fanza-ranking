@@ -97,15 +97,13 @@ import { assetUrl } from '../../lib/assets.js';
               <article class="item">
                 <a class="item-cover" href={v.href} tabindex="-1" aria-hidden="true">
                   {v.img && <Thumb src={v.img} kind="tiny" class="item-img is-small" />}
-                  {v.status === 'new' && <span class="pop pop-new">新作</span>}
-                  {v.status === 'wait' && <span class="pop pop-wait">予約</span>}
                 </a>
                 <h3 class="item-title"><a class="item-title-link ph-js" href={v.href}>{v.title}</a></h3>
                 <p class="item-cast ph-js">
                   {v.cast.length === 0 ? '出演者の記載なし' : v.cast.map((name, i) => <>{i > 0 && '、'}<span class={name.length <= 10 ? 'nb' : undefined}>{name}</span></>)}
                   {v.castMore > 0 && ` ほか${v.castMore}名`}
                 </p>
-                <p class="item-meta ph-js">{v.date}発売{v.maker && <>・<span class={v.maker.length <= 10 ? 'nb' : undefined}>{v.maker}</span></>}</p>
+                <p class="item-meta ph-js">{v.date}{v.status === 'wait' ? '発売予定' : '発売'}{v.maker && <>・<span class={v.maker.length <= 10 ? 'nb' : undefined}>{v.maker}</span></>}</p>
               </article>
             </li>
           ))}

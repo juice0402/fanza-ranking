@@ -16,10 +16,10 @@ const moveCls = move === '初登場' ? 'move-new' : move.startsWith('▲') ? 'mo
   <article class="item">
     <a class:list={['item-cover', frameClass(floor)]} href={row.href} tabindex="-1" aria-hidden="true">
       <FloorImg floor={floor} url={row.img} kind="tiny" />
-      {row.upcoming && <span class="pop pop-wait">予約</span>}
     </a>
     <Heading class="item-title">{no > 0 && <span class="erank-no">{no}<span class="visually-hidden">位</span></span>}<a class:list={['item-title-link', { 'ph-js': titleJs }]} href={row.href}>{row.title}</a></Heading>
     {row.line && <p class="item-cast">{row.line}</p>}
-    {(row.meta || move) && <p class="item-meta">{row.meta}{move && <span class:list={['erank-move', moveCls]}>{move === '初登場' ? move : <><span class="visually-hidden">前日から</span>{move}</>}</span>}</p>}
+    {/* 予約は、表紙のシールではなく行の頭の文字で（2026-10-22） */}
+    {(row.meta || move || row.upcoming) && <p class="item-meta">{row.upcoming && (row.meta ? '予約・' : '予約')}{row.meta}{move && <span class:list={['erank-move', moveCls]}>{move === '初登場' ? move : <><span class="visually-hidden">前日から</span>{move}</>}</span>}</p>}
   </article>
 </li>

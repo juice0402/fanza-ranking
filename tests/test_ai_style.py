@@ -73,8 +73,8 @@ check("AIの文章によく出る言い方（おすすめ・ぜひ・便利・�
 
 print("\n■ デザイン（site.css）")
 css = code_only(open(CSS, encoding="utf-8").read())
-check("右はしの矢印の飾り（content: '›' など）が無い", not re.search(r"content:\s*['\"][›»→>]['\"]", css),
-      re.findall(r"content:\s*['\"][›»→>]['\"]", css)[:3])
+check("右はしの矢印の飾り（content: '›' '↗' など）が無い", not re.search(r"content:\s*['\"][›»→↗>]['\"]", css),
+      re.findall(r"content:\s*['\"][›»→↗>]['\"]", css)[:3])
 check("英語の大文字の小見出し（text-transform: uppercase）が無い", "uppercase" not in css)
 _tag = re.search(r"--r-tag:\s*(\d+)px", css)
 _panel = re.search(r"--r-panel:\s*(\d+)px", css)
@@ -83,9 +83,36 @@ check("押せるもの・枠の角は小さく（ボタンは角ばった札＝4
       (_tag and _tag.group(0), _panel and _panel.group(0)))
 check("あちこちでふわっと出てくる動きが無い（動きは1つまで）", len(re.findall(r"@keyframes", css)) <= 1, len(re.findall(r"@keyframes", css)))
 
+print("\n■ 2026-10-22 に増えた決まり（色の帯・並べた切りかえ・右はしの「見る」・NEW などのバッジ）")
+
+
+def css_rules(text):
+    """（セレクタ, 中身）。@media の中の決まりも1つずつ"""
+    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", text):
+        yield " ".join(m.group(1).split()), m.group(2)
+
+
+band = re.findall(r"border-(?:left|inline-start)\s*:\s*[2-9]\d*px\s+solid[^;]*|box-shadow\s*:\s*inset\s+[2-9]\d*px\s+0\s+0[^;]*", css)
+check("四角やカードの左はしに、色の太い帯（線）をつけない", not band, band[:3])
+# えらんだもの（:checked・aria-pressed・aria-current）だけ、地を黄色・紙の色でぬる切りかえ（タブ・セグメント）にしない。
+# 印（::before・::after・-mark）の色はよい（申込用紙の「○」「□」）
+filled = [sel for sel, body in css_rules(css)
+          if re.search(r":checked|aria-pressed=['\"]true|aria-current", sel) and not re.search(r"::?(before|after)|-mark", sel)
+          and re.search(r"(?<![-\w])background(-color)?\s*:\s*var\(--(pop|paper)\)", body)]
+check("切りかえ・絞り込みは、えらんだものだけ地をぬる四角いボタンにしない（印の「○」「□」で示す）", not filled, filled[:3])
+_jump = " ".join(body for sel, body in css_rules(css) if sel == ".hero-jump .chip-link")
+check("トップ・売り場の探し方のリンク（.hero-jump）は、同じ大きさの四角いボタンを並べた形にしない（枠と地をつけない）",
+      bool(_jump) and re.search(r"border\s*:\s*0", _jump) and re.search(r"background\s*:\s*none", _jump), _jump[:120])
+hits = scan(re.compile(r">\s*(見る|詳しく|くわしく|詳細)\s*<|['\"](見る|詳しく|くわしく)['\"]"))
+check("行の右はしに置く小さな「見る」「詳しく」のボタンが無い（ボタンの言葉は「FANZAで見る」のように何をするかを書く）", not hits, hits[:5])
+hits = scan(re.compile(r"\bNEW\b|準備中|近日公開|COMING SOON|pop-(new|wait)"))
+check("「NEW」「準備中」のような小さなバッジ・表紙の「新作」「予約」のシールが無い", not hits, hits[:5])
+
 print("\n■ この点検そのもの")
 check("絵文字の検出: ✨ ✅ 🚀 は見つけ、★ ☆ ✕ ▲ ▼ は見のがす", all(EMOJI.search(c) for c in "✨✅🚀💡⚡") and not any(EMOJI.search(c) for c in "★☆✕▲▼○●"))
 _c = code_only("a // ✨\n/* ✨ */ 'https://x' {/* › */}")
+check("左の帯の検出: border-left: 3px solid は見つけ、border-left: 1px は見のがす",
+      bool(re.search(r"border-(?:left|inline-start)\s*:\s*[2-9]\d*px\s+solid", "border-left: 3px solid red")) and not re.search(r"border-(?:left|inline-start)\s*:\s*[2-9]\d*px\s+solid", "border-left: 1px solid red"))
 check("コメントの中は調べない（URL の // は消さない）", "✨" not in _c and "›" not in _c and "'https://x'" in _c and _c.count("\n") == 1, repr(_c))
 
 print(f"\n=== {passed}/{passed + failed} 合格 ===")

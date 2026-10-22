@@ -1824,8 +1824,9 @@ check("CSS: JavaScript が使えるときだけ使える部品（VR・単体の�
       sorted({"html:not(.js) .vr-toggle", "html:not(.js) .fav-btn", "html:not(.js) #gacha", "html:not(.js) [data-fold-more]", "html:not(.js) .work-search", ".js .ws-fallback:not(.is-fallback)"} - js_only))
 check("CSS: お気に入りの出演者・メーカーがある人（html.has-favs）には、トップのお知らせの場所を、はじめから出す（あとから上に出てきて、ページ全体がずれないように）",
       any(".has-favs .fav-banner[hidden]" in [re.sub(r"\s+", " ", x) for x in sels] and re.search(r"display\s*:\s*block", b) for sels, b in css_rules))
-_press = [sels for sels, b in css_rules if any(re.sub(r"\s+", " ", s_) == ".hide-vr .vr-toggle[data-vr-toggle]" for s_ in sels) and re.search(r"border-color", b)]
-check("CSS: VR・単体のスイッチの押した見た目は、html の印（hide-vr・only-solo）でもすぐに出る（スクリプトを待たない）", bool(_press) and any(".only-solo .vr-toggle[data-solo-toggle]" in [re.sub(r"\s+", " ", x) for x in sels] for sels in _press), _press[:1])
+# 押した見た目は「□」の印（.vr-toggle-mark）が黄色になること（2026-10-22 から。スイッチの枠と地は付けない）
+_press = [sels for sels, b in css_rules if any(re.sub(r"\s+", " ", s_) == ".hide-vr .vr-toggle[data-vr-toggle] .vr-toggle-mark" for s_ in sels) and re.search(r"background\s*:\s*var\(--pop\)", b)]
+check("CSS: VR・単体のスイッチの押した見た目（□の印）は、html の印（hide-vr・only-solo）でもすぐに出る（スクリプトを待たない）", bool(_press) and any(".only-solo .vr-toggle[data-solo-toggle] .vr-toggle-mark" in [re.sub(r"\s+", " ", x) for x in sels] for sels in _press), _press[:1])
 hidden_ok = [sels for sels, b in css_rules if ".vr-toggle[hidden]" in sels and re.search(r"display\s*:\s*none", b)]
 check("CSS: 隠れているスイッチ・検索（hidden）が、display の指定に負けずに隠れる", bool(hidden_ok) and any(".work-search[hidden]" in sels for sels in hidden_ok), hidden_ok[:1])
 
