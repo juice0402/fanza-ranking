@@ -24,7 +24,8 @@ def ten_yen_sample():
     now = datetime.now(T.G.JST)
     end = (now + timedelta(days=2)).strftime("%Y-%m-%d") + " 09:59"
     today = now.strftime("%Y-%m-%d")
-    out = {"checked": now.strftime("%Y-%m-%d %H:%M"), "video": [], "doujin": [], "game": [], "runs": []}
+    # 売り場が増えても動くように、ten_yen.py の売り場の一覧（FLOOR_KEYS）から空の箱を作る（2026-10-22。前は動画・同人・ゲームだけで、dump が止まっていた）
+    out = {"checked": now.strftime("%Y-%m-%d %H:%M"), **{k: [] for k in T.FLOOR_KEYS}, "runs": []}
     videos = json.load(open(os.path.join(DATA, "new_releases.json"), encoding="utf-8"))
     for x in [v for v in videos if v.get("image_url") and v.get("url") and str(v.get("date"))[:10] <= today][:9]:
         row = {k: x.get(k) for k in T.VIDEO_KEYS}

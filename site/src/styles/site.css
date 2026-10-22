@@ -2970,21 +2970,19 @@ html.lightbox-open {
   white-space: nowrap;
 }
 
-/* 前の日からの順位の動き: 表紙の右上のふちに半分かける小さな札（表紙の上のほうの顔を隠さないように、ふちだけ） */
+/* 前の日からの順位の動き（「▲3」「初登場」）: 表紙の右上に、文字だけ（2026-10-22 から。前は表紙のふちにかけた小さな札）。
+   地を付けないので、どんな表紙の上でも読めるように、黒い影をつける */
 .medal-move {
   position: absolute;
-  top: -9px;
-  right: 4px;
+  top: 6px;
+  right: 6px;
   z-index: 2;
-  padding: 0 7px;
-  border-radius: var(--r-tag);
-  background: var(--ink);
-  box-shadow: 0 0 0 1px var(--line);
-  color: var(--paper-dim);
-  font-size: 11px;
+  color: #fff;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 1;
   white-space: nowrap;
+  text-shadow: 0 0 2px #000, 0 0 5px rgba(0, 0, 0, 0.9), 1px 1px 0 #000;
 }
 
 .move-up {
