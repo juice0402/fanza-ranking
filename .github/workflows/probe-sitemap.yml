@@ -1,0 +1,63 @@
+name: Probe sitemap (temporary)
+# 調べるだけ（2026-10-22）。本番の sitemap.xml・robots.txt を読みに行き、結果を注記に出す。Merge しない
+on:
+  push:
+    branches: [claude/probe-sitemap]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.request, xml.etree.ElementTree as ET, re, collections, gzip
+          def get(url, ua=None, gz=False):
+              h = {"User-Agent": ua or "Mozilla/5.0 (probe)"}
+              if gz: h["Accept-Encoding"] = "gzip"
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=60) as r:
+                      body = r.read()
+                      if r.headers.get("Content-Encoding") == "gzip": body = gzip.decompress(body)
+                      return r.status, dict(r.headers), body
+              except urllib.error.HTTPError as e:
+                  return e.code, dict(e.headers), e.read()
+              except Exception as e:
+                  return 0, {}, str(e).encode()
+          out = []
+          S = "https://fanza-ranking.pages.dev"
+          st, hd, body = get(S + "/sitemap.xml")
+          out.append(f"sitemap: HTTP {st} / Content-Type={hd.get('Content-Type')} / X-Robots-Tag={hd.get('X-Robots-Tag')} / bytes={len(body):,} / cache={hd.get('Cache-Control')}")
+          st2, hd2, b2 = get(S + "/sitemap.xml", gz=True)
+          out.append(f"sitemap(gzip): HTTP {st2} / Content-Encoding={hd2.get('Content-Encoding')} / bytes={len(b2):,}")
+          text = body.decode("utf-8", "replace")
+          out.append(f"head: {text[:120]!r}")
+          out.append(f"tail: {text[-60:]!r}")
+          try:
+              root = ET.fromstring(body)
+              ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+              locs = [e.text or "" for e in root.findall("s:url/s:loc", ns)]
+              mods = [e.text or "" for e in root.findall("s:url/s:lastmod", ns)]
+              out.append(f"XML: OK（正しく読める） root={root.tag} / URL {len(locs):,}件 / lastmod {len(mods):,}件")
+              nonascii = [u for u in locs if any(ord(c) > 127 for c in u)]
+              out.append(f"日本語などのままのURL: {len(nonascii):,}件 例 {nonascii[:2]}")
+              out.append(f"重複: {len(locs) - len(set(locs))}件 / 他のホスト: {sum(1 for u in locs if not u.startswith(S + '/'))}件 / lastmod の形がおかしい: {sum(1 for m in mods if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', m))}件")
+              kinds = collections.Counter(re.sub(r'^/([^/]+)/.*', r'\1', u[len(S):]) if u[len(S):] != '/' else 'top' for u in locs)
+              out.append("種類: " + " ".join(f"{k}={v}" for k, v in kinds.most_common(14)))
+              mods_c = collections.Counter(mods); out.append("lastmod の多い日: " + " ".join(f"{k}={v}" for k, v in mods_c.most_common(4)))
+          except Exception as e:
+              out.append(f"XML: 読めない {e}")
+          gb = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+          st3, hd3, b3 = get(S + "/sitemap.xml", ua=gb)
+          out.append(f"Googlebot のふり: HTTP {st3} / Content-Type={hd3.get('Content-Type')} / bytes={len(b3):,} / server={hd3.get('Server')} / cf-mitigated={hd3.get('cf-mitigated')}")
+          st4, hd4, b4 = get(S + "/robots.txt")
+          out.append(f"robots.txt: HTTP {st4} / Content-Type={hd4.get('Content-Type')} / {b4.decode('utf-8','replace')!r}")
+          st5, hd5, b5 = get(S + "/", ua=gb)
+          h5 = b5.decode('utf-8','replace')
+          out.append(f"トップ（Googlebot のふり）: HTTP {st5} / X-Robots-Tag={hd5.get('X-Robots-Tag')} / robots meta={re.findall(r'<meta name=.robots.[^>]*>', h5)[:1]} / canonical={re.findall(r'<link rel=.canonical.[^>]*>', h5)[:1]} / 中のリンク {len(set(re.findall(r'href=.(/[^\"#?]+)', h5)))}本")
+          print("\n".join(out))
+          msg = "%0A".join(o.replace("%", "%25").replace("\n", " ") for o in out)
+          print("::notice title=sitemap の調べ::" + msg)
+          PY
