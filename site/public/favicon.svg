@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- 値引きシール（黄色の丸に赤い「安」。2026-10-23。サイトの配色 --pop / --hot。字は Noto Sans CJK JP Black の形を線にしたもの（OFL）） -->
-  <circle cx="32" cy="32" r="31" fill="#ffd23f"/>
-  <circle cx="32" cy="32" r="27" fill="none" stroke="#d9123f" stroke-width="2.5"/>
-  <g fill="#d9123f"><path transform="translate(14.62 46.20) scale(0.0347 -0.0347)" d="M69 775V526H217V641H779V526H935V775H575V856H419V775ZM53 488V351H250C210 275 169 203 135 147L289 106L304 132L391 101C307 67 201 48 74 38C101 6 142 -60 155 -95C320 -72 455 -35 559 32C653 -10 738 -53 794 -91L913 27C853 63 770 102 680 139C727 196 764 266 791 351H949V488H487L539 597L385 629C366 584 343 537 320 488ZM420 351H622C604 287 575 236 536 195C477 215 420 234 367 250Z"/></g>
+  <!-- 値札（赤札）に白い「％」。2026-10-23。サイトの配色 --hot / --ink。四角の器には入れず、値札の形そのもの -->
+  <g transform="translate(32 32) scale(0.88) rotate(-14) translate(-32 -32)">
+    <path d="M4 32 19 14h40v36H19Z" fill="#d9123f" stroke="#d9123f" stroke-width="5" stroke-linejoin="round"/>
+    <circle cx="15" cy="32" r="3.6" fill="#17121f"/>
+    <g fill="#fff"><circle cx="32.0" cy="24.0" r="4.6"/><circle cx="46.0" cy="40.0" r="4.6"/></g><path d="M47.0 21.0 31.0 43.0" stroke="#fff" stroke-width="4.6" stroke-linecap="round"/>
+  </g>
 </svg>
