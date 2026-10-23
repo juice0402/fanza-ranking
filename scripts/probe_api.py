@@ -539,6 +539,10 @@ def probe_sale_ends():
 def main():
     if not API_ID:
         sys.exit("❌ API_ID が設定されていません")
+    if os.environ.get("PROBE_ONLY") == "21":
+        probe_video_ten_yen()
+        finish()
+        return
     if os.environ.get("PROBE_ONLY") == "13":
         probe_ten_yen()
         finish()
@@ -925,6 +929,56 @@ def main():
             say(f"- 取得できませんでした: {type(e).__name__}: {str(e)[:150]}")
 
     finish()
+
+
+def probe_video_ten_yen():
+    """21) 動画の10円セール: サイトのセールの記録（sale.json）で10円の作品が、安い順（sort=-price）のどこにあるか・価格の形
+    （2026-10-24。動画の10円セールが始まっているのに、安い順の読み取りで1本も見つからなかった）"""
+    import time
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import ten_yen as T
+    sale = json.load(open(os.path.join("site", "src", "data", "sale.json"), encoding="utf-8"))
+    cids = [r["c"] for r in sale.get("items") or [] if r.get("p") == 10][:8]
+    say(f"## 21-a) sale.json で10円の動画 {len(cids)}本: 1本ずつの価格の形")
+    for cid in cids:
+        time.sleep(0.4)
+        res, err = call("ItemList", {"site": "FANZA", "service": "digital", "floor": "videoa", "cid": cid, "hits": 1})
+        if err:
+            say(f"- {cid}: ❌ {err}")
+            continue
+        it = (res.get("items") or [{}])[0]
+        pr = it.get("prices") or {}
+        say(f"- {cid}: price={pr.get('price')!r} list_price={pr.get('list_price')!r} deliveries={[ (d.get('type'), d.get('price'), d.get('list_price')) for d in ((pr.get('deliveries') or {}).get('delivery') or [])][:4]} campaign={[ (c.get('title'), c.get('date_end')) for c in (it.get('campaign') or [])][:2]}")
+    base = {"site": "FANZA", "service": "digital", "floor": "videoa"}
+    for label, extra in (("安い順（sort=-price）の先頭", {"sort": "-price"}), ("キーワード「10円」・安い順", {"sort": "-price", "keyword": "10円"}), ("キーワード「10円セール」", {"keyword": "10円セール"})):
+        time.sleep(0.4)
+        res, err = call("ItemList", dict(base, offset=1, hits=100, **extra))
+        say(f"## 21-b) {label}")
+        if err:
+            say(f"- ❌ {err}")
+            continue
+        items = res.get("items") or []
+        prices = [T.price_pair(x)[0] for x in items]
+        tens = [x.get("content_id") for x in items if T.price_pair(x)[0] == 10]
+        say(f"- 全体 {res.get('total_count')}本・先頭の価格 {prices[:10]}・100本のうち10円 {len(tens)}本（{tens[:5]}）・sale.json の10円にある {len(set(tens) & set(cids))}本")
+    # 10円の作品は、安い順の何本目あたりにあるか（先頭から5,000本まで、100本ずつ。見つかったら止める）
+    say("## 21-c) 安い順の中で、sale.json の10円の作品が出てくる位置")
+    want, found, price_seen = set(cids), {}, []
+    for off in range(1, 5001, 100):
+        time.sleep(0.4)
+        res, err = call("ItemList", dict(base, sort="-price", offset=off, hits=100))
+        if err:
+            say(f"- ❌ {off}本目から: {err}")
+            break
+        items = res.get("items") or []
+        for i, x in enumerate(items):
+            if x.get("content_id") in want:
+                found[x.get("content_id")] = off + i
+        if items:
+            price_seen.append((off, T.price_pair(items[0])[0], T.price_pair(items[-1])[0]))
+        if len(found) == len(want) or len(items) < 100:
+            break
+    say(f"- 見つかった位置 {found}・読んだ所の価格（位置, はじめ, 終わり） {price_seen[:6]} … {price_seen[-3:]}")
 
 
 def finish():
