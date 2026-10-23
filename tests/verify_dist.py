@@ -2191,7 +2191,11 @@ if want_camps:
         vr_flags = [bool(v) for v, _ in covers_]
         card_problems = []  # （前は problems という名前で、全体の失敗の一覧を上書きして消していた。2026-10-07 に直した）
         if bool(more) != (i >= show_n): card_problems.append("見せる数")
-        if a_.get("href") != (f"/sale/{camp_slug(camp['title'])}/" if not camp_minor(camp["title"]) else f"/sale/#sale-{k}"): card_problems.append(a_.get("href"))
+        # 10円セールの特集は、10円セールのページへ（site/src/lib/data.js の campaignHrefOf と同じ。2026-10-23。特集の名前に「10円」が入った日に、
+        # ここが前の決まりのままだったので点検に落ち、本番の公開が止まっていた）
+        _want_href = ("/sale/10yen/" if re.search(r"(?<![0-9,])10円", _ud.normalize("NFKC", str(camp["title"])))
+                      else f"/sale/{camp_slug(camp['title'])}/" if not camp_minor(camp["title"]) else f"/sale/#sale-{k}")
+        if a_.get("href") != _want_href: card_problems.append(a_.get("href"))
         if end_ != end_iso(str(camp["end"])): card_problems.append("終わりの印")
         if not title_ or strip_tags(title_.group(1)) != str(camp["title"]).strip(): card_problems.append("名前")
         if f"{end_label(str(camp['end']))}まで・{_camp_count[k]:,}本" not in strip_tags(inner): card_problems.append("いつまで・本数")
