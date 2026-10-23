@@ -290,7 +290,7 @@ Claude が**月のまとめ記事**を書くための道具（2026-10-07 から�
 
 #### `site/public/_headers` / `site/public/_redirects` / アイコン
 
-`_redirects` は古いURLの移し先（`/ranking/all/` → `/ranking/`）。`_headers` は Cloudflare Pages の応答ヘッダー（nosniff・フレームへの埋め込み禁止など。CSP は最小限。`/_astro/*` と `/*.js`（`assetUrl` で中身の印 `?v=` を付けて読む）は1年キャッシュ、アイコンは1週間）と、サイトのアイコン（`favicon.svg` / `favicon.ico` / `apple-touch-icon.png`）。`tests/verify_dist.py` が、全ページの `<head>`・ヘッダーの広告ラベル（`pr-chip`）とフッターの広告文・18歳確認・クレジット・FANZAへのリンクの属性と一緒に検査する
+`_redirects` は古いURLの移し先（`/ranking/all/` → `/ranking/`）。`_headers` は Cloudflare Pages の応答ヘッダー（nosniff・フレームへの埋め込み禁止など。CSP は最小限。`/_astro/*` と `/*.js`（`assetUrl` で中身の印 `?v=` を付けて読む）は1年キャッシュ、アイコンは1週間）と、サイトのアイコン（`favicon.svg` / `favicon.ico` / `apple-touch-icon.png` / ホーム画面用の `icon-192.png`・`icon-512.png`・`icon-maskable-512.png`）。2026-10-23 から、黄色の丸い値引きシールに赤い「安」（運営者が3案から選んだ。前は暗い角丸の四角に赤札＝AIっぽさゼロの決まり「色つきの四角に入れたアイコン」に近かった）。字は Noto Sans CJK JP Black の形を線にして入れてある（どの端末でも同じ形）。PNG・ICO は SVG を Chromium で512pxに描いて縮めたもの。iPhone・maskable は地を夜の棚の色（`--ink`）にする（透けた所が黒くぬられるため）。`tests/verify_dist.py` が、全ページの `<head>`・ヘッダーの広告ラベル（`pr-chip`）とフッターの広告文・18歳確認・クレジット・FANZAへのリンクの属性と一緒に検査する
 
 #### `site/src/components/`
 

@@ -108,6 +108,10 @@ check("行の右はしに置く小さな「見る」「詳しく」のボタン�
 hits = scan(re.compile(r"\bNEW\b|準備中|近日公開|COMING SOON|pop-(new|wait)"))
 check("「NEW」「準備中」のような小さなバッジ・表紙の「新作」「予約」のシールが無い", not hits, hits[:5])
 
+_fav = open(os.path.join(SITE, "public", "favicon.svg"), encoding="utf-8").read()
+check("ファビコンは、色つきの角丸の四角（器）の中に絵を入れた形にしない（もの＝値引きシールの形そのもの。2026-10-23）",
+      not re.search(r"<rect[^>]*\bwidth=\"64\"[^>]*\bheight=\"64\"", _fav) and "<circle" in _fav)
+
 print("\n■ この点検そのもの")
 check("絵文字の検出: ✨ ✅ 🚀 は見つけ、★ ☆ ✕ ▲ ▼ は見のがす", all(EMOJI.search(c) for c in "✨✅🚀💡⚡") and not any(EMOJI.search(c) for c in "★☆✕▲▼○●"))
 _c = code_only("a // ✨\n/* ✨ */ 'https://x' {/* › */}")
