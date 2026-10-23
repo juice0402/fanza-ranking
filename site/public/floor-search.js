@@ -245,7 +245,6 @@
     cover.tabIndex = -1;
     cover.setAttribute('aria-hidden', 'true');
     if (v.img) cover.appendChild(thumb(v.img));
-    if (v.upcoming) cover.appendChild(el('span', 'pop pop-wait', '予約'));
     article.appendChild(cover);
     var heading = el('h3', 'item-title');
     var link = el('a', 'item-title-link ph-js', v.title);
@@ -253,7 +252,8 @@
     heading.appendChild(link);
     article.appendChild(heading);
     if (v.line) article.appendChild(el('p', 'item-cast', v.line));
-    if (v.meta) article.appendChild(el('p', 'item-meta', v.meta));
+    // 予約は、表紙のシールではなく行の頭の文字で（2026-10-22。FloorRow.astro と同じ）
+    if (v.meta || v.upcoming) article.appendChild(el('p', 'item-meta', (v.upcoming ? (v.meta ? '予約・' : '予約') : '') + (v.meta || '')));
     li.appendChild(article);
     return li;
   }
