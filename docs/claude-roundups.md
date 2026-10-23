@@ -48,7 +48,7 @@
 8. CIが終わるまで待つ: `python3 scripts/wait_run.py ci $(git rev-parse HEAD)`（Bash の timeout は 600000。CI は10分ほど。`⏳` なら同じコマンドをもう一度。合わせて30分まで）
    - **`✅` ならMerge**（`gh api -X PUT repos/juice0402/fanza-ranking/pulls/<番号>/merge -f merge_method=merge -f sha=<先頭> -f commit_title="Merge #<番号>: 週のまとめ記事を追加（Claude）: 2026年9月28日〜10月4日" -f commit_message="" --jq '.sha'`。出てくるのが Merge のコミット。Merge すると、公開（`deploy.yml`）が自動で動く）
    - `❌`（赤）・時間切れ・衝突（Mergeできない）のときは**Mergeしない**（`❌` の行に失敗の理由が出る）。PRを開いたまま、理由を報告して終了する。衝突のときは、ブランチを捨てて手順1からやり直してよい（1回だけ）
-9. Merge したら、公開（Deploy）が終わるのを待つ: `python3 scripts/wait_run.py deploy <Merge のコミット>`（Bash の timeout は 600000。ビルド・点検・アップロードで10〜15分。`⏳` なら同じコマンドをもう一度。合わせて30分まで。あとの Merge の公開に含まれたときも `✅`）。`✅` なら、本番の `https://fanza-ranking.pages.dev/weekly/<週の月曜日>/?cb=日時` を WebFetch で見て、記事が出ているかを確認する（`?cb=` を付けないと古い内容が返ることがある。WebFetch の prompt は「記事の見出しと導入文の最初の1文だけを答えて」のように短く）。`❌` なら理由を報告する（サイトは前の公開のまま）。見られなかったら「未確認」と書く
+9. Merge したら、公開（Deploy）が終わるのを待つ: `python3 scripts/wait_run.py deploy <Merge のコミット>`（Bash の timeout は 600000。ビルド・点検・アップロードで10〜15分。`⏳` なら同じコマンドをもう一度。合わせて30分まで。あとの Merge の公開に含まれたときも `✅`）。`✅` なら、本番の `https://av-sale-guide.com/weekly/<週の月曜日>/?cb=日時` を WebFetch で見て、記事が出ているかを確認する（`?cb=` を付けないと古い内容が返ることがある。WebFetch の prompt は「記事の見出しと導入文の最初の1文だけを答えて」のように短く）。`❌` なら理由を報告する（サイトは前の公開のまま）。見られなかったら「未確認」と書く
 10. 最後に報告する: どの週の記事か／月のまとめを書いたか（どの月か。書かなかったときは理由）／PR番号／CIの結果／Mergeしたか／本番で確認できたか（月のまとめは `/month/<YYYY-MM>/` も）／見張り番の結果（`python3 scripts/health.py --last` の行をそのまま。⚠️ があれば報告のいちばん上にも）
 
 Mergeしてよいのは、**このまとめ記事のPR（`roundups.json`・`monthly.json` だけを変えるもの）で、CIが緑のとき**だけです（運営者の包括的な許可にもとづく。CLAUDE.md の守ること1）。

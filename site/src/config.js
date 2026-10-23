@@ -1,8 +1,8 @@
 // サイト全体の設定です。独自ドメインにしたり、表示する件数を変えたいときは、ここだけ書き換えます。
 // （astro.config.mjs・robots.txt・sitemap・各ページの canonical は、ここの SITE_URL を自動で使います）
 
-export const SITE_NAME = 'FANZA新作情報';
-export const SITE_URL = 'https://fanza-ranking.pages.dev'; // 末尾にスラッシュは付けない
+export const SITE_NAME = 'FANZAセール情報'; // 2026-10-22 に「FANZA新作情報」から（独自ドメイン av-sale-guide.com への引っ越しといっしょに。見に来る人のお目当てはセール）
+export const SITE_URL = 'https://av-sale-guide.com'; // 末尾にスラッシュは付けない
 
 // Google Search Console の所有権の確認用コード（<meta> の content の値）。公開されても問題のないコードです。空にすると出力しません
 export const GOOGLE_SITE_VERIFICATION = 'Sr-kZdXB7gQmvK32Zc6vaSY6Gqdn0m_BI2pCHN3RMPk';

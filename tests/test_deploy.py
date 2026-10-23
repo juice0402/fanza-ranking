@@ -247,7 +247,7 @@ check("ci.yml: ブランチの名前は環境変数で渡す（そのまま命�
 print("\n■ 設定の突き合わせ")
 site_url = re.search(r"SITE_URL = '([^']+)'", read("site", "src", "config.js")).group(1)
 check("送り先のプロジェクト（fanza-ranking）は、サイトのURL（config.js の SITE_URL）と同じ",
-      'PROJECT="${PAGES_PROJECT:-fanza-ranking}"' in read("scripts", "deploy_pages.sh") and site_url == "https://fanza-ranking.pages.dev")
+      'PROJECT="${PAGES_PROJECT:-fanza-ranking}"' in read("scripts", "deploy_pages.sh") and site_url == "https://av-sale-guide.com")
 check("本番の確認先も、サイトのURL", f'LIVE_URL="${{LIVE_URL-{site_url}}}"' in read("scripts", "deploy_pages.sh"))
 
 print(f"\n=== {passed}/{passed + failed} 合格 ===")

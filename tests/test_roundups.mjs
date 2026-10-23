@@ -72,7 +72,7 @@ check('いちばん古い週は「前」なし・いちばん新しい週は「�
 check('記事が1本だけなら前後なし', R.neighbours(norm, '2026-09-28').prev === null && R.neighbours(norm, '2026-09-28').next === null);
 check('タイトル・ページタイトル・説明文', R.roundupTitle(norm[0]) === '2026年9月28日〜10月4日のFANZA新作まとめ' && R.roundupPageTitle(norm[0]).endsWith(`｜${SITE_NAME}`) && R.roundupDescription({ lead: 'あ'.repeat(300) }).length <= 120);
 const ld = R.articleLd(norm[0]);
-check('Article: 種類・見出し・公開日・URL', ld['@type'] === 'Article' && ld['@context'] === 'https://schema.org' && ld.headline === R.roundupTitle(norm[0]) && ld.datePublished === '2026-10-05' && ld.mainEntityOfPage['@id'] === 'https://fanza-ranking.pages.dev/weekly/2026-09-28/', JSON.stringify(ld));
+check('Article: 種類・見出し・公開日・URL', ld['@type'] === 'Article' && ld['@context'] === 'https://schema.org' && ld.headline === R.roundupTitle(norm[0]) && ld.datePublished === '2026-10-05' && ld.mainEntityOfPage['@id'] === 'https://av-sale-guide.com/weekly/2026-09-28/', JSON.stringify(ld));
 check('Article: 発行元はサイト自身（人の名前を入れない）', ld.author['@type'] === 'Organization' && ld.author.name === SITE_NAME && ld.publisher.name === SITE_NAME);
 check('Article: 指定したURLを使う', R.articleLd(norm[0], 'https://example.com').mainEntityOfPage['@id'] === 'https://example.com/weekly/2026-09-28/');
 

@@ -1,7 +1,7 @@
-# FANZA新作情報
+# FANZAセール情報（旧 FANZA新作情報）
 
 FANZAの新作・予約作品を毎日自動で集めて、AIのひとことコメントを添えて公開するブログです。
-公開サイト: https://fanza-ranking.pages.dev/
+公開サイト: https://av-sale-guide.com/
 
 ## 自動で動くしくみ
 

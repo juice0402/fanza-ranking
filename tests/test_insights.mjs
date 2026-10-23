@@ -51,7 +51,7 @@ check('未成年を連想させる名前のシリーズは作らない', !series
 const labels = I.groupByEntry(items, 'label');
 check('レーベルは、メーカーと同じ名前（いちばん多いメーカー）なら作らない・違う名前なら作る', labels.map((g) => g.id).sort().join() === '20,30' && labels.find((g) => g.id === 30).makers.join() === 'M2,M1' && labels.find((g) => g.id === 20).path === '/label/20/', JSON.stringify(labels.map((g) => [g.id, g.name, g.makers])));
 check('最大の数（作品数の多い順）・最小の本数', I.groupByEntry(items, 'label', { max: 1 }).length === 1 && I.groupByEntry(items, 'series', { minItems: 5 }).length === 0);
-check('タイトル・紹介文（作品データだけから）', I.entryPageTitle(series[0], '2026-10-07') === 'シリーズX（シリーズ）の新作・作品一覧【2026年10月】（4本）｜FANZA新作情報'
+check('タイトル・紹介文（作品データだけから）', I.entryPageTitle(series[0], '2026-10-07') === 'シリーズX（シリーズ）の新作・作品一覧【2026年10月】（4本）｜FANZAセール情報'
   && I.entrySummary(series[0]).startsWith('FANZAの「シリーズX」（シリーズ）の作品を4本掲載しています。発売日は2026年9月1日から2026年10月3日です。メーカーはM1です。出演は花子、月子です。'), I.entrySummary(series[0]));
 const near = I.sameSeries(items[1], series[0], 2);
 check('同じシリーズの作品: その作品を除いて、発売日の近い順', near.map((i) => i.cid).join() === 's4,s1', near.map((i) => i.cid).join());

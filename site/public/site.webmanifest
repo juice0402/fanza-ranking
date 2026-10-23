@@ -1,7 +1,7 @@
 {
-  "name": "FANZA新作情報",
-  "short_name": "FANZA新作",
-  "description": "FANZAの新作・予約作品を、発売日ごとに毎日紹介しています。",
+  "name": "FANZAセール情報",
+  "short_name": "FANZAセール",
+  "description": "FANZAのセール・10円セールと、新作・予約作品を毎日まとめています。",
   "lang": "ja",
   "start_url": "/",
   "scope": "/",
