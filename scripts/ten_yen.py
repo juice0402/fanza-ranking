@@ -61,6 +61,11 @@ RANK_PAGES = {"doujin": 30, "game": 15, "anime": 3, "amateur": 5, "cinema": 3, "
 CHEAP_BACK = 100  # 安い順: 二分探索で見つけた位置の、この本数だけ前から読む（順番が前後する所があるので）
 CHEAP_MAX_PAGES = 30  # 安い順: 10円のあたりを読む最大（100本ずつ・3,000本まで。2026-10-10 の同人は161本）
 OFFSET_MAX = 50000  # APIの offset の上限（total_count も 50000 で止まる）
+# キャンペーンの名前でも探す（2026-10-24）。動画は、安い順（sort=-price）がセールの価格で並ばず（先頭が60円・99円で、10円の作品はその後ろにも出てこない）、
+# 安い順だけでは動画の10円セールを1本も見つけられなかった（本物のAPIで確かめた。scripts/probe_api.py の 21）。
+# キーワード「10円セール」で探すと、その名前のキャンペーンの作品が出る（2026-10-24 は7本＝FANZAの動画の10円セールの全部）。ほかの売り場も同じように探す
+TEN_KEYWORDS = ("10円セール",)
+KEYWORD_MAX_PAGES = 10  # キーワードで探す最大（100本ずつ・1,000本まで）
 RUN_KEEP_DAYS = 400
 RUN_GAP_DAYS = 1  # 見かけた日が1日より空いたら、別の回
 TITLE_LIMIT = 3
@@ -221,11 +226,36 @@ def scan_cheap(base, call, make_row, rows, seen, today_str):
     return True
 
 
+def scan_keyword(base, call, make_row, rows, seen, today_str):
+    """キャンペーンの名前（TEN_KEYWORDS）で探して、10円の作品を rows に足す → 最後まで読めたか。
+    並び順は発売日順（安い順がセールの価格で並ばない売り場があるため。読むのは全部なので、順番はどれでもよい）"""
+    for kw in TEN_KEYWORDS:
+        off = 1
+        for _ in range(KEYWORD_MAX_PAGES):
+            try:
+                got = call("ItemList", dict(base, sort="date", keyword=kw, offset=off, hits=PAGE)).get("items") or []
+            except RuntimeError as e:
+                print(f"  ⚠️ 「{kw}」で探せませんでした: {e}")
+                return False
+            time.sleep(G.DMM_INTERVAL_SEC)
+            for raw in got:
+                row = make_row(raw)
+                if row and row["cid"] not in seen and row["date"][:10] <= today_str:
+                    seen.add(row["cid"])
+                    rows.append(row)
+            if len(got) < PAGE or off + PAGE > OFFSET_MAX:
+                break
+            off += PAGE
+    return True
+
+
 def fetch_video(call, now):
-    """動画の10円の作品（安い順の10円のあたりを、すべて） → (作品のリスト, 最後まで読めたか)"""
+    """動画の10円の作品（安い順の10円のあたりを、すべて＋キャンペーンの名前で探したもの） → (作品のリスト, 最後まで読めたか)"""
     rows, seen = [], set()
     base = {"site": "FANZA", "service": "digital", "floor": "videoa"}
-    ok = scan_cheap(base, call, video_row, rows, seen, now.strftime("%Y-%m-%d"))
+    today_str = now.strftime("%Y-%m-%d")
+    ok = scan_cheap(base, call, video_row, rows, seen, today_str)
+    ok = scan_keyword(base, call, video_row, rows, seen, today_str) and ok
     return rows, ok
 
 
@@ -237,13 +267,15 @@ def fetch_floor(key, call, now):
     today_str = now.strftime("%Y-%m-%d")
     lte = G.iso(now.replace(hour=23, minute=59, second=59, microsecond=0))
     base = {"site": "FANZA", "service": conf["service"], "floor": conf["floor"], "hits": PAGE}
-    cheap_rows = []
-    if key not in NO_CHEAP_SORT:
-        cheap = {k: v for k, v in base.items() if k != "hits"}
-        if not scan_cheap(cheap, call, lambda raw: floor_row(raw, key), cheap_rows, set(), today_str):
-            return [], False
-        if not cheap_rows:
-            return [], True
+    cheap_rows, cheap_seen = [], set()
+    cheap = {k: v for k, v in base.items() if k != "hits"}
+    if key not in NO_CHEAP_SORT and not scan_cheap(cheap, call, lambda raw: floor_row(raw, key), cheap_rows, cheap_seen, today_str):
+        return [], False
+    # キャンペーンの名前でも探す（安い順がセールの価格で並ばないときのため。2026-10-24）
+    if not scan_keyword(cheap, call, lambda raw: floor_row(raw, key), cheap_rows, cheap_seen, today_str):
+        return [], False
+    if key not in NO_CHEAP_SORT and not cheap_rows:
+        return [], True
     rows, seen = [], set()
     fails = read = 0
     off = 1

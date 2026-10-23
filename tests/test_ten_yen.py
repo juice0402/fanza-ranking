@@ -110,10 +110,33 @@ api = FakeAPI(LISTS)
 rows, ok = T.fetch_video(api, NOW)
 check("動画: 安い順の先頭から、10円の作品だけ（値引きでない10円・未成年を連想させる作品は入れない）", ok and [r["cid"] for r in rows] == ["abc00001", "abc00002"], rows)
 check("動画: 先頭がもう10円なら探さず、10円以下が1本も無い100本が出たらやめる（位置を1回・100本ずつを2回）",
-      [(c["offset"], c["hits"]) for c in api.calls if c["floor"] == "videoa"] == [(1, 1), (1, 100), (101, 100)], api.calls)
+      [(c["offset"], c["hits"]) for c in api.calls if c["floor"] == "videoa" and "keyword" not in c] == [(1, 1), (1, 100), (101, 100)], api.calls)
 check("動画: キャンペーンの名前・終わり・定価・価格を持つ（作品の項目は new_releases.json と同じ名前）",
       rows[0]["sale_title"] == "10円セール第1弾" and rows[0]["sale_end"] == "2026-10-11 09:59" and rows[0]["price"] == 10 and rows[0]["list_price"] == 2980
       and rows[0]["actress"] == ["作った女優"] and rows[0]["maker"] == "作ったメーカー" and rows[0]["url"].startswith("https://al.fanza.co.jp/"))
+# 動画の安い順がセールの価格で並ばないとき（2026-10-24 の本物のAPI: 安い順の先頭は60円・99円で、10円セールの作品は出てこない）。
+# キャンペーンの名前「10円セール」で探して見つける
+TEN_CAMP = {"title": "10円セール", "date_begin": "2026-10-23 10:00:00", "date_end": "2026-10-26 09:59:59"}
+kw_lists = {("videoa", "-price"): [video(5, price="60~", list_price="60~")] + [video(100 + i, price="99~", list_price="99~") for i in range(120)],
+            ("videoa", "date"): [video(7, price="10", list_price="1180", camp=TEN_CAMP), video(8, price="210", list_price="300"), video(9, price="10", list_price="1280", camp=TEN_CAMP, title="放課後のなにか")]}
+api = FakeAPI(kw_lists)
+rows, ok = T.fetch_video(api, NOW)
+kw_calls = [c for c in api.calls if c.get("keyword")]
+check("動画: 安い順に10円の作品が無くても、キャンペーンの名前（「10円セール」）で探して見つける（10円でない作品・未成年を連想させる作品は入れない）",
+      ok and [r["cid"] for r in rows] == ["abc00007"] and rows[0]["sale_title"] == "10円セール" and rows[0]["sale_end"] == "2026-10-26 09:59"
+      and [(c["keyword"], c["sort"], c["offset"]) for c in kw_calls] == [("10円セール", "date", 1)], ([r["cid"] for r in rows], kw_calls))
+api = FakeAPI({**LISTS, ("videoa", "date"): [cheap_video[0], video(7, price="10", list_price="1180", camp=TEN_CAMP)]})
+rows, ok = T.fetch_video(api, NOW)
+check("動画: 安い順とキャンペーンの名前の両方で見つけた作品は1回だけ", ok and [r["cid"] for r in rows] == ["abc00001", "abc00002", "abc00007"], [r["cid"] for r in rows])
+api = FakeAPI(LISTS, fail={("videoa", "date")})
+rows, ok = T.fetch_video(api, NOW)
+check("動画: キャンペーンの名前で探せなかったら「最後まで読めなかった」（前のデータを残す）・安い順で見つけた分は返す", not ok and [r["cid"] for r in rows] == ["abc00001", "abc00002"], (ok, rows))
+api = FakeAPI({("digital_doujin", "-price"): [floor(10 + i, price="770", list_price="1100") for i in range(5)],
+               ("digital_doujin", "date"): [floor(3, list_price="1100", camp=TEN_CAMP)], ("digital_doujin", "rank"): []})
+rows, ok = T.fetch_floor("doujin", api, NOW)
+check("同人: 安い順に10円が無くても、キャンペーンの名前で見つけたら載せる（人気順も読んで順位を付けにいく）",
+      ok and [r["cid"] for r in rows] == ["d_200003"] and any(c["sort"] == "rank" for c in api.calls), ([r["cid"] for r in rows], [c["sort"] for c in api.calls]))
+
 api = FakeAPI(LISTS)
 rows, ok = T.fetch_floor("doujin", api, NOW)
 check("同人: 人気順の上から、定価300円以上の10円か、名前に「10円」のあるキャンペーンの作品だけ（5円・ふだんの安売り・未成年を連想させる作品は入れない）",
