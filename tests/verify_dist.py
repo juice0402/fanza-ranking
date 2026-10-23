@@ -1541,7 +1541,7 @@ for p in pages:
             or not re.search(r'<button type="button" id="install-btn"[^>]*hidden>ホーム画面に追加</button>', fa_.group(1)) or foot_.find('class="foot-about"') < foot_.find('class="foot-credit"')):
         bad_about.append(os.path.relpath(p, DIST))
     head_ = read_raw(p).split("</head>", 1)[0]
-    if '<link rel="manifest" href="/site.webmanifest"' not in head_ or 'type="application/rss+xml"' not in head_ or 'src="/install.js?v=' not in read_raw(p):
+    if not re.search(r'<link rel="manifest" href="/site\.webmanifest\?v=[0-9a-f]{8}"', head_) or 'type="application/rss+xml"' not in head_ or 'src="/install.js?v=' not in read_raw(p):
         bad_about.append(("head", os.path.relpath(p, DIST)))
 check("全ページのフッターのいちばん下に、小さな「このサイトについて」「RSS」「ホーム画面に追加」（最初は隠れている）があり、<head> にホーム画面に追加の設定と RSS の案内がある（運営者の希望。2026-10-06）", not bad_about, bad_about[:3])
 # ホーム画面に追加の設定（/site.webmanifest）とアイコン、RSS（/feed.xml・/weekly/feed.xml）
