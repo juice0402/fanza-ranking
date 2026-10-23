@@ -1510,7 +1510,10 @@ for p in pages:
     # <head>: 言語・画面幅・OGP・アイコン
     metas = {(t.get("property") or t.get("name")): t.get("content", "") for t in tags(html, "meta")}
     links = [(t.get("rel"), t.get("href")) for t in tags(html, "link")]
-    if not all(metas.get(k) for k in ("viewport", "og:title", "og:url", "og:type", "og:site_name", "twitter:card")) or not {("icon", "/favicon.ico"), ("icon", "/favicon.svg"), ("apple-touch-icon", "/apple-touch-icon.png")} <= set(links):
+    # アイコンの URL には中身の印（?v=…。lib/assets.js の assetUrl）が付く（2026-10-23。アイコンを変えたら、ブラウザが自動で取り直すように）
+    icon_links = {(rel, re.sub(r"\?v=[0-9a-f]{8}$", "", str(href))) for rel, href in links if rel in ("icon", "apple-touch-icon", "manifest")}
+    if not all(metas.get(k) for k in ("viewport", "og:title", "og:url", "og:type", "og:site_name", "twitter:card")) or not {("icon", "/favicon.ico"), ("icon", "/favicon.svg"), ("apple-touch-icon", "/apple-touch-icon.png"), ("manifest", "/site.webmanifest")} <= icon_links \
+            or not all(re.search(r"\?v=[0-9a-f]{8}$", str(href)) for rel, href in links if rel in ("icon", "apple-touch-icon", "manifest")):
         bad_head.append(name)
     if not re.search(r'<html[^>]*\blang="ja"', html):
         bad_lang.append(name)
@@ -1538,7 +1541,7 @@ for p in pages:
             or not re.search(r'<button type="button" id="install-btn"[^>]*hidden>ホーム画面に追加</button>', fa_.group(1)) or foot_.find('class="foot-about"') < foot_.find('class="foot-credit"')):
         bad_about.append(os.path.relpath(p, DIST))
     head_ = read_raw(p).split("</head>", 1)[0]
-    if '<link rel="manifest" href="/site.webmanifest"' not in head_ or 'type="application/rss+xml"' not in head_ or 'src="/install.js?v=' not in read_raw(p):
+    if not re.search(r'<link rel="manifest" href="/site\.webmanifest\?v=[0-9a-f]{8}"', head_) or 'type="application/rss+xml"' not in head_ or 'src="/install.js?v=' not in read_raw(p):
         bad_about.append(("head", os.path.relpath(p, DIST)))
 check("全ページのフッターのいちばん下に、小さな「このサイトについて」「RSS」「ホーム画面に追加」（最初は隠れている）があり、<head> にホーム画面に追加の設定と RSS の案内がある（運営者の希望。2026-10-06）", not bad_about, bad_about[:3])
 # ホーム画面に追加の設定（/site.webmanifest）とアイコン、RSS（/feed.xml・/weekly/feed.xml）
@@ -1581,6 +1584,10 @@ check("全ページの書体の読み込み: 表示を止めない形（preload 
 check(f"全ページが lang=ja", not bad_lang, bad_lang[:3])
 check(f"全ページの画像に alt がある", not bad_alt, bad_alt[:3])
 check("FANZA/DMM への外部リンク（サンプル画像を拡大するリンクを除く）は、すべて広告の属性（sponsored nofollow noopener noreferrer）つき", not bad_ext, bad_ext[:3])
+# アイコンの印（?v=…）が、いま公開するファイルの中身から作ったものと同じ（アイコンを変えると印も変わる＝ブラウザが自動で取り直す。2026-10-23）
+_home_links = {t.get("href", "").split("?")[0]: t.get("href", "") for t in tags(read_raw(os.path.join(DIST, "index.html")), "link") if t.get("rel") in ("icon", "apple-touch-icon", "manifest")}
+_bad_ver = [h for p_, h in _home_links.items() if h != f"{p_}?v={_hl.sha1(open(os.path.join(DIST, p_.lstrip('/')), 'rb').read()).hexdigest()[:8]}"]
+check("アイコン・ホーム画面の設定の URL の印（?v=…）は、ファイルの中身から作ったもの（アイコンを変えると、ブラウザが自動で取り直す）", len(_home_links) == 4 and not _bad_ver, (_bad_ver, sorted(_home_links)))
 ico = os.path.join(DIST, "favicon.ico")
 check("アイコン（favicon.ico・favicon.svg・apple-touch-icon.png）が公開されていて、中身が画像の形式", os.path.isfile(ico) and open(ico, "rb").read(4) == b"\x00\x00\x01\x00" and os.path.isfile(os.path.join(DIST, "favicon.svg")) and open(os.path.join(DIST, "apple-touch-icon.png"), "rb").read(8) == b"\x89PNG\r\n\x1a\n" if os.path.isfile(os.path.join(DIST, "apple-touch-icon.png")) else False)
 # スマホで、画面を横に動かせてしまう（グラグラする）のを防ぐ設定が、ビルド後のCSSに残っている
