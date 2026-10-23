@@ -69,7 +69,9 @@ jobs:
           except OSError:
               lines = ["（ログファイルがありません。ビルドの前に失敗した可能性があります）"]
           lines = [re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", l).rstrip() for l in lines]
-          marks = [l for l in lines if "❌" in l or re.search(r"\berror\b|Error:|failed", l, re.I)][:20]
+          # テスト・点検の失敗（字下げのある ❌）を先に出す（2026-10-23。前は、わざと失敗させるテストのエラー文で20行がうまり、本当の失敗が見えなかった）
+          real = [l for l in lines if re.match(r"\s+❌", l)]
+          marks = (real + [l for l in lines if l not in real and ("❌" in l or re.search(r"\berror\b|Error:|failed|Traceback", l, re.I))])[:20]
           tail = lines[-25:]
           text = "\n".join(marks + ["--- ログの終わり ---"] + tail)
           text = text[-3500:]  # 注釈は長すぎると切られるので、後ろ（原因が出やすい側）を残す
