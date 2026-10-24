@@ -2381,15 +2381,21 @@ check(f"メーカーのページ（{len(maker_pages)}ページ）: タイトル�
       not bad_mk, bad_mk[:2])
 # 作品ページの「次に見るもの」（運営者の希望「サイト滞在時間を伸ばしたい」。2026-10-06）: セール中の札・次の新作・小さな表紙の棚・運命の作品
 _item_pages = sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))
+# 動画の10円セールの作品（ten_yen.json の video）。作品ページは、ふつうのセールの札の代わりに「10円」の札（class="sale-strip ten-strip"）を出す（2026-10-24。
+# 前は、ここが「10円」の札をセールの札と数えず、動画の10円セールが始まった日に点検に落ちて、公開が止まった）
+_ty_item_path = os.path.join(ROOT, "site", "src", "data", "ten_yen.json")
+_ty_video = {str(r.get("cid")) for r in (json.load(open(_ty_item_path, encoding="utf-8")).get("video") or [])} if os.path.isfile(_ty_item_path) else set()
 bad_stay = []
 for pth in _item_pages:
     cid_ = os.path.basename(os.path.dirname(pth))
     raw_ = read_raw(pth)
     x_ = everything.get(cid_, {})
-    on_ = cid_ in _on_sale and str(x_.get("date", ""))[:10] <= JST_TODAY
+    on_ = (cid_ in _on_sale or cid_ in _ty_video) and str(x_.get("date", ""))[:10] <= JST_TODAY
     here = []
-    if ('class="sale-strip"' in raw_) != on_ or (on_ and not sale_js_ok(raw_)):
+    if (re.search(r'class="sale-strip(?: ten-strip)?"', raw_) is not None) != on_ or (on_ and not sale_js_ok(raw_)):
         here.append("セールの札")
+    if cid_ in _ty_video and str(x_.get("date", ""))[:10] <= JST_TODAY and 'class="sale-strip ten-strip"' not in raw_:
+        here.append("10円の札")
     if not re.search(r'<section id="gacha"[^>]*data-src="/data/gacha.json"[^>]*data-exclude="' + re.escape(cid_) + '"', raw_) or 'src="/gacha.js?v=' not in raw_:
         here.append("運命の作品")
     shown_titles = [htmllib.unescape(strip_tags(t)) for t in re.findall(r'class="mini-title">(.*?)</h3>', raw_, re.S)]
