@@ -1791,8 +1791,13 @@ check("スマホのサムネ: 一覧のパッケージ画像（pl.jpg。同人�
 _home_raw = read_raw(os.path.join(DIST, "index.html"))
 _top3 = re.search(r'<ol class="medals rank-podium".*?</ol>', _home_raw, re.S)
 _top3_imgs = re.findall(r'<img ([^>]*)>', _top3.group(0)) if _top3 else []
+# 小さい版を作れる画像（動画の表紙 pl/ps。site/src/lib/items.js の cardImage と同じ見分け方）だけ <picture> になる。
+# FANZAの画像には、まれに小さな見本の画像（…pt.jpg）しか無い作品があり、それはそのまま（2026-10-25。TOP3の控え＝VRを隠したときに出す6位に
+# 入った日に、ここが「全部 <picture>」を待っていて点検に落ち、公開が止まった）
+_top3_small = [a_ for a_ in _top3_imgs if re.search(r'src="https://pics\.dmm\.co\.jp/digital/video/[^"?#]+p[ls]\.jpg"', a_)]
 check("トップのTOP3: スマホは表紙（幅300に縮めた版）を <picture> で読み、1本目はすぐに・優先して読む（fetchpriority=high）",
-      bool(_top3_imgs) and _top3.group(0).count('<picture class="pic">') == len(_top3_imgs) and 'fetchpriority="high"' in _top3_imgs[0] and 'loading="eager"' in _top3_imgs[0], _top3_imgs[:1])
+      bool(_top3_imgs) and _top3.group(0).count('<picture class="pic">') == len(_top3_small) and 'fetchpriority="high"' in _top3_imgs[0] and 'loading="eager"' in _top3_imgs[0],
+      (_top3.group(0).count('<picture class="pic">'), len(_top3_small), len(_top3_imgs), _top3_imgs[:1]))
 
 # 「VR作品を隠す」の見た目の決まり
 hide_rule = [b for sels, b in css_rules if ".hide-vr [data-vr]" in sels]
