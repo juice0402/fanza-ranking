@@ -2,6 +2,9 @@
 // （astro.config.mjs・robots.txt・sitemap・各ページの canonical は、ここの SITE_URL を自動で使います）
 
 export const SITE_NAME = 'FANZAセール情報'; // 2026-10-22 に「FANZA新作情報」から（独自ドメイン av-sale-guide.com への引っ越しといっしょに。見に来る人のお目当てはセール）
+// サイト名のほかの呼び方（トップの WebSite の構造化データの alternateName。Google の検索結果のサイト名に使われる。2026-10-26 司令塔の連絡 C-003）。
+// ホーム画面に追加したときの短い名前（site.webmanifest の short_name）と、前の名前を入れる
+export const SITE_ALT_NAMES = ['FANZAセール', 'FANZA新作情報'];
 export const SITE_URL = 'https://av-sale-guide.com'; // 末尾にスラッシュは付けない
 
 // Google Search Console の所有権の確認用コード（<meta> の content の値）。公開されても問題のないコードです。空にすると出力しません

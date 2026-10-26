@@ -1791,8 +1791,13 @@ check("スマホのサムネ: 一覧のパッケージ画像（pl.jpg。同人�
 _home_raw = read_raw(os.path.join(DIST, "index.html"))
 _top3 = re.search(r'<ol class="medals rank-podium".*?</ol>', _home_raw, re.S)
 _top3_imgs = re.findall(r'<img ([^>]*)>', _top3.group(0)) if _top3 else []
+# 小さい版を作れる画像（動画の表紙 pl/ps。site/src/lib/items.js の cardImage と同じ見分け方）だけ <picture> になる。
+# FANZAの画像には、まれに小さな見本の画像（…pt.jpg）しか無い作品があり、それはそのまま（2026-10-25。TOP3の控え＝VRを隠したときに出す6位に
+# 入った日に、ここが「全部 <picture>」を待っていて点検に落ち、公開が止まった）
+_top3_small = [a_ for a_ in _top3_imgs if re.search(r'src="https://pics\.dmm\.co\.jp/digital/video/[^"?#]+p[ls]\.jpg"', a_)]
 check("トップのTOP3: スマホは表紙（幅300に縮めた版）を <picture> で読み、1本目はすぐに・優先して読む（fetchpriority=high）",
-      bool(_top3_imgs) and _top3.group(0).count('<picture class="pic">') == len(_top3_imgs) and 'fetchpriority="high"' in _top3_imgs[0] and 'loading="eager"' in _top3_imgs[0], _top3_imgs[:1])
+      bool(_top3_imgs) and _top3.group(0).count('<picture class="pic">') == len(_top3_small) and 'fetchpriority="high"' in _top3_imgs[0] and 'loading="eager"' in _top3_imgs[0],
+      (_top3.group(0).count('<picture class="pic">'), len(_top3_small), len(_top3_imgs), _top3_imgs[:1]))
 
 # 「VR作品を隠す」の見た目の決まり
 hide_rule = [b for sels, b in css_rules if ".hide-vr [data-vr]" in sels]
@@ -2381,15 +2386,24 @@ check(f"メーカーのページ（{len(maker_pages)}ページ）: タイトル�
       not bad_mk, bad_mk[:2])
 # 作品ページの「次に見るもの」（運営者の希望「サイト滞在時間を伸ばしたい」。2026-10-06）: セール中の札・次の新作・小さな表紙の棚・運命の作品
 _item_pages = sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))
+# 動画の10円セールの作品（ten_yen.json の video）。作品ページは、ふつうのセールの札の代わりに「10円」の札（class="sale-strip ten-strip"）を出す（2026-10-24。
+# 前は、ここが「10円」の札をセールの札と数えず、動画の10円セールが始まった日に点検に落ちて、公開が止まった）
+_ty_item_path = os.path.join(ROOT, "site", "src", "data", "ten_yen.json")
+_ty_video = {str(r.get("cid")) for r in (json.load(open(_ty_item_path, encoding="utf-8")).get("video") or [])} if os.path.isfile(_ty_item_path) else set()
 bad_stay = []
 for pth in _item_pages:
     cid_ = os.path.basename(os.path.dirname(pth))
     raw_ = read_raw(pth)
     x_ = everything.get(cid_, {})
-    on_ = cid_ in _on_sale and str(x_.get("date", ""))[:10] <= JST_TODAY
+    on_ = (cid_ in _on_sale or cid_ in _ty_video) and str(x_.get("date", ""))[:10] <= JST_TODAY
     here = []
-    if ('class="sale-strip"' in raw_) != on_ or (on_ and not sale_js_ok(raw_)):
+    # 「終わったら隠す」（sale.js）は、終わりの時刻の印（data-sale-end）があるときに要る。10円セールの作品は、終わりの時刻が分からないこともあり
+    # （キーワードの検索で見つけた作品。2026-10-26）、そのときは隠すものが無いので、作品ページに sale.js を入れない（前は、それでも要るとして、公開が止まった）
+    _need_js = on_ and ("data-sale-end=" in raw_ or cid_ not in _ty_video)
+    if (re.search(r'class="sale-strip(?: ten-strip)?"', raw_) is not None) != on_ or (_need_js and not sale_js_ok(raw_)):
         here.append("セールの札")
+    if cid_ in _ty_video and str(x_.get("date", ""))[:10] <= JST_TODAY and 'class="sale-strip ten-strip"' not in raw_:
+        here.append("10円の札")
     if not re.search(r'<section id="gacha"[^>]*data-src="/data/gacha.json"[^>]*data-exclude="' + re.escape(cid_) + '"', raw_) or 'src="/gacha.js?v=' not in raw_:
         here.append("運命の作品")
     shown_titles = [htmllib.unescape(strip_tags(t)) for t in re.findall(r'class="mini-title">(.*?)</h3>', raw_, re.S)]
@@ -2729,8 +2743,16 @@ for p in indexable:
     is_home = os.path.abspath(p) == os.path.abspath(index_path)
     crumbs = [b for b in blocks if b.get("@type") == "BreadcrumbList"]
     if is_home:
-        if not any(b.get("@type") == "WebSite" for b in blocks):
+        # Google の検索結果のサイト名（2026-10-26 司令塔の連絡 C-003）: WebSite の name＝サイト名（og:site_name と同じ）・url＝トップ・別名あり・title はサイト名から
+        site_ = next((b for b in blocks if b.get("@type") == "WebSite"), None)
+        _sn = re.search(r"export const SITE_NAME = '([^']+)'", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1)
+        _ogsn = re.search(r'<meta property="og:site_name" content="([^"]*)"', html)
+        _ttl = re.search(r"<title>(.*?)</title>", html, re.S)
+        if not site_:
             bad_ld.append(rel(p) + "（WebSite がない）")
+        elif site_.get("name") != _sn or not _ogsn or htmllib.unescape(_ogsn.group(1)) != _sn or site_.get("url") != SITE_URL_V + "/" \
+                or not site_.get("alternateName") or not (_ttl and htmllib.unescape(_ttl.group(1)).startswith(_sn)):
+            bad_ld.append(rel(p) + f"（WebSite の name・url・alternateName・og:site_name・title がそろっていない: {site_}）")
         continue
     if not crumbs:
         no_crumb.append(rel(p))
@@ -2771,6 +2793,20 @@ dup_titles = {t: ps for t, ps in titles.items() if len(ps) > 1}
 no_desc = descs.get("", [])
 warn("タイトルがページごとに違う（重複があっても失敗にはしない）", not dup_titles, list(dup_titles.items())[:2])
 warn("説明文（description）がすべてのページにある", not no_desc, no_desc[:3])
+# 説明文の決まり（2026-10-26 司令塔の連絡 C-003・site-principles.md の「検索結果での見え方」。部品は site/src/lib/describe.js）
+_desc_words = re.compile("|".join(map(re.escape, ["おすすめ", "オススメ", "お得", "ぜひ", "是非", "便利", "簡単", "安心", "ポイント", "コツ", "しましょう", "——"])))
+_unquote = lambda d_: re.sub(r"「[^」]*」", "「」", htmllib.unescape(d_))  # noqa: E731  作品の題名・名前（「」の中。FANZAのデータ）は数えない
+_hub_pages = {"index.html", "ranking/index.html", "month/index.html", "tag/index.html", "weekly/index.html", "event/index.html", "actress/index.html"}
+_hub_bad = [(r_, htmllib.unescape(d_)) for d_, ps in descs.items() for r_ in ps if r_ in _hub_pages and _desc_words.search(htmllib.unescape(d_))]
+check("トップ・一覧のページの説明文に、使わない言葉（おすすめ・お得・便利・簡単・安心・ぜひ…）が無い（データから作る説明文。lib/describe.js）", not _hub_bad, _hub_bad[:3])
+_all_bad = [(ps[0], htmllib.unescape(d_)[:40]) for d_, ps in descs.items() if d_ and _desc_words.search(_unquote(d_))]
+warn(f"説明文に、使わない言葉が無い（「」の中の題名・名前は数えない。コメント・キャンペーン名などFANZAのデータから入ったものは注意だけ。{len(_all_bad)}件）", not _all_bad, _all_bad[:3])
+_len_bad = [(ps[0], len(htmllib.unescape(d_))) for d_, ps in descs.items() if d_ and not 80 <= len(htmllib.unescape(d_)) <= 120]
+warn(f"説明文は全角80〜120文字くらい（外れているもの {sum(len(descs[d_]) for d_ in descs if d_ and not 80 <= len(htmllib.unescape(d_)) <= 120)}ページ）", not _len_bad, _len_bad[:5])
+_hub_len = [(r_, len(htmllib.unescape(d_))) for d_, ps in descs.items() for r_ in ps if r_ in _hub_pages and not 60 <= len(htmllib.unescape(d_)) <= 120]
+check("トップ・一覧のページの説明文は、120文字まで・短すぎない（60文字以上）", not _hub_len, _hub_len)
+dup_descs = {d_: ps for d_, ps in descs.items() if d_ and len(ps) > 1}
+warn(f"説明文がページごとに違う（同じ説明文のページを量産しない。重複 {sum(len(ps) for ps in dup_descs.values())}ページ）", not dup_descs, list(dup_descs.items())[:2])
 
 print("\n■ FANZA同人・FANZAゲームなどの売り場（/doujin/・/game/・/anime/・/amateur/・/cinema/・/comic/・/photo/・/vr/。運営者の希望。2026-10-09・2026-10-10）")
 sys.path.insert(0, os.path.join(ROOT, "scripts"))

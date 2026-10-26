@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import { homeDescription } from '../lib/describe.js';
 import DaySection from '../components/DaySection.astro';
 import TopThree from '../components/TopThree.astro';
 import TopicList from '../components/TopicList.astro';
@@ -107,7 +108,7 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
 <Base
   tenYenBar={false}
   title={`${SITE_NAME}｜きょうのセール・10円セールと新作・予約を毎日更新`}
-  description="FANZAでいま開催中のセール・10円セールと、新作・予約作品を毎日更新でまとめています。きょうの新着人気TOP3と話題も、毎日入れかわります。"
+  description={homeDescription({ today, released, upcomingShown, upcomingLast: upcoming.slice(0, HOME_UPCOMING_LIMIT).at(-1)?.dateKey ?? '', top1: top[0] ?? null, topIsNew, saleCount: saleCamps.length })}
   path="/"
   jsonLd={[websiteLd()]}
 >

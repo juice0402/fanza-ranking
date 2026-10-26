@@ -4,6 +4,7 @@
 // きょうから EVENT_DAYS 日先までを、日付ごとに。トップの「きょうの話題」のイベントは、このページの、そのイベントの行（id）へリンクする。
 // 情報はその日の 0:05 ごろのもの。中止・変更がありうるので「○日時点」「くわしくは公式サイトで」を添える。1件も無いあいだは検索エンジンに出さない
 import Base from '../../layouts/Base.astro';
+import { eventIndexDescription } from '../../lib/describe.js';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import EventList from '../../components/EventList.astro';
 import { actressByName, events, faceOfName, today, upcomingEventList } from '../../lib/data.js';
@@ -21,7 +22,7 @@ const trail = [
 
 <Base
   title={`女優のイベント情報（サイン会・撮影会・発売記念イベント）｜${SITE_NAME}`}
-  description="所属事務所の公式サイトに載っている、女優のサイン会・撮影会・発売記念イベント・来店などの予定を、日付ごとにまとめています。毎日、日付が変わったあとに更新します。"
+  description={eventIndexDescription(upcomingEventList)}
   path={EVENT_PATH}
   noindex={upcomingEventList.length === 0}
   jsonLd={[breadcrumbLd(trail)]}

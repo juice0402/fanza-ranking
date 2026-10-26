@@ -57,6 +57,8 @@ run "サイトの部品 (Node.js)" node tests/test_items.mjs
 
 run "品番・作品ページの情報欄・月ごと/ジャンルごとのページの部品 (Node.js)" node tests/test_seo.mjs
 
+run "検索結果に出る説明文（ページごとの数字入り）の部品 (Node.js)" node tests/test_describe.mjs
+
 run "作品ページの「次に見るもの」の部品 (Node.js)" node tests/test_stay.mjs
 
 run "RSS（新着のお知らせの配信）の部品 (Node.js)" node tests/test_feed.mjs
