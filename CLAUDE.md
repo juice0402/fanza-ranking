@@ -32,6 +32,7 @@ FANZAの新作・予約作品を毎日自動で集め、ひとことコメント
 | 毎日 0:20 | Claude の予約タスク: コメントを仕上げる（1日40件。手順は `docs/claude-comments.md`） | `new_releases.json`・`catalog/`・売り場のファイル |
 | 毎日 0:35・10:17 | `sale-refresh.yml`: 動画のセールの読み直し（はじめは上位1万本だけ）・10:17 は売り場の集め直し・0:35 は素人/アニメ/成人映画のキャンペーンごと | `sale.json`・`sale_history.json`・`floor_sale.json` |
 | 毎日 10:12・12:12・16:12・20:12 | `ten-yen.yml`: 10円セールが変わったときだけ保存して公開 | `ten_yen.json` |
+| 毎日 4:23 | `actress-history.yml`: 女優の歩み（出演者ごとの全作品を数える。`scripts/actress_history.py`。1回600回まで。公開はしない） | `actress_history.json` |
 | 毎週月曜 0:01 | `health.yml`: 見張り番（この7日の更新・公開・コメント・過去作品の数・リポジトリの大きさ。Claude を使わない。おかしいときだけ ⚠️ と GitHub の知らせ） | なし（読むだけ） |
 | 毎週月曜 0:50 | Claude の予約タスク: 週のまとめ記事（`docs/claude-roundups.md`）。月が変わって最初の月曜は、月のまとめ記事（`docs/claude-monthly.md`）も同じPRで。見張り番の結果も報告 | `roundups.json`・`monthly.json` |
 
