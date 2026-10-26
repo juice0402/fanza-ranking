@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { tagIndexDescription } from '../../lib/describe.js';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import NameIndex from '../../components/NameIndex.astro';
 import { readings, tagGroups } from '../../lib/data.js';
@@ -17,7 +18,7 @@ const index = kanaIndex(tagGroups.map((g) => ({ name: g.name, path: g.path, coun
 
 <Base
   title={`ジャンル別のFANZA新作・予約作品一覧｜${SITE_NAME}`}
-  description="FANZAの新作・予約作品を、ジャンル（VR・巨乳・美少女・痴女など）ごとにまとめた一覧です。作品数の多い順に並べています。"
+  description={tagIndexDescription(tagGroups)}
   path={TAG_INDEX_PATH}
   jsonLd={[breadcrumbLd(trail)]}
 >

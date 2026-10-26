@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { archiveDescription } from '../../lib/describe.js';
 import DaySection from '../../components/DaySection.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import VrToggle from '../../components/VrToggle.astro';
@@ -27,7 +28,7 @@ const trail = [
 
 <Base
   title={`過去の作品一覧（${current}ページ目）｜${SITE_NAME}`}
-  description={`FANZAの発売済み作品を発売日の新しい順に一覧できます。${current}ページ目（全${last}ページ）。`}
+  description={archiveDescription(page.data, current, last)}
   path={archivePath(current)}
   noindex={noindex}
   jsonLd={[breadcrumbLd(trail)]}

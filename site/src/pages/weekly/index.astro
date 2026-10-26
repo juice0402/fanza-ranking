@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { weeklyIndexDescription } from '../../lib/describe.js';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import { roundups } from '../../lib/data.js';
 import { SITE_NAME, breadcrumbLd, truncate } from '../../lib/items.js';
@@ -14,7 +15,7 @@ const trail = [
 
 <Base
   title={`週ごとのFANZA新作まとめ｜${SITE_NAME}`}
-  description="FANZAの新作を、1週間ごとにまとめた記事の一覧です。毎週月曜に、先週（月曜〜日曜）の分を公開します。"
+  description={weeklyIndexDescription(roundups)}
   path={WEEKLY_INDEX_PATH}
   noindex={roundups.length === 0}
   jsonLd={[breadcrumbLd(trail)]}

@@ -2,6 +2,7 @@
 // 運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも」→「同人 1,000本・ゲーム 500本」（2026-10-09）。
 // データは毎日の更新が集める site/src/data/doujin.json・game.json（scripts/doujin_game.py。形は scripts/floor_data.py）。
 // 未成年を連想させる作品は、集めるときに入れていない。ここでも、タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前を調べて、念のため外す（二重の備え）。
+import { DESC_MAX, cut, descLength, fit, priceBand } from './describe.js';
 import { reviewOf } from './reviews.js';
 import { FANZA_HOSTS, FANZA_LINK_HOSTS, addDays, daysBetween, entitySlug, isDay, resizedImage, safeHttpsUrl, smallImage } from './items.js';
 import { isMinorTitle } from './gacha.js';
@@ -382,8 +383,17 @@ export function floorItemTitle(item, siteName) {
 export function floorItemDescription(item) {
   const f = FLOORS[item.floor];
   const day = `${Number(item.dateKey.slice(0, 4))}年${Number(item.dateKey.slice(5, 7))}月${Number(item.dateKey.slice(8, 10))}日`;
-  const base = `${f.label}の${f.kind}「${item.title.slice(0, 40)}」${item.maker ? `（${f.maker}：${item.maker.name}）` : ''}。${day}${item.upcoming ? '発売予定' : '発売'}。`;
-  return (item.comment ? `${item.comment} ` : '') + base;
+  // 値段は幅で（「1,000円台から」。検索結果に古い値段が残るため。lib/describe.js。2026-10-26）。見放題の売り場は値段なし
+  const band = item.price === null || item.price === undefined ? '' : priceBand(item.price);
+  const price = band ? (band === '無料' ? '価格は無料です。' : `価格は${band}${band.endsWith('円台') ? 'から' : ''}です。`) : '';
+  const made = `${item.maker ? `${f.maker}「${item.maker.name}」の` : `${f.label}の`}${f.kind}で、${day}${item.upcoming ? '発売予定' : '発売'}。`;
+  if (item.comment) {
+    // コメントを先に（長ければ縮める）、あとにサークルなど・発売日・価格の幅。全体で全角120文字まで
+    const tail = made + price;
+    const room = DESC_MAX - descLength(tail) - 1;
+    return room >= 20 ? `${cut(item.comment, room)} ${tail}` : fit([tail]);
+  }
+  return fit([`${f.label}の${f.kind}「${item.title.slice(0, 40)}」。`, made, price]);
 }
 
 // ---------- コレクション（ジャンル・シリーズ・作家・発売月ごとのページ） ----------

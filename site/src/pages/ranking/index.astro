@@ -1,6 +1,7 @@
 ---
 // 新着の人気ランキング（/ranking/）。最近1週間に発売された作品を、その日のFANZAの人気順に（lib/popularity.js）
 import Base from '../../layouts/Base.astro';
+import { rankingDescription } from '../../lib/describe.js';
 import RankingList from '../../components/RankingList.astro';
 import { all, today, popularity } from '../../lib/data.js';
 import { RANKING_PATH, newRanking } from '../../lib/popularity.js';
@@ -18,7 +19,7 @@ const noindex = list.length === 0 || !listIndexable(list);
 
 <Base
   title={`FANZA新作の人気ランキング（最近1週間の発売）｜${SITE_NAME}`}
-  description="最近1週間に発売されたFANZA動画の新作を、その日の人気順に並べたランキングです。毎日、日付が変わったあとに更新します。"
+  description={rankingDescription({ date: popularity.date || today, list })}
   path={RANKING_PATH}
   noindex={noindex}
   jsonLd={[breadcrumbLd(trail)]}

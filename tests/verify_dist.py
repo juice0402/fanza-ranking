@@ -2740,8 +2740,16 @@ for p in indexable:
     is_home = os.path.abspath(p) == os.path.abspath(index_path)
     crumbs = [b for b in blocks if b.get("@type") == "BreadcrumbList"]
     if is_home:
-        if not any(b.get("@type") == "WebSite" for b in blocks):
+        # Google の検索結果のサイト名（2026-10-26 司令塔の連絡 C-003）: WebSite の name＝サイト名（og:site_name と同じ）・url＝トップ・別名あり・title はサイト名から
+        site_ = next((b for b in blocks if b.get("@type") == "WebSite"), None)
+        _sn = re.search(r"export const SITE_NAME = '([^']+)'", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1)
+        _ogsn = re.search(r'<meta property="og:site_name" content="([^"]*)"', html)
+        _ttl = re.search(r"<title>(.*?)</title>", html, re.S)
+        if not site_:
             bad_ld.append(rel(p) + "（WebSite がない）")
+        elif site_.get("name") != _sn or not _ogsn or htmllib.unescape(_ogsn.group(1)) != _sn or site_.get("url") != SITE_URL_V + "/" \
+                or not site_.get("alternateName") or not (_ttl and htmllib.unescape(_ttl.group(1)).startswith(_sn)):
+            bad_ld.append(rel(p) + f"（WebSite の name・url・alternateName・og:site_name・title がそろっていない: {site_}）")
         continue
     if not crumbs:
         no_crumb.append(rel(p))
@@ -2782,6 +2790,19 @@ dup_titles = {t: ps for t, ps in titles.items() if len(ps) > 1}
 no_desc = descs.get("", [])
 warn("タイトルがページごとに違う（重複があっても失敗にはしない）", not dup_titles, list(dup_titles.items())[:2])
 warn("説明文（description）がすべてのページにある", not no_desc, no_desc[:3])
+# 説明文の決まり（2026-10-26 司令塔の連絡 C-003・site-principles.md の「検索結果での見え方」。部品は site/src/lib/describe.js）
+_desc_words = re.compile("|".join(map(re.escape, ["おすすめ", "オススメ", "お得", "ぜひ", "是非", "便利", "簡単", "安心", "コツ", "しましょう", "——"])))
+_hub_pages = {"index.html", "ranking/index.html", "month/index.html", "tag/index.html", "weekly/index.html", "event/index.html", "actress/index.html"}
+_hub_bad = [(r_, htmllib.unescape(d_)) for d_, ps in descs.items() for r_ in ps if r_ in _hub_pages and _desc_words.search(htmllib.unescape(d_))]
+check("トップ・一覧のページの説明文に、使わない言葉（おすすめ・お得・便利・簡単・安心・ぜひ…）が無い（データから作る説明文。lib/describe.js）", not _hub_bad, _hub_bad[:3])
+_all_bad = [(ps[0], htmllib.unescape(d_)[:40]) for d_, ps in descs.items() if d_ and _desc_words.search(htmllib.unescape(d_))]
+warn(f"説明文に、使わない言葉が無い（作品のタイトル・ジャンル名などFANZAのデータから入ったものは注意だけ。{len(_all_bad)}件）", not _all_bad, _all_bad[:3])
+_len_bad = [(ps[0], len(htmllib.unescape(d_))) for d_, ps in descs.items() if d_ and not 80 <= len(htmllib.unescape(d_)) <= 120]
+warn(f"説明文は全角80〜120文字くらい（外れているもの {sum(len(descs[d_]) for d_ in descs if d_ and not 80 <= len(htmllib.unescape(d_)) <= 120)}ページ）", not _len_bad, _len_bad[:5])
+_hub_len = [(r_, len(htmllib.unescape(d_))) for d_, ps in descs.items() for r_ in ps if r_ in _hub_pages and not 60 <= len(htmllib.unescape(d_)) <= 120]
+check("トップ・一覧のページの説明文は、120文字まで・短すぎない（60文字以上）", not _hub_len, _hub_len)
+dup_descs = {d_: ps for d_, ps in descs.items() if d_ and len(ps) > 1}
+warn(f"説明文がページごとに違う（同じ説明文のページを量産しない。重複 {sum(len(ps) for ps in dup_descs.values())}ページ）", not dup_descs, list(dup_descs.items())[:2])
 
 print("\n■ FANZA同人・FANZAゲームなどの売り場（/doujin/・/game/・/anime/・/amateur/・/cinema/・/comic/・/photo/・/vr/。運営者の希望。2026-10-09・2026-10-10）")
 sys.path.insert(0, os.path.join(ROOT, "scripts"))

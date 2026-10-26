@@ -2,8 +2,10 @@
 // （JSONを読み込む処理は data.js に分けてあります）
 
 // 設定値（サイト名・URL・表示件数）は ../config.js にまとめてあります。
+import { DESC_MAX, durationJp, fit } from './describe.js';
 import {
   SITE_NAME,
+  SITE_ALT_NAMES,
   SITE_URL,
   HOME_RELEASED_LIMIT,
   HOME_UPCOMING_LIMIT,
@@ -383,10 +385,24 @@ export function itemPageTitle(item, code = '') {
 /** 作品ページの説明文（コメント＋メーカー・発売日・品番） */
 export function itemPageDescription(item, code = '') {
   const base = `${item.maker}の${formatDateJp(item.dateKey)}発売作品${code ? `（品番 ${code}）` : ''}。`;
-  // メーカー・発売日・品番は、必ず最後まで残す（コメントが長いと、後ろに付けた品番が切れてしまうため。コメントのほうを縮める）
-  const room = 120 - Array.from(base).length - 1;
+  const dur = durationJp(item.duration_min);
+  const durText = dur ? `収録時間は${dur}${(item.duration_min ?? 0) >= 240 ? 'の長編' : ''}。` : '';
   const comment = String(item.comment ?? '').trim();
-  return comment && room >= 20 ? `${truncate(comment, room)} ${base}` : truncate(base, 120);
+  if (comment) {
+    // メーカー・発売日・品番は、必ず最後まで残す（コメントが長いと、後ろに付けた品番が切れてしまうため。コメントのほうを縮める）。
+    // コメントが切らずに入るときだけ、あとに収録時間も足す（説明文は全角80〜120文字。lib/describe.js。2026-10-26）
+    const room = DESC_MAX - Array.from(base).length - 1;
+    if (room < 20) return truncate(base, DESC_MAX);
+    const full = `${comment} ${base}`;
+    if (Array.from(full).length > DESC_MAX) return `${truncate(comment, room)} ${base}`;
+    return fit([full, durText]);
+  }
+  // コメントがまだ無い作品（検索には出さないページ。lib/plan.js の itemIndexable）も、そのページの事実で80文字くらいまで（2026-10-26）
+  const cast = item.actress?.length
+    ? `出演は${item.actress.slice(0, 2).map((n) => `${n}さん`).join('、')}${item.actress.length > 2 ? 'ほか' : ''}。`
+    : '出演者の記載はありません。';
+  const genres = (item.genres ?? []).slice(0, 3);
+  return fit([base, durText, genres.length ? `ジャンルは${genres.join('・')}。` : '', cast]);
 }
 
 // ------------------------------------------------------------------
@@ -573,6 +589,7 @@ export function websiteLd(siteUrl = SITE_URL) {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: SITE_NAME,
+    ...(SITE_ALT_NAMES.length ? { alternateName: SITE_ALT_NAMES.length === 1 ? SITE_ALT_NAMES[0] : SITE_ALT_NAMES } : {}),
     url: absoluteUrl('/', siteUrl),
     inLanguage: 'ja',
   };

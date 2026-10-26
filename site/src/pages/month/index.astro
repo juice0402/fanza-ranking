@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { monthIndexDescription } from '../../lib/describe.js';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import { monthGroups } from '../../lib/data.js';
 import { MONTH_INDEX_PATH } from '../../lib/collections.js';
@@ -13,7 +14,7 @@ const trail = [
 
 <Base
   title={`月ごとのFANZA新作・予約作品一覧｜${SITE_NAME}`}
-  description="FANZAの新作・予約作品を、発売月ごとにまとめた一覧です。発売日の順に並べています。"
+  description={monthIndexDescription(monthGroups)}
   path={MONTH_INDEX_PATH}
   jsonLd={[breadcrumbLd(trail)]}
 >
