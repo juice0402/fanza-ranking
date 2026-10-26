@@ -539,6 +539,10 @@ def probe_sale_ends():
 def main():
     if not API_ID:
         sys.exit("❌ API_ID が設定されていません")
+    if os.environ.get("PROBE_ONLY") == "22":
+        probe_actress_history()
+        finish()
+        return
     if os.environ.get("PROBE_ONLY") == "21":
         probe_video_ten_yen()
         finish()
@@ -979,6 +983,59 @@ def probe_video_ten_yen():
         if len(found) == len(want) or len(items) < 100:
             break
     say(f"- 見つかった位置 {found}・読んだ所の価格（位置, はじめ, 終わり） {price_seen[:6]} … {price_seen[-3:]}")
+
+
+def probe_actress_history():
+    """22) 女優の歩み（年表）: 出演者ごとの全作品の本数・いちばん古い作品・年ごとの本数が、APIで取れるか（2026-10-27。運営者の希望「世界一の女優深掘りサイト」）"""
+    import time
+    data = json.load(open(os.path.join("site", "src", "data", "actresses.json"), encoding="utf-8"))
+    byname = {a.get("name"): a.get("id") for a in data.get("actresses") or []}
+    names = [n for n in ("波多野結衣", "石川澪", "桐谷エマ", "河北彩花") if byname.get(n)]
+    base = {"site": "FANZA", "service": "digital", "floor": "videoa", "article": "actress"}
+    for n in names:
+        aid = byname[n]
+        say(f"## 22) {n}（id {aid}）")
+        time.sleep(0.4)
+        res, err = call("ItemList", dict(base, article_id=aid, hits=5, sort="date"))
+        if err:
+            say(f"- ❌ {err}")
+            continue
+        total = int(res.get("total_count") or 0)
+        items = res.get("items") or []
+        say(f"- 全体 {total}本・新しい順の先頭の日付 {[x.get('date') for x in items]}")
+        if items:
+            x = items[0]
+            info = x.get("iteminfo") or {}
+            say(f"- 1本の項目: {sorted(x.keys())}")
+            say(f"- iteminfo: {sorted(info.keys())}・maker {[(m.get('id'), m.get('name')) for m in info.get('maker') or []]}・label {[(m.get('id'), m.get('name')) for m in info.get('label') or []]}・出演者の数 {len(info.get('actress') or [])}")
+        if total:
+            time.sleep(0.4)
+            res2, err2 = call("ItemList", dict(base, article_id=aid, hits=3, sort="date", offset=max(1, total - 2)))
+            if err2:
+                say(f"- いちばん古い作品: ❌ {err2}")
+            else:
+                say(f"- いちばん古い3本（offset {max(1, total - 2)}）: {[(y.get('date'), y.get('content_id'), [m.get('name') for m in (y.get('iteminfo') or {}).get('maker') or []]) for y in res2.get('items') or []]}")
+        # 年ごとの本数（gte_date・lte_date で、1本だけ取って total_count を見る）
+        counts = []
+        for year in (2016, 2020, 2024, 2026):
+            time.sleep(0.4)
+            r3, e3 = call("ItemList", dict(base, article_id=aid, hits=1, gte_date=f"{year}-01-01T00:00:00", lte_date=f"{year}-12-31T23:59:59"))
+            counts.append((year, e3 or (r3 or {}).get("total_count")))
+        say(f"- 年ごとの本数: {counts}")
+        # 100本ずつ全部読むと何回か（読むのは2ページまで。日付の並びが崩れないか）
+        pages = (total + 99) // 100
+        dates = []
+        for off in (1, 101):
+            if off > total:
+                break
+            time.sleep(0.4)
+            r4, e4 = call("ItemList", dict(base, article_id=aid, hits=100, sort="date", offset=off))
+            if e4:
+                say(f"- {off}本目から: ❌ {e4}")
+                break
+            ds = [y.get("date", "")[:10] for y in r4.get("items") or []]
+            dates.append((off, len(ds), ds[0] if ds else "", ds[-1] if ds else "", ds == sorted(ds, reverse=True)))
+        say(f"- 全部読むと {pages}回・100本ずつの（はじめ, 本数, 先頭, 最後, 新しい順か）: {dates}")
 
 
 def finish():
