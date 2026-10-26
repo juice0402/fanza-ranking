@@ -8,8 +8,9 @@ import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
 import { EVENT_PATH } from '../lib/events.js';
 import { itemIndexable, listIndexable } from '../lib/plan.js';
 import { RANKING_PATH, newRanking } from '../lib/popularity.js';
-import { SALE_HISTORY_PATH, SALE_PATH, isTenYenCampaign, saleGroups } from '../lib/sale.js';
+import { SALE_ENDING_ITEMS, SALE_ENDING_PATH, SALE_HISTORY_PATH, SALE_PATH, endingThisWeek, isTenYenCampaign, saleGroups } from '../lib/sale.js';
 import { TEN_YEN_PATH, tenYenIndexable, tenYenPath } from '../lib/ten-yen.js';
+import { HINBAN_INDEX_MIN, HINBAN_PATH, hinbanPrefixes } from '../lib/hinban.js';
 import { isMinorTitle } from '../lib/gacha.js';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import {
@@ -40,6 +41,9 @@ export function GET() {
   // セール・キャンペーン（作品が無い・コメントのある作品が1本も無いあいだは、ページが noindex なので入れない）
   const saleItems = saleGroups(saleWorks, sale, today).flatMap((g) => g.items);
   if (saleItems.length > 0 && listIndexable(saleItems)) rankingPages.push({ path: SALE_PATH, lastmod: sale.date || today });
+  // 今週終わるセール（2026-10-27。ページの側と同じ決まり）
+  const endingItems = endingThisWeek(saleGroups(saleWorks, sale, today, SALE_ENDING_ITEMS), today).flatMap((g) => g.items);
+  if (endingItems.length > 0 && listIndexable(endingItems)) rankingPages.push({ path: SALE_ENDING_PATH, lastmod: sale.date || today });
   // 特集ごとのページ（開催中で、コメントのある作品があるものだけ。開催していないあいだは noindex）と「FANZAのセールはいつ？」
   for (const p of saleCampaignPages) {
     if (!isTenYenCampaign(p.title) && p.active && p.active.items.length > 0 && listIndexable(p.active.items)) rankingPages.push({ path: p.path, lastmod: sale.date || today });
@@ -49,6 +53,8 @@ export function GET() {
   rankingPages.push({ path: TEN_YEN_PATH, lastmod: tenLastmod });
   for (const k of tenYenFloors) if (tenYenIndexable(tenYen, k)) rankingPages.push({ path: tenYenPath(k), lastmod: tenLastmod });
   if (saleHistory.rows.some((r) => !isMinorTitle(r.title))) rankingPages.push({ path: SALE_HISTORY_PATH, lastmod: saleHistory.updated || today });
+  // 品番の見方（2026-10-27。ページの側と同じ決まり）
+  if (hinbanPrefixes(all).length >= HINBAN_INDEX_MIN) rankingPages.push({ path: HINBAN_PATH, lastmod: today });
   // 高評価ランキング（2026-10-10。ページの側と同じ決まり）
   if (reviewRanking.length >= REVIEW_RANKING_MIN_ITEMS && listIndexable(reviewRanking)) rankingPages.push({ path: REVIEW_RANKING_PATH, lastmod: reviews.updated || today });
   // 女優のイベント情報（1件も無いあいだは、ページが noindex なので入れない）

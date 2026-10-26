@@ -4998,6 +4998,108 @@ html:not(.js) .actress-search,
   margin-top: 12px;
 }
 
+/* ---------- 品番の見方（/hinban/。2026-10-27） ---------- */
+.hb-form {
+  margin-top: 14px;
+}
+
+/* 品番のしくみ: 値札のように、記号と番号を分けて見せる（記号に黄色の下線） */
+.hb-anatomy {
+  display: inline-block;
+  margin: 12px 0 0;
+  padding: 14px 18px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--board);
+}
+
+.hb-code {
+  margin: 0;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.hb-head {
+  border-bottom: 4px solid var(--pop);
+}
+
+.hb-dash {
+  color: var(--paper-dim);
+}
+
+.hb-parts {
+  display: flex;
+  gap: 18px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--paper-dim);
+}
+
+.hb-cap-head::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 4px;
+  margin-right: 6px;
+  vertical-align: 3px;
+  background: var(--pop);
+}
+
+.hb-text {
+  margin-top: 10px;
+  max-width: 40em;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.hb-text code {
+  padding: 0 4px;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+/* 頭の文字の目次: 辞書のつめのように、文字だけを並べる */
+.hb-letters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  margin-top: 12px;
+}
+
+.hb-letters a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 36px;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.hb-letter {
+  margin-top: 20px;
+}
+
+.hb-letter-title {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 20px;
+  scroll-margin-top: 16px;
+}
+
+.hb-prefix {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+.run-table.hb-table td:nth-child(2),
+.run-table.hb-table td:nth-child(3) {
+  white-space: normal;
+}
+
 /* スマホ（〜599px）: 表を、1回（1つの特集）ごとの行にする（特集の名前を1行目、期間・日数・本数・割引を小さく並べる。横にはみ出さない） */
 @media (max-width: 599px) {
   .table-scroll {

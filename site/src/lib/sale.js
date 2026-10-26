@@ -160,6 +160,25 @@ export function saleGroups(items, sale, today, perGroup = SALE_GROUP_LIMIT, { ge
 /** セール中の作品の数（今日より前に終わったキャンペーンは除く） */
 export const saleCount = (items, sale, today) => saleGroups(items, sale, today, 0).reduce((n, g) => n + g.total, 0);
 
+// ---------- 今週終わるセール（/sale/ending/。運営者の希望「ライバルのよい所を載せよう」。2026-10-27） ----------
+export const SALE_ENDING_PATH = '/sale/ending/';
+export const SALE_ENDING_ITEMS = 8; // 特集ごとに並べる本数（全部は特集のページへ）
+
+/** その週（月曜〜日曜）の日曜日。today が日曜なら、その日 */
+export function weekEndDay(today) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(today ?? ''))) return '';
+  const d = new Date(`${today}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + ((7 - d.getUTCDay()) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+/** 今週（日曜まで）に終わる特集だけ（saleGroups の結果から。終わりの日時が読めないものは入れない） */
+export function endingThisWeek(groups, today) {
+  const last = weekEndDay(today);
+  if (!last) return [];
+  return groups.filter((g) => DAY_TIME.test(String(g.end ?? '')) && g.end.slice(0, 10) >= today && g.end.slice(0, 10) <= last);
+}
+
 // ---------- セールの履歴・特集ごとのページ（運営者の希望「SEOを上位に」→「FANZAのセールはいつ？」と特集ごとのページ。2026-10-06） ----------
 // 履歴は data/sale_history.json（毎日の更新が、その日に見かけたキャンペーンの名前・期間・このサイトの作品の本数・最大の割引を足していく。get_new_releases.py）。
 // 記録は 2026-10-05 から。昔の履歴をほかのサイトから写すことはしない。
