@@ -38,7 +38,13 @@ const descLong = L.itemPageDescription(mk({ cid: 'a1', comment: longComment }), 
 check('説明文: コメントが長くても品番・発売日が残り、120文字を超えない', descLong.includes('（品番 DLDSS-566）。') && descLong.endsWith('発売作品（品番 DLDSS-566）。') && descLong.includes('…') && [...descLong].length <= 120, descLong);
 const descShort = L.itemPageDescription(mk({ cid: 'a1', comment: '短いコメントです。' }), 'DLDSS-566');
 check('説明文: 短いコメントは縮めずに、そのまま入る', descShort.startsWith('短いコメントです。 ') && !descShort.includes('…'), descShort);
-check('説明文: コメントが空なら、メーカー・発売日・品番だけ', L.itemPageDescription(mk({ cid: 'a1', comment: '' }), 'DLDSS-566').startsWith(mk({ cid: 'a1' }).maker + 'の'));
+check('説明文: コメントが空なら、メーカー・発売日・品番から', L.itemPageDescription(mk({ cid: 'a1', comment: '' }), 'DLDSS-566').startsWith(mk({ cid: 'a1' }).maker + 'の'));
+// コメントがまだ無い作品（検索には出さないページ）: 収録時間・おだやかなジャンル・出演者・レーベルを、120文字に入るぶんだけ（2026-10-26。lib/describe.js）
+const noC = L.itemPageDescription(mk({ cid: 'a1', comment: '', duration_min: 250, genres: ['ハイビジョン', 'パイズリ', '巨乳', '中出し'], actress: ['花子', '月子', '星子'], label_id: 5, label: 'ながえSTYLE' }), 'DLDSS-566');
+check('説明文: コメントが無ければ、収録時間（4時間以上は長編）・おだやかなジャンルだけ・出演者2人まで・レーベル',
+  noC === 'メーカーAの2026年11月1日発売作品（品番 DLDSS-566）。収録時間は4時間10分の長編。ジャンルはハイビジョン・巨乳。出演は花子さん、月子さんほか。レーベルは「ながえSTYLE」。', noC);
+const rough = L.itemPageDescription(mk({ cid: 'a1', comment: '', label_id: 6, label: '婦女暴行' }), 'DLDSS-566');
+check('説明文: おだやかでない名前のレーベルは入れない・出演者が無ければ「記載はありません」', !rough.includes('レーベル') && rough.includes('出演者の記載はありません。'), rough);
 
 console.log('\n■ 「この作品のデータ」欄');
 const raw = JSON.parse(fs.readFileSync(new URL('./fixtures/items.json', import.meta.url), 'utf-8'));

@@ -196,7 +196,20 @@ check('場所: /doujin/・/doujin/ranking/・/doujin/sale/・/doujin/item/<品�
   L.floorPath('doujin') === '/doujin/' && L.floorRankingPath('doujin') === '/doujin/ranking/' && L.floorSalePath('doujin') === '/doujin/sale/'
   && L.floorItemPath('doujin', 'd_1') === '/doujin/item/d_1/' && L.floorMakerPath('game', 5) === '/game/maker/5/' && L.floorMakerIndexPath('game') === '/game/maker/');
 check('作品ページのタイトル: 「タイトル｜FANZA同人（サークル）｜サイト名」', L.floorItemTitle(i1, 'サイト') === '作った作品その1｜FANZA同人（サークル1）｜サイト');
-check('作品ページの説明文: コメントがあれば先に・発売日・サークル', L.floorItemDescription(fl.items.find((i) => i.cid === 'd_100003')).startsWith('Claudeが書いたコメント FANZA同人の同人作品「作った作品その3」（サークル：サークル0）。2026年9月20日発売。'));
+{
+  // 説明文（2026-10-26 から。司令塔の連絡 C-003）: コメント → サークル・形式・発売日 → 価格の幅（「1,000円台から」。ピッタリの値段は書かない）。120文字まで
+  const it3 = fl.items.find((i) => i.cid === 'd_100003');
+  const d3 = L.floorItemDescription(it3);
+  check('作品ページの説明文: コメントがあれば先に・サークル・発売日・価格の幅（ピッタリの値段は書かない）・120文字まで',
+    d3.startsWith('Claudeが書いたコメント サークル「サークル0」の同人作品で、2026年9月20日発売。') && (it3.price == null || /価格は(無料|\d[\d,]*円(台から)?)です。$/.test(d3))
+    && !(it3.price >= 100 && d3.includes(`${it3.price.toLocaleString('ja-JP')}円`)) && [...d3].length <= 120, d3);
+  const long = L.floorItemDescription({ ...it3, comment: 'あ'.repeat(200) });
+  check('作品ページの説明文: コメントが長ければ縮めて、サークル・発売日・価格は残す', [...long].length <= 120 && long.includes('…') && long.includes('サークル「サークル0」'), long);
+  const none = L.floorItemDescription({ ...it3, comment: '' });
+  check('作品ページの説明文: コメントが無ければ、売り場・タイトル・サークル・発売日・価格', none.startsWith('FANZA同人の同人作品「作った作品その3」。サークル「サークル0」の同人作品で、') && [...none].length <= 120, none);
+  const gen = L.floorItemDescription({ ...it3, comment: '', title: '題', genres: ['中出し', '巨乳', 'OL'], authors: [{ id: 1, name: '作家A' }] });
+  check('作品ページの説明文: コメントが無ければ、おだやかなジャンル（FLOOR_GENRE_OK）と作家も、入るぶんだけ', gen.includes('ジャンルは巨乳・OL。') && gen.includes('作家は作家A。') && !gen.includes('中出し') && [...gen].length <= 120, gen);
+}
 check('ファイルの数: 作品ページ＋サークル/ブランドのページ＋10（トップ・ランキング・セール・セールの記録・一覧・サークル/作家ランキング・検索・索引・運命の作品の候補）。作品が無い売り場は0', L.floorFileCount(fl, makers) === fl.items.length + 2 + 10 && L.floorFileCount({ items: [] }, []) === 0);
 check('サイト全体の計画に、同人・ゲームのページの数を足せる（動画の作品ページより先に枠を取る）', nonItemFileCount({ floors: 100 }, 0, 30) - nonItemFileCount({}, 0, 30) === 100);
 check('本数の決まり: 同人の作品ページは、そのまま全部（動画の作品ページの枠から先に引く）', L.FLOOR_RANKING_LIMIT === 100 && L.FLOOR_SAMPLES === 8);

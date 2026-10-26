@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { actressIndexDescription } from '../../lib/describe.js';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import Face from '../../components/Face.astro';
 import { actressGroups, actressSearchIndex, actressIndexCoverage, profilesByName } from '../../lib/data.js';
@@ -54,7 +55,7 @@ import { assetUrl } from '../../lib/assets.js';
 
 <Base
   title={`女優検索｜年齢・身長・スリーサイズ・カップで探す｜${SITE_NAME}`}
-  description="FANZAのAV女優を、名前・年齢・身長・スリーサイズ（バスト・ウエスト・ヒップ）・カップで検索できます。プロフィールはFANZA公式のデータです。"
+  description={actressIndexDescription({ total: cov.total, withSize: cov.withSize, agencies: agencyOptions.length })}
   path={ACTRESS_INDEX_PATH}
   jsonLd={[breadcrumbLd(trail)]}
 >
