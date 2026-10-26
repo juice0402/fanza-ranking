@@ -12,7 +12,7 @@ import { TEN_YEN_PATH } from '../../lib/ten-yen.js';
 import { today, sale, saleWorks, contentGenres, saleCampaignBySlug } from '../../lib/data.js';
 import { SALE_ENDING_ITEMS, SALE_ENDING_PATH, SALE_PATH, isTenYenCampaign, campaignSlug, endIso, endLabel, endSoonTag, endingThisWeek, saleAnchor, saleBadge, saleGroups, salePriceNote, weekEndDay } from '../../lib/sale.js';
 import { listIndexable } from '../../lib/plan.js';
-import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, filterAttrs, formatDateJp } from '../../lib/items.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, filterAttrs } from '../../lib/items.js';
 import { inlineScript } from '../../lib/assets.js';
 
 const groups = endingThisWeek(saleGroups(saleWorks, sale, today, SALE_ENDING_ITEMS, { genres: contentGenres }), today);
@@ -47,7 +47,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
 
     <section class="hero">
       <h1 class="hero-title">今週終わるFANZAセール</h1>
-      <p class="hero-lead note-source">{lastLabel}までに終わる特集です。{sale.date && `${formatDateJp(sale.date)}の時点の情報です。FANZAの作品ページで確かめてください。`}</p>
+      <p class="hero-lead note-source">{lastLabel}までに終わる特集です。{day && `${day.m}月${day.d}日の時点です。FANZAで確かめてください。`}</p>
       <p class="hero-links"><a class="spec-link" href={SALE_PATH}>開催中のセールをすべて見る</a></p>
     </section>
 
