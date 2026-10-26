@@ -108,11 +108,19 @@ check("行の右はしに置く小さな「見る」「詳しく」のボタン�
 hits = scan(re.compile(r"\bNEW\b|準備中|近日公開|COMING SOON|pop-(new|wait)"))
 check("「NEW」「準備中」のような小さなバッジ・表紙の「新作」「予約」のシールが無い", not hits, hits[:5])
 
+# 付箋・テープのようにななめにずらして並べない（2026-10-26 連絡 C-002）。矢印の形（45°・90°の倍数）はよい。
+# セール特集のカードの表紙の束（.camp-cover）は、運営者が「かっこいいから、そのまま」と決めたので例外
+tilted = [sel for sel, body in css_rules(css)
+          for deg in re.findall(r"rotate\(\s*(-?[\d.]+)deg", body)
+          if float(deg) % 45 and "camp-cover" not in sel]
+check("付箋・テープのような、少しだけかたむけた飾りが無い（表紙の束 .camp-cover だけ例外）", not tilted, tilted[:3])
+
 _fav = open(os.path.join(SITE, "public", "favicon.svg"), encoding="utf-8").read()
 check("ファビコンは、色つきの角丸の四角（器）の中に絵を入れた形にしない（もの＝値札の形そのもの。2026-10-23）",
       not re.search(r"<rect[^>]*\bwidth=\"64\"[^>]*\bheight=\"64\"", _fav) and "<path" in _fav)
 
 print("\n■ この点検そのもの")
+check("かたむきの検出: rotate(-4deg) は見つけ、rotate(45deg)・rotate(-135deg) は見のがす", all(float(d) % 45 for d in ["-4", "5", "10"]) and not any(float(d) % 45 for d in ["45", "-135", "90"]))
 check("絵文字の検出: ✨ ✅ 🚀 は見つけ、★ ☆ ✕ ▲ ▼ は見のがす", all(EMOJI.search(c) for c in "✨✅🚀💡⚡") and not any(EMOJI.search(c) for c in "★☆✕▲▼○●"))
 _c = code_only("a // ✨\n/* ✨ */ 'https://x' {/* › */}")
 check("左の帯の検出: border-left: 3px solid は見つけ、border-left: 1px は見のがす",
