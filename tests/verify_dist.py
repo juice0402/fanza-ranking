@@ -2397,7 +2397,10 @@ for pth in _item_pages:
     x_ = everything.get(cid_, {})
     on_ = (cid_ in _on_sale or cid_ in _ty_video) and str(x_.get("date", ""))[:10] <= JST_TODAY
     here = []
-    if (re.search(r'class="sale-strip(?: ten-strip)?"', raw_) is not None) != on_ or (on_ and not sale_js_ok(raw_)):
+    # 「終わったら隠す」（sale.js）は、終わりの時刻の印（data-sale-end）があるときに要る。10円セールの作品は、終わりの時刻が分からないこともあり
+    # （キーワードの検索で見つけた作品。2026-10-26）、そのときは隠すものが無いので、作品ページに sale.js を入れない（前は、それでも要るとして、公開が止まった）
+    _need_js = on_ and ("data-sale-end=" in raw_ or cid_ not in _ty_video)
+    if (re.search(r'class="sale-strip(?: ten-strip)?"', raw_) is not None) != on_ or (_need_js and not sale_js_ok(raw_)):
         here.append("セールの札")
     if cid_ in _ty_video and str(x_.get("date", ""))[:10] <= JST_TODAY and 'class="sale-strip ten-strip"' not in raw_:
         here.append("10円の札")
