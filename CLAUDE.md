@@ -52,7 +52,7 @@ Gemini を使うのは `get_new_releases.py` のコメントの下書きだけ�
 - `scripts/screens.mjs`（`screens.yml`）— 画面の写真と形のくずれの点検（GitHub の上で撮る）／ `scripts/probe_api.py`（`probe-api.yml`）— API の応答の形を調べる
 - `.github/workflows/` — update・sale-refresh・ten-yen・ci・deploy（`scripts/deploy_pages.sh`）・health（見張り番）・refresh-data（取り直しだけ。手動）・probe-api・screens
 - `site/` — サイト本体（Astro 7・静的出力）。`src/config.js` がサイト名・URL・件数・ファイル数の上限（`FILE_BUDGET`。Cloudflare Pages の無料プランは2万ファイルまで）の設定
-- `site/src/lib/` — 画面に依存しない部品（テストは `tests/test_*.mjs`）。`data.js`（読み込み）・`items.js`（並べ替え・構造化データ・規約の表記）・`plan.js`（ファイル数の計画）・`floors.js`（売り場）・`sale.js`・`ten-yen.js`・`topics.js`（トップ）・`search.js`・`profiles.js`・`insights.js`・`reviews.js`・`kana.js`・`phrase.js`（文節の改行）など
+- `site/src/lib/` — 画面に依存しない部品（テストは `tests/test_*.mjs`）。`data.js`（読み込み）・`items.js`（並べ替え・構造化データ・規約の表記）・`plan.js`（ファイル数の計画）・`floors.js`（売り場）・`sale.js`・`ten-yen.js`・`topics.js`（トップ）・`search.js`・`profiles.js`・`insights.js`・`reviews.js`・`kana.js`・`phrase.js`（文節の改行）・`describe.js`（検索結果の説明文。ページのデータの数字から80〜120文字）など
 - `site/src/pages/`・`components/`・`layouts/Base.astro`・`styles/site.css` — ページ・部品・全ページ共通の部分・デザイン
 - `site/public/` — ブラウザで動く小さなスクリプト（作品検索・女優検索・売り場の検索・VR/単体の絞り込み・お気に入り・運命の作品・セール・拡大表示・サンプル動画）と `_headers`・`_redirects`
 - `site/src/data/` — **自動更新のデータ。手で編集しない**（書く道具が決まっている。形は docs/architecture.md の、そのファイルの節）
