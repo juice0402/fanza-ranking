@@ -6,8 +6,21 @@
 // - キャッチコピーにしない。使わない言葉（おすすめ・お得・便利・簡単・安心・ぜひ・ポイント・コツ・しましょう）は書かない
 // - 同じ説明文のページを量産しない（ページごとの日付・本数・名前を入れる）
 
+import { TAG_PAGE_GENRES } from '../config.js';
+
 export const DESC_MIN = 80;
 export const DESC_MAX = 120;
+
+// 説明文に入れてよい、おだやかな名前か（レーベル・作家など）。行為・体の部位・暴力・同意の無い設定・未成年を連想させる言葉を含む名前は入れない
+// （コメントの点検 scripts/claude_comments.py の EXPLICIT_WORDS・MINOR_WORDS の主なもの＋設定の言葉。説明文は検索結果にそのまま出るため）
+const ROUGH = /中出|射精|精液|挿入|フェラ|レイプ|強姦|凌辱|陵辱|輪姦|セックス|SEX|性交|膣|精子|ザーメン|絶頂|潮吹|乳首|巨根|チンポ|ちんぽ|マンコ|まんこ|手コキ|パイズリ|クンニ|アナル|淫|ハメ|オナニー|イラマ|顔射|ぶっかけ|ごっくん|放尿|失禁|犯|便器|奴隷|鬼畜|エロ|拉致|拷問|暴行|痴漢|催眠|監禁|拘束|調教|寝取|盗撮|未成年|少女|ロリ|児童|幼|女子高|女子校|女子中|中学|高校|小学|JK|JC|制服|学生|生徒|教え子|園児|子供|子ども|妹|娘|童顔|貧乳|つるぺた|パイパン|処女|学園/;
+export const calmName = (s) => Boolean(String(s ?? '').trim()) && !ROUGH.test(String(s));
+
+// 動画の作品ページの説明文に入れるジャンル: サイトにジャンルのページがあるもの（config.js の TAG_PAGE_GENRES）と、作品の形式のジャンルだけ
+const CALM_VIDEO_GENRES = new Set([...TAG_PAGE_GENRES, 'ハイビジョン', '4K', '独占配信', '単体作品', 'デビュー作品', 'VR専用', 'ハイクオリティVR', '8KVR',
+  '4時間以上作品', '16時間以上作品', '企画', '主観', '美脚', 'モデル', 'グラマー', 'キャバ嬢・風俗嬢', 'セクシー']);
+/** 動画のジャンルのうち、説明文に入れるもの（作品のジャンルの順に、上から limit 個） */
+export const calmVideoGenres = (genres, limit = 3) => (genres ?? []).filter((g) => CALM_VIDEO_GENRES.has(g) && calmName(g)).slice(0, limit);
 
 const chars = (s) => Array.from(String(s ?? ''));
 
@@ -66,18 +79,18 @@ export function durationJp(min) {
   return `${Math.floor(n / 60)}時間${n % 60 ? `${n % 60}分` : ''}`;
 }
 
-/** 多い順の名前（同じ数なら先に出たもの）。skip の名前（「不明」など）は数えない */
+/** 多い順の名前（おだやかな名前だけ。calmName）（同じ数なら先に出たもの）。skip の名前（「不明」など）は数えない */
 export function topNames(names, n, skip = ['不明', '']) {
   const count = new Map();
   for (const name of names) {
-    if (skip.includes(name)) continue;
+    if (skip.includes(name) || !calmName(name)) continue;
     count.set(name, (count.get(name) ?? 0) + 1);
   }
   return [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([name]) => name);
 }
 
 const san = (names) => names.map((n) => `${n}さん`).join('、');
-const makerOf = (item) => (item?.maker && item.maker !== '不明' ? item.maker : '');
+const makerOf = (item) => (item?.maker && item.maker !== '不明' && calmName(item.maker) ? item.maker : ''); // おだやかな名前のメーカーだけ
 
 /** 「桐谷エマさん出演のエスワン作品」（出演者・メーカーが無ければ、あるほうだけ。どちらも無ければ ''） */
 export function whoMade(item) {

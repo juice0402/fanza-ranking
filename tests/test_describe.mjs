@@ -30,6 +30,13 @@ check('だれの作品か: 出演者とメーカー・出演者だけ・メー�
   D.whoMade({ actress: ['桐谷エマ', 'x'], maker: 'エスワン' }) === '桐谷エマさん出演のエスワン作品' && D.whoMade({ actress: ['花子'], maker: '不明' }) === '花子さんの出演作品'
   && D.whoMade({ actress: [], maker: 'S1' }) === 'S1の作品' && D.whoMade({ actress: [], maker: '不明' }) === '');
 
+check('おだやかな名前: ブランド名は入れる・行為や暴力・未成年を連想させる言葉を含む名前は入れない',
+  D.calmName('ながえSTYLE') && D.calmName('エスワン') && !D.calmName('婦女暴行') && !D.calmName('痴漢電車') && !D.calmName('女子校生シリーズ') && !D.calmName('') && !D.calmName(null));
+check('動画のジャンル: ジャンルのページがあるもの・形式だけ（上から3つ）',
+  D.calmVideoGenres(['ハイビジョン', 'パイズリ', '巨乳', '中出し', '単体作品', 'OL']).join() === 'ハイビジョン,巨乳,単体作品' && D.calmVideoGenres(['姉・妹', 'フェラ']).length === 0);
+check('多い順の名前・だれの作品か: おだやかでない名前のメーカーは出さない',
+  D.topNames(['痴漢電車', '痴漢電車', 'S1'], 2).join() === 'S1' && D.whoMade({ actress: ['花子'], maker: '痴漢電車' }) === '花子さんの出演作品');
+
 const it = (n, dateKey, extra = {}) => ({ cid: `abc${n}`, dateKey, maker: `メーカー${n % 3}`, actress: [`女優${n % 4}`], vr: n % 5 === 0, ...extra });
 const released = [it(1, '2026-10-26'), it(2, '2026-10-26'), it(3, '2026-10-25'), it(4, '2026-10-24')];
 

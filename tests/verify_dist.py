@@ -2794,12 +2794,13 @@ no_desc = descs.get("", [])
 warn("タイトルがページごとに違う（重複があっても失敗にはしない）", not dup_titles, list(dup_titles.items())[:2])
 warn("説明文（description）がすべてのページにある", not no_desc, no_desc[:3])
 # 説明文の決まり（2026-10-26 司令塔の連絡 C-003・site-principles.md の「検索結果での見え方」。部品は site/src/lib/describe.js）
-_desc_words = re.compile("|".join(map(re.escape, ["おすすめ", "オススメ", "お得", "ぜひ", "是非", "便利", "簡単", "安心", "コツ", "しましょう", "——"])))
+_desc_words = re.compile("|".join(map(re.escape, ["おすすめ", "オススメ", "お得", "ぜひ", "是非", "便利", "簡単", "安心", "ポイント", "コツ", "しましょう", "——"])))
+_unquote = lambda d_: re.sub(r"「[^」]*」", "「」", htmllib.unescape(d_))  # noqa: E731  作品の題名・名前（「」の中。FANZAのデータ）は数えない
 _hub_pages = {"index.html", "ranking/index.html", "month/index.html", "tag/index.html", "weekly/index.html", "event/index.html", "actress/index.html"}
 _hub_bad = [(r_, htmllib.unescape(d_)) for d_, ps in descs.items() for r_ in ps if r_ in _hub_pages and _desc_words.search(htmllib.unescape(d_))]
 check("トップ・一覧のページの説明文に、使わない言葉（おすすめ・お得・便利・簡単・安心・ぜひ…）が無い（データから作る説明文。lib/describe.js）", not _hub_bad, _hub_bad[:3])
-_all_bad = [(ps[0], htmllib.unescape(d_)[:40]) for d_, ps in descs.items() if d_ and _desc_words.search(htmllib.unescape(d_))]
-warn(f"説明文に、使わない言葉が無い（作品のタイトル・ジャンル名などFANZAのデータから入ったものは注意だけ。{len(_all_bad)}件）", not _all_bad, _all_bad[:3])
+_all_bad = [(ps[0], htmllib.unescape(d_)[:40]) for d_, ps in descs.items() if d_ and _desc_words.search(_unquote(d_))]
+warn(f"説明文に、使わない言葉が無い（「」の中の題名・名前は数えない。コメント・キャンペーン名などFANZAのデータから入ったものは注意だけ。{len(_all_bad)}件）", not _all_bad, _all_bad[:3])
 _len_bad = [(ps[0], len(htmllib.unescape(d_))) for d_, ps in descs.items() if d_ and not 80 <= len(htmllib.unescape(d_)) <= 120]
 warn(f"説明文は全角80〜120文字くらい（外れているもの {sum(len(descs[d_]) for d_ in descs if d_ and not 80 <= len(htmllib.unescape(d_)) <= 120)}ページ）", not _len_bad, _len_bad[:5])
 _hub_len = [(r_, len(htmllib.unescape(d_))) for d_, ps in descs.items() for r_ in ps if r_ in _hub_pages and not 60 <= len(htmllib.unescape(d_)) <= 120]

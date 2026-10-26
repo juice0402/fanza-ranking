@@ -207,6 +207,8 @@ check('作品ページのタイトル: 「タイトル｜FANZA同人（サーク
   check('作品ページの説明文: コメントが長ければ縮めて、サークル・発売日・価格は残す', [...long].length <= 120 && long.includes('…') && long.includes('サークル「サークル0」'), long);
   const none = L.floorItemDescription({ ...it3, comment: '' });
   check('作品ページの説明文: コメントが無ければ、売り場・タイトル・サークル・発売日・価格', none.startsWith('FANZA同人の同人作品「作った作品その3」。サークル「サークル0」の同人作品で、') && [...none].length <= 120, none);
+  const gen = L.floorItemDescription({ ...it3, comment: '', title: '題', genres: ['中出し', '巨乳', 'OL'], authors: [{ id: 1, name: '作家A' }] });
+  check('作品ページの説明文: コメントが無ければ、おだやかなジャンル（FLOOR_GENRE_OK）と作家も、入るぶんだけ', gen.includes('ジャンルは巨乳・OL。') && gen.includes('作家は作家A。') && !gen.includes('中出し') && [...gen].length <= 120, gen);
 }
 check('ファイルの数: 作品ページ＋サークル/ブランドのページ＋10（トップ・ランキング・セール・セールの記録・一覧・サークル/作家ランキング・検索・索引・運命の作品の候補）。作品が無い売り場は0', L.floorFileCount(fl, makers) === fl.items.length + 2 + 10 && L.floorFileCount({ items: [] }, []) === 0);
 check('サイト全体の計画に、同人・ゲームのページの数を足せる（動画の作品ページより先に枠を取る）', nonItemFileCount({ floors: 100 }, 0, 30) - nonItemFileCount({}, 0, 30) === 100);

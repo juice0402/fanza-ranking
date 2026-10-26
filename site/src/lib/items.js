@@ -2,7 +2,7 @@
 // （JSONを読み込む処理は data.js に分けてあります）
 
 // 設定値（サイト名・URL・表示件数）は ../config.js にまとめてあります。
-import { DESC_MAX, durationJp, fit } from './describe.js';
+import { DESC_MAX, calmName, calmVideoGenres, durationJp, fit } from './describe.js';
 import {
   SITE_NAME,
   SITE_ALT_NAMES,
@@ -401,8 +401,11 @@ export function itemPageDescription(item, code = '') {
   const cast = item.actress?.length
     ? `出演は${item.actress.slice(0, 2).map((n) => `${n}さん`).join('、')}${item.actress.length > 2 ? 'ほか' : ''}。`
     : '出演者の記載はありません。';
-  const genres = (item.genres ?? []).slice(0, 3);
-  return fit([base, durText, genres.length ? `ジャンルは${genres.join('・')}。` : '', cast]);
+  // ジャンルは、おだやかなもの（ジャンルのページがあるもの・形式）だけ。レーベルは、メーカーと違い、おだやかな名前のときだけ（lib/describe.js）
+  const genres = calmVideoGenres(item.genres);
+  const label = String(item.label?.name ?? '').trim();
+  const labelText = label && label !== item.maker && calmName(label) ? `レーベルは「${label}」。` : '';
+  return fit([base, durText, genres.length ? `ジャンルは${genres.join('・')}。` : '', cast, labelText]);
 }
 
 // ------------------------------------------------------------------

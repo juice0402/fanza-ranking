@@ -2,7 +2,7 @@
 // 運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも」→「同人 1,000本・ゲーム 500本」（2026-10-09）。
 // データは毎日の更新が集める site/src/data/doujin.json・game.json（scripts/doujin_game.py。形は scripts/floor_data.py）。
 // 未成年を連想させる作品は、集めるときに入れていない。ここでも、タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前を調べて、念のため外す（二重の備え）。
-import { DESC_MAX, cut, descLength, fit, priceBand } from './describe.js';
+import { DESC_MAX, calmName, cut, descLength, fit, priceBand } from './describe.js';
 import { reviewOf } from './reviews.js';
 import { FANZA_HOSTS, FANZA_LINK_HOSTS, addDays, daysBetween, entitySlug, isDay, resizedImage, safeHttpsUrl, smallImage } from './items.js';
 import { isMinorTitle } from './gacha.js';
@@ -393,7 +393,11 @@ export function floorItemDescription(item) {
     const room = DESC_MAX - descLength(tail) - 1;
     return room >= 20 ? `${cut(item.comment, room)} ${tail}` : fit([tail]);
   }
-  return fit([`${f.label}の${f.kind}「${item.title.slice(0, 40)}」。`, made, price]);
+  // コメントがまだ無い作品: 題名・サークルなど・発売日・価格の幅に、おだやかなジャンル（FLOOR_GENRE_OK）と作家を、入るぶんだけ（2026-10-26）
+  const genres = (item.genres ?? []).filter((g) => GENRE_OK.has(g) && calmName(g)).slice(0, 3);
+  const authors = (item.authors ?? []).map((a) => String(a?.name ?? a ?? '').trim()).filter((a) => calmName(a)).slice(0, 2);
+  return fit([`${f.label}の${f.kind}「${item.title.slice(0, 40)}」。`, made, price,
+    genres.length ? `ジャンルは${genres.join('・')}。` : '', authors.length ? `作家は${authors.join('、')}。` : '']);
 }
 
 // ---------- コレクション（ジャンル・シリーズ・作家・発売月ごとのページ） ----------
