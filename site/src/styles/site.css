@@ -6097,7 +6097,7 @@ a.tf-name {
   box-shadow: 0 0 0 3px var(--pop);
 }
 
-/* 表紙の左下のふちに半分かける札（顔を隠さない。TOP3のメダルと同じ考え方） */
+/* 表紙の左下のふちに半分かける札（顔を隠さない。TOP3のメダルと同じ考え方）。かたむけない（付箋・テープのななめ並べを使わない決まり。2026-10-26） */
 .ten-tag {
   position: absolute;
   bottom: -7px;
@@ -6108,7 +6108,6 @@ a.tf-name {
   box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.35);
   color: var(--ink);
   font: 400 13px/1.25 var(--font-display);
-  transform: rotate(-4deg);
 }
 
 .ten-hero-foot {
