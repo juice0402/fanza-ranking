@@ -164,13 +164,16 @@ export function monthIndexDescription(groups) {
 /** ジャンルの一覧: 「FANZA動画の作品を、ジャンルごとに120件まとめた一覧です。作品がいちばん多いのはハイビジョン（2,345本）で、…」 */
 export function tagIndexDescription(groups) {
   if (!groups.length) return 'FANZA動画の作品を、ジャンルごとにまとめた一覧です。作品数の多い順に並べています。';
-  const top = [...groups].sort((a, b) => b.items.length - a.items.length).slice(0, 3);
+  const sorted = [...groups].sort((a, b) => b.items.length - a.items.length);
   const fmt = (g) => `${g.name}（${g.items.length.toLocaleString('ja-JP')}本）`;
-  return fit([
-    `FANZA動画の作品を、ジャンルごとに${groups.length}件まとめた一覧です。`,
-    `作品がいちばん多いのは${fmt(top[0])}で、`,
-    top.length > 1 ? `${top.slice(1).map(fmt).join('、')}と続きます。` : '五十音でも探せます。',
-  ]);
+  const head = `FANZA動画の作品を、ジャンルごとに${groups.length}件まとめた一覧です。`;
+  // 多い順に4つまで（入らなければ3つ・2つ…）。文の途中で切れないように、まるごと入るものを選ぶ
+  for (let n = Math.min(4, sorted.length); n >= 1; n -= 1) {
+    const top = sorted.slice(0, n);
+    const body = n > 1 ? `作品がいちばん多いのは${fmt(top[0])}で、${top.slice(1).map(fmt).join('、')}と続きます。` : `作品がいちばん多いのは${fmt(top[0])}です。`;
+    if (descLength(head + body) <= DESC_MAX) return head + body;
+  }
+  return cut(head, DESC_MAX);
 }
 
 /** 週のまとめの一覧: 「FANZA動画の新作を1週間ごとにまとめた記事3本の一覧です。いちばん新しいのは10月19日〜25日の週で、…本の新作をふり返っています。」 */
