@@ -5,7 +5,7 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import Face from '../../components/Face.astro';
 import { actressByName, actressGroups, actressSearchIndex, actressIndexCoverage, historyByName, profilesByName } from '../../lib/data.js';
 import { ACTRESS_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
-import { ACTRESS_PAGE_SIZE, ACTRESS_SEARCH_INDEX_PATH, SIZE_BUCKETS, actressFirstPage, commonSizeBucket, compactSpec, faceUrl, sizeBucketLabel } from '../../lib/profiles.js';
+import { ACTRESS_PAGE_SIZE, ACTRESS_SEARCH_INDEX_PATH, BLOOD_CHOICES, ERA_BUCKETS, ERA_LABELS, SIZE_BUCKETS, TOTAL_BUCKETS, TOTAL_LABELS, actressFirstPage, prefectureCounts, commonSizeBucket, compactSpec, faceUrl, sizeBucketLabel } from '../../lib/profiles.js';
 import { ACTRESS_FALLBACK_LIMIT } from '../../config.js';
 import { agencyCounts } from '../../lib/agencies.js';
 import { NENPYO_PATH } from '../../lib/history.js';
@@ -39,6 +39,12 @@ const SIZES = [
 // 所属事務所（事務所の公式サイトから週1回。lib/agencies.js）。選択肢は、所属が分かっている人の多い順
 const agencyOptions = agencyCounts(actressSearchIndex);
 const agencyTotal = agencyOptions.reduce((n, a) => n + a.count, 0);
+// 女優名鑑の絞りこみ（2026-10-27。issue #172）。データのある人がいる項目だけ出す（空の選択肢を並べない）
+const indexRows = actressSearchIndex.actresses;
+const hasHistory = indexRows.some((r) => typeof r.fy === 'number' || typeof r.ft === 'number');
+const bloodOptions = BLOOD_CHOICES.filter((b) => indexRows.some((r) => r.bt === b));
+const prefOptions = prefectureCounts(indexRows);
+const firstYears = indexRows.map((r) => r.fy).filter((y) => typeof y === 'number');
 const CUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
 const SORTS = [
   ['works', 'このサイトの作品の多い順'],
@@ -51,6 +57,7 @@ const SORTS = [
   ['waist', 'ウエストの細い順'],
   ['hip', 'ヒップの大きい順'],
   ['newest', 'FANZAに新しく登録された順'],
+  ...(hasHistory ? [['fanza', 'FANZAの作品の多い順'], ['first_new', 'FANZAで最初の作品が新しい順'], ['first_old', 'FANZAで最初の作品が古い順']] : []),
   ['name', '名前（五十音）順'],
 ];
 import { assetUrl } from '../../lib/assets.js';
@@ -86,7 +93,15 @@ import { assetUrl } from '../../lib/assets.js';
           </div>
           {/* 年齢・身長・スリーサイズ・カップ・並び順は、たためる（スマホで、結果がすぐ見えるように。広い画面・条件つきで開いたときは開く。actress-search.js） */}
           <details id="as-filters" class="ws-filters">
-            <summary class="ws-filters-toggle">{agencyOptions.length > 0 ? '年齢・サイズ・カップ・所属' : '年齢・サイズ・カップ'}<span id="as-filter-note" class="ws-filter-note"></span></summary>
+            <summary class="ws-filters-toggle">年代・サイズ・カップなど<span id="as-filter-note" class="ws-filter-note"></span></summary>
+            <fieldset class="as-cups">
+              <legend class="as-range-label">年代（いくつでも）</legend>
+              <div class="as-cup-list">
+                {ERA_BUCKETS.map((b) => (
+                  <label class="as-cup"><input type="checkbox" name="era" value={b} /><span>{ERA_LABELS[b]}</span></label>
+                ))}
+              </div>
+            </fieldset>
             <div class="as-ranges">
               {RANGES.map((r) => (
                 <fieldset class="as-range">
@@ -121,6 +136,48 @@ import { assetUrl } from '../../lib/assets.js';
                 <label class="as-cup"><input type="checkbox" name="cup" value="L+" /><span>L〜</span></label>
               </div>
             </fieldset>
+            {bloodOptions.length > 0 && (
+              <fieldset class="as-cups">
+                <legend class="as-range-label">血液型（いくつでも）</legend>
+                <div class="as-cup-list">
+                  {bloodOptions.map((b) => (
+                    <label class="as-cup"><input type="checkbox" name="bt" value={b} /><span>{b}型</span></label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            {prefOptions.length > 0 && (
+              <label class="as-field as-field-wide">
+                出身地
+                <select name="bp">
+                  <option value="">指定なし</option>
+                  {prefOptions.map((p) => <option value={p.name}>{p.name}（{p.count}人）</option>)}
+                </select>
+              </label>
+            )}
+            {hasHistory && (
+              <>
+                <div class="as-ranges">
+                  <fieldset class="as-range">
+                    <legend class="as-range-label">FANZAで最初の作品の年</legend>
+                    <div class="as-range-inputs">
+                      <input type="number" name="first_min" inputmode="numeric" min={1970} max={2100} placeholder={firstYears.length ? String(Math.min(...firstYears)) : '下限'} aria-label="FANZAで最初の作品の年の下限" />
+                      <span class="as-range-sep" aria-hidden="true">〜</span>
+                      <input type="number" name="first_max" inputmode="numeric" min={1970} max={2100} placeholder={firstYears.length ? String(Math.max(...firstYears)) : '上限'} aria-label="FANZAで最初の作品の年の上限" />
+                      <span class="as-range-unit">年</span>
+                    </div>
+                  </fieldset>
+                </div>
+                <fieldset class="as-cups">
+                  <legend class="as-range-label">FANZAの作品数</legend>
+                  <div class="as-cup-list">
+                    {TOTAL_BUCKETS.map((b) => (
+                      <label class="as-cup"><input type="checkbox" name="total" value={b} /><span>{TOTAL_LABELS[b]}</span></label>
+                    ))}
+                  </div>
+                </fieldset>
+              </>
+            )}
             {agencyOptions.length > 0 && (
               <label class="as-field as-field-wide">
                 所属事務所
@@ -150,7 +207,7 @@ import { assetUrl } from '../../lib/assets.js';
         </div>
         <div class="search-main">
         <p id="as-count" class="as-count" aria-live="polite">{firstPage.total > 0 ? `${fmt(firstPage.total)}人が見つかりました` : ''}</p>
-        <p id="as-note" class="as-note" hidden>年齢・身長・スリーサイズ・カップで絞り込むと、FANZAにその情報が載っていない人は結果に出ません。</p>
+        <p id="as-note" class="as-note" hidden>絞り込むと、FANZAにその情報が無い人は結果に出ません。</p>
         <ul id="as-list" class="actress-list" data-first="1">
           {firstPage.rows.map((v) => (
             <li class="actress-row" data-key={v.key}>

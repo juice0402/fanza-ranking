@@ -1,4 +1,4 @@
-// 女優検索（/actress/）。名前・年齢・身長（下限〜上限の数字）・バスト・ウエスト・ヒップ（「80〜84cm」のような幅を、いくつでも）・カップ（いくつでも）・所属事務所で絞り込み、並べ替える。
+// 女優検索（/actress/）。名前・年齢・年代・身長（下限〜上限の数字）・バスト・ウエスト・ヒップ（「80〜84cm」のような幅を、いくつでも）・カップ（いくつでも）・所属事務所で絞り込み、並べ替える。
 // 検索のもとになるデータは /data/actresses-index.json（ビルドごとに作る。項目は site/src/lib/profiles.js の buildActressSearchIndex の説明を参照）。
 //   FANZA公式の出演者検索で、体型・身長・生年月日が載っている人（約1万人）と、このサイトの作品の出演者が入っている。
 // 条件は URL（?q=&age=20-25&bust=85-89,90-94&cup=E,F&sort=…）にも書くので、その条件のまま、ほかの人に送ったり、あとで開き直したりできる。
@@ -15,13 +15,22 @@
     { name: 'bust', key: 'b', lo: 50, hi: 160 },
     { name: 'waist', key: 'wa', lo: 40, hi: 130 },
     { name: 'hip', key: 'hi', lo: 50, hi: 160 },
+    // 女優名鑑（2026-10-27）: 年代（年齢の幅）・FANZAで最初の作品の年（下限〜上限）・FANZA全体の作品数の幅。
+    // 最初の作品の年と作品数は、年表を集めた人だけに入っている（ほかの人は、その項目で絞ると出ない）
+    { name: 'era', key: 'a', lo: 18, hi: 80 },
+    { name: 'first', key: 'fy', lo: 1970, hi: 2100 },
+    { name: 'total', key: 'ft', lo: 1, hi: 9999 },
   ];
+  var BLOODS = ['A', 'B', 'O', 'AB']; // 血液型（いくつでも）
+  var PREF = /^[\u4e00-\u9fff]{1,3}[都道府県]$/; // 出身地（索引の bp。都道府県の名前だけ）
   // スリーサイズは、数字を入れる代わりに、幅（cm）をタップで選ぶ（運営者の希望「何センチと言われてもサイズ感が分からないので、何センチ〜何センチの選択肢に」。2026-10-05）。
   // いくつでも選べて、どれかに入る人が出る。幅は site/src/lib/profiles.js の SIZE_BUCKETS と同じ（tests/test_profiles.mjs で突き合わせている）
   var BUCKETS = {
     bust: ['-79', '80-84', '85-89', '90-94', '95-99', '100-'],
     waist: ['-55', '56-58', '59-61', '62-64', '65-'],
     hip: ['-79', '80-84', '85-89', '90-94', '95-'],
+    era: ['18-19', '20-24', '25-29', '30-34', '35-39', '40-'],
+    total: ['-49', '50-99', '100-299', '300-'],
   };
   // 並び順（値 → 並べ方）。値が無い人は、いつも後ろ
   var SORTS = {
@@ -35,6 +44,9 @@
     waist: { key: 'wa', dir: 1 },
     hip: { key: 'hi', dir: -1 },
     newest: { key: 'id', dir: -1 }, // FANZAに新しく登録された順（id の大きい順）
+    fanza: { key: 'ft', dir: -1 }, // FANZA全体の作品の多い順（年表のある人だけ）
+    first_new: { key: 'fy', dir: -1 }, // FANZAで最初の作品の年が新しい順
+    first_old: { key: 'fy', dir: 1 }, // 古い順
     name: null, // 読みの順
   };
 
@@ -53,14 +65,14 @@
   function toInt(text, lo, hi) {
     var t = String(text == null ? '' : text).trim();
     if (t.normalize) t = t.normalize('NFKC');
-    if (!/^\d{1,3}$/.test(t)) return null;
+    if (!/^\d{1,4}$/.test(t)) return null;
     var n = Number(t);
     return n >= lo && n <= hi ? n : null;
   }
 
   // "20-25"（20〜25）・"-19"（19まで）・"40-"（40から）→ { min, max }。空・形が違うときは null（絞り込まない）。下限が上限より大きければ入れ替える
   function parseRange(text, lo, hi) {
-    var m = /^(\d{0,3})-(\d{0,3})$/.exec(String(text == null ? '' : text));
+    var m = /^(\d{0,4})-(\d{0,4})$/.exec(String(text == null ? '' : text));
     if (!m || (m[1] === '' && m[2] === '')) return null;
     var min = m[1] === '' ? null : toInt(m[1], lo == null ? 0 : lo, hi == null ? 999 : hi);
     var max = m[2] === '' ? null : toInt(m[2], lo == null ? 0 : lo, hi == null ? 999 : hi);
@@ -111,6 +123,22 @@
     return ranges.some(function (range) {
       return (range.min === null || value >= range.min) && (range.max === null || value <= range.max);
     });
+  }
+
+  // 血液型: "A,AB" → ['A','AB']（決まった順。知らない値は捨てる）
+  function parseBloods(text) {
+    var picked = String(text == null ? '' : text).toUpperCase().split(',').map(function (v) {
+      return v.trim();
+    });
+    return BLOODS.filter(function (v) {
+      return picked.indexOf(v) >= 0;
+    });
+  }
+
+  // 出身地: 都道府県の名前だけ（ほかは ''）
+  function parsePref(text) {
+    var t = String(text == null ? '' : text).trim();
+    return PREF.test(t) ? t : '';
   }
 
   function cupMatches(cup, cups) {
@@ -209,8 +237,12 @@
     var onlySite = q.site === '1';
     var onlyFace = q.face === '1';
     var agency = AGENCY_KEY.test(String(q.ag || '')) ? q.ag : '';
+    var bloods = parseBloods(q.bt);
+    var pref = parsePref(q.bp);
     return sortedRows(rows, q.sort).filter(function (row) {
       if (agency && row.g !== agency) return false;
+      if (bloods.length && bloods.indexOf(row.bt) < 0) return false;
+      if (pref && row.bp !== pref) return false;
       if (text) {
         var keys = matchKeys(row);
         if (keys.n.indexOf(text) < 0 && keys.r.indexOf(text) < 0) return false;
@@ -225,7 +257,7 @@
   // 数字・カップの条件を1つでも指定しているか（載っていない人は外れる、という注意書きを出すため）
   function hasNumericFilter(q) {
     if (!q) return false;
-    if (parseCups(q.cup).length) return true;
+    if (parseCups(q.cup).length || parseBloods(q.bt).length || parsePref(q.bp)) return true;
     return RANGES.some(function (r) {
       return parseRanges(q[r.name], r.lo, r.hi).length > 0;
     });
@@ -247,6 +279,8 @@
     q.site = params.get('site') === '1' ? '1' : '';
     q.face = params.get('face') === '1' ? '1' : '';
     q.ag = AGENCY_KEY.test(params.get('ag') || '') ? params.get('ag') : '';
+    q.bt = parseBloods(params.get('bt')).join(',');
+    q.bp = parsePref(params.get('bp'));
     return q;
   }
 
@@ -259,6 +293,8 @@
     });
     if (q.cup) parts.push('cup=' + encodeURIComponent(q.cup));
     if (q.ag) parts.push('ag=' + encodeURIComponent(q.ag));
+    if (q.bt) parts.push('bt=' + encodeURIComponent(q.bt));
+    if (q.bp) parts.push('bp=' + encodeURIComponent(q.bp));
     if (q.site === '1') parts.push('site=1');
     if (q.face === '1') parts.push('face=1');
     if (q.sort && q.sort !== 'works') parts.push('sort=' + encodeURIComponent(q.sort));
@@ -346,6 +382,8 @@
       parseRanges: parseRanges,
       parseBuckets: parseBuckets,
       parseCups: parseCups,
+      parseBloods: parseBloods,
+      parsePref: parsePref,
       filterRows: filterRows,
       hasNumericFilter: hasNumericFilter,
       parseQuery: parseQuery,
@@ -359,6 +397,7 @@
       agencyLabel: agencyLabel,
       PAGE_SIZE: PAGE_SIZE,
       CUPS: CUPS,
+      BLOODS: BLOODS,
       BUCKETS: BUCKETS,
       SORTS: Object.keys(SORTS),
       RANGES: RANGES.map(function (r) {
@@ -422,6 +461,12 @@
     q.site = field('site') && field('site').checked ? '1' : '';
     q.face = field('face') && field('face').checked ? '1' : '';
     q.ag = field('ag') ? String(field('ag').value || '') : '';
+    var bloods = [];
+    Array.prototype.forEach.call(form.querySelectorAll('input[name="bt"]:checked'), function (box) {
+      bloods.push(box.value);
+    });
+    q.bt = parseBloods(bloods.join(',')).join(',');
+    q.bp = field('bp') ? parsePref(field('bp').value) : '';
     return q;
   }
 
@@ -450,6 +495,14 @@
     if (field('ag')) {
       field('ag').value = q.ag || '';
       if (field('ag').value !== (q.ag || '')) field('ag').value = ''; // 選択肢に無い事務所（いまは所属の分かる人がいない）は、指定なしに
+    }
+    var bloods = parseBloods(q.bt);
+    Array.prototype.forEach.call(form.querySelectorAll('input[name="bt"]'), function (box) {
+      box.checked = bloods.indexOf(box.value) >= 0;
+    });
+    if (field('bp')) {
+      field('bp').value = q.bp || '';
+      if (field('bp').value !== (q.bp || '')) field('bp').value = '';
     }
   }
 
@@ -551,7 +604,7 @@
     if (filterNote) {
       var active = RANGES.filter(function (r) {
         return q[r.name];
-      }).length + (q.cup ? 1 : 0) + (q.ag ? 1 : 0) + (q.site ? 1 : 0) + (q.face ? 1 : 0);
+      }).length + (q.cup ? 1 : 0) + (q.bt ? 1 : 0) + (q.bp ? 1 : 0) + (q.ag ? 1 : 0) + (q.site ? 1 : 0) + (q.face ? 1 : 0);
       filterNote.textContent = active ? '（' + active + '件を指定中）' : '';
     }
   }

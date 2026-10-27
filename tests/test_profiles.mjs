@@ -184,7 +184,7 @@ check('年齢: 30以上・29まで', names({ age: '30-' }) === 'あいう,大人
 check('身長・バスト・ウエスト・ヒップを、1cm単位で', names({ height: '158-162' }) === 'テスト花子,名簿だけの人' && names({ bust: '92-95' }) === '大人の人,名簿だけの人' && names({ waist: '-57' }) === 'テスト花子,桜ゆの' && names({ hip: '90-92' }) === '大人の人,名簿だけの人');
 check('スリーサイズの幅: いくつでも（どれかに入る人）・以上・まで', names({ bust: '85-89,100-' }) === 'あいう,テスト花子' && names({ waist: '56-58,65-' }) === 'あいう,テスト花子,桜ゆの,名簿だけの人' && names({ hip: '95-' }) === 'あいう' && names({ bust: 'xx,' }) === names({}), [names({ bust: '85-89,100-' }), names({ waist: '56-58,65-' })].join(' / '));
 check('幅のならびの読み取り（読めない幅は捨てる）・決まった幅だけ残す', plain(S.parseRanges('80-84,x,100-')).length === 2 && plain(S.parseRanges('')).length === 0 && S.parseBuckets('85-89,-79,xx,85-89', 'bust').join() === '-79,85-89' && S.parseBuckets('80-84', 'nothing').length === 0);
-check('スリーサイズの幅は、ページの部品（profiles.js の SIZE_BUCKETS）とスクリプトで同じ', JSON.stringify(plain(S.BUCKETS)) === JSON.stringify(P.SIZE_BUCKETS));
+check('スリーサイズ・年代・作品数の幅は、ページの部品（profiles.js）とスクリプトで同じ', JSON.stringify(plain(S.BUCKETS)) === JSON.stringify({ ...P.SIZE_BUCKETS, era: P.ERA_BUCKETS, total: P.TOTAL_BUCKETS }) && P.ERA_BUCKETS.every((b) => P.ERA_LABELS[b]) && P.TOTAL_BUCKETS.every((b) => P.TOTAL_LABELS[b]) && S.BLOODS.join() === P.BLOOD_CHOICES.join());
 check('幅の表示・人数・いちばん多い幅', P.sizeBucketLabel('-79') === '〜79' && P.sizeBucketLabel('80-84') === '80〜84' && P.sizeBucketLabel('100-') === '100〜'
   && JSON.stringify(P.sizeBucketCounts(rows, 'b', P.SIZE_BUCKETS.bust).map((c) => c.count)) === '[0,1,1,1,1,1]' && P.commonSizeBucket(rows, 'b', P.SIZE_BUCKETS.bust) === '80-84' && P.commonSizeBucket(rows, 'hi', P.SIZE_BUCKETS.hip) === '90-94' && P.commonSizeBucket([], 'b', P.SIZE_BUCKETS.bust) === '',
   JSON.stringify(P.sizeBucketCounts(rows, 'b', P.SIZE_BUCKETS.bust)));
@@ -224,7 +224,7 @@ check('画像・リンクは FANZA(DMM) の https だけ', S.safeUrl('https://pi
 check('見せかけのURL（ユーザー名の欄にFANZAのホストを入れる・バックスラッシュ・空白）は通さない', ['https://dmm.co.jp:@evil.example/a.jpg', 'https://pics.dmm.co.jp:80@evil.example/a.jpg', 'https://pics.dmm.co.jp@evil.example/a.jpg', 'https://pics.dmm.co.jp\\@evil.example/a.jpg', 'https://pics.dmm.co.jp/a b.jpg', 'https://pics.dmm.co.jp/a\nb.jpg', 'https://pics.dmm.co.jp:x/a.jpg'].every((u) => S.safeUrl(u, ['dmm.co.jp']) === ''));
 check('ポート番号つき・?だけ・#だけ・ホストだけのFANZAのURLは通す', ['https://pics.dmm.co.jp:443/a.jpg', 'https://pics.dmm.co.jp?x=1', 'https://pics.dmm.co.jp#top', 'https://pics.dmm.co.jp'].every((u) => S.safeUrl(u, ['dmm.co.jp']) === u));
 check('出演者ページの短い名前: 10桁の英数字（小文字）だけ', S.pagePath('abcdef0123') === '/actress/abcdef0123/' && ['', 'ABCDEF0123', 'abcdef012', '../../etc/x', 'abcdef01234', null].every((s) => S.pagePath(s) === ''));
-check('1回に出す人数（30人。ページの「はじめの一覧」と同じ）・カップの選択肢・並び順・数字の条件', S.PAGE_SIZE === 30 && S.PAGE_SIZE === P.ACTRESS_PAGE_SIZE && S.CUPS.join('') === 'ABCDEFGHIJK' && S.SORTS.length === 11 && S.RANGES.join() === 'age,height,bust,waist,hip');
+check('1回に出す人数（30人。ページの「はじめの一覧」と同じ）・カップの選択肢・並び順・数字の条件', S.PAGE_SIZE === 30 && S.PAGE_SIZE === P.ACTRESS_PAGE_SIZE && S.CUPS.join('') === 'ABCDEFGHIJK' && S.SORTS.length === 14 && S.RANGES.join() === 'age,height,bust,waist,hip,era,first,total');
 const searchSource = fs.readFileSync(new URL('../site/public/actress-search.js', import.meta.url), 'utf-8');
 
 console.log('\n■ 女優検索の「はじめの一覧」（ページを作るときに入れる。ブラウザと同じ並び・同じ中身。2026-10-07）');
@@ -252,6 +252,37 @@ check('はじめの一覧（条件なし・作品の多い順の、はじめの3
 check('はじめの一覧: 索引が空・壊れていても落ちない', P.actressFirstPage({ actresses: [] }).total === 0 && P.actressFirstPage(null).rows.length === 0 && P.actressFirstPage({ actresses: [null, 5, { n: '' }] }).total === 0);
 check('ブラウザの検索は、ページの「はじめの一覧」（data-first）がいまの条件と同じなら作り直さず、索引を待たずに検索欄を使える', searchSource.includes("list.getAttribute('data-first') === '1'") && searchSource.includes("'読み込み中…'") && searchSource.includes('TYPING_WAIT_MS'));
 check('検索結果の「FANZAで全作品を見る」に、（広告）の文字を付けない（広告であることは、全ページのヘッダー・フッターに出している）', searchSource.includes("'FANZAで全作品を見る'") && !searchSource.includes('（広告）'));
+
+console.log('\n■ 女優名鑑の絞りこみ（年代・血液型・出身地・FANZAで最初の作品の年・FANZAの作品数。2026-10-27 #172）');
+check('出身地は47都道府県に読めたときだけ（「東京」「東京都」→ 東京都、海外・空は \'\'）', P.prefectureOf('東京都') === '東京都' && P.prefectureOf('東京') === '東京都' && P.prefectureOf(' 北海道 ') === '北海道' && P.prefectureOf('京都') === '京都府' && P.prefectureOf('大阪府') === '大阪府' && P.prefectureOf('海外') === '' && P.prefectureOf('') === '' && P.prefectureOf(null) === '' && P.PREFECTURES.length === 47);
+const mDir = P.normalizeDirectory({ rows: [
+  { id: '501', name: '名鑑一', bust: 88, birthday: '2000-05-05', blood_type: 'A', prefectures: '東京都', hobby: 'さんぽ' },
+  { id: '502', name: '名鑑二', height: 160, blood_type: 'X', prefectures: '海外' },
+  { id: '503', name: '名鑑三', height: 150, blood_type: 'AB', prefectures: '神奈川' },
+] }, today);
+const mHist = new Map([
+  ['名鑑一', { id: '501', name: '名鑑一', total: 120, first: { c: 'abc00001', d: '2019-04-01' } }],
+  ['名鑑三', { id: '999', name: '名鑑三', total: 40, first: { c: 'abc00002', d: '2023-01-01' } }], // id が違う＝別人なので付けない
+]);
+const mIdx = P.buildActressSearchIndex([], [], new Map(), today, mDir, mHist);
+const mBy = Object.fromEntries(mIdx.actresses.map((r) => [r.n, r]));
+check('名簿の血液型・出身地が索引に入る（決まった値だけ。趣味・生年月日は入れない）', mBy['名鑑一'].bt === 'A' && mBy['名鑑一'].bp === '東京都' && !('bt' in mBy['名鑑二']) && !('bp' in mBy['名鑑二']) && mBy['名鑑三'].bt === 'AB' && mBy['名鑑三'].bp === '神奈川県' && !JSON.stringify(mIdx).includes('さんぽ') && !JSON.stringify(mIdx).includes('2000-05-05'));
+check('FANZAで最初の作品の年・作品数は、年表のある人（id と名前が同じ）だけ', mBy['名鑑一'].fy === 2019 && mBy['名鑑一'].ft === 120 && !('fy' in mBy['名鑑三']) && !('ft' in mBy['名鑑二']));
+check('年表を渡さなくても索引は作れる（いままでどおり）', P.buildActressSearchIndex([], [], new Map(), today, mDir).actresses.every((r) => !('fy' in r) && !('ft' in r)));
+check('出身地の選択肢: 人のいる都道府県だけ、北から順に人数つき', JSON.stringify(P.prefectureCounts([...mIdx.actresses, { n: 'x', bp: '東京都' }, { n: 'y', bp: 'どこか' }])) === JSON.stringify([{ name: '東京都', count: 2 }, { name: '神奈川県', count: 1 }]) && P.prefectureCounts(null).length === 0);
+const mRows = [
+  { n: 'あ', r: 'あ', id: '1', k: 3, a: 19, bt: 'A', bp: '東京都', fy: 2018, ft: 350 },
+  { n: 'い', r: 'い', id: '2', k: 2, a: 23, bt: 'B', bp: '大阪府', fy: 2022, ft: 60 },
+  { n: 'う', r: 'う', id: '3', k: 1, a: 27, bt: 'AB' },
+  { n: 'え', r: 'え', id: '4', k: 0, a: 41 },
+];
+const mNames = (q) => S.filterRows(mRows, q).map((r) => r.n).join('');
+check('年代（いくつでも）で絞る', mNames({ era: '18-19,25-29' }) === 'あう' && mNames({ era: '40-' }) === 'え');
+check('血液型・出身地で絞る（無い人は出ない・知らない値は絞らない）', mNames({ bt: 'A,AB' }) === 'あう' && mNames({ bp: '大阪府' }) === 'い' && mNames({ bt: 'Z' }) === 'あいうえ' && mNames({ bp: '<script>' }) === 'あいうえ');
+check('FANZAで最初の作品の年（4けた）・作品数の幅で絞る（年表の無い人は出ない）', mNames({ first: '2020-' }) === 'い' && mNames({ first: '-2019' }) === 'あ' && mNames({ total: '300-' }) === 'あ' && mNames({ total: '50-99,100-299' }) === 'い' && plain(S.parseRange('2018-2022', 1970, 2100)).min === 2018);
+check('並び順: FANZAの作品の多い順・最初の作品が新しい順/古い順（年表の無い人は後ろ）', mNames({ sort: 'fanza' }) === 'あいうえ' && mNames({ sort: 'first_new' }) === 'いあうえ' && mNames({ sort: 'first_old' }) === 'あいうえ');
+const mq = S.parseQuery('?era=20-24,xx&bt=ab,A&bp=%E6%9D%B1%E4%BA%AC%E9%83%BD&first=2015-2020&total=300-&sort=first_new');
+check('URL の条件の読み書き（年代・血液型・出身地・最初の作品の年・作品数・並び順）', mq.era === '20-24' && mq.bt === 'A,AB' && mq.bp === '東京都' && mq.first === '2015-2020' && mq.total === '300-' && mq.sort === 'first_new' && S.buildQuery(mq) === '?era=20-24&first=2015-2020&total=300-&bt=A%2CAB&bp=%E6%9D%B1%E4%BA%AC%E9%83%BD&sort=first_new' && S.parseQuery('?bp=x').bp === '' && S.hasNumericFilter({ bt: 'O' }) && S.hasNumericFilter({ bp: '東京都' }) && !S.hasNumericFilter({ bp: 'x' }));
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

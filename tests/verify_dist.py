@@ -792,7 +792,7 @@ check(f"生年月日（{len(births)}件）が、公開ファイルのどこに�
 for pth in glob.glob(os.path.join(DIST, "data", "*.json")):
     if re.search(r"birthday|blood|hobby|prefecture", read(pth)):
         json_leaks.append(os.path.relpath(pth, DIST))
-check("公開するJSONに、生年月日・血液型・趣味・出身地の項目が無い", not json_leaks, json_leaks[:3])
+check("公開するJSONに、生年月日・血液型・趣味・出身地の項目が無い（女優検索の索引の bt・bp＝決まった値だけ、は下で点検）", not json_leaks, json_leaks[:3])
 
 print("\n■ 出演者検索（/actress/）")
 search_page = os.path.join(DIST, "actress", "index.html")
@@ -803,7 +803,8 @@ check("女優検索の索引（/data/actresses-index.json）がある・形が�
       and act_index.get("img") == "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/"
       and (act_index.get("list") == "" or (str(act_index.get("list")).count("{ID}") == 1 and fanza_https(str(act_index.get("list")).replace("{ID}", "1"), FANZA_LINK))), str(act_index)[:120])
 rows = act_index["actresses"] if isinstance(act_index, dict) and isinstance(act_index.get("actresses"), list) else []
-ALLOWED_KEYS = {"n", "r", "id", "s", "k", "i", "a", "h", "b", "c", "wa", "hi", "l", "g"}  # g: 所属事務所のキー（事務所の公式サイトから）
+ALLOWED_KEYS = {"n", "r", "id", "s", "k", "i", "a", "h", "b", "c", "wa", "hi", "l", "g", "bt", "bp", "fy", "ft"}  # g: 所属事務所のキー（事務所の公式サイトから）。bt 血液型・bp 出身地（都道府県）・fy FANZAで最初の作品の年・ft FANZAの作品数（2026-10-27 #172）
+PREFS_47 = {"北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"}
 DIRECTORY = os.path.join(ROOT, "site", "src", "data", "actress_directory.json")
 dir_raw = load_json(DIRECTORY) if os.path.isfile(DIRECTORY) else None
 dir_ids = {str(r.get("id")) for r in (dir_raw.get("rows") if isinstance(dir_raw, dict) and isinstance(dir_raw.get("rows"), list) else []) if isinstance(r, dict)}
@@ -849,6 +850,12 @@ for r in rows:
         here.append("年齢・身長・サイズが範囲外")
     if "c" in r and not (isinstance(r["c"], str) and re.fullmatch(r"[A-Z]", r["c"])):
         here.append("カップが英字1文字でない")
+    if "bt" in r and r["bt"] not in ("A", "B", "O", "AB"):
+        here.append("血液型が A・B・O・AB でない")
+    if "bp" in r and r["bp"] not in PREFS_47:
+        here.append("出身地が47都道府県の名前でない")
+    if not (int_in(r.get("fy"), 1970, 2100) and int_in(r.get("ft"), 1, 100000)):
+        here.append("最初の作品の年・作品数が範囲外")
     if any(v is None or v == "" for v in r.values()):
         here.append("値が空の項目が入っている（無い値は、項目ごと入れない）")
     if here:

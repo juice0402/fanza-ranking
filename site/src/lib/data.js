@@ -231,7 +231,7 @@ export const upcomingEventList = upcomingEvents(events, today);
 export const eventsOfName = eventsByName(upcomingEventList);
 // その人の、このサイトのいちばん新しい発売済みの作品の表紙（VRでない作品。顔写真が無い人の、きょうの話題のイベントの画像に使う）
 export const coverOfName = (name) => actressByName.get(name)?.items.find((i) => !i.vr && i.image_url && i.dateKey <= today)?.image_url ?? '';
-export const actressSearchIndex = withAgencies(buildActressSearchIndex(profiles, all, actressByName, today, directory), agencies);
+export const actressSearchIndex = withAgencies(buildActressSearchIndex(profiles, all, actressByName, today, directory, historyByName), agencies);
 export const actressIndexCoverage = indexCoverage(actressSearchIndex);
 
 // 売れ筋ランキング（FANZAの人気順の上位3本）。無い・古いときは null（画面に出さない）
