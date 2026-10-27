@@ -23,6 +23,7 @@ SCRIPT = os.path.join(ROOT, "get_new_releases.py")
 SAVED_DATA = os.path.join(ROOT, "tests", "fixtures", "archive_20items.json")
 JST = timezone(timedelta(hours=9))
 TODAY = datetime.now(JST).replace(hour=0, minute=0, second=0, microsecond=0)
+UPCOMING_FAKE_TOTAL = 20  # 予約の取得で返す本数（1日の上限12本より多い）
 
 results = []
 
@@ -123,6 +124,7 @@ class Env:
         self.prompts = []
         self.dmm_calls = 0              # FANZA APIを呼んだ回数
         self.queries = []               # FANZA APIを呼んだ内容 [(エンドポイント, {項目: 値})]
+        self.upcoming_queries = []      # 予約の取得の内容
         self.by_cid = {}                # 品番を指定した取り直しに答える作品（cid → APIの1件）
         self.actress_rows = {}          # 出演者の検索に答える内容（id → 1件）。無ければ、名前から作った標準の内容
         self.cid_mode = "ok"            # 品番指定の取り直し: ok / fail
@@ -207,6 +209,10 @@ class Env:
                 raise urllib.error.URLError("count api down")
             day_ = q["gte_date"][0][:10]
             return FakeResponse({"result": {"status": 200, "items": [], "total_count": str(100 + int(day_[8:10])), "result_count": 0}})
+        if q.get("sort", [""])[0] == "rank" and "gte_date" in q and "lte_date" in q and "offset" not in q and q["gte_date"][0][:10] > TODAY.strftime("%Y-%m-%d"):  # 予約の取得（人気順・30日先まで）
+            self.upcoming_queries.append({k: v[0] for k, v in q.items() if k != "api_id"})
+            items = [make_api_item(f"up{i:03d}", 3 + i) for i in range(UPCOMING_FAKE_TOTAL)]  # 人気の高い順
+            return FakeResponse({"result": {"status": 200, "items": items[: int(q["hits"][0])]}})
         if q.get("sort", [""])[0] == "rank" and "gte_date" in q and "offset" not in q and q["gte_date"][0][:10] > TODAY.strftime("%Y-%m-%d"):  # 予約の人気順
             ids = self.upcoming_rank_ids or [f"soon{n:03d}" for n in range(1, 41)]
             rows = [make_api_item(c, 2 + n % 20, actress=(f"予約の人{n % 4}",), title=("【VR】" if n == 3 else "") + f"予約の人気作 {n}") for n, c in enumerate(ids, 1)]
@@ -339,9 +345,30 @@ old_ai = by_cid["bibivr00176"]
 check("保存済みのAIコメントはそのまま保持", old_ai["comment_kind"] == "ai" and "蓮実クレア" in old_ai["comment"], old_ai["comment"])
 check("新しい発売済みが追加された(上限=NEW_ITEMS_PER_RUN)", len([d for d in data if d["cid"].startswith("rel")]) == mod.NEW_ITEMS_PER_RUN,
       len([d for d in data if d["cid"].startswith("rel")]))
-check("予約が追加された(上限=UPCOMING_ITEMS)", len([d for d in data if d["cid"].startswith("up")]) == mod.UPCOMING_ITEMS)
-check("1回に頼むAIの回数が無料枠(1日20回)に収まる設定", mod.NEW_ITEMS_PER_RUN + mod.UPCOMING_ITEMS + mod.RETRY_PER_RUN <= mod.GEMINI_MAX_CALLS <= 20,
-      (mod.NEW_ITEMS_PER_RUN, mod.UPCOMING_ITEMS, mod.RETRY_PER_RUN, mod.GEMINI_MAX_CALLS))
+up1 = sorted(d["cid"] for d in data if d["cid"].startswith("up"))
+check("予約は1日12本まで(UPCOMING_ITEMS)", mod.UPCOMING_ITEMS == 12 and len(up1) == mod.UPCOMING_ITEMS, len(up1))
+check("予約は人気順の上から選ぶ", up1 == [f"up{i:03d}" for i in range(mod.UPCOMING_ITEMS)], up1)
+uq = env.upcoming_queries[0] if env.upcoming_queries else {}
+check("予約の取得: 人気順・30日先まで・保存済みをのぞいても足りるよう多めに",
+      len(env.upcoming_queries) == 1 and uq.get("sort") == "rank" and int(uq.get("hits", 0)) > mod.UPCOMING_ITEMS
+      and uq.get("lte_date", "")[:10] == (TODAY + timedelta(days=30)).strftime("%Y-%m-%d") and mod.UPCOMING_DAYS == 30, uq)
+up_by = {c: by_cid[c] for c in up1}
+up_ai = [f"up{i:03d}" for i in range(mod.UPCOMING_AI_ITEMS)]
+check("予約の上位4本だけ Gemini の下書き（ブロックされなければ ai）", all(up_by[c]["comment_kind"] == "ai" for c in up_ai), [up_by[c]["comment_kind"] for c in up_ai])
+check("予約の残り8本は Gemini を使わず代わりの文", all(up_by[c]["comment_kind"] == "template" and up_by[c]["comment"] and up_by[c]["comment_tries"] == 0
+      for c in up1[mod.UPCOMING_AI_ITEMS:]))
+check("1回に頼むAIの回数が無料枠(1日20回)に収まる設定", mod.NEW_ITEMS_PER_RUN + mod.UPCOMING_AI_ITEMS + mod.RETRY_PER_RUN <= mod.GEMINI_MAX_CALLS <= 20,
+      (mod.NEW_ITEMS_PER_RUN, mod.UPCOMING_AI_ITEMS, mod.RETRY_PER_RUN, mod.GEMINI_MAX_CALLS))
+path_g = os.path.join(tmp, "g20.json")
+shutil.copy(SAVED_DATA, path_g)
+env_g = Env()
+env_g.first_429_done = True  # 429 の再送を数えないように
+mod_g = load_module(path_g)
+run_main(mod_g, env_g)
+dg = json.load(open(path_g, encoding="utf-8"))
+check("予約を12本足しても Gemini は 新規12＋予約4＋再挑戦4＝20回まで（GEMINI_MAX_CALLS も20のまま）",
+      len([d for d in dg if d["cid"].startswith("up")]) == 12 and env_g.gemini_calls <= mod_g.NEW_ITEMS_PER_RUN + mod_g.UPCOMING_AI_ITEMS + mod_g.RETRY_PER_RUN == 20
+      and mod_g.GEMINI_MAX_CALLS == 20, env_g.gemini_calls)
 check("日付の新しい順に並ぶ", [d["date"] for d in data] == sorted([d["date"] for d in data], reverse=True))
 ai_new = [d for d in data if d["cid"].startswith(("rel", "up")) and d["comment_kind"] == "ai"]
 tp_new = [d for d in data if d["cid"].startswith(("rel", "up")) and d["comment_kind"] == "template"]
@@ -381,7 +408,9 @@ code = run_main(mod2, env2)
 data2 = json.load(open(path, encoding="utf-8"))
 after = {d["cid"]: d for d in data2}
 check("正常終了(0)", code == 0)
-check("2回目は件数が増えすぎない(発売済みの追加分だけ)", len(data2) <= len(data) + mod2.NEW_ITEMS_PER_RUN, (len(data), len(data2)))
+check("2回目は件数が増えすぎない(発売済み・予約の追加分だけ)", len(data2) <= len(data) + mod2.NEW_ITEMS_PER_RUN + mod2.UPCOMING_ITEMS, (len(data), len(data2)))
+check("2回目の予約は、保存済みをのぞいた残り（重複なし）", sorted(c for c in after if c.startswith("up")) == [f"up{i:03d}" for i in range(UPCOMING_FAKE_TOTAL)],
+      sorted(c for c in after if c.startswith("up")))
 check("既存のAIコメントは書き換わらない", all(after[c]["comment"] == before[c]["comment"] for c in before if before[c]["comment_kind"] == "ai"))
 retried = [c for c in before if before[c]["comment_kind"] == "template" and after[c]["comment_tries"] > before[c]["comment_tries"]]
 check("テンプレのままの作品に再挑戦した", len(retried) > 0)
@@ -455,7 +484,12 @@ code_h, out_h = run_main_capture(m_h, e)
 d_h = json.load(open(path_h, encoding="utf-8"))
 new_h = [x for x in d_h if x["cid"] not in tries_h0]
 check("確かめられない評価が入った答えは、採用されない（新しい作品は、すべて定型文）", code_h == 0 and new_h and all(x["comment_kind"] == "template" and "待望" not in x["comment"] and "熱い視線" not in x["comment"] for x in new_h), [(x["cid"], x["comment_kind"]) for x in new_h][:3])
-check("採用しなかった作品は、再挑戦の回数が1増える（上限まで続けば、Claude が書き直す）", all(x["comment_tries"] == 1 for x in new_h), {x["comment_tries"] for x in new_h})
+tmpl_up = [x for x in data if x["cid"] in {f"up{i:03d}" for i in range(m_h.UPCOMING_AI_ITEMS, m_h.UPCOMING_ITEMS)}]  # 1回目の実行の、代わりの文だけの予約
+check("代わりの文の予約8本は、Claude の list に「定型文」として出る",
+      len(tmpl_up) == 8 and all(cc.pending_reason(x, TODAY_STR) == "定型文" for x in tmpl_up)
+      and {x["cid"] for x in tmpl_up} <= {x["cid"] for x in cc.pending_items(tmpl_up, TODAY_STR)}, [cc.pending_reason(x, TODAY_STR) for x in tmpl_up])
+tmpl_only_h = {f"up{i:03d}" for i in range(m_h.UPCOMING_AI_ITEMS, m_h.UPCOMING_ITEMS)}  # Gemini を使わない予約（数えない）
+check("採用しなかった作品は、再挑戦の回数が1増える（上限まで続けば、Claude が書き直す）", all(x["comment_tries"] == (0 if x["cid"] in tmpl_only_h else 1) for x in new_h), {(x["cid"] in tmpl_only_h, x["comment_tries"]) for x in new_h})
 check("採用しなかった数が、画面とカウンターに出る（連続失敗のお休みにはならない）", m_h.CommentMaker is not None and "採用せず" in out_h and e.gemini_calls > 4, e.gemini_calls)
 check("定型文に入るのは作品情報だけ（確かめられない評価は入らない）", all(not m_h.rejected_words(x["comment"]) for x in new_h))
 
@@ -990,7 +1024,7 @@ check("VR判定（is_vr_item）: 題名の【…VR…】・形式タグ・ジャ
       and m_k.is_vr_item({"title": "作品", "genres": ["VR専用"]}) and m_k.is_vr_item({"title": "作品", "genres": ["ハイクオリティVR"]}) and m_k.is_vr_item({"title": "作品", "genres": ["8KVR"]})
       and not m_k.is_vr_item({"title": "作品", "genres": ["巨乳"], "tags": ["8K"]}) and not m_k.is_vr_item({"title": "VRの話をする作品"}) and not m_k.is_vr_item({}))
 check("1本ごとに、品番・題名・アフィリエイトのURL・画像・発売日・メーカー・出演者がある", all(set(x) == {"rank", "cid", "title", "url", "image_url", "date", "maker", "actress", "vr"} and x["url"].startswith("https://al.fanza.co.jp/") and re.match(r"^\d{4}-\d{2}-\d{2}$", x["date"]) for x in rank["items"]), rank["items"][0])
-rank_calls = [q for ep, q in env_k.queries if ep == "ItemList" and q.get("sort") == "rank"]
+rank_calls = [q for ep, q in env_k.queries if ep == "ItemList" and q.get("sort") == "rank" and not ("gte_date" in q and "lte_date" in q)]  # 予約の取得（日付つき）はのぞく
 check("人気順（sort=rank）で6本だけ頼む（日付の絞り込みなし）", len(rank_calls) == 1 and rank_calls[0].get("hits") == "6" and "gte_date" not in rank_calls[0], rank_calls)
 check("ランキングに出た出演者も、出演者データに入る", "ランク花子1" in {a["name"] for a in json.load(open(os.path.join(folder, "actresses.json"), encoding="utf-8"))["actresses"]})
 for mode, label in (("fail", "取得に失敗"), ("empty", "空の応答")):
