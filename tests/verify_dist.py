@@ -19,6 +19,11 @@ from urllib.parse import urlparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "site", "dist")
+
+def entity_glob(kind):
+    """出演者・メーカーなどの1つずつのページ。/actress/nenpyo/（女優の年表の一覧。2026-10-27）は出演者のページではないので入れない"""
+    return [p for p in glob.glob(os.path.join(DIST, kind, "*", "index.html")) if not (kind == "actress" and os.path.basename(os.path.dirname(p)) == "nenpyo")]
+
 DATA = os.path.join(ROOT, "site", "src", "data", "new_releases.json")
 CATALOG_DIR = os.path.join(ROOT, "site", "src", "data", "catalog")  # 過去作品（発売月ごとのファイル。まだ無いこともある）
 CATALOG_RANK = os.path.join(ROOT, "site", "src", "data", "catalog_rank.json")  # 過去作品の人気順の順位 {cid: [順位, 一回りの番号]}
@@ -284,12 +289,28 @@ if os.path.isfile(sitemap_path):
 
 print("\n■ 出演者・メーカーのページ")
 check("出演者一覧ページ（/actress/）", os.path.isfile(os.path.join(DIST, "actress", "index.html")))
+# 女優の年表の一覧（/actress/nenpyo/。2026-10-27）: 年表のある女優（ページがある人）が50音の見出しごとに並び、名前から歩みの欄へ。入口は女優検索のページに1行
+_np_file = os.path.join(ROOT, "site", "src", "data", "actress_history.json")
+_np_rows = (json.load(open(_np_file, encoding="utf-8")).get("actresses") or {}) if os.path.exists(_np_file) else {}
+_np_names = {r.get("name") for r in _np_rows.values() if isinstance(r, dict) and r.get("name") and int(r.get("total") or 0) > 0 and isinstance(r.get("first"), dict) and r.get("checked")}
+_np_page = os.path.join(DIST, "actress", "nenpyo", "index.html")
+_np_raw = read_raw(_np_page) if os.path.isfile(_np_page) else ""
+_np_links = re.findall(r'<ul class="nenpyo-list">(.*?)</ul>', _np_raw, re.S)
+_np_hrefs = re.findall(r'href="(/actress/[0-9a-f]{10}/#hist-title)"', "".join(_np_links))
+_np_missing = [h for h in _np_hrefs if not os.path.isfile(os.path.join(DIST, h.split("#")[0].strip("/"), "index.html"))]
+_np_count = len(_np_hrefs)
+check(f"女優の年表（/actress/nenpyo/）: ページがあり、{_np_count}人が50音の見出しで並び、名前から女優のページの歩みの欄へ（飛び先がある）",
+      bool(_np_raw) and re.sub(r"<[^>]+>", "", (re.search(r'<h1 class="hero-title">(.*?)</h1>', _np_raw, re.S) or re.search("()", "")).group(1)).strip() == "女優の年表" and not _np_missing and _np_count <= len(_np_names) and (_np_count == 0 or 'class="kana-head"' in _np_raw), (_np_count, len(_np_names), _np_missing[:3]))
+_as_raw = read_raw(os.path.join(DIST, "actress", "index.html")) if os.path.isfile(os.path.join(DIST, "actress", "index.html")) else ""
+check("女優の年表: 年表のある人がいれば、女優検索のページに入口が1つ・sitemap に入る（0人なら noindex・sitemap に入れない）",
+      (_as_raw.count('href="/actress/nenpyo/"') == 1 and ("/actress/nenpyo/" in sm_paths if os.path.isfile(sitemap_path) else True)) if _np_count > 0
+      else ('href="/actress/nenpyo/"' not in _as_raw and 'name="robots" content="noindex' in _np_raw), (_np_count, _as_raw.count('href="/actress/nenpyo/"')))
 check("メーカー一覧ページ（/maker/）", os.path.isfile(os.path.join(DIST, "maker", "index.html")))
 if os.path.isfile(sitemap_path):
     check("sitemap に出演者一覧・メーカー一覧がある", "/actress/" in sm_paths and "/maker/" in sm_paths)
     for kind in ("actress", "maker", "series", "label"):
-        entity_pages = glob.glob(os.path.join(DIST, kind, "*", "index.html"))
-        in_sitemap = {p for p in sm_paths if p.startswith(f"/{kind}/") and p != f"/{kind}/"}
+        entity_pages = entity_glob(kind)
+        in_sitemap = {p for p in sm_paths if p.startswith(f"/{kind}/") and p != f"/{kind}/" and p != "/actress/nenpyo/"}
         indexable = {f"/{kind}/{os.path.basename(os.path.dirname(p))}/" for p in entity_pages if 'name="robots" content="noindex' not in read_raw(p)}
         check(f"{kind} ページのうち、noindex でないもの（{len(indexable)}/{len(entity_pages)}ページ）が、すべて sitemap に入っている", indexable == in_sitemap, (len(indexable), len(in_sitemap)))
 
@@ -297,7 +318,7 @@ print("\n■ シリーズ・レーベルのページ・作品ページの人気�
 check("シリーズの一覧（/series/）・レーベルの一覧（/label/）のページがある", os.path.isfile(os.path.join(DIST, "series", "index.html")) and os.path.isfile(os.path.join(DIST, "label", "index.html")))
 bad_entry = []
 for kind, word, about in (("series", "シリーズ", "CreativeWorkSeries"), ("label", "レーベル", "Brand")):
-    for pth in glob.glob(os.path.join(DIST, kind, "*", "index.html")):
+    for pth in entity_glob(kind):
         slug_ = os.path.basename(os.path.dirname(pth))
         raw_ = read_raw(pth)
         tm = re.search(r"<title>(.*?)</title>", raw_, re.S)
@@ -652,7 +673,7 @@ for pth in all_html:
             bad_faces.append((os.path.relpath(pth, DIST), t.get("src")))
 check("顔写真（face-img）は、すべて FANZA(DMM) の https の画像", not bad_faces, bad_faces[:3])
 
-actress_pages = glob.glob(os.path.join(DIST, "actress", "*", "index.html"))
+actress_pages = entity_glob("actress")
 page_name_slug = {}  # 出演者ページの「名前 → ページの識別子」（出演者検索の索引と突き合わせる）
 bad_profile_pages = []
 for pth in actress_pages:
@@ -1434,7 +1455,7 @@ if m:
     page_host = m.group(1)
 fav_pages = fav_index.get("pages") if isinstance(fav_index, dict) and isinstance(fav_index.get("pages"), dict) else {}
 for kind, label in (("actress", "出演者"), ("maker", "メーカー")):
-    entity_pages = glob.glob(os.path.join(DIST, kind, "*", "index.html"))
+    entity_pages = entity_glob(kind)
     slugs = {os.path.basename(os.path.dirname(p)) for p in entity_pages}
     ics_files = {os.path.basename(p)[:-4] for p in glob.glob(os.path.join(DIST, "calendar", kind, "*.ics"))}
     # カレンダーは、ページがある人・メーカーのうち、毎日の更新で載せた作品（新作・予約）がある人だけ（過去作品だけの人は作らない）
@@ -1871,7 +1892,7 @@ def shelf_cells(html_):
 
 
 wrong_mark, marked_total, vr_total = [], 0, 0
-list_pages = [index_path] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html"))) + sorted(glob.glob(os.path.join(DIST, "actress", "*", "index.html"))) + sorted(glob.glob(os.path.join(DIST, "maker", "*", "index.html"))) + sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))
+list_pages = [index_path] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html"))) + sorted(entity_glob("actress")) + sorted(glob.glob(os.path.join(DIST, "maker", "*", "index.html"))) + sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))
 for lp in list_pages:
     for cls, attrs, cid, inner in shelf_cells(read(lp)):
         if cid is None or cid not in valid or "rank-cell" in cls:
@@ -1887,7 +1908,7 @@ check(f"作品の一覧のマス（{marked_total}個）: VR作品（データの
 warn("VR作品のマスが、一覧のどこかにある（目印のテストが空振りしていない）", vr_total > 0)
 
 # スイッチ（VR作品を隠す）の置き場所: 最初は隠れていて、JavaScriptが出す
-toggle_pages = [index_path, os.path.join(DIST, "search", "index.html")] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html")))[:1] + sorted(glob.glob(os.path.join(DIST, "actress", "*", "index.html")))[:1] + sorted(glob.glob(os.path.join(DIST, "maker", "*", "index.html")))[:1]
+toggle_pages = [index_path, os.path.join(DIST, "search", "index.html")] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html")))[:1] + sorted(entity_glob("actress"))[:1] + sorted(glob.glob(os.path.join(DIST, "maker", "*", "index.html")))[:1]
 bad_toggle = []
 for tp in toggle_pages:
     if not os.path.isfile(tp):

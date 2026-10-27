@@ -78,5 +78,11 @@ check('女優検索: 人数・体型の分かる人数・事務所の数・80〜
 check('どの一覧も、データが空のときにも文になる（使わない言葉なし）',
   [D.monthIndexDescription([]), D.tagIndexDescription([]), D.weeklyIndexDescription([]), D.eventIndexDescription([]), D.actressIndexDescription()].every((s) => s.length > 20 && !BANNED.test(s)));
 
+{
+  const n0 = D.nenpyoDescription();
+  const n1 = D.nenpyoDescription({ count: 27, top: { name: '花子', total: 1234, first: { d: '2009-01-01' } } });
+  check('女優の年表: 0人でも80〜120文字・人数といちばん多い人の数字が入る', [n0, n1].every((s) => D.descLength(s) >= 80 && D.descLength(s) <= 120 && !BANNED.test(s)) && n1.includes('27人') && n1.includes('1,234本'), `${D.descLength(n0)} / ${D.descLength(n1)}`);
+}
+
 console.log(`\n=== ${passed}/${passed + failed} 合格 ===`);
 process.exit(failed ? 1 : 0);

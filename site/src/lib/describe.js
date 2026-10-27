@@ -214,3 +214,14 @@ export function actressIndexDescription({ total = 0, withSize = 0, agencies = 0 
     'プロフィールはFANZA公式のデータです。',
   ]);
 }
+
+/** 女優の年表の一覧（/actress/nenpyo/。2026-10-27）: 人数・いちばん本数の多い人の数字から */
+export function nenpyoDescription({ count = 0, top = null } = {}) {
+  const fmt = (n) => Number(n).toLocaleString('ja-JP');
+  return fit([
+    count ? `FANZAのAV女優${fmt(count)}人の年表を、50音順にまとめました。` : 'FANZAのAV女優の年表を、50音順にまとめるページです。',
+    'FANZAでいちばん古い作品の年、年ごとの本数、メーカーごとの歩みを、女優のページで見られます。',
+    top ? `本数がいちばん多いのは${top.name}さんの${fmt(top.total)}本（${+top.first.d.slice(0, 4)}年から）。` : '',
+    '数字はFANZA公式のデータで、毎日ふえていきます。',
+  ]);
+}
