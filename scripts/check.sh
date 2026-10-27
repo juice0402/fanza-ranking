@@ -26,6 +26,7 @@ run "毎日の更新スクリプト (Python)" python3 tests/test_script.py
 run "Claudeのコメント差し替えの道具 (Python)" python3 tests/test_claude_comments.py
 
 run "Claudeの週のまとめ記事の道具 (Python)" python3 tests/test_claude_roundups.py
+run "女優の歩みの紹介文を書く道具 (Python)" python3 tests/test_claude_history.py
 
 run "Claudeの月のまとめ記事の道具 (Python)" python3 tests/test_claude_monthly.py
 
@@ -34,6 +35,7 @@ run "FANZA同人・FANZAゲームを集める道具 (Python)" python3 tests/test
 run "売り場のセール（キャンペーンごと）を集める道具 (Python)" python3 tests/test_floor_sales.py
 
 run "10円セールを集める道具 (Python)" python3 tests/test_ten_yen.py
+run "女優の歩みを集める道具 (Python)" python3 tests/test_actress_history.py
 
 run "FANZAのレビューの評価を集める道具 (Python)" python3 tests/test_reviews.py
 
@@ -97,6 +99,8 @@ run "人気順（新着の人気順・全体の人気順）の部品 (Node.js)" 
 run "FANZA同人・FANZAゲームのページの部品 (Node.js)" node tests/test_floors.mjs
 
 run "セール・キャンペーンの部品 (Node.js)" node tests/test_sale.mjs
+run "女優の歩み（年表）の部品 (Node.js)" node tests/test_history.mjs
+run "品番の見方の部品 (Node.js)" node tests/test_hinban.mjs
 
 run "10円セールの部品 (Node.js + Pythonとの突き合わせ)" node tests/test_ten_yen.mjs
 

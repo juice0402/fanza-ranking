@@ -13,7 +13,7 @@ import TenYenHero from '../../components/TenYenHero.astro';
 import { TEN_YEN_PATH } from '../../lib/ten-yen.js';
 import { all, today, sale, saleWorks, contentGenres, saleCampaignBySlug, activeFloors, floorHasSale, floors, tenYenNow } from '../../lib/data.js';
 import { FLOORS, floorSaleItems, floorSalePath } from '../../lib/floors.js';
-import { SALE_HISTORY_PATH, SALE_PATH, isTenYenCampaign, campaignSlug, endIso, endLabel, endSoonTag, saleAnchor, saleBadge, saleGroups, salePriceNote } from '../../lib/sale.js';
+import { SALE_ENDING_PATH, SALE_HISTORY_PATH, SALE_PATH, isTenYenCampaign, campaignSlug, endIso, endLabel, endSoonTag, saleAnchor, saleBadge, saleGroups, salePriceNote } from '../../lib/sale.js';
 import { listIndexable } from '../../lib/plan.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp, filterAttrs } from '../../lib/items.js';
 
@@ -55,6 +55,7 @@ import { inlineScript } from '../../lib/assets.js';
     <section class="hero">
       <h1 class="hero-title">開催中のFANZAセール</h1>
       <p class="hero-lead note-source">終わりが近い順です。{sale.date && `${formatDateJp(sale.date)}の時点の情報です。FANZAの作品ページで確かめてください。`}</p>
+      <p class="hero-links"><a class="spec-link" href={SALE_ENDING_PATH}>今週終わるセール</a></p>
       <p class="hero-links"><a class="spec-link" href={SALE_HISTORY_PATH}>FANZAのセールはいつ？これまでのセールの履歴</a></p>
       <p class="hero-links"><a class="spec-link" href={TEN_YEN_PATH}>FANZAの10円セール{tenYenNow.total > 0 ? '（開催中）' : '（開催状況・これまでの開催）'}</a></p>
       {/* FANZA同人・FANZAゲームのセール（2026-10-09） */}

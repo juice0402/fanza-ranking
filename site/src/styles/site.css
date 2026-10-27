@@ -2440,6 +2440,130 @@ html.lightbox-open {
   line-height: 1.6;
 }
 
+/* ---------- 女優の歩み（年表。components/ActressHistory.astro。2026-10-27） ---------- */
+/* 紹介文 → 本数の1行 → 年ごとの本数の棒（いちばん多い年だけ黄色）→ 年譜（左に年月、右にできごと）→ 共演・ジャンル・内訳 */
+.hist-story {
+  max-width: 40em;
+  margin: 4px 0 10px;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.hist-lead {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hist-chart {
+  max-width: 640px;
+  margin: 14px 0 0;
+}
+
+.hist-bars,
+.hist-years {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: 0 3px;
+}
+
+.hist-bars {
+  height: 132px;
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+}
+
+.hist-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+}
+
+.hist-val {
+  min-height: 15px;
+  color: var(--paper-dim);
+  font-size: 10px;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hist-bar {
+  display: block;
+  width: min(100%, 22px);
+  height: calc((100% - 15px) * var(--h) / 100);
+  min-height: 0;
+  background: var(--paper-dim);
+  opacity: 0.55;
+}
+
+.hist-col.is-peak .hist-bar {
+  background: var(--pop);
+  opacity: 1;
+}
+
+.hist-col.is-peak .hist-val {
+  color: var(--pop);
+  font-weight: 700;
+}
+
+.hist-years span {
+  padding-top: 4px;
+  color: var(--paper-dim);
+  font-size: 10px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hist-cap {
+  margin-top: 6px;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.hist-line {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 14px;
+  max-width: 40em;
+  margin: 18px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.hist-when {
+  color: var(--paper-dim);
+  font-size: 13px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hist-what {
+  margin: 0;
+}
+
+.hist-label {
+  display: block;
+  font-weight: 700;
+}
+
+.hist-title {
+  display: block;
+  color: var(--paper-dim);
+  font-size: 13px;
+}
+
+a.hist-title {
+  color: var(--paper);
+}
+
+.hist-spec {
+  margin-top: 18px;
+}
+
 /* ---------- サンプル動画（作品ページ） ---------- */
 
 .movie {
@@ -4998,6 +5122,108 @@ html:not(.js) .actress-search,
   margin-top: 12px;
 }
 
+/* ---------- 品番の見方（/hinban/。2026-10-27） ---------- */
+.hb-form {
+  margin-top: 14px;
+}
+
+/* 品番のしくみ: 値札のように、記号と番号を分けて見せる（記号に黄色の下線） */
+.hb-anatomy {
+  display: inline-block;
+  margin: 12px 0 0;
+  padding: 14px 18px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--board);
+}
+
+.hb-code {
+  margin: 0;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.hb-head {
+  border-bottom: 4px solid var(--pop);
+}
+
+.hb-dash {
+  color: var(--paper-dim);
+}
+
+.hb-parts {
+  display: flex;
+  gap: 18px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--paper-dim);
+}
+
+.hb-cap-head::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 4px;
+  margin-right: 6px;
+  vertical-align: 3px;
+  background: var(--pop);
+}
+
+.hb-text {
+  margin-top: 10px;
+  max-width: 40em;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.hb-text code {
+  padding: 0 4px;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 13px;
+  white-space: nowrap; /* 作品ID・品番の途中で折り返さない（いちばん長い作品IDでもスマホの幅に入る） */
+}
+
+/* 頭の文字の目次: 辞書のつめのように、文字だけを並べる */
+.hb-letters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  margin-top: 12px;
+}
+
+.hb-letters a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 36px;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.hb-letter {
+  margin-top: 20px;
+}
+
+.hb-letter-title {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 20px;
+  scroll-margin-top: 16px;
+}
+
+.hb-prefix {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+.run-table.hb-table td:nth-child(2),
+.run-table.hb-table td:nth-child(3) {
+  white-space: normal;
+}
+
 /* スマホ（〜599px）: 表を、1回（1つの特集）ごとの行にする（特集の名前を1行目、期間・日数・本数・割引を小さく並べる。横にはみ出さない） */
 @media (max-width: 599px) {
   .table-scroll {
@@ -6097,7 +6323,7 @@ a.tf-name {
   box-shadow: 0 0 0 3px var(--pop);
 }
 
-/* 表紙の左下のふちに半分かける札（顔を隠さない。TOP3のメダルと同じ考え方） */
+/* 表紙の左下のふちに半分かける札（顔を隠さない。TOP3のメダルと同じ考え方）。かたむけない（付箋・テープのななめ並べを使わない決まり。2026-10-26） */
 .ten-tag {
   position: absolute;
   bottom: -7px;
@@ -6108,7 +6334,6 @@ a.tf-name {
   box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.35);
   color: var(--ink);
   font: 400 13px/1.25 var(--font-display);
-  transform: rotate(-4deg);
 }
 
 .ten-hero-foot {

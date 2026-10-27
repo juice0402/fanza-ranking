@@ -1,0 +1,83 @@
+---
+// 今週終わるセール（/sale/ending/。運営者の希望「ライバルのよい所を載せよう」。2026-10-27）
+// /sale/ と同じ特集（lib/sale.js の saleGroups）のうち、今週の日曜までに終わるものだけを、終わりが近い順に。
+// 「FANZA セール いつまで」「もうすぐ終わる」で探す人の入り口。特集ごとに SALE_ENDING_ITEMS 本まで（全部は特集のページへ）。
+// 終わりの時刻をすぎたら、ブラウザで隠す（/sale.js。ビルドは1日1回のため）
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import VrToggle from '../../components/VrToggle.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import CampaignFacts from '../../components/CampaignFacts.astro';
+import { TEN_YEN_PATH } from '../../lib/ten-yen.js';
+import { today, sale, saleWorks, contentGenres, saleCampaignBySlug } from '../../lib/data.js';
+import { SALE_ENDING_ITEMS, SALE_ENDING_PATH, SALE_PATH, isTenYenCampaign, campaignSlug, endIso, endLabel, endSoonTag, endingThisWeek, saleAnchor, saleBadge, saleGroups, salePriceNote, weekEndDay } from '../../lib/sale.js';
+import { listIndexable } from '../../lib/plan.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, filterAttrs } from '../../lib/items.js';
+import { inlineScript } from '../../lib/assets.js';
+
+const groups = endingThisWeek(saleGroups(saleWorks, sale, today, SALE_ENDING_ITEMS, { genres: contentGenres }), today);
+const pageOfCamp = (g) => (isTenYenCampaign(g.title) ? TEN_YEN_PATH : saleCampaignBySlug.get(campaignSlug(g.title))?.path ?? '');
+const last = weekEndDay(today);
+const lastP = last ? dateParts(last) : null;
+const lastMd = lastP ? `${lastP.m}月${lastP.d}日` : '';
+const lastLabel = lastP ? `${lastMd}（${lastP.wd}）` : '';
+const day = sale.date ? dateParts(sale.date) : null;
+const total = groups.reduce((n, g) => n + g.total, 0);
+const shownItems = groups.flatMap((g) => g.items);
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: 'セール・キャンペーン', path: SALE_PATH },
+  { name: '今週終わるセール', path: SALE_ENDING_PATH },
+];
+// 今週終わる特集が無い・コメントのある作品が1本も無いあいだは、検索エンジンに出さない
+const noindex = shownItems.length === 0 || !listIndexable(shownItems);
+const title = groups.length > 0
+  ? `今週終わるFANZAセール${groups.length}件・${lastLabel}まで【${day ? `${day.m}月${day.d}日` : '毎日'}更新】｜${SITE_NAME}`
+  : `今週終わるFANZAセール・${lastMd}まで｜${SITE_NAME}`;
+const description = groups.length > 0
+  ? `FANZA動画のセールのうち、今週の日曜（${lastMd}）までに終わる特集${groups.length}件・${total.toLocaleString('ja-JP')}本を、終わりが近い順にまとめています。いちばん早く終わるのは${endLabel(groups[0].end)}まで。${day ? `${day.m}月${day.d}日の時点の情報で、` : ''}毎日更新します。`
+  : `FANZA動画のセールのうち、今週の日曜（${lastMd}）までに終わる特集をまとめるページです。いまは今週で終わる特集がありません。開催中のセールは、セールの一覧で見られます。`;
+const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: '今週終わるFANZAセール', url: SITE_URL + SALE_ENDING_PATH, ...(sale.date ? { dateModified: sale.date } : {}) };
+---
+
+<Base title={title} description={description} path={SALE_ENDING_PATH} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd]}>
+  {groups.length > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">今週終わるFANZAセール</h1>
+      <p class="hero-lead note-source">{lastLabel}までに終わる特集です。{day && `${day.m}月${day.d}日の時点です。FANZAで確かめてください。`}</p>
+      <p class="hero-links"><a class="spec-link" href={SALE_PATH}>開催中のセールをすべて見る</a></p>
+    </section>
+
+    {groups.length > 0
+      ? (
+        <>
+          <div class="list-tools">
+            <VrToggle />
+          </div>
+          {groups.map((g, gi) => (
+            <section class="section sale-camp" aria-labelledby={saleAnchor(g.k)} data-sale-group data-vr-group>
+              <div class="section-head">
+                <h2 id={saleAnchor(g.k)} class="section-title">{pageOfCamp(g) ? <a class="title-link" href={pageOfCamp(g)}>{g.title}</a> : g.title}</h2>
+                <p class="section-note">{endSoonTag(g.end, today) && <span class="camp-soon">{endSoonTag(g.end, today)}</span>} {endLabel(g.end)}まで{g.maxOff && `・最大${g.maxOff}%OFF`}・{g.total}本</p>
+              </div>
+              <CampaignFacts group={g} />
+              <ul class="shelf">
+                {g.items.map((item, i) => (
+                  <li class="shelf-cell" data-sale-end={endIso(g.end)} {...filterAttrs(item)}>
+                    <ItemCard item={item} level="h3" badge={saleBadge(item.sale)} note={salePriceNote(item.sale)} eager={gi === 0 && i < 4} />
+                  </li>
+                ))}
+              </ul>
+              {pageOfCamp(g) && g.total > g.items.length && (
+                <p class="more"><a class="btn btn-quiet" href={pageOfCamp(g)}>「{g.title}」の作品をもっと見る</a></p>
+              )}
+            </section>
+          ))}
+        </>
+      )
+      : <p class="empty">今週の日曜（{lastMd}）までに終わるセールは、いまはありません。毎日、日付が変わったあとに更新します。</p>}
+  </div>
+</Base>

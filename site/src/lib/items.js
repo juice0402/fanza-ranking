@@ -542,9 +542,10 @@ const titleParts = (g, today) => ({
  * 出演者のページのタイトル（運営者の希望「SEOを上位に」→ ②女優のページを強く。2026-10-06）:
  * 「○○の新作・予約・出演作品一覧【2026年10月】（42本）」。予約の作品があるときだけ「予約」、today を渡せば年月（毎日のビルドの日）を入れる
  */
-export const actressPageTitle = (g, today = '') => {
+export const actressPageTitle = (g, today = '', withHistory = false) => {
   const { ym, up } = titleParts(g, today);
-  return `${truncate(g.name, 30)}の新作${up}・出演作品一覧${ym}（${g.items.length}本）｜${SITE_NAME}`;
+  // 歩み（年表）がある人は「と年表」を足す（「名前 経歴」「名前 デビュー」で探す人の入り口。2026-10-27）
+  return `${truncate(g.name, 30)}の新作${up}・出演作品一覧${withHistory ? 'と年表' : ''}${ym}（${g.items.length}本）｜${SITE_NAME}`;
 };
 
 /** メーカーのページのタイトル（女優のページと同じ形。2026-10-06）: 「○○の新作・予約・作品一覧【2026年10月】（120本）」 */
@@ -557,8 +558,9 @@ export const makerPageTitle = (g, today = '') => {
  * 出演者・メーカーのページの説明文: 「次の新作は10月17日発売。いまセール中の作品が3本（最大50%OFF）。」＋紹介文（120文字まで。作品タイトルは入れない）。
  * next: 次に発売される作品（無ければ null）、saleCount・maxOff: セール中の作品の本数と、いちばん大きい割引
  */
-export function entityDescription(summary, { next = null, saleCount = 0, maxOff = null } = {}) {
+export function entityDescription(summary, { next = null, saleCount = 0, maxOff = null, head: lead = '' } = {}) {
   const head = [
+    lead, // 女優の歩みがある人は「FANZAの作品は277本（2018年から）。」（2026-10-27）
     next ? `次の新作は${+next.dateKey.slice(5, 7)}月${+next.dateKey.slice(8, 10)}日発売。` : '',
     saleCount > 0 ? `いまセール中の作品が${saleCount}本${maxOff ? `（最大${maxOff}%OFF）` : ''}。` : '',
   ].join('');

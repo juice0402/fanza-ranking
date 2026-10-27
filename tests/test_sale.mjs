@@ -190,5 +190,19 @@ check('月ごとの帯: 同じ名前は1行（回ごとに帯）・その月に�
   && mc.rows[1].runs[0].begin.startsWith('2026-10-05'), JSON.stringify(mc.rows.map((r) => r.parts)));
 check('前の月の帯: きょうは窓の後ろ（全部、開いていた日）', S.monthChart(runs, '2026-10', '2026-11-02').t === 31 && S.monthChart(runs, '2026-10', '2026-11-02').rows.every((r) => r.parts.every((p) => !p.future)));
 check('短い期間の文字', S.shortRange(runs[2]) === '9/30〜10/8' && S.shortRange(runs[0]) === '10/6' && S.shortRange({ begin: '', first: '2026-10-05', end: '2026-10-07 10:00' }) === '10/5〜10/7');
+// 今週終わるセール（2026-10-27）
+check('週の終わり: 火曜→その週の日曜・日曜→その日・月曜→6日後・月末をまたぐ', S.weekEndDay('2026-10-27') === '2026-11-01' && S.weekEndDay('2026-11-01') === '2026-11-01' && S.weekEndDay('2026-11-02') === '2026-11-08' && S.weekEndDay('2026-12-29') === '2027-01-03' && S.weekEndDay('') === '');
+{
+  const gs = [
+    { title: 'A', end: '2026-10-27 23:59' },
+    { title: 'B', end: '2026-11-01 23:59' },
+    { title: 'C', end: '2026-11-02 09:59' },
+    { title: 'D', end: '2026-10-26 23:59' },
+    { title: 'E', end: '' },
+  ];
+  const got = S.endingThisWeek(gs, '2026-10-27').map((g) => g.title).join(',');
+  check('今週終わる特集: きょう〜日曜だけ（終わったもの・来週・日時の無いものは入れない）', got === 'A,B', got);
+  check('今週終わる特集: 日曜はその日に終わるものだけ', S.endingThisWeek(gs, '2026-11-01').map((g) => g.title).join(',') === 'B');
+}
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

@@ -1,0 +1,49 @@
+name: Actress History
+
+# 女優の歩み（年表）のデータを集める（scripts/actress_history.py。運営者の希望「世界一の女優深掘りサイトにしたい」。2026-10-27）。
+# FANZA公式のAPIで、出演者ごとの全作品を数えて site/src/data/actress_history.json に保存する。Gemini は使わない。
+# 1回に呼ぶのは ACTRESS_HISTORY_CALLS 回まで（はじめは毎日少しずつ埋まり、そのあとは21日ごとに集め直す）。
+# 保存だけして、公開はしない（次の毎日の更新の公開に入る）。
+
+on:
+  schedule:
+    - cron: '23 19 * * *'  # 日本時間 4:23
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # 道具は12分で止まって保存する（ACTRESS_HISTORY_MINUTES）
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Collect actress history
+        id: hist
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
+          ACTRESS_HISTORY_CALLS: '600'
+          ACTRESS_HISTORY_MINUTES: '12'
+        run: python scripts/actress_history.py --update
+      - name: Commit if changed
+        if: steps.hist.outputs.saved == '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -- site/src/data/actress_history.json
+          if git diff --staged --quiet; then
+            echo "データに変更なし。保存しません。"
+            exit 0
+          fi
+          git commit -m "女優の歩みの集め: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

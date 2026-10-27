@@ -539,6 +539,10 @@ def probe_sale_ends():
 def main():
     if not API_ID:
         sys.exit("❌ API_ID が設定されていません")
+    if os.environ.get("PROBE_ONLY") == "23":
+        probe_actress_history_run()
+        finish()
+        return
     if os.environ.get("PROBE_ONLY") == "21":
         probe_video_ten_yen()
         finish()
@@ -979,6 +983,24 @@ def probe_video_ten_yen():
         if len(found) == len(want) or len(items) < 100:
             break
     say(f"- 見つかった位置 {found}・読んだ所の価格（位置, はじめ, 終わり） {price_seen[:6]} … {price_seen[-3:]}")
+
+
+def probe_actress_history_run():
+    """23) 女優の歩み: scripts/actress_history.py を本物のAPIで少しだけ動かし、まとめの形を見る（保存はしない。2026-10-27）"""
+    import tempfile
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import actress_history as H
+    H.G.API_ID = API_ID
+    H.G.AFFILIATE_ID = AFFILIATE_ID
+    with tempfile.TemporaryDirectory() as d:
+        H.PATH = os.path.join(d, "actress_history.json")
+        today = datetime.now(JST).strftime("%Y-%m-%d")
+        done = H.run(today, max_calls=int(os.environ.get("PROBE_CALLS", "60")))
+        data = json.load(open(H.PATH, encoding="utf-8")) if done else {"actresses": {}}
+    say(f"## 23) {done}人をまとめた")
+    for aid, row in list(data["actresses"].items())[:6]:
+        say(f"## 23) {row.get('name')}（{aid}）")
+        say(json.dumps(row, ensure_ascii=False)[:1800])
 
 
 def finish():
