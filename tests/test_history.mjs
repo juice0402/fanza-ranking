@@ -67,6 +67,19 @@ const idx = H.nenpyoIndex([
 check('50音の行の順・最後に「その他」（読みがなの無い人）', idx.map((r) => r.head).join(',') === 'あ,か,さ,英数,その他', idx.map((r) => r.head).join(','));
 check('行の中は読みの順（カタカナもひらがなで比べる・濁音はもとの行）', idx[0].entries.map((e) => e.name).join(',') === '阿部,伊藤' && idx[1].entries[0].name === '草野', JSON.stringify(idx.map((r) => r.entries.map((e) => e.name))));
 check('年表のデータが無い人は入れない・飛び先と短い数字', !idx.some((r) => r.entries.some((e) => e.name === 'データなし')) && idx[0].entries[0].path === '/actress/b/#hist-title' && idx[0].entries[0].brief === '2018〜2026年・120本' && idx[0].id === 'nenpyo-a');
+console.log('\n■ 人気作ベスト・評価の高い作品（FANZA全体。topWorks）');
+const own = { cid: 'own1', title: 'このサイトの作品', review: null };
+const tw = H.topWorks([
+  { c: 'own1', t: 'x', d: '2024-01-01', rv: [450, 9] },
+  { c: 'f1', t: 'FANZAだけ', d: '2024-02-01', m: 'メーカー', i: 'https://pics.dmm.co.jp/f1.jpg', u: 'https://al.dmm.co.jp/?lurl=f1', rv: [420, 3] },
+  { c: 'f2', t: '少女の作品', d: '2024-02-01', i: 'https://pics.dmm.co.jp/f2.jpg', u: 'https://al.dmm.co.jp/?lurl=f2' },
+  { c: 'f3', t: 'よそのURL', d: '2024-02-01', i: 'https://pics.dmm.co.jp/f3.jpg', u: 'https://evil.example/f3' },
+  { c: 'f1', t: '重なり', d: '2024-02-01', i: 'https://pics.dmm.co.jp/f1.jpg', u: 'https://al.dmm.co.jp/?lurl=f1' },
+], new Map([['own1', own]]), (t) => t.includes('少女'));
+check('このサイトの作品はそのまま（評価が無ければ保存した★）・ほかはFANZAへ・未成年を連想させる・よそのURL・重なりは入れない', tw.length === 2 && tw[0].cid === 'own1' && tw[0].review.avg === 4.5 && tw[1].cid === 'f1' && tw[1].url.startsWith('https://al.dmm.co.jp/') && tw[1].review.count === 3, JSON.stringify(tw.map((w) => w.cid)));
+const hm = H.normalizeHistory({ actresses: { 9: { ...Object.values(raw.actresses)[0], popular: [{ c: 'f1', t: 'A', d: '2024-02-01', i: 'https://pics.dmm.co.jp/a.jpg', u: 'https://al.dmm.co.jp/a' }], rated: [{ c: 'f2', t: 'B', d: '2024-02-01', i: 'https://pics.dmm.co.jp/b.jpg', u: 'https://al.dmm.co.jp/b' }] } } });
+const h1 = [...hm.values()][0];
+check('年表の1人分に popular・rated（評価のほうは★のある作品だけ）', h1 && h1.popular.length === 1 && h1.rated.length === 0, JSON.stringify(h1 && [h1.popular.length, h1.rated.length]));
 check('0人でもこわれない', Array.isArray(H.nenpyoIndex([])) && H.nenpyoIndex([]).length === 0);
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);

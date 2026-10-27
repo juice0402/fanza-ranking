@@ -172,7 +172,8 @@ check('ページのタイトル・説明文の長さ', L.actressPageTitle({ name
 check('出演者のページのタイトル: 年月（ビルドの日）・予約の作品があるときだけ「予約」・本数',
   L.actressPageTitle({ name: '架空ゆめか', items: [{ dateKey: '2026-10-17' }, { dateKey: '2026-09-01' }] }, '2026-10-06').startsWith('架空ゆめかの新作・予約・出演作品一覧【2026年10月】（2本）')
   && L.actressPageTitle({ name: '架空ゆめか', items: [{ dateKey: '2026-09-01' }] }, '2026-10-06').startsWith('架空ゆめかの新作・出演作品一覧【2026年10月】（1本）')
-  && L.actressPageTitle({ name: '架空ゆめか', items: [{ dateKey: '2026-09-01' }] }).startsWith('架空ゆめかの新作・出演作品一覧（1本）'));
+  && L.actressPageTitle({ name: '架空ゆめか', items: [{ dateKey: '2026-09-01' }] }).startsWith('架空ゆめかの新作・出演作品一覧（1本）')
+  && L.actressPageTitle({ name: '架空ゆめか', items: [{ dateKey: '2026-09-01' }] }, '2026-10-06', true, true).startsWith('架空ゆめかのプロフィール・新作・出演作品一覧と年表【2026年10月】（1本）'));
 check('メーカーのページのタイトル: 女優のページと同じ形（年月・予約があるときだけ「予約」・本数）',
   L.makerPageTitle({ name: '架空メーカー', items: [{ dateKey: '2026-10-17' }, { dateKey: '2026-09-01' }] }, '2026-10-06').startsWith('架空メーカーの新作・予約・作品一覧【2026年10月】（2本）｜')
   && L.makerPageTitle({ name: '架空メーカー', items: [{ dateKey: '2026-09-01' }] }, '2026-10-06').startsWith('架空メーカーの新作・作品一覧【2026年10月】（1本）｜')

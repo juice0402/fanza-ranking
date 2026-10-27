@@ -57,9 +57,17 @@ check("まだの人（本数の多い順）→ 古くなった人。少ない人
 
 print("■ 全作品を読む（fetch_all）と、保存（run）")
 calls = []
+tops = []
 
 
 def fake_call(endpoint, params):
+    if params["sort"] != "date":  # 人気順・評価順（fetch_tops）
+        tops.append(params["sort"])
+        rows = [{"content_id": f"t{k}", "title": "女子校生の作品" if k == 0 else f"人気{k}", "date": "2024-02-01 10:00:00",
+                 "affiliateURL": f"https://al.dmm.co.jp/?lurl=t{k}", "imageURL": {"large": f"https://pics.dmm.co.jp/t{k}.jpg"},
+                 "iteminfo": {"maker": [{"name": "メーカーA"}], "actress": [{"name": "花子"}]},
+                 **({"review": {"count": 5, "average": "4.50"}} if k % 2 else {})} for k in range(15)]
+        return {"total_count": 15, "items": rows}
     calls.append(params["offset"])
     total = 250
     start = params["offset"]
@@ -80,9 +88,14 @@ with tempfile.TemporaryDirectory() as d:
     json.dump({"actresses": [{"id": 1, "name": "花子"}, {"id": 2, "name": "月子"}]}, open(os.path.join(d, "actresses.json"), "w"))
     json.dump([{"cid": f"a{k}", "actress": ["花子"] if k < 12 else ["月子"]} for k in range(24)], open(os.path.join(d, "new_releases.json"), "w"))
     H.DATA_DIR = d
-    done = H.run("2026-10-27", max_calls=4, sleep=lambda s: None, call=fake_call)
+    done = H.run("2026-10-27", max_calls=6, sleep=lambda s: None, call=fake_call)
     saved = json.load(open(H.PATH))
-    check("予算の中で読めた人だけ保存（3回で1人・残り1回では次の人は読めない）", done == 1 and list(saved["actresses"]) in (["1"], ["2"]) and saved["updated"] == "2026-10-27", (done, list(saved["actresses"])))
+    check("予算の中で読めた人だけ保存（全作品3回＋人気順・評価順2回で1人・残り1回では次の人は読めない）", done == 1 and list(saved["actresses"]) in (["1"], ["2"]) and saved["updated"] == "2026-10-27", (done, list(saved["actresses"])))
+    one = next(iter(saved["actresses"].values()))
+    pop, rated = one.get("popular") or [], one.get("rated") or []
+    check("人気順・評価順を1回ずつ読む", tops == ["rank", "review"], tops)
+    check("人気順は10本まで・未成年を連想させるタイトルは入れない・表示に要るものだけ", len(pop) == 10 and pop[0]["c"] == "t1" and all(set(r) <= {"c", "t", "d", "a", "m", "i", "u", "v", "rv"} for r in pop), pop[:1])
+    check("評価順は、レビューのある作品だけ（★の平均×100と件数）", len(rated) == 7 and all(r["rv"] == [450, 5] for r in rated), [r["c"] for r in rated])
 
     ticks = iter([0, 0, 999, 999, 999])
     os.remove(H.PATH)

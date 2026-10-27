@@ -6,6 +6,7 @@ FANZA公式のAPI（ItemList の article=actress）で、出演者ごとの全�
 site/src/data/actress_history.json に保存する（作品の一覧そのものは保存しない。数えた結果と、節目の作品の数本だけ）。
 
 ・対象: 出演者のプロフィール（actresses.json）がある人のうち、このサイトに HISTORY_MIN_ITEMS 本以上ある人。本数の多い人から
+・1人につき、FANZA全体の人気順・評価順の上位 TOP_N 本も1回ずつ読んで残す（popular・rated。女優のページの「人気作ベスト10」「評価の高い作品」）
 ・1回に呼ぶのは MAX_CALLS 回まで（DMMの待ち時間 DMM_INTERVAL_SEC をあける）。まだ集めていない人 → 古くなった人（REFRESH_DAYS）の順
 ・FANZAの作品だけを数える。ほかのサイトの情報・私生活・うわさは扱わない（守ること9）。配信より前の作品があるかもしれないので、
   画面では「デビュー作」と言い切らず「FANZAでいちばん古い作品」と書く（APIでは、波多野結衣さんのいちばん古い作品は2009年。probe_api.py の 22）
@@ -27,7 +28,9 @@ from datetime import datetime, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import get_new_releases as G  # noqa: E402
+from genre_tops import blocked  # noqa: E402  未成年を連想させる作品を外す（ジャンルの人気作品と同じ決まり）
 
 DATA_DIR = os.path.join(ROOT, "site", "src", "data")
 PATH = os.environ.get("ACTRESS_HISTORY_PATH", os.path.join(DATA_DIR, "actress_history.json"))
@@ -47,6 +50,9 @@ TOP_GENRES = 8
 BEST_GENRE = "ベスト・総集編"
 TITLE_MAX = 120
 FAIL_STOP = 3  # 続けて失敗したら止める
+TOP_N = 10  # 人気順・評価順に残す本数（女優のページの「人気作ベスト10」「評価の高い作品」。2026-10-27）
+TOP_FETCH = 20  # 人気順・評価順に1回で読む本数（未成年を連想させる作品などを外しても TOP_N 本残るように）
+TOP_SORTS = (("popular", "rank"), ("rated", "review"))  # 保存する名前と、APIの並べ方（人気順・評価順）。1人につき1回ずつ
 
 
 def load_json(path, default):
@@ -172,6 +178,48 @@ def fetch_all(aid, budget, sleep=time.sleep, call=None):
     return [i for i in items if i], calls
 
 
+def top_row(raw):
+    """人気順・評価順の1本（表示に要るものだけ）: c 作品ID / t タイトル / d 発売日 / a 出演者 / m メーカー / i 画像 / u FANZAのリンク / v VRなら1 / rv [★の平均×100, 件数]。
+    入れないもの（未成年を連想させる・画像やリンクが無い）は None"""
+    if not isinstance(raw, dict) or blocked(raw):
+        return None
+    p = G.parse_api_item(raw)
+    if not p:
+        return None
+    row = G.compact_item(p, 0)
+    row.pop("r", None)  # 順位は並びの順
+    row["t"] = row["t"][:TITLE_MAX]
+    if not row["u"] or not row["i"]:
+        return None
+    rv = G.parse_review(raw)
+    if rv:
+        row["rv"] = rv
+    return row
+
+
+def fetch_tops(aid, today, sleep=time.sleep, call=None):
+    """1人の、FANZA全体の人気順（sort=rank）と評価順（sort=review）の上位 TOP_N 本（発売済み）。{"popular": [...], "rated": [...]}。2回呼ぶ。
+    評価順は、レビューのある作品だけ"""
+    call = call or G.call_api
+    out = {}
+    for n, (key, sort) in enumerate(TOP_SORTS):
+        if n:
+            sleep(G.DMM_INTERVAL_SEC)
+        res = call("ItemList", {"site": "FANZA", "service": "digital", "floor": "videoa", "article": "actress", "article_id": aid,
+                                "sort": sort, "hits": TOP_FETCH, "offset": 1, "lte_date": f"{today}T23:59:59"})
+        rows, seen = [], set()
+        for raw in res.get("items") or []:
+            row = top_row(raw)
+            if not row or row["c"] in seen or (key == "rated" and not row.get("rv")):
+                continue
+            seen.add(row["c"])
+            rows.append(row)
+            if len(rows) >= TOP_N:
+                break
+        out[key] = rows
+    return out
+
+
 def run(today, max_calls=MAX_CALLS, dry=False, sleep=time.sleep, call=None, max_minutes=MAX_MINUTES, clock=time.monotonic):
     profiles = (load_json(os.path.join(DATA_DIR, "actresses.json"), {}) or {}).get("actresses") or []
     data = load_json(PATH, {"updated": "", "actresses": {}})
@@ -189,7 +237,7 @@ def run(today, max_calls=MAX_CALLS, dry=False, sleep=time.sleep, call=None, max_
             print(f"{max_minutes:g}分たったので、ここまでで止めます（続きは次の回）")
             break
         try:
-            items, calls = fetch_all(aid, max_calls - used - 1, sleep=sleep, call=call)
+            items, calls = fetch_all(aid, max_calls - used - 1 - len(TOP_SORTS), sleep=sleep, call=call)
         except RuntimeError as e:
             used += 1
             fails += 1
@@ -203,8 +251,19 @@ def run(today, max_calls=MAX_CALLS, dry=False, sleep=time.sleep, call=None, max_
         if items is None:
             skipped += 1
             continue
+        row = summarize(name, items, today)
+        try:
+            tops = fetch_tops(aid, today, sleep=sleep, call=call)
+            used += len(TOP_SORTS)
+            sleep(G.DMM_INTERVAL_SEC)
+        except RuntimeError as e:
+            used += 1
+            print(f"::warning title=女優の歩み::{name}（{aid}）の人気順・評価順を読めませんでした: {str(e)[:120]}")
+            old = history.get(str(aid)) or {}
+            tops = {k: old[k] for k, _ in TOP_SORTS if old.get(k)}  # 前に集めた分を残す
         fails = 0
-        history[str(aid)] = summarize(name, items, today)
+        row.update({k: v for k, v in tops.items() if v})
+        history[str(aid)] = row
         done += 1
         if done % SAVE_EVERY == 0:
             data["updated"] = today

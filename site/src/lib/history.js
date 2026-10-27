@@ -15,8 +15,49 @@ const pick = (w) => (w && typeof w === 'object' && /^[a-z0-9_]+$/.test(String(w.
 const num = (v) => (Number.isInteger(v) && v >= 0 ? v : 0);
 const pairs = (list) => (Array.isArray(list) ? list.filter((p) => Array.isArray(p) && typeof p[0] === 'string' && p[0] && Number.isInteger(p[1]) && p[1] > 0).map(([name, n]) => ({ name, n })) : []);
 
-/** actress_history.json → 名前 → 1人分（読めない人は入れない） */
-export function normalizeHistory(raw) {
+export const HISTORY_TOP_MIN = 3; // 人気作ベスト・評価の高い作品（FANZA全体）の欄は、この本数からだけ出す
+const FANZA_URL = /^https:\/\/([a-z0-9-]+\.)*(dmm\.co\.jp|dmm\.com|fanza\.co\.jp)\//;
+
+/**
+ * 人気順・評価順の上位（actress_history.json の popular・rated。FANZA全体から。2026-10-27）→ 作品の形のリスト（並びの順）。
+ * このサイトに載っている作品は、そのまま（作品ページへ）。ほかは保存した形から作る（作品ページが無いので、FANZAへ直接）。
+ * レビュー（★）は保存した rv を使う（このサイトの作品で評価があれば、そちら）。skip: 出さない作品（未成年を連想させるタイトル）
+ */
+export function topWorks(list, byCid = new Map(), skip = () => false) {
+  const out = [];
+  const seen = new Set();
+  for (const r of Array.isArray(list) ? list : []) {
+    if (!r || typeof r !== 'object' || typeof r.c !== 'string' || !/^[A-Za-z0-9_-]{1,40}$/.test(r.c) || seen.has(r.c)) continue;
+    const rv = Array.isArray(r.rv) && Number.isInteger(r.rv[0]) && Number.isInteger(r.rv[1]) && r.rv[0] >= 100 && r.rv[0] <= 500 && r.rv[1] > 0 ? { avg: r.rv[0] / 100, count: r.rv[1] } : null;
+    const own = byCid.get(r.c);
+    if (own) {
+      seen.add(r.c);
+      if (!skip(own.title)) out.push(own.review || !rv ? own : { ...own, review: rv });
+      continue;
+    }
+    const title = String(r.t ?? '').trim();
+    if (!title || skip(title) || !FANZA_URL.test(String(r.u ?? '')) || !FANZA_URL.test(String(r.i ?? '')) || !DAY.test(String(r.d ?? ''))) continue;
+    seen.add(r.c);
+    out.push({
+      cid: r.c,
+      title,
+      dateKey: r.d,
+      actress: Array.isArray(r.a) ? r.a.filter((a) => typeof a === 'string' && a).slice(0, 4) : [],
+      maker: typeof r.m === 'string' && r.m ? r.m : '不明',
+      image_url: r.i,
+      url: r.u,
+      vr: r.v === 1,
+      genres: [],
+      comment: '',
+      review: rv,
+      fanzaOnly: true,
+    });
+  }
+  return out;
+}
+
+/** actress_history.json → 名前 → 1人分（読めない人は入れない）。byCid・skip は人気作・評価の高い作品（topWorks）に使う */
+export function normalizeHistory(raw, byCid = new Map(), skip = () => false) {
   const out = new Map();
   const rows = raw && typeof raw === 'object' && raw.actresses && typeof raw.actresses === 'object' ? raw.actresses : {};
   for (const [id, r] of Object.entries(rows)) {
@@ -45,6 +86,8 @@ export function normalizeHistory(raw) {
       solo: num(r.solo),
       costars: pairs(r.costars),
       genres: pairs(r.genres),
+      popular: topWorks(r.popular, byCid, skip),
+      rated: topWorks(r.rated, byCid, skip).filter((w) => w.review),
     });
   }
   return out;

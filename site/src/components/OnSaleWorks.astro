@@ -5,7 +5,7 @@ import WorkRows from './WorkRows.astro';
 import { sale, campaignHrefOf } from '../lib/data.js';
 import { endIso, endLabel, offPercent, saleBadge, saleCampaignsOf, salePriceNote } from '../lib/sale.js';
 
-const { items, shown = 6, label = 'この作品が入っているセール' } = Astro.props;
+const { items, shown = 6, label = 'この作品が入っているセール', title = 'セール中の作品' } = Astro.props;
 const maxOff = Math.max(0, ...items.map((i) => offPercent(i.sale.price, i.sale.listPrice) ?? 0)) || null;
 const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 const note = (i) => [saleBadge(i.sale) === 'セール' ? 'セール中' : saleBadge(i.sale), salePriceNote(i.sale), `${endLabel(i.sale.end)}まで`].filter(Boolean).join('・');
@@ -16,7 +16,7 @@ const hrefOf = campaignHrefOf;
 {items.length > 0 && (
   <section class="section" aria-labelledby="onsale-title" data-sale-group>
     <div class="section-head">
-      <h2 id="onsale-title" class="section-title">セール中の作品</h2>
+      <h2 id="onsale-title" class="section-title">{title}</h2>
       <p class="section-note">{items.length}本{maxOff && `・最大${maxOff}%OFF`}{items.length > shown && `（上位${shown}本）`}{sale.date && `｜${md(sale.date)}時点`}</p>
     </div>
     <WorkRows items={items.slice(0, shown)} note={note} saleEnd={(i) => endIso(i.sale.end)} />

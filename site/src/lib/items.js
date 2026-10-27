@@ -542,10 +542,11 @@ const titleParts = (g, today) => ({
  * 出演者のページのタイトル（運営者の希望「SEOを上位に」→ ②女優のページを強く。2026-10-06）:
  * 「○○の新作・予約・出演作品一覧【2026年10月】（42本）」。予約の作品があるときだけ「予約」、today を渡せば年月（毎日のビルドの日）を入れる
  */
-export const actressPageTitle = (g, today = '', withHistory = false) => {
+export const actressPageTitle = (g, today = '', withHistory = false, withProfile = false) => {
   const { ym, up } = titleParts(g, today);
   // 歩み（年表）がある人は「と年表」を足す（「名前 経歴」「名前 デビュー」で探す人の入り口。2026-10-27）
-  return `${truncate(g.name, 30)}の新作${up}・出演作品一覧${withHistory ? 'と年表' : ''}${ym}（${g.items.length}本）｜${SITE_NAME}`;
+  // プロフィールの表がある人は、名前のすぐあとに「プロフィール・」（「名前 プロフィール」で探す人の入り口。2026-10-27「女優名鑑」）
+  return `${truncate(g.name, 30)}の${withProfile ? 'プロフィール・' : ''}新作${up}・出演作品一覧${withHistory ? 'と年表' : ''}${ym}（${g.items.length}本）｜${SITE_NAME}`;
 };
 
 /** メーカーのページのタイトル（女優のページと同じ形。2026-10-06）: 「○○の新作・予約・作品一覧【2026年10月】（120本）」 */

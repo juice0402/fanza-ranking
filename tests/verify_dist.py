@@ -710,9 +710,19 @@ for pth in actress_pages:
         have = isinstance((prof or {}).get(key), int)
         if has_row != have:
             here.append(f"{label}の行の有無が、データと合わない")
+    # 血液型・出身地・趣味（2026-10-27「女優名鑑」）: 血液型はデータのとおり。出身地・趣味は、データがある人だけ（未成年を連想させる言葉は画面で外すので、行が無いことはある）
+    if ('<dt class="spec-term">血液型</dt>' in text) != (str((prof or {}).get("blood_type") or "") in ("A", "B", "O", "AB")):
+        here.append("血液型の行の有無が、データと合わない")
+    for label, key in (("出身地", "prefectures"), ("趣味", "hobby")):
+        if f'<dt class="spec-term">{label}</dt>' in text and not str((prof or {}).get(key) or "").strip():
+            here.append(f"{label}の行が、データの無い人に出ている")
+    _fact_rows = any(f'<dt class="spec-term">{lb}</dt>' in text for lb in ("年齢", "身長", "バスト", "カップ", "ウエスト", "ヒップ", "血液型", "出身地", "趣味"))
+    _title = re.search(r"<title>(.*?)</title>", text, re.S)
+    if ('id="profile-title"' in text) != _fact_rows or (f"{name}のプロフィール・" in htmllib.unescape(_title.group(1) if _title else "")) != _fact_rows:
+        here.append("見出し「プロフィール」・タイトルの「プロフィール」が、表の項目と合わない")
     if here:
         bad_profile_pages.append((name or os.path.relpath(pth, DIST), here))
-check(f"出演者ページ（{len(actress_pages)}ページ）: 顔写真・年齢/身長/サイズの行・FANZAの全作品ボタンが、データのとおりに出ている", not bad_profile_pages, bad_profile_pages[:3])
+check(f"出演者ページ（{len(actress_pages)}ページ）: 顔写真・年齢/身長/サイズ/血液型/出身地/趣味の行・見出しとタイトルの「プロフィール」・FANZAの全作品ボタンが、データのとおりに出ている", not bad_profile_pages, bad_profile_pages[:3])
 
 # 所属事務所とSNS（data/agencies.json。事務所の公式サイトから週1回。運営者の希望。2026-10-05）。
 # 決まった5つの事務所（site/src/lib/agencies.js の AGENCIES）だけ・出どころは事務所の公式サイト・アカウント名の形・同じ名前は1行だけ
@@ -2334,6 +2344,8 @@ _hist_rows = (json.load(open(_hist_file, encoding="utf-8")).get("actresses") or 
 _hist_names = {r.get("name") for r in _hist_rows.values() if isinstance(r, dict) and r.get("name") and int(r.get("total") or 0) > 0 and isinstance(r.get("first"), dict)}
 _hist_label = re.compile(r"^(FANZAでいちばん古い作品|.+でいちばん古い作品|いちばん古いVR作品|[\d,]+本目|いちばん新しい作品)$")
 _hist_seen = 0
+_hist_by_name = {r.get("name"): r for r in _hist_rows.values() if isinstance(r, dict) and r.get("name")}
+_top_seen = {"popular": 0, "rated": 0}
 for pth in actress_pages:
     html_ = read(pth)
     raw_ = read_raw(pth)
@@ -2345,9 +2357,20 @@ for pth in actress_pages:
     # 次の新作・セール中の作品の欄は、未成年を連想させるタイトルの作品を入れない（タイトルの「予約」は、全部の作品で決める）
     up_next_ = any(str(everything[c].get("date", ""))[:10] > JST_TODAY and not is_minor_title(everything[c].get("title")) for c in cids_)
     sale_ = any(c in _on_sale and str(everything[c].get("date", ""))[:10] <= JST_TODAY and not is_minor_title(everything[c].get("title")) for c in cids_)
+    # セールのデータに出演者が入っている、このサイトに無い作品も入れる（2026-10-27）
+    sale_ = sale_ or any(name_ in (r.get("a") or []) and r["k"] in _live_k and r["c"] not in everything and str(r.get("d") or "")[:10] <= JST_TODAY for r in _extra_rows)
     t_ = re.search(r"<title>(.*?)</title>", raw_, re.S)
     t_ = htmllib.unescape(t_.group(1)) if t_ else ""
     here = []
+    # 人気作ベスト・評価の高い作品（FANZA全体。2026-10-27）: 集めてある人だけ。中に未成年を連想させるタイトルを入れない
+    _hrow = _hist_by_name.get(name_) or {}
+    for _sid, _key in (("fanza-popular-title", "popular"), ("fanza-rated-title", "rated")):
+        _sec = re.search(rf'<section[^>]*aria-labelledby="{_sid}".*?</section>', raw_, re.S)
+        if _sec and (name_ not in _hist_names or len(_hrow.get(_key) or []) < 3):
+            here.append(("集めていない人に欄", _key))
+        if _sec and any(is_minor_title(htmllib.unescape(re.sub(r"<[^>]+>", "", _t)).replace("\u200b", "")) for _t in re.findall(r'class="mini-title">(.*?)</h3>', _sec.group(0), re.S)):
+            here.append(("未成年を連想させるタイトル", _key))
+        _top_seen[_key] += bool(_sec)
     if _ym not in t_ or (("・予約・" in t_) != up_):
         here.append(("タイトル", t_))
     if ('id="next-title"' in raw_) != up_next_:
@@ -2369,7 +2392,7 @@ for pth in actress_pages:
                 here.append(("年譜の見出し", _lb))
     if here:
         bad_act2.append((name_, here))
-check(f"出演者のページ（{len(actress_pages)}ページ）: タイトルに年月（予約があれば「予約」も）・次の新作・セール中の作品（あるときだけ）・更新日・ProfilePage の構造化データ・歩み（集めてある{_hist_seen}人だけ・タイトルに「と年表」・年譜の見出し）",
+check(f"出演者のページ（{len(actress_pages)}ページ）: タイトルに年月（予約があれば「予約」も）・次の新作・セール中の作品（あるときだけ）・更新日・ProfilePage の構造化データ・歩み（集めてある{_hist_seen}人だけ・タイトルに「と年表」・年譜の見出し）・人気作ベスト{_top_seen['popular']}人・評価の高い作品（FANZA全体）{_top_seen['rated']}人は集めてある人だけ",
       not bad_act2, bad_act2[:2])
 
 # メーカーのページ（女優のページと同じように強くする。運営者の希望「素晴らしいサイトを目指して完璧に」。2026-10-06）:

@@ -20,6 +20,7 @@ import { TEN_YEN_ALWAYS, TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenInde
 import { FLOOR_REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, normalizeReviews, topRated } from './reviews.js';
 import { normalizeReadings } from './kana.js';
 import { normalizeHistory, normalizeStories } from './history.js';
+import { isMinorTitle } from './gacha.js';
 import { FLOOR_KEYS, FLOOR_PERIODS, FLOORS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorPeriodRanking, floorSaleItems, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorGenreTops, normalizeFloorSale, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
@@ -206,7 +207,8 @@ export const paged = pagePlan.paged;
 export const profiles = normalizeProfiles(optionalData('actresses'), today);
 export const profilesByName = profileByName(profiles);
 // 女優の歩み（年表。scripts/actress_history.py が毎日少しずつ集める）と、Claude が書いた紹介文（scripts/claude_history.py）。名前で引く。まだ無い人もいる（2026-10-27）
-export const historyByName = normalizeHistory(optionalData('actress_history'));
+// 人気作ベスト・評価の高い作品（FANZA全体）は、このサイトの作品ならそのまま。未成年を連想させるタイトルは入れない
+export const historyByName = normalizeHistory(optionalData('actress_history'), new Map(all.map((i) => [i.cid, i])), isMinorTitle);
 export const storiesByName = normalizeStories(optionalData('actress_stories'));
 export const profilesCoverage = profileCoverage(profiles);
 // 女優検索の名簿（FANZA公式の出演者検索の一覧。体型・身長・生年月日が載っている人）。まだ無ければ空

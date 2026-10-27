@@ -67,6 +67,11 @@ console.log('\n■ プロフィールの文');
 check('項目の表: 載っている項目だけ・順番は 年齢・身長・バスト・ウエスト・ヒップ', JSON.stringify(P.profileFacts(hanako)) === JSON.stringify([['年齢', '27歳'], ['身長', '158cm'], ['バスト', '86cm（Fカップ）'], ['ウエスト', '57cm'], ['ヒップ', '87cm']]), JSON.stringify(P.profileFacts(hanako)));
 check('項目の表: 何も載っていなければ空・プロフィールが無くても落ちない', P.profileFacts(by.get('数字なし子')).length === 0 && P.profileFacts(undefined).length === 0);
 check('項目の表: カップだけ載っているときは「カップ」', JSON.stringify(P.profileFacts({ age: null, height: null, bust: null, cup: 'G', waist: null, hip: null })) === JSON.stringify([['カップ', 'Gカップ']]));
+const extra = P.normalizeProfiles({ actresses: [{ id: '3001', name: '名鑑子', fetched: '2026-10-27', blood_type: 'AB', prefectures: '東京都', hobby: 'あ'.repeat(60) }, { id: '3002', name: '型違い', fetched: '2026-10-27', blood_type: 'C', hobby: '  ' }] }, today);
+check('血液型・出身地・趣味: 読める値だけ（血液型は A・B・O・AB）', extra[0].bloodType === 'AB' && extra[0].birthplace === '東京都' && extra[1].bloodType === '' && extra[1].hobby === '', JSON.stringify(extra));
+const ex = P.profileFacts(extra[0]);
+check('項目の表: 血液型・出身地・趣味を最後に。趣味は50文字ほどで切る', JSON.stringify(ex.map(([k]) => k)) === JSON.stringify(['血液型', '出身地', '趣味']) && ex[0][1] === 'AB型' && ex[2][1] === 'あ'.repeat(50) + '…', JSON.stringify(ex));
+check('項目の表: skip にあたる趣味・出身地は出さない', P.profileFacts({ ...extra[0], hobby: '制服集め' }, { skip: (t) => t.includes('制服') }).every(([k]) => k !== '趣味'));
 check('短い体型の文', P.compactSpec(hanako) === '27歳・158cm・B86(F) W57 H87', P.compactSpec(hanako));
 check('短い体型の文: 一部だけ・何も無いとき', P.compactSpec({ age: 30 }) === '30歳' && P.compactSpec({ height: 160, waist: 58 }) === '160cm・W58' && P.compactSpec({ cup: 'E' }) === 'Eカップ' && P.compactSpec({}) === '' && P.compactSpec() === '');
 

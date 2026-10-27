@@ -6583,3 +6583,11 @@ a.tf-name {
 .type-group .genre-chips {
   margin-top: 0;
 }
+
+/* 女優のページの見出し「プロフィール」（2026-10-27「女優名鑑」）。ボタンの並びから少し離し、表は見出しのすぐ下に */
+.profile-head {
+  margin-top: 28px;
+}
+.profile-head + .spec.section {
+  margin-top: 0;
+}
