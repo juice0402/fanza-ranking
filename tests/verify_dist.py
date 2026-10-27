@@ -2342,7 +2342,7 @@ for pth in actress_pages:
         here.append("歩み")
     if _has_hist:
         _hist_seen += 1
-        for _lb in re.findall(r'<span class="hist-label">(.*?)</span>', raw_, re.S):
+        for _lb in re.findall(r'<span class="hist-label">(.*?)</span>(?=\s*(?:<a class="hist-title"|<span class="hist-title"|</dd>))', raw_, re.S):
             _lb = htmllib.unescape(re.sub(r"<[^>]+>", "", _lb)).replace("\u200b", "").strip()
             if not _hist_label.match(_lb):
                 here.append(("年譜の見出し", _lb))
