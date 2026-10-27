@@ -108,7 +108,42 @@ with tempfile.TemporaryDirectory() as d:
     before = open(H.PATH).read()
     done = H.run("2026-10-27", max_calls=10, sleep=lambda s: None, call=broken)
     check("読めなかった人は保存しない（前のデータのまま）", done == 0 and open(H.PATH).read() == before)
+
+    # 名簿の人（女優名鑑その3。#173）: プロフィールの対象を集め終わったあとだけ。50本より少ない人は「少ない」と覚えて飛ばす
+    H.DIRECTORY_PATH = os.path.join(d, "actress_directory.json")
+    json.dump({"rows": [{"id": 1, "name": "花子"}, {"id": 2, "name": "月子"}, {"id": 7, "name": "多い人"}, {"id": 8, "name": "少ない人"}]}, open(H.DIRECTORY_PATH, "w"))
+    os.remove(H.PATH)
+    asked = []
+
+    def dir_call(endpoint, params):
+        asked.append((str(params["article_id"]), params["sort"]))
+        if str(params["article_id"]) == "8":
+            return {"total_count": 30, "items": []}
+        return fake_call(endpoint, params)
+
+    done = H.run("2026-10-27", max_calls=100, sleep=lambda s: None, call=dir_call)
+    saved = json.load(open(H.PATH))
+    check("プロフィールの対象がまだいる日は、名簿の人を読まない", done == 2 and sorted(saved["actresses"]) == ["1", "2"] and not saved.get("few") and all(a in ("1", "2") for a, _ in asked), (done, sorted(saved["actresses"])))
+    asked.clear()
+    done = H.run("2026-10-27", max_calls=100, sleep=lambda s: None, call=dir_call)
+    saved = json.load(open(H.PATH))
+    check("集め終わったら、名簿の人を読む（50本以上の人は年表・50本より少ない人は1回だけ見て few に）",
+          done == 1 and sorted(saved["actresses"]) == ["1", "2", "7"] and saved["few"] == {"8": "2026-10-27"} and asked.count(("8", "date")) == 1 and ("8", "rank") not in asked, (done, saved.get("few"), asked[-3:]))
+    asked.clear()
+    done = H.run("2026-10-27", max_calls=100, sleep=lambda s: None, call=dir_call)
+    check("few の人と、集めた人は次の日は読まない", done == 0 and not asked, asked)
+    H.DIRECTORY_PATH = os.path.join(H.DATA_DIR_ORIG, "actress_directory.json")
     H.DATA_DIR = H.DATA_DIR_ORIG
+
+print("■ 名簿から読む人（pick_directory）")
+_dir = [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}, {"id": 3, "name": "同名"}, {"id": 4, "name": "同名"}, {"id": 5, "name": "C"}, {"id": 6, "name": "D"}, {"id": 9, "name": "E"}]
+_got = H.pick_directory(_dir, {"B": 2, "C": 1}, {"5": {"name": "C"}}, {"6": "2026-10-01", "9": "2026-01-01"}, "2026-10-27", skip_ids=[1])
+check("ページのある人（このサイトに2本以上）・集めた人・同じ名前が2人・プロフィールの対象・few から180日たっていない人は入れない",
+      _got == [("9", "E")], _got)
+_st = H.stale_directory({"5": {"name": "C", "checked": "2026-09-01"}, "1": {"name": "A", "checked": "2026-09-01"}, "6": {"name": "D", "checked": "2026-10-20"}}, _dir, "2026-10-27", skip_ids=["1"])
+check("名簿から集めた人のうち、21日より前の人を集め直す", _st == [("5", "C")], _st)
+_few, _n = H.fetch_all(8, 10, call=lambda e, p: {"total_count": 49, "items": []}, min_total=50)
+check("名簿の人は、本数が50本より少なければ1回で few", _few == H.FEW and _n == 1)
 
 print(f"\n=== {passed}/{passed + failed} 合格 ===")
 sys.exit(1 if failed else 0)

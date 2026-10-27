@@ -7,6 +7,8 @@ site/src/data/actress_history.json に保存する（作品の一覧そのもの
 
 ・対象: 出演者のプロフィール（actresses.json）がある人のうち、このサイトに HISTORY_MIN_ITEMS 本以上ある人。本数の多い人から
 ・1人につき、FANZA全体の人気順・評価順の上位 TOP_N 本も1回ずつ読んで残す（popular・rated。女優のページの「人気作ベスト10」「評価の高い作品」）
+・いまの対象をぜんぶ集め終わったら、女優検索の名簿（actress_directory.json）にいて、まだ女優のページが無い人も読む（女優名鑑その3。2026-10-27 #173）。
+  はじめの1回で FANZA全体の本数（total_count）を見て、DIRECTORY_MIN_TOTAL 本より少ない人は「少ない」（few）と覚えて、FEW_RECHECK_DAYS 日は飛ばす
 ・1回に呼ぶのは MAX_CALLS 回まで（DMMの待ち時間 DMM_INTERVAL_SEC をあける）。まだ集めていない人 → 古くなった人（REFRESH_DAYS）の順
 ・FANZAの作品だけを数える。ほかのサイトの情報・私生活・うわさは扱わない（守ること9）。配信より前の作品があるかもしれないので、
   画面では「デビュー作」と言い切らず「FANZAでいちばん古い作品」と書く（APIでは、波多野結衣さんのいちばん古い作品は2009年。probe_api.py の 22）
@@ -53,6 +55,11 @@ FAIL_STOP = 3  # 続けて失敗したら止める
 TOP_N = 10  # 人気順・評価順に残す本数（女優のページの「人気作ベスト10」「評価の高い作品」。2026-10-27）
 TOP_FETCH = 20  # 人気順・評価順に1回で読む本数（未成年を連想させる作品などを外しても TOP_N 本残るように）
 TOP_SORTS = (("popular", "rank"), ("rated", "review"))  # 保存する名前と、APIの並べ方（人気順・評価順）。1人につき1回ずつ
+DIRECTORY_PATH = os.environ.get("ACTRESS_DIRECTORY_PATH", os.path.join(DATA_DIR, "actress_directory.json"))
+DIRECTORY_MIN_TOTAL = 50  # 名簿の人は、FANZA全体の作品がこの本数以上の人だけ集める（しょーくん 10/27「作品が多い人だけ増やす」。#173）
+FEW_RECHECK_DAYS = 180  # 本数が少なかった名簿の人を、もう一度見るまでの日数
+PAGE_MIN_ITEMS = 2  # このサイトに、この本数以上ある人は女優のページがある（site/src/config.js の ENTITY_MIN_ITEMS と同じ）
+FEW = "few"  # fetch_all の答え: 本数が少ないので読まなかった
 
 
 def load_json(path, default):
@@ -103,6 +110,34 @@ def pick_targets(profiles, counts, history, today, min_items=HISTORY_MIN_ITEMS, 
     fresh.sort()
     stale.sort()
     return [(aid, name) for _, name, aid in fresh] + [(aid, name) for _, _, name, aid in stale]
+
+
+def pick_directory(directory, counts, history, few, today, skip_ids=(), recheck_days=FEW_RECHECK_DAYS):
+    """名簿（actress_directory.json の rows）から、新しく読む人: まだ集めていない・女優のページが無い（このサイトに PAGE_MIN_ITEMS 本より少ない）・
+    名簿に同じ名前が1人だけ・「少ない」と覚えてから recheck_days 日たった人。名簿の順（id の順）"""
+    recheck_before = (datetime.strptime(today, "%Y-%m-%d") - timedelta(days=recheck_days)).strftime("%Y-%m-%d")
+    rows = [r for r in directory if isinstance(r, dict) and str(r.get("id") or "").strip() and str(r.get("name") or "").strip()]
+    names = Counter(str(r["name"]).strip() for r in rows)
+    skip, out, seen = {str(i) for i in skip_ids}, [], set()
+    for r in rows:
+        aid, name = str(r["id"]).strip(), str(r["name"]).strip()
+        if aid in seen or aid in skip or aid in history or names[name] > 1 or counts.get(name, 0) >= PAGE_MIN_ITEMS:
+            continue
+        if str(few.get(aid) or "") >= recheck_before:
+            continue
+        seen.add(aid)
+        out.append((aid, name))
+    return out
+
+
+def stale_directory(history, directory, today, skip_ids=(), refresh_days=REFRESH_DAYS):
+    """名簿から集めた人（プロフィールの対象でない人）のうち、refresh_days 日より前に集めた人（集めた日が古い順）"""
+    stale_before = (datetime.strptime(today, "%Y-%m-%d") - timedelta(days=refresh_days)).strftime("%Y-%m-%d")
+    dir_ids = {str(r.get("id")) for r in directory if isinstance(r, dict)}
+    skip = {str(i) for i in skip_ids}
+    rows = [(str(r.get("checked") or ""), aid, r.get("name")) for aid, r in history.items()
+            if aid in dir_ids and aid not in skip and isinstance(r, dict) and r.get("name") and str(r.get("checked") or "") < stale_before]
+    return [(aid, name) for _, aid, name in sorted(rows)]
 
 
 def compact(item, n=None):
@@ -159,12 +194,15 @@ def summarize(name, items, today):
     return out
 
 
-def fetch_all(aid, budget, sleep=time.sleep, call=None):
-    """1人の全作品（新しい順に100本ずつ）。(作品のリスト, 呼んだ回数)。予算が足りなければ (None, 1)（はじめの1回で本数だけ見る）"""
+def fetch_all(aid, budget, sleep=time.sleep, call=None, min_total=0):
+    """1人の全作品（新しい順に100本ずつ）。(作品のリスト, 呼んだ回数)。予算が足りなければ (None, 1)（はじめの1回で本数だけ見る）。
+    本数が min_total より少なければ (FEW, 1)（名簿の人。読まない）"""
     call = call or G.call_api
     base = {"site": "FANZA", "service": "digital", "floor": "videoa", "article": "actress", "article_id": aid, "sort": "date", "hits": PAGE}
     res = call("ItemList", dict(base, offset=1))
     total = int(res.get("total_count") or 0)
+    if total < min_total:
+        return FEW, 1
     need = max(1, math.ceil(min(total, OFFSET_MAX) / PAGE))
     if need > budget:
         return None, 1
@@ -224,11 +262,21 @@ def run(today, max_calls=MAX_CALLS, dry=False, sleep=time.sleep, call=None, max_
     profiles = (load_json(os.path.join(DATA_DIR, "actresses.json"), {}) or {}).get("actresses") or []
     data = load_json(PATH, {"updated": "", "actresses": {}})
     history = data.setdefault("actresses", {})
-    targets = pick_targets(profiles, site_counts(), history, today)
-    print(f"対象 {len(targets)}人（まだ集めていない人・{REFRESH_DAYS}日より前に集めた人）。1回に呼ぶのは {max_calls}回まで")
+    counts = site_counts()
+    targets = pick_targets(profiles, counts, history, today)
+    # 名簿の人（女優名鑑その3。#173）: プロフィールの対象（まだ集めていない人）をぜんぶ集め終わってから。古くなった人の集め直しのあとに読む
+    directory = (load_json(DIRECTORY_PATH, {}) or {}).get("rows") or []
+    few = data.setdefault("few", {})
+    profile_ids = {str(a.get("id")) for a in profiles if a.get("id") and a.get("name") and counts.get(a.get("name"), 0) >= HISTORY_MIN_ITEMS}
+    pending = [aid for aid in profile_ids if aid not in history]
+    targets += stale_directory(history, directory, today, skip_ids=profile_ids)
+    new_dir = [] if pending else pick_directory(directory, counts, history, few, today, skip_ids=profile_ids)
+    targets += new_dir
+    from_dir = {aid for aid, _ in new_dir}
+    print(f"対象 {len(targets)}人（まだ集めていない人・{REFRESH_DAYS}日より前に集めた人・名簿の人 {len(new_dir)}人）。1回に呼ぶのは {max_calls}回まで")
     if dry:
         return 0
-    used, done, fails, skipped = 0, 0, 0, 0
+    used, done, fails, skipped, few_n = 0, 0, 0, 0, 0
     started = clock()
     for aid, name in targets:
         if used >= max_calls:
@@ -237,7 +285,7 @@ def run(today, max_calls=MAX_CALLS, dry=False, sleep=time.sleep, call=None, max_
             print(f"{max_minutes:g}分たったので、ここまでで止めます（続きは次の回）")
             break
         try:
-            items, calls = fetch_all(aid, max_calls - used - 1 - len(TOP_SORTS), sleep=sleep, call=call)
+            items, calls = fetch_all(aid, max_calls - used - 1 - len(TOP_SORTS), sleep=sleep, call=call, min_total=DIRECTORY_MIN_TOTAL if aid in from_dir else 0)
         except RuntimeError as e:
             used += 1
             fails += 1
@@ -250,6 +298,11 @@ def run(today, max_calls=MAX_CALLS, dry=False, sleep=time.sleep, call=None, max_
         sleep(G.DMM_INTERVAL_SEC)
         if items is None:
             skipped += 1
+            continue
+        if items == FEW:
+            few[str(aid)] = today  # 本数が少ない名簿の人。FEW_RECHECK_DAYS 日は飛ばす
+            few_n += 1
+            fails = 0
             continue
         row = summarize(name, items, today)
         try:
@@ -268,14 +321,14 @@ def run(today, max_calls=MAX_CALLS, dry=False, sleep=time.sleep, call=None, max_
         if done % SAVE_EVERY == 0:
             data["updated"] = today
             save_json(PATH, data)
-    if done:
+    if done or few_n:
         data["updated"] = today
         save_json(PATH, data)
-    print(f"{done}人を保存（呼んだ回数 {used}・予算が足りず次に回した人 {skipped}・集めてある人 {len(history)}）")
+    print(f"{done}人を保存（呼んだ回数 {used}・予算が足りず次に回した人 {skipped}・本数が{DIRECTORY_MIN_TOTAL}本より少ない名簿の人 {few_n}・集めてある人 {len(history)}）")
     out = os.environ.get("GITHUB_OUTPUT")
     if out:
         with open(out, "a", encoding="utf-8") as f:
-            f.write(f"saved={1 if done else 0}\n")
+            f.write(f"saved={1 if done or few_n else 0}\n")
     return done
 
 

@@ -4,6 +4,7 @@
 // 書くのは FANZA の作品の数字だけ。「デビュー作」とは言い切らず「FANZAでいちばん古い作品」と書く（配信より前の作品があるため）。
 
 import { KANA_ROWS, KANA_OTHER, kanaRow, toHiragana } from './kana.js';
+import { fit } from './describe.js';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 export const NENPYO_PATH = '/actress/nenpyo/'; // 女優の年表の一覧（2026-10-27。運営者「名前は女優の年表、入口は女優検索のページだけ」）
@@ -196,4 +197,51 @@ export function nenpyoIndex(entries, prefix = 'nenpyo') {
       const r = rows.get(k);
       return { ...r, entries: r.entries.sort((a, b) => by(a.reading, b.reading) || by(a.name, b.name)) };
     });
+}
+
+// ------------------------------------------------------------------
+// 女優名鑑その3（2026-10-27 #173。しょーくん「作品が多い人だけ増やす」）: 女優検索の名簿にいて、このサイトに女優のページが無い人のうち、
+// 年表を集めた（FANZA全体で NENKAN_MIN_TOTAL 本以上の）人にもページを作る。年表と紹介文の両方がそろうまでは noindex
+// ------------------------------------------------------------------
+export const NENKAN_MIN_TOTAL = 50; // scripts/actress_history.py の DIRECTORY_MIN_TOTAL と同じ
+
+/**
+ * 名簿の人のページのまとまり [{ name, slug, path, items: [], nenkan: true, profile }]（FANZA全体の本数の多い順）。
+ * history: 名前 → 年表（normalizeHistory）、directoryByName: 名前 → 名簿の1人（同じ名前が1人だけの人）。
+ * 入れる人: 年表があり本数が min 以上・名簿の id が年表の id と同じ・まだページの無い名前と短い名前（taken）。
+ * profile は名簿の値から作る（顔写真は名簿の画像のファイル名、FANZAの全作品のURLは template の {ID} に id を入れたもの）
+ */
+export function nenkanGroups(history, directoryByName, { takenNames = new Set(), takenSlugs = new Set(), slugOf, pathOf, template = '', imageBase = '', min = NENKAN_MIN_TOTAL } = {}) {
+  const out = [];
+  const slugs = new Set(takenSlugs);
+  for (const h of history.values()) {
+    const d = directoryByName.get(h.name);
+    if (!d || d.id !== h.id || h.total < min || takenNames.has(h.name)) continue;
+    const slug = slugOf(h.name);
+    if (slugs.has(slug)) continue;
+    slugs.add(slug);
+    const img = d.img ? `${imageBase}${d.img}.jpg` : '';
+    const listUrl = template && template.includes('{ID}') ? template.replace('{ID}', d.id) : '';
+    out.push({ name: h.name, slug, path: pathOf(slug), items: [], nenkan: true, profile: { ...d, imageSmall: img, imageLarge: img, listUrl } });
+  }
+  return out.sort((a, b) => history.get(b.name).total - history.get(a.name).total || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+/** 名簿の人のページを検索エンジンに出すか: 年表と紹介文の両方があるときだけ */
+export const nenkanIndexable = (history, story) => Boolean(history && story && story.text);
+
+/** 名簿の人のページのタイトル: 「〇〇のプロフィール・年表と人気作（FANZA 277本）｜サイト名」（プロフィールの表が無い人は「プロフィール・」なし） */
+export const nenkanPageTitle = (name, h, withProfile, siteName) =>
+  `${name.length > 30 ? `${name.slice(0, 29)}…` : name}の${withProfile ? 'プロフィール・' : ''}年表と人気作（FANZA ${h.total.toLocaleString('ja-JP')}本）｜${siteName}`;
+
+/** 名簿の人のページの説明文（80〜120文字。describe.js の fit）: 「FANZAの作品は277本（2018年から）。」＋紹介文の文＋いちばん多い年＋何があるか */
+export function nenkanDescription(name, h, story) {
+  const peak = peakYear(h);
+  const storySentences = String(story?.text ?? '').split(/(?<=。)/).map((x) => x.trim()).filter(Boolean);
+  return fit([
+    historyDescriptionHead(h),
+    ...storySentences,
+    peak ? `いちばん多い年は${peak.year}年の${peak.n}本です。` : '',
+    `${name}さんの年ごとの作品数・おもなメーカー・FANZAの人気作をまとめています。`,
+  ]);
 }

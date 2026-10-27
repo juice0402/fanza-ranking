@@ -1,7 +1,7 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
-import { actressByName, historyByName, all, allReleased, events, paged, popularity, sale, saleWorks, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorHasSale, floorSale, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors, reviewRanking, reviews, floorReviewRankings, floorPeriodRankings, floorSearchIndexes } from '../lib/data.js';
+import { actressByName, historyByName, storiesByName, nenkanActressGroups, all, allReleased, events, paged, popularity, sale, saleWorks, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorHasSale, floorSale, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors, reviewRanking, reviews, floorReviewRankings, floorPeriodRankings, floorSearchIndexes } from '../lib/data.js';
 import { REVIEW_RANKING_MIN_ITEMS, REVIEW_RANKING_PATH, floorReviewRankingPath } from '../lib/reviews.js';
 import { FLOORS, FLOOR_COLLECTION_KINDS, FLOOR_HUB_SHOWN, FLOOR_PERIODS, floorGirlsPath, girlsIndexable, floorPeriodIndexable, floorPeriodPath, floorEntityIndexable, floorEntityRankingPath, collectionIndexIndexable, collectionIndexable, floorCollectionIndexPath, floorSaleHistoryIndexable, floorSaleHistoryPath, floorSalePageIndexable, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorSaleShelf, floorUpcoming } from '../lib/floors.js';
 import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
@@ -27,7 +27,7 @@ import {
   listLastmod,
 } from '../lib/items.js';
 import { WEEKLY_INDEX_PATH, weeklyPath } from '../lib/roundups.js';
-import { NENPYO_PATH } from '../lib/history.js';
+import { NENPYO_PATH, nenkanIndexable } from '../lib/history.js';
 
 export function GET() {
   const home = [...released.slice(0, HOME_RELEASED_LIMIT), ...upcoming.slice(0, HOME_UPCOMING_LIMIT)];
@@ -105,6 +105,8 @@ export function GET() {
     // 女優の年表の一覧（2026-10-27。ページの側と同じく、年表のある人がいるときだけ）
     ...([...historyByName.keys()].some((n) => actressByName.has(n)) ? [{ path: NENPYO_PATH, lastmod: today }] : []),
     ...groupPages(actressGroups),
+    // 名簿の人のページ（女優名鑑その3。#173）: 年表と紹介文の両方がそろった人だけ（ページの側の noindex と同じ決まり）
+    ...nenkanActressGroups.filter((g) => nenkanIndexable(historyByName.get(g.name), storiesByName.get(g.name))).map((g) => ({ path: g.path, lastmod: historyByName.get(g.name).checked })),
     { path: MAKER_INDEX_PATH, lastmod: listLastmod(makerGroups.flatMap((g) => g.items), today) },
     ...groupPages(makerGroups),
     // シリーズ・レーベルのページ（2026-10-07。コメントのある作品があるページだけ。一覧のページは、載せたページが1つでもあるとき）

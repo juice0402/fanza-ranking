@@ -1,12 +1,12 @@
 // JSON（Pythonが毎日貯めているデータ）を読み込んで、画面で使う形にします。
 import raw from '../data/new_releases.json';
 import rawRoundups from '../data/roundups.json';
-import { normalizeItems, splitByRelease, jstToday, groupByActress, groupByMaker, indexByName } from './items.js';
+import { normalizeItems, splitByRelease, jstToday, groupByActress, groupByMaker, indexByName, entitySlug, actressPath } from './items.js';
 import { normalizeRoundups } from './roundups.js';
 import { normalizeMonthly } from './monthly.js';
 import { groupByMonth, groupByTag, monthPathByKey } from './collections.js';
 import { buildFactsContext } from './facts.js';
-import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay, ACTRESS_IMAGE_BASE, faceUrl } from './profiles.js';
+import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay, ACTRESS_IMAGE_BASE, faceUrl, listTemplateOf } from './profiles.js';
 import { hasCalendar, planPages } from './plan.js';
 import { bestRank, catalogAllRank, normalizePopularity, normalizeRankHistory } from './popularity.js';
 import { campaignPages, campaignSlug, isTenYenCampaign, normalizeSale, normalizeSaleHistory, saleHref } from './sale.js';
@@ -19,7 +19,7 @@ import { SEARCH_MORE_SIZE, buildSearchIndexes } from './search.js';
 import { TEN_YEN_ALWAYS, TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenIndexable, tenYenState } from './ten-yen.js';
 import { FLOOR_REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, normalizeReviews, topRated } from './reviews.js';
 import { normalizeReadings } from './kana.js';
-import { normalizeHistory, normalizeStories } from './history.js';
+import { nenkanGroups, normalizeHistory, normalizeStories } from './history.js';
 import { isMinorTitle } from './gacha.js';
 import { FLOOR_KEYS, FLOOR_PERIODS, FLOORS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorPeriodRanking, floorSaleItems, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorGenreTops, normalizeFloorSale, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
@@ -71,10 +71,40 @@ export const reviewRanking = topRated(all, today);
 // 順位は、ランキングのページがあるとき（REVIEW_RANKING_MIN_ITEMS 本以上）だけ（作品ページの「高評価ランキング○位」のリンク先が無くならないように）
 export const reviewRankOf = new Map(reviewRanking.length >= REVIEW_RANKING_MIN_ITEMS ? reviewRanking.map((i, n) => [i.cid, n + 1]) : []);
 
+// 出演者のプロフィール（顔写真・年齢・体型・FANZAの全作品リンク）。名前で引く
+export const profiles = normalizeProfiles(optionalData('actresses'), today);
+export const profilesByName = profileByName(profiles);
+// 女優の歩み（年表。scripts/actress_history.py が毎日少しずつ集める）と、Claude が書いた紹介文（scripts/claude_history.py）。名前で引く。まだ無い人もいる（2026-10-27）
+// 人気作ベスト・評価の高い作品（FANZA全体）は、このサイトの作品ならそのまま。未成年を連想させるタイトルは入れない
+export const historyByName = normalizeHistory(optionalData('actress_history'), new Map(all.map((i) => [i.cid, i])), isMinorTitle);
+export const storiesByName = normalizeStories(optionalData('actress_stories'));
+export const profilesCoverage = profileCoverage(profiles);
+// 女優検索の名簿（FANZA公式の出演者検索の一覧。体型・身長・生年月日が載っている人）。まだ無ければ空
+export const directory = normalizeDirectory(optionalData('actress_directory'), today);
+// 女優の顔写真と誕生日の月日（トップの「いま人気の女優」「誕生日の近い女優」）。プロフィール（actresses.json）を先に、無ければ女優検索の名簿の値。
+// 名簿に同じ名前の人が2人以上いるときは、どちらの人か決められないので使わない
+const directoryByName = (() => {
+  const count = new Map();
+  for (const d of directory) count.set(d.name, (count.get(d.name) ?? 0) + 1);
+  return new Map(directory.filter((d) => count.get(d.name) === 1).map((d) => [d.name, d]));
+})();
+export const faceOfName = (name, large = false) => faceUrl(profilesByName.get(name), large) || (directoryByName.get(name)?.img ? `${ACTRESS_IMAGE_BASE}${directoryByName.get(name).img}.jpg` : '');
+export const birthOfName = (name) => profilesByName.get(name)?.birthMD || directoryByName.get(name)?.birthMD || '';
 // 出演者・メーカーごとのページ（作品が ENTITY_MIN_ITEMS 本以上の人・メーカーだけ）
 export const actressGroups = groupByActress(all);
 export const makerGroups = groupByMaker(all);
-export const actressByName = indexByName(actressGroups);
+// 女優名鑑その3（2026-10-27 #173）: 名簿にいて、このサイトにページの無い人のうち、年表（FANZA全体で50本以上）を集めた人のページ（作品が0本でも作る）。
+// 名前で引くとき（共演・イベントなどのリンク）は、こちらの人のページも出す。カレンダー・お気に入りの索引・一覧の数は actressGroups（このサイトの作品がある人）だけ
+export const nenkanActressGroups = nenkanGroups(historyByName, directoryByName, {
+  takenNames: new Set(actressGroups.map((g) => g.name)),
+  takenSlugs: new Set(actressGroups.map((g) => g.slug)),
+  slugOf: entitySlug,
+  pathOf: actressPath,
+  template: listTemplateOf(profiles),
+  imageBase: ACTRESS_IMAGE_BASE,
+});
+export const actressPageGroups = [...actressGroups, ...nenkanActressGroups];
+export const actressByName = indexByName(actressPageGroups);
 export const makerByName = indexByName(makerGroups);
 // 発売日カレンダー（.ics）を作る出演者・メーカー: 毎日の更新で載せた作品がある人・メーカーだけ（過去作品だけの人の分まで作ると、ファイルが多くなりすぎるため）
 export const calendarActressGroups = actressGroups.filter(hasCalendar);
@@ -188,7 +218,7 @@ export const tenYenFloors = activeFloors.filter((k) => TEN_YEN_KEYS.includes(k) 
 
 // 作品ページを作る作品（サイト全体を2万ファイル以内に収める。lib/plan.js）
 export const pagePlan = planPages(all, {
-  actress: actressGroups.length,
+  actress: actressPageGroups.length,
   maker: makerGroups.length,
   series: seriesGroups.length + (seriesGroups.length > 0 ? 1 : 0), // ＋一覧のページ
   label: labelGroups.length + (labelGroups.length > 0 ? 1 : 0),
@@ -203,25 +233,6 @@ export const pagePlan = planPages(all, {
 });
 export const paged = pagePlan.paged;
 
-// 出演者のプロフィール（顔写真・年齢・体型・FANZAの全作品リンク）。名前で引く
-export const profiles = normalizeProfiles(optionalData('actresses'), today);
-export const profilesByName = profileByName(profiles);
-// 女優の歩み（年表。scripts/actress_history.py が毎日少しずつ集める）と、Claude が書いた紹介文（scripts/claude_history.py）。名前で引く。まだ無い人もいる（2026-10-27）
-// 人気作ベスト・評価の高い作品（FANZA全体）は、このサイトの作品ならそのまま。未成年を連想させるタイトルは入れない
-export const historyByName = normalizeHistory(optionalData('actress_history'), new Map(all.map((i) => [i.cid, i])), isMinorTitle);
-export const storiesByName = normalizeStories(optionalData('actress_stories'));
-export const profilesCoverage = profileCoverage(profiles);
-// 女優検索の名簿（FANZA公式の出演者検索の一覧。体型・身長・生年月日が載っている人）。まだ無ければ空
-export const directory = normalizeDirectory(optionalData('actress_directory'), today);
-// 女優の顔写真と誕生日の月日（トップの「いま人気の女優」「誕生日の近い女優」）。プロフィール（actresses.json）を先に、無ければ女優検索の名簿の値。
-// 名簿に同じ名前の人が2人以上いるときは、どちらの人か決められないので使わない
-const directoryByName = (() => {
-  const count = new Map();
-  for (const d of directory) count.set(d.name, (count.get(d.name) ?? 0) + 1);
-  return new Map(directory.filter((d) => count.get(d.name) === 1).map((d) => [d.name, d]));
-})();
-export const faceOfName = (name, large = false) => faceUrl(profilesByName.get(name), large) || (directoryByName.get(name)?.img ? `${ACTRESS_IMAGE_BASE}${directoryByName.get(name).img}.jpg` : '');
-export const birthOfName = (name) => profilesByName.get(name)?.birthMD || directoryByName.get(name)?.birthMD || '';
 // 所属事務所とSNS（事務所の公式サイトから週1回。scripts/agency_links.py）。まだ無ければ空
 export const agencies = normalizeAgencies(optionalData('agencies'));
 export const agencyOfName = (name) => agencies.byName.get(name) ?? null;
