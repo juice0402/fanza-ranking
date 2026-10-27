@@ -923,8 +923,10 @@ if os.path.isfile(search_page):
         check("スリーサイズは、幅（〜79・80〜84 など）をタップで選ぶ（数字を入れる欄は無い）。いちばん人数の多い幅を、目安として添える", not bad_size, bad_size[:3])
         sort_sel = re.search(r'<select name="sort">(.*?)</select>', stext, re.S)
         values = [t.get("value", "") for t in tags(sort_sel.group(1) if sort_sel else "", "option")]
-        bad_values = [v for v in values if v not in ("works", "bust", "cup", "young", "old", "tall", "short", "waist", "hip", "newest", "name")]
-        check("並び順の値が、スクリプトの読める形だけ", not bad_values and len(values) == 11, bad_values[:5])
+        bad_values = [v for v in values if v not in ("works", "bust", "cup", "young", "old", "tall", "short", "waist", "hip", "newest", "fanza", "first_new", "first_old", "name")]
+        # FANZAの作品数・最初の作品の年の並び順（2026-10-27 #172）は、年表のある人が索引にいるときだけ
+        has_hist = any(isinstance(r, dict) and ("fy" in r or "ft" in r) for r in rows)
+        check("並び順の値が、スクリプトの読める形だけ（年表の並び順は、年表のある人がいるときだけ）", not bad_values and len(values) == (14 if has_hist else 11), bad_values[:5] or len(values))
         # 所属事務所で絞り込む（索引に所属の分かる人がいるときだけ）。選択肢は「指定なし」と、索引の agencies の事務所（人数の多い順）
         ag_sel = re.search(r'<select name="ag">(.*?)</select>', stext, re.S)
         idx_agencies = act_index.get("agencies", {}) if isinstance(act_index, dict) and isinstance(act_index.get("agencies"), dict) else {}
