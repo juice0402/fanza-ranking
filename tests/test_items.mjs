@@ -96,8 +96,8 @@ const xml2 = L.buildSitemap([
   { path: '/item/z/', lastmod: '2026-10-3' },
   { path: '/item/w/' },
 ]);
-check('sitemap: 正しい日付だけ lastmod を出す', (xml2.match(/<lastmod>/g) || []).length === 1 && xml2.includes('<loc>https://fanza-ranking.pages.dev/</loc><lastmod>2026-10-03</lastmod></url>'), xml2);
-check('sitemap: 日付が空・壊れていても、そのページ自体は載せる', ['/item/x/', '/item/y/', '/item/z/', '/item/w/'].every((p) => xml2.includes(`<loc>https://fanza-ranking.pages.dev${p}</loc></url>`)), xml2);
+check('sitemap: 正しい日付だけ lastmod を出す', (xml2.match(/<lastmod>/g) || []).length === 1 && xml2.includes('<loc>https://av-sale-guide.com/</loc><lastmod>2026-10-03</lastmod></url>'), xml2);
+check('sitemap: 日付が空・壊れていても、そのページ自体は載せる', ['/item/x/', '/item/y/', '/item/z/', '/item/w/'].every((p) => xml2.includes(`<loc>https://av-sale-guide.com${p}</loc></url>`)), xml2);
 check('isDay: 形の判定', L.isDay('2026-10-03') && !L.isDay('2026-10-3') && !L.isDay('') && !L.isDay(undefined) && !L.isDay('2026-10-03 00:00:00'));
 const lm = (list, t) => L.listLastmod(list.map((x) => ({ dateKey: '2000-01-01', updated: '', ...x })), t);
 check('一覧の更新日: updated の一番新しい日', lm([{ updated: '2026-10-01' }, { updated: '2026-10-03' }, { updated: '2026-10-02' }], '2026-10-05') === '2026-10-03');
@@ -107,10 +107,10 @@ check('一覧の更新日: 発売日当日は数える', lm([{ updated: '', date
 check('一覧の更新日: 分からないとき・空のときは空', lm([], '2026-10-05') === '' && L.listLastmod([{ dateKey: '2026-10-09', updated: '' }], '2026-10-05') === '');
 check('一覧の更新日: 壊れた日付は無視', lm([{ updated: '昨日' }, { updated: '2026-10-02' }], '2026-10-05') === '2026-10-02');
 check('sitemap: XMLの記号をエスケープ', xml.includes('/item/a&amp;b/') && !xml.includes('a&b'));
-check('sitemap: 絶対URL', xml.includes('<loc>https://fanza-ranking.pages.dev/</loc>'));
+check('sitemap: 絶対URL', xml.includes('<loc>https://av-sale-guide.com/</loc>'));
 check('sitemap: 宣言とurlset', xml.startsWith('<?xml version="1.0"') && xml.includes('<urlset'));
 const robotsTxt = L.buildRobots();
-check('robots.txt: 全体を許可し、sitemapの場所を案内', robotsTxt.includes('User-agent: *') && robotsTxt.includes('Allow: /') && robotsTxt.includes('Sitemap: https://fanza-ranking.pages.dev/sitemap.xml'), robotsTxt);
+check('robots.txt: 全体を許可し、sitemapの場所を案内', robotsTxt.includes('User-agent: *') && robotsTxt.includes('Allow: /') && robotsTxt.includes('Sitemap: https://av-sale-guide.com/sitemap.xml'), robotsTxt);
 check('robots.txt: 指定したURLを使う', L.buildRobots('https://example.com').includes('Sitemap: https://example.com/sitemap.xml'));
 const long = { ...base, title: 'あ'.repeat(200) };
 check('タイトルを切り詰める', L.itemPageTitle(long).length < 80, L.itemPageTitle(long).length);
@@ -190,10 +190,10 @@ check('発売日の幅の短い形: 同じ年は月日・同じ日は1日・年�
 console.log('\n■ 構造化データ（JSON-LD）');
 const bc = L.breadcrumbLd([{ name: 'トップ', path: '/' }, { name: 'メーカー一覧', path: '/maker/' }, { name: 'A', path: '/maker/abc/' }]);
 check('パンくず: 種類と順番（1から）', bc['@type'] === 'BreadcrumbList' && bc['@context'] === 'https://schema.org' && bc.itemListElement.map((e) => e.position).join() === '1,2,3');
-check('パンくず: URLは絶対URL', bc.itemListElement.every((e) => e.item.startsWith('https://fanza-ranking.pages.dev/')) && bc.itemListElement[2].item === 'https://fanza-ranking.pages.dev/maker/abc/');
+check('パンくず: URLは絶対URL', bc.itemListElement.every((e) => e.item.startsWith('https://av-sale-guide.com/')) && bc.itemListElement[2].item === 'https://av-sale-guide.com/maker/abc/');
 check('パンくず: 指定したURLを使う', L.breadcrumbLd([{ name: 'a', path: '/x/' }], 'https://example.com').itemListElement[0].item === 'https://example.com/x/');
 const ws = L.websiteLd();
-check('サイト情報: 名前・URL・言語', ws['@type'] === 'WebSite' && ws.name === L.SITE_NAME && ws.url === 'https://fanza-ranking.pages.dev/' && ws.inLanguage === 'ja');
+check('サイト情報: 名前・URL・言語', ws['@type'] === 'WebSite' && ws.name === L.SITE_NAME && ws.url === 'https://av-sale-guide.com/' && ws.inLanguage === 'ja');
 const evil = { name: '</script><script>alert(1)</script>& ' };
 const script = L.jsonLdScript(evil);
 check('JSON-LD: ページを壊す記号（</script> など）を置き換える', !script.includes('<') && !script.includes('>') && !script.includes('&') && !script.includes(' '), script);

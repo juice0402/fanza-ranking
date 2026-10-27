@@ -40,7 +40,7 @@ check('壊れた入力でも落ちない', M.normalizeMonthly(null, items).lengt
 console.log('\n■ 構造化データ');
 const ld = M.monthlyLd(norm[0]);
 check('Article: 種類・見出し・公開日・URL（月のページ）', ld['@type'] === 'Article' && ld.headline === '2026年10月のFANZA新作まとめ' && ld.datePublished === '2026-11-01'
-  && ld.mainEntityOfPage['@id'] === 'https://fanza-ranking.pages.dev/month/2026-10/', JSON.stringify(ld));
+  && ld.mainEntityOfPage['@id'] === 'https://av-sale-guide.com/month/2026-10/', JSON.stringify(ld));
 check('Article: 発行元はサイト自身（人の名前を入れない）', ld.author['@type'] === 'Organization' && ld.author.name === SITE_NAME && ld.publisher.name === SITE_NAME);
 
 console.log('\n■ Python との突き合わせ');

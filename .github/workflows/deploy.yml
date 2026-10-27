@@ -2,7 +2,7 @@ name: Deploy
 
 # サイトをビルドして、全ページを点検し、Cloudflare Pages に直接アップロードする（Direct Upload。2026-10-09 から）。
 # Cloudflare 側のビルド（月500回を「あそびトーク」と共有）を使わないため。点検（tests/verify_dist.py）に通ったものだけを公開する。
-#   - main に入ったとき（PR の Merge）→ 本番（https://fanza-ranking.pages.dev/）
+#   - main に入ったとき（PR の Merge）→ 本番（https://av-sale-guide.com/）
 #   - 毎日の更新（update.yml）・取り直し（refresh-data.yml）がデータを保存したとき → そのワークフローが、これを動かす
 #     （GitHub の決まりで、ワークフローが保存したコミットでは、ほかのワークフローが自動では動かないため）
 #   - 手動実行（Actions の画面の「Run workflow」）: main を選べば本番、ほかのブランチを選べばプレビュー

@@ -36,7 +36,7 @@ import urllib.robotparser
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 
-USER_AGENT = "Mozilla/5.0 (compatible; fanza-ranking-bot/1.0; +https://fanza-ranking.pages.dev/)"
+USER_AGENT = "Mozilla/5.0 (compatible; fanza-ranking-bot/1.0; +https://av-sale-guide.com/)"
 INTERVAL_SEC = float(os.environ.get("AGENCY_INTERVAL_SEC", "2"))  # 同じサイトへ続けて読みに行くときの間（サイトごと。事務所どうしは同時に読む）
 MAX_PROFILES = 500  # 1つの事務所で読むプロフィールの上限
 REFRESH_DAYS = 7  # 前に集めてから、この日数がたったら集め直す
