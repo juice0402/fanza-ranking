@@ -38,8 +38,9 @@ Claude が書き上げたコメントは `comment_kind: "claude"`（画面では
 4. 点検して書き込む: `python3 scripts/claude_comments.py apply ファイル.json`
    - 先に `--dry-run` で点検してもよい。問題があると**何も書き込まれず**、理由が出る。直してもう一度実行する
    - 警告（書き出し・言い回しの偏り）が出たら、なるべく書き分けてから書き込む
+4b. 女優の歩みの紹介文を5人書く（2026-10-27 から）: `python3 scripts/claude_history.py list` → `docs/claude-history.md` の「書き方」で書く → `python3 scripts/claude_history.py apply ファイル.json`（`count` が0なら何もしない）
 5. `bash scripts/check.sh` を実行して、最後が「✅ ぜんぶ成功」であることを確認する（成功したテストは1行ずつ。失敗したテストだけ ❌ の行と理由が出る）
-6. `git status` で、変わったのが **`site/src/data/new_releases.json`・`site/src/data/catalog/` の中のファイル・売り場のファイル（`site/src/data/doujin.json`・`game.json`・`anime.json`・`amateur.json`・`cinema.json`・`comic.json`・`photo.json`・`vr.json`）だけ**であることを確認する。他のファイルが変わっていたらコミットしない
+6. `git status` で、変わったのが **`site/src/data/new_releases.json`・`site/src/data/catalog/` の中のファイル・売り場のファイル（`site/src/data/doujin.json`・`game.json`・`anime.json`・`amateur.json`・`cinema.json`・`comic.json`・`photo.json`・`vr.json`）・女優の歩みの紹介文（`site/src/data/actress_stories.json`）だけ**であることを確認する。他のファイルが変わっていたらコミットしない
 7. コミット → ブランチをpush → PRを作る（CLAUDE.md の守ること1・2）: `gh api repos/juice0402/fanza-ranking/pulls -f title="…" -f head=<ブランチ> -f base=main -f body="…" --jq '.number'`（答えの全体は数万文字あるので、`--jq` で番号だけ出す）
    - コミットメッセージ: `コメントの仕上げ（Claude）: N件`（データだけのPRなので、プレビューは作られない。待つのは CI（check）だけ。Cloudflare のビルドは使わないので、`[CI Skip]` は要らない）
    - PRのタイトル: `コメントの仕上げ（Claude）: N件`

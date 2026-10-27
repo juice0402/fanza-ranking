@@ -19,11 +19,12 @@ import { SEARCH_MORE_SIZE, buildSearchIndexes } from './search.js';
 import { TEN_YEN_ALWAYS, TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenIndexable, tenYenState } from './ten-yen.js';
 import { FLOOR_REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, normalizeReviews, topRated } from './reviews.js';
 import { normalizeReadings } from './kana.js';
+import { normalizeHistory, normalizeStories } from './history.js';
 import { FLOOR_KEYS, FLOOR_PERIODS, FLOORS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorPeriodRanking, floorSaleItems, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorGenreTops, normalizeFloorSale, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews,readings,genre_tops}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews,readings,genre_tops,actress_history,actress_stories}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -204,6 +205,9 @@ export const paged = pagePlan.paged;
 // 出演者のプロフィール（顔写真・年齢・体型・FANZAの全作品リンク）。名前で引く
 export const profiles = normalizeProfiles(optionalData('actresses'), today);
 export const profilesByName = profileByName(profiles);
+// 女優の歩み（年表。scripts/actress_history.py が毎日少しずつ集める）と、Claude が書いた紹介文（scripts/claude_history.py）。名前で引く。まだ無い人もいる（2026-10-27）
+export const historyByName = normalizeHistory(optionalData('actress_history'));
+export const storiesByName = normalizeStories(optionalData('actress_stories'));
 export const profilesCoverage = profileCoverage(profiles);
 // 女優検索の名簿（FANZA公式の出演者検索の一覧。体型・身長・生年月日が載っている人）。まだ無ければ空
 export const directory = normalizeDirectory(optionalData('actress_directory'), today);

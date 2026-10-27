@@ -2307,6 +2307,12 @@ for c_, x_ in everything.items():
 _live_k = {k for k in range(len(_camps)) if str(_camps[k].get("end", ""))[:10] >= JST_DAY}
 _on_sale = {r["c"] for r in _sale_rows if r["k"] in _live_k}
 bad_act2 = []
+# 女優の歩み（年表。2026-10-27）: 集めてある人のページにだけ欄があり、タイトルに「と年表」。年譜の見出しは決まった言い方だけ（「デビュー作」と言い切らない）
+_hist_file = os.path.join(ROOT, "site", "src", "data", "actress_history.json")
+_hist_rows = (json.load(open(_hist_file, encoding="utf-8")).get("actresses") or {}) if os.path.exists(_hist_file) else {}
+_hist_names = {r.get("name") for r in _hist_rows.values() if isinstance(r, dict) and r.get("name") and int(r.get("total") or 0) > 0 and isinstance(r.get("first"), dict)}
+_hist_label = re.compile(r"^(FANZAでいちばん古い作品|.+でいちばん古い作品|いちばん古いVR作品|[\d,]+本目|いちばん新しい作品)$")
+_hist_seen = 0
 for pth in actress_pages:
     html_ = read(pth)
     raw_ = read_raw(pth)
@@ -2331,9 +2337,18 @@ for pth in actress_pages:
         here.append("ProfilePage")
     if 'class="page-updated"' not in raw_:
         here.append("更新日")
+    _has_hist = 'id="hist-title"' in raw_
+    if _has_hist != (name_ in _hist_names) or (("と年表" in t_) != _has_hist):
+        here.append("歩み")
+    if _has_hist:
+        _hist_seen += 1
+        for _lb in re.findall(r'<span class="hist-label">(.*?)</span>(?=\s*(?:<a class="hist-title"|<span class="hist-title"|</dd>))', raw_, re.S):
+            _lb = htmllib.unescape(re.sub(r"<[^>]+>", "", _lb)).replace("\u200b", "").strip()
+            if not _hist_label.match(_lb):
+                here.append(("年譜の見出し", _lb))
     if here:
         bad_act2.append((name_, here))
-check(f"出演者のページ（{len(actress_pages)}ページ）: タイトルに年月（予約があれば「予約」も）・次の新作・セール中の作品（あるときだけ）・更新日・ProfilePage の構造化データ",
+check(f"出演者のページ（{len(actress_pages)}ページ）: タイトルに年月（予約があれば「予約」も）・次の新作・セール中の作品（あるときだけ）・更新日・ProfilePage の構造化データ・歩み（集めてある{_hist_seen}人だけ・タイトルに「と年表」・年譜の見出し）",
       not bad_act2, bad_act2[:2])
 
 # メーカーのページ（女優のページと同じように強くする。運営者の希望「素晴らしいサイトを目指して完璧に」。2026-10-06）:

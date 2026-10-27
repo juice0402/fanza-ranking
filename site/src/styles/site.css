@@ -2440,6 +2440,130 @@ html.lightbox-open {
   line-height: 1.6;
 }
 
+/* ---------- 女優の歩み（年表。components/ActressHistory.astro。2026-10-27） ---------- */
+/* 紹介文 → 本数の1行 → 年ごとの本数の棒（いちばん多い年だけ黄色）→ 年譜（左に年月、右にできごと）→ 共演・ジャンル・内訳 */
+.hist-story {
+  max-width: 40em;
+  margin: 4px 0 10px;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.hist-lead {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hist-chart {
+  max-width: 640px;
+  margin: 14px 0 0;
+}
+
+.hist-bars,
+.hist-years {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: 0 3px;
+}
+
+.hist-bars {
+  height: 132px;
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+}
+
+.hist-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+}
+
+.hist-val {
+  min-height: 15px;
+  color: var(--paper-dim);
+  font-size: 10px;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hist-bar {
+  display: block;
+  width: min(100%, 22px);
+  height: calc((100% - 15px) * var(--h) / 100);
+  min-height: 0;
+  background: var(--paper-dim);
+  opacity: 0.55;
+}
+
+.hist-col.is-peak .hist-bar {
+  background: var(--pop);
+  opacity: 1;
+}
+
+.hist-col.is-peak .hist-val {
+  color: var(--pop);
+  font-weight: 700;
+}
+
+.hist-years span {
+  padding-top: 4px;
+  color: var(--paper-dim);
+  font-size: 10px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hist-cap {
+  margin-top: 6px;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+
+.hist-line {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 14px;
+  max-width: 40em;
+  margin: 18px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.hist-when {
+  color: var(--paper-dim);
+  font-size: 13px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hist-what {
+  margin: 0;
+}
+
+.hist-label {
+  display: block;
+  font-weight: 700;
+}
+
+.hist-title {
+  display: block;
+  color: var(--paper-dim);
+  font-size: 13px;
+}
+
+a.hist-title {
+  color: var(--paper);
+}
+
+.hist-spec {
+  margin-top: 18px;
+}
+
 /* ---------- サンプル動画（作品ページ） ---------- */
 
 .movie {
