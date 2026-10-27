@@ -26,6 +26,7 @@ run "毎日の更新スクリプト (Python)" python3 tests/test_script.py
 run "Claudeのコメント差し替えの道具 (Python)" python3 tests/test_claude_comments.py
 
 run "Claudeの週のまとめ記事の道具 (Python)" python3 tests/test_claude_roundups.py
+run "女優の歩みの紹介文を書く道具 (Python)" python3 tests/test_claude_history.py
 
 run "Claudeの月のまとめ記事の道具 (Python)" python3 tests/test_claude_monthly.py
 
