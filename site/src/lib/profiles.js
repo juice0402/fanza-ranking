@@ -14,6 +14,35 @@ export const SIZE_BUCKETS = {
   hip: ['-79', '80-84', '85-89', '90-94', '95-'],
 };
 
+// 女優名鑑の絞りこみ（2026-10-27。issue #172「絞って探せる女優名鑑」）。どれも site/public/actress-search.js の BUCKETS と同じ（tests/test_profiles.mjs で突き合わせている）
+// 年代: 年齢（a）の幅。生まれた年は出さず「20代前半」のような幅だけ
+export const ERA_BUCKETS = ['18-19', '20-24', '25-29', '30-34', '35-39', '40-'];
+export const ERA_LABELS = { '18-19': '18・19歳', '20-24': '20代前半', '25-29': '20代後半', '30-34': '30代前半', '35-39': '30代後半', '40-': '40代〜' };
+// FANZA全体の作品数（ft。年表 actress_history.json を集めた人だけ）の幅
+export const TOTAL_BUCKETS = ['-49', '50-99', '100-299', '300-'];
+export const TOTAL_LABELS = { '-49': '〜49本', '50-99': '50〜99本', '100-299': '100〜299本', '300-': '300本〜' };
+export const BLOOD_CHOICES = ['A', 'B', 'O', 'AB'];
+// 出身地（bp）は、47都道府県のどれかに読めたときだけ索引に入れる（この並びで選択肢を出す）
+export const PREFECTURES = ['北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県', '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県', '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'];
+
+/** 出身地の文 → 都道府県の名前（「東京」「東京都」→「東京都」）。47都道府県のどれかで始まらなければ ''（海外・市町村だけなどは絞りこみに使わない） */
+export function prefectureOf(text) {
+  const s = String(text ?? '').normalize('NFKC').replace(/\s+/g, '');
+  if (!s) return '';
+  for (const pref of PREFECTURES) {
+    const short = pref === '北海道' ? pref : pref.slice(0, -1);
+    if (s.startsWith(pref) || s === short) return pref;
+  }
+  return '';
+}
+
+/** 出身地の選択肢（索引の bp。人のいる都道府県だけ、北から順に）→ [{ name, count }] */
+export function prefectureCounts(rows) {
+  const counts = new Map();
+  for (const r of rows ?? []) if (r && PREFECTURES.includes(r.bp)) counts.set(r.bp, (counts.get(r.bp) ?? 0) + 1);
+  return PREFECTURES.filter((p) => counts.has(p)).map((name) => ({ name, count: counts.get(name) }));
+}
+
 /** 幅の表示（"-79" → "〜79"、"80-84" → "80〜84"、"100-" → "100〜"） */
 export const sizeBucketLabel = (bucket) => String(bucket).replace('-', '〜');
 
@@ -81,6 +110,7 @@ export function normalizeDirectory(raw, today) {
       height: intIn(r.height, 120, 210),
       age: ageFromBirthday(r.birthday, today),
       birthMD: birthMonthDay(r.birthday, today),
+      ...profileExtras(r),
     });
   }
   return out;
@@ -225,13 +255,14 @@ export function countWorksByName(items) {
 /**
  * 出演者検索の索引（/data/actresses-index.json）。ブラウザが読んで、年齢・身長・サイズで絞り込む。
  * 短い名前の項目: n 名前 / r 読み / s 出演者ページの短い名前（ページが無い人は ''）/ k 掲載作品の本数 / i 顔写真 /
- *   a 年齢 / h 身長 / b バスト / c カップ / wa ウエスト / hi ヒップ / l FANZAの全作品リンク。載っていない項目は null（カップは ''）。
+ *   a 年齢 / h 身長 / b バスト / c カップ / wa ウエスト / hi ヒップ / l FANZAの全作品リンク /
+ *   bt 血液型 / bp 出身地（都道府県） / fy FANZAで最初の作品の年 / ft FANZA全体の作品数（fy・ft は年表を集めた人だけ。2026-10-27）。載っていない項目は入れない。
  * 生年月日は入れない。作品の多い順。
  * 入れる人: プロフィールを取得済み（fetched がある）の人 ＋ 専用ページがある人。
  *   専用ページがある人は、プロフィールを取れていなくても入れる（検索の部品が出ると、最初から載っている一覧は隠れるため。
  *   入れないと、新しく2本以上になった出演者が一覧から消える）。その場合、数字は null。
  */
-export function buildActressSearchIndex(profiles, items, actressByName, today, directory = []) {
+export function buildActressSearchIndex(profiles, items, actressByName, today, directory = [], history = new Map()) {
   // 女優検索の索引（/data/actresses-index.json）。
   //   名簿（directory: FANZA公式の出演者検索で、体型・身長・生年月日が載っている人。約1万人）＋ 取得済みのプロフィール（このサイトの作品の出演者）
   //   ＋ 専用ページのある出演者（プロフィールが無くても、名前・作品数で探せるように）。
@@ -247,13 +278,21 @@ export function buildActressSearchIndex(profiles, items, actressByName, today, d
     byId.set(id, row);
   };
   for (const d of directory) {
-    put(d.id, { n: d.name, r: d.ruby, i: d.img, a: d.age, h: d.height, b: d.bust, c: d.cup, wa: d.waist, hi: d.hip });
+    put(d.id, { n: d.name, r: d.ruby, i: d.img, a: d.age, h: d.height, b: d.bust, c: d.cup, wa: d.waist, hi: d.hip, bt: d.bloodType, bp: prefectureOf(d.birthplace) });
   }
   const byName = profileByName(profiles);
   for (const p of profiles.filter((x) => x.fetched)) {
     const img = imageKeyOf(p.imageSmall) || imageKeyOf(p.imageLarge) || p.imageSmall || p.imageLarge;
-    put(p.id, { n: p.name, r: p.ruby, i: img, a: p.age, h: p.height, b: p.bust, c: p.cup, wa: p.waist, hi: p.hip });
+    put(p.id, { n: p.name, r: p.ruby, i: img, a: p.age, h: p.height, b: p.bust, c: p.cup, wa: p.waist, hi: p.hip, bt: p.bloodType, bp: prefectureOf(p.birthplace) });
     if (p.listUrl && p.listUrl !== template.replace('{ID}', p.id)) byId.get(p.id).l = p.listUrl;
+  }
+  // FANZAで最初の作品の年（fy）・FANZA全体の作品数（ft）: 年表（actress_history.json）を集めた人だけ。年表の id（FANZAの女優の番号）が同じ行に付ける
+  for (const h of history.values()) {
+    const row = byId.get(String(h?.id ?? ''));
+    if (!row || row.n !== h.name) continue;
+    const year = Number(String(h.first?.d ?? '').slice(0, 4));
+    if (year >= 1970 && year <= 2100) row.fy = year;
+    if (Number.isInteger(h.total) && h.total >= 1) row.ft = h.total;
   }
   const rows = [...byId.values()];
   // このサイトの作品数・専用ページは、名前で付ける（作品には名前しか載らない）。同じ名前の別人がいるときは、プロフィールの id の人にだけ付ける
