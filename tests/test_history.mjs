@@ -82,5 +82,28 @@ const h1 = [...hm.values()][0];
 check('年表の1人分に popular・rated（評価のほうは★のある作品だけ）', h1 && h1.popular.length === 1 && h1.rated.length === 0, JSON.stringify(h1 && [h1.popular.length, h1.rated.length]));
 check('0人でもこわれない', Array.isArray(H.nenpyoIndex([])) && H.nenpyoIndex([]).length === 0);
 
+console.log('■ 名簿の人のページ（女優名鑑その3。#173）');
+{
+  const base = Object.values(raw.actresses)[0];
+  const hist = H.normalizeHistory({ actresses: {
+    11: { ...base, name: '名簿A', total: 300 }, 12: { ...base, name: '名簿B', total: 49 }, 13: { ...base, name: 'ページあり', total: 500 },
+    14: { ...base, name: '別の人', total: 80 }, 15: { ...base, name: '名簿C', total: 60 },
+  } });
+  const dir = new Map([['名簿A', { id: '11', name: '名簿A', img: 'nameboa', age: 25 }], ['名簿B', { id: '12', name: '名簿B', img: '' }], ['ページあり', { id: '13', name: 'ページあり', img: '' }],
+    ['別の人', { id: '99', name: '別の人', img: '' }], ['名簿C', { id: '15', name: '名簿C', img: '' }]]);
+  const gs = H.nenkanGroups(hist, dir, { takenNames: new Set(['ページあり']), slugOf: (n) => `s-${n}`, pathOf: (s) => `/actress/${s}/`, template: 'https://al.dmm.co.jp/?id={ID}', imageBase: 'https://pics.dmm.co.jp/x/' });
+  check('年表があり50本以上・名簿の id が同じ・ページの無い人だけ（本数の多い順）', JSON.stringify(gs.map((g) => g.name)) === '["名簿A","名簿C"]', JSON.stringify(gs.map((g) => g.name)));
+  const a = gs[0];
+  check('作品は0本・プロフィールは名簿の値（顔写真と全作品のURL）', a.items.length === 0 && a.nenkan && a.path === '/actress/s-名簿A/' && a.profile.imageLarge === 'https://pics.dmm.co.jp/x/nameboa.jpg' && a.profile.listUrl === 'https://al.dmm.co.jp/?id=11' && a.profile.age === 25, JSON.stringify(a.profile));
+  check('画像の無い人・URLの形が分からないときは空', gs[1].profile.imageLarge === '' && H.nenkanGroups(hist, dir, { slugOf: (n) => n, pathOf: (s) => s })[0].profile.listUrl === '');
+  check('短い名前が重なる人は作らない', H.nenkanGroups(hist, dir, { takenSlugs: new Set(['s-名簿A']), slugOf: (n) => `s-${n}`, pathOf: (s) => s }).every((g) => g.name !== '名簿A'));
+  const h = hist.get('名簿A');
+  check('検索エンジンに出すのは、年表と紹介文の両方がある人だけ', H.nenkanIndexable(h, { text: '紹介文' }) && !H.nenkanIndexable(h, null) && !H.nenkanIndexable(null, { text: 'x' }));
+  check('タイトル（プロフィールがあれば「プロフィール・」）', H.nenkanPageTitle('名簿A', h, true, 'サイト') === '名簿Aのプロフィール・年表と人気作（FANZA 300本）｜サイト' && H.nenkanPageTitle('名簿A', h, false, 'サイト') === '名簿Aの年表と人気作（FANZA 300本）｜サイト');
+  const d1 = H.nenkanDescription('名簿A', h, null);
+  const d2 = H.nenkanDescription('名簿A', h, { text: '名簿Aさんの作品は、2026年がいちばん多い64本でした。メーカーはメーカーAが110本で、ほとんどを占めています。FANZAでいちばん古い作品は2018年4月です。' });
+  check('説明文は80〜120文字・本数から始まる（紹介文があれば紹介文の文を入れる）', [d1, d2].every((d) => d.length >= 80 && d.length <= 120 && d.startsWith('FANZAの作品は300本（2018年から）。')) && d2.includes('2026年がいちばん多い64本'), JSON.stringify([d1.length, d2.length, d1]));
+}
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

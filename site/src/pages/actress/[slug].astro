@@ -10,11 +10,11 @@ import NextWorks from '../../components/NextWorks.astro';
 import OnSaleWorks from '../../components/OnSaleWorks.astro';
 import RatedShelf from '../../components/RatedShelf.astro';
 import ActressHistory from '../../components/ActressHistory.astro';
-import { HISTORY_TOP_MIN, historyDescriptionHead } from '../../lib/history.js';
+import { HISTORY_TOP_MIN, historyDescriptionHead, nenkanDescription, nenkanIndexable, nenkanPageTitle } from '../../lib/history.js';
 import MiniShelf from '../../components/MiniShelf.astro';
 import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
-import { actressByName, actressGroups, actressReading, agencyOfName, events, eventsOfName, historyByName, makerByName, profilesByName, sale, storiesByName, today, seriesById } from '../../lib/data.js';
+import { actressByName, actressPageGroups, actressReading, agencyOfName, events, eventsOfName, historyByName, makerByName, profilesByName, sale, storiesByName, today, seriesById } from '../../lib/data.js';
 import { readingLine } from '../../lib/kana.js';
 import { entryChips } from '../../lib/insights.js';
 import EntryChips from '../../components/EntryChips.astro';
@@ -33,32 +33,37 @@ import {
   rankedNames,
   shortSpan,
 } from '../../lib/items.js';
-import { ENTITY_LIST_LIMIT } from '../../config.js';
+import { ENTITY_LIST_LIMIT, SITE_NAME } from '../../config.js';
 import { entityListing, hasCalendar, listIndexable } from '../../lib/plan.js';
 import { CALENDAR_PATH, actressIcsPath, webcalUrl } from '../../lib/calendar.js';
 import { faceUrl, profileFacts } from '../../lib/profiles.js';
 import { instagramUrl, xUrl } from '../../lib/agencies.js';
 
-// 作品が2本以上ある出演者ごとに1ページ作る
+// 作品が2本以上ある出演者ごとに1ページ作る。＋女優検索の名簿にいて、年表（FANZA全体で50本以上）を集めた人（作品が0本でも。女優名鑑その3。2026-10-27 #173）
 export function getStaticPaths() {
-  return actressGroups.map((group) => ({ params: { slug: group.slug }, props: { group } }));
+  return actressPageGroups.map((group) => ({ params: { slug: group.slug }, props: { group } }));
 }
 
 const { group } = Astro.props;
-const summary = actressSummary(group);
+// 名簿の人のページ（このサイトの作品が0〜1本。プロフィールは名簿の値。年表と紹介文の両方がそろうまで noindex。#173）
+const nenkan = Boolean(group.nenkan);
+const summary = group.items.length > 0 ? actressSummary(group) : '';
 // 並べるのは新しい順に ENTITY_LIST_LIMIT 本まで（過去作品が多い人・メーカーで、ページが重くなりすぎないように）
 const listing = entityListing(group.items, ENTITY_LIST_LIMIT);
 const groups = groupByDate(listing.shown);
 // 発売日カレンダーは、新作・予約が載っている人・メーカーだけ（lib/plan.js の hasCalendar）
 const calendar = hasCalendar(group);
-// コメントのある作品が1本も無いページ（過去作品だけ）は、検索エンジンには出さない
-const noindex = !listIndexable(group.items);
+// 女優の歩み（年表。FANZAの全作品から数えたもの。集めてある人だけ。2026-10-27）
+const history = historyByName.get(group.name) ?? null;
+const story = history ? storiesByName.get(group.name) ?? null : null;
+// コメントのある作品が1本も無いページ（過去作品だけ）は、検索エンジンには出さない。名簿の人は、年表と紹介文の両方がそろってから
+const noindex = nenkan ? !nenkanIndexable(history, story) : !listIndexable(group.items);
 // メーカーは、作品の多い順に8社まで（ほかは「ほか○社」。名前だけで画面が埋まらないように。2026-10-06）
 const MAKERS_SHOWN = 8;
 const makersAll = rankedNames(group.items.map((i) => i.maker).filter((m) => m !== '不明'), Infinity).names;
 const makers = makersAll.slice(0, MAKERS_SHOWN);
 const formats = formatsOf(group.items);
-const profile = profilesByName.get(group.name); // FANZA公式の出演者データ（無い人もいる）
+const profile = profilesByName.get(group.name) ?? group.profile ?? null; // FANZA公式の出演者データ（無い人もいる。名簿の人は名簿の値）
 // 年齢・身長・サイズ・血液型・出身地・趣味（あるものだけ。趣味・出身地に未成年を連想させる言葉があれば出さない。2026-10-27「女優名鑑」）
 const facts = profileFacts(profile, { skip: isMinorTitle });
 // 所属事務所とSNS（事務所の公式サイトの所属女優のページに載っているものだけ。scripts/agency_links.py が週1回集める）。無い人もいる
@@ -79,14 +84,11 @@ const saleWorks = onSaleItems([...group.items, ...saleExtras], sale, today).filt
 const saleMaxOff = Math.max(0, ...saleWorks.map((i) => offPercent(i.sale.price, i.sale.listPrice) ?? 0)) || null;
 const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 // 最後に変わった日（sitemap の lastmod と同じ）。画面の「○月○日更新」と、構造化データの dateModified に使う
-const modified = listLastmod(group.items, today);
-// 女優の歩み（年表。FANZAの全作品から数えたもの。集めてある人だけ。2026-10-27）
-const history = historyByName.get(group.name) ?? null;
-const story = history ? storiesByName.get(group.name) ?? null : null;
+const modified = nenkan ? [listLastmod(group.items, today), history.checked].sort().pop() : listLastmod(group.items, today);
 // 人気作ベスト10・評価の高い作品（FANZA全体の人気順・評価順。集めてある人だけ。3本から。2026-10-27）。評価のほうは、無い人だけ、このサイトの作品からの棚
 const popularTop = history && history.popular.length >= HISTORY_TOP_MIN ? history.popular : [];
 const ratedTop = history && history.rated.length >= HISTORY_TOP_MIN ? history.rated : [];
-const description = entityDescription(summary, { next: upcomingWorks[0] ?? null, saleCount: saleWorks.length, maxOff: saleMaxOff, head: historyDescriptionHead(history) });
+const description = nenkan ? nenkanDescription(group.name, history, story) : entityDescription(summary, { next: upcomingWorks[0] ?? null, saleCount: saleWorks.length, maxOff: saleMaxOff, head: historyDescriptionHead(history) });
 // 読みがな（FANZAのプロフィール・名簿から。見出しの下と、構造化データの alternateName に。2026-10-10）
 const ruby = readingLine(group.name, actressReading(group.name));
 const sameAs = agency ? [agency.x && `https://x.com/${agency.x}`, agency.instagram && `https://www.instagram.com/${agency.instagram}/`].filter(Boolean) : [];
@@ -114,7 +116,7 @@ const trail = [
 ---
 
 <Base
-  title={actressPageTitle(group, today, Boolean(history), facts.length > 0)}
+  title={nenkan ? nenkanPageTitle(group.name, history, facts.length > 0, SITE_NAME) : actressPageTitle(group, today, Boolean(history), facts.length > 0)}
   description={description}
   path={group.path}
   noindex={noindex}
@@ -129,7 +131,9 @@ const trail = [
       <div class="profile">
         <Face name={group.name} src={faceUrl(profile, true)} size="lg" eager />
         <div class="profile-body">
-          <h1 class="hero-title"><span class="phrase">{group.name}の</span><span class="phrase">新作・出演作品</span></h1>
+          {nenkan
+            ? <h1 class="hero-title" data-nenkan="1"><span class="phrase">{group.name}の</span><span class="phrase">年表と人気作</span></h1>
+            : <h1 class="hero-title"><span class="phrase">{group.name}の</span><span class="phrase">新作・出演作品</span></h1>}
           {ruby && <p class="hero-ruby">{ruby}</p>}
         </div>
       </div>
@@ -138,7 +142,7 @@ const trail = [
         {profile?.listUrl && (
           <a class="btn btn-hot" href={profile.listUrl} target="_blank" rel="sponsored nofollow noopener noreferrer">FANZAで{group.name}の全作品を見る</a>
         )}
-        <FavButton type="actress" favKey={group.name} slug={group.slug} size="lead" off="お気に入り（新作をお知らせ）" on="お気に入り済み（新作をお知らせ）" />
+        {!nenkan && <FavButton type="actress" favKey={group.name} slug={group.slug} size="lead" off="お気に入り（新作をお知らせ）" on="お気に入り済み（新作をお知らせ）" />}
         {calendar && (
           <span class="cal-set">
             <a class="cal-link" href={webcalUrl(actressIcsPath(group.slug))}>発売日をカレンダーで受け取る</a>
@@ -154,8 +158,12 @@ const trail = [
       </div>
     )}
     <dl class="spec section" aria-labelledby={facts.length > 0 ? 'profile-title' : undefined}>
-      <dt class="spec-term">掲載作品</dt>
-      <dd class="spec-desc">{group.items.length}本（{shortSpan(group.items)}発売）</dd>
+      {group.items.length > 0 && (
+        <>
+          <dt class="spec-term">掲載作品</dt>
+          <dd class="spec-desc">{group.items.length}本（{shortSpan(group.items)}発売）</dd>
+        </>
+      )}
       {agency && (
         <>
           <dt class="spec-term">所属</dt>
@@ -247,6 +255,7 @@ const trail = [
 
     <EntryChips chips={entryChips(group.items, seriesById, 'series')} title="出演しているシリーズ" id="series-title" label={`${group.name}さんが出演しているシリーズ`} />
 
+    {group.items.length > 0 && (
     <section class="section" aria-labelledby="works-title">
       <div class="section-head">
         <h2 id="works-title" class="section-title">出演作品（{group.items.length}本）</h2>
@@ -257,5 +266,6 @@ const trail = [
       </div>
       <DaySection groups={groups} />
     </section>
+    )}
   </div>
 </Base>

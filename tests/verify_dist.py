@@ -20,9 +20,25 @@ from urllib.parse import urlparse
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "site", "dist")
 
+_nenkan_cache = {}
+
+
+def is_nenkan(path):
+    """名簿の人のページ（女優名鑑その3。2026-10-27 #173。見出しに data-nenkan="1"）か"""
+    if path not in _nenkan_cache:
+        with open(path, encoding="utf-8") as f:
+            _nenkan_cache[path] = 'data-nenkan="1"' in f.read()
+    return _nenkan_cache[path]
+
+
 def entity_glob(kind):
-    """出演者・メーカーなどの1つずつのページ。/actress/nenpyo/（女優の年表の一覧。2026-10-27）は出演者のページではないので入れない"""
-    return [p for p in glob.glob(os.path.join(DIST, kind, "*", "index.html")) if not (kind == "actress" and os.path.basename(os.path.dirname(p)) == "nenpyo")]
+    """出演者・メーカーなどの1つずつのページ。/actress/nenpyo/（女優の年表の一覧。2026-10-27）は出演者のページではないので入れない。
+    名簿の人のページ（このサイトの作品が無い人。#173）も入れない（nenkan_glob。点検は別）"""
+    return [p for p in glob.glob(os.path.join(DIST, kind, "*", "index.html")) if not (kind == "actress" and (os.path.basename(os.path.dirname(p)) == "nenpyo" or is_nenkan(p)))]
+
+
+def nenkan_glob():
+    return [p for p in glob.glob(os.path.join(DIST, "actress", "*", "index.html")) if os.path.basename(os.path.dirname(p)) != "nenpyo" and is_nenkan(p)]
 
 DATA = os.path.join(ROOT, "site", "src", "data", "new_releases.json")
 CATALOG_DIR = os.path.join(ROOT, "site", "src", "data", "catalog")  # 過去作品（発売月ごとのファイル。まだ無いこともある）
@@ -310,7 +326,8 @@ if os.path.isfile(sitemap_path):
     check("sitemap に出演者一覧・メーカー一覧がある", "/actress/" in sm_paths and "/maker/" in sm_paths)
     for kind in ("actress", "maker", "series", "label"):
         entity_pages = entity_glob(kind)
-        in_sitemap = {p for p in sm_paths if p.startswith(f"/{kind}/") and p != f"/{kind}/" and p != "/actress/nenpyo/"}
+        _nk_paths = {f"/actress/{os.path.basename(os.path.dirname(p))}/" for p in nenkan_glob()} if kind == "actress" else set()
+        in_sitemap = {p for p in sm_paths if p.startswith(f"/{kind}/") and p != f"/{kind}/" and p != "/actress/nenpyo/" and p not in _nk_paths}
         indexable = {f"/{kind}/{os.path.basename(os.path.dirname(p))}/" for p in entity_pages if 'name="robots" content="noindex' not in read_raw(p)}
         check(f"{kind} ページのうち、noindex でないもの（{len(indexable)}/{len(entity_pages)}ページ）が、すべて sitemap に入っている", indexable == in_sitemap, (len(indexable), len(in_sitemap)))
 
@@ -829,6 +846,7 @@ def int_in(v, lo, hi):
 
 
 bad_rows = []
+nenkan_slugs = {os.path.basename(os.path.dirname(p)) for p in nenkan_glob()}  # 名簿の人のページ（作品が0〜1本でも。#173）
 for r in rows:
     here = []
     if not isinstance(r, dict) or not set(r) <= ALLOWED_KEYS or "n" not in r:
@@ -840,7 +858,7 @@ for r in rows:
         here.append("id が数字でない")
     if "k" in r and not (isinstance(r["k"], int) and r["k"] >= 1):
         here.append("作品数が1以上の整数でない")
-    if r.get("s") and (not re.fullmatch(r"[0-9a-f]{10}", str(r["s"])) or r["s"] not in page_slugs or r.get("k", 0) < 2):
+    if r.get("s") and (not re.fullmatch(r"[0-9a-f]{10}", str(r["s"])) or not ((r["s"] in page_slugs and r.get("k", 0) >= 2) or r["s"] in nenkan_slugs)):
         here.append("s のページが存在しない・作品数が2本未満")
     if r.get("i") and not (re.fullmatch(r"[a-z0-9_]{1,60}", str(r["i"])) or fanza_https(r["i"], DMM)):
         here.append("顔写真が、ファイル名でも FANZA(DMM) の https でもない")
@@ -2403,6 +2421,59 @@ for pth in actress_pages:
         bad_act2.append((name_, here))
 check(f"出演者のページ（{len(actress_pages)}ページ）: タイトルに年月（予約があれば「予約」も）・次の新作・セール中の作品（あるときだけ）・更新日・ProfilePage の構造化データ・歩み（集めてある{_hist_seen}人だけ・タイトルに「と年表」・年譜の見出し）・人気作ベスト{_top_seen['popular']}人・評価の高い作品（FANZA全体）{_top_seen['rated']}人は集めてある人だけ",
       not bad_act2, bad_act2[:2])
+
+# 名簿の人のページ（女優名鑑その3。2026-10-27 #173。しょーくん「作品が多い人だけ増やす」）: 女優検索の名簿にいて、このサイトにページの無い人のうち、
+# 年表（FANZA全体で50本以上）を集めた人だけ。年表と紹介文の両方がそろった人だけ検索エンジンに出す（noindex を外す・sitemap に入れる）
+NENKAN_MIN_TOTAL = 50
+_nk_pages = nenkan_glob()
+_st_file = os.path.join(ROOT, "site", "src", "data", "actress_stories.json")
+_st_rows = (json.load(open(_st_file, encoding="utf-8")).get("stories") or {}) if os.path.exists(_st_file) else {}
+_dir_rows = [r for r in (dir_raw.get("rows") if isinstance(dir_raw, dict) and isinstance(dir_raw.get("rows"), list) else []) if isinstance(r, dict)]
+_dir_name_n = {}
+for r in _dir_rows:
+    _dir_name_n[str(r.get("name", "")).strip()] = _dir_name_n.get(str(r.get("name", "")).strip(), 0) + 1
+_dir_id_of = {str(r.get("name", "")).strip(): str(r.get("id")) for r in _dir_rows if _dir_name_n[str(r.get("name", "")).strip()] == 1}
+_hist_id_of = {r.get("name"): str(k) for k, r in _hist_rows.items() if isinstance(r, dict) and r.get("name")}
+_nk_want = {n for n, r in _hist_by_name.items() if n in _hist_names and int(r.get("total") or 0) >= NENKAN_MIN_TOTAL and _dir_id_of.get(n) == _hist_id_of.get(n) and n not in page_name_slug}
+_nk_seen, bad_nk, _nk_index = set(), [], 0
+for pth in _nk_pages:
+    raw_ = read_raw(pth)
+    html_ = read(pth)
+    m_ = re.search(r'<h1 class="hero-title" data-nenkan="1">(.*?)</h1>', html_, re.S)
+    h1_ = htmllib.unescape(re.sub(r"<[^>]+>", "", m_.group(1))).replace("\u200b", "").strip() if m_ else ""
+    name_ = h1_[: -len("の年表と人気作")] if h1_.endswith("の年表と人気作") else ""
+    _nk_seen.add(name_)
+    path_ = f"/actress/{os.path.basename(os.path.dirname(pth))}/"
+    here = []
+    if name_ not in _nk_want:
+        here.append("名簿の人で年表（50本以上）を集めた人でない・ほかにページがある")
+    if 'id="hist-title"' not in raw_:
+        here.append("歩みの欄が無い")
+    _idx = name_ in _hist_names and bool(str((_st_rows.get(name_) or {}).get("text") or "").strip())
+    _nk_index += _idx
+    if ('name="robots" content="noindex' in raw_) == _idx:
+        here.append(("noindex が、年表と紹介文の有無と合わない", _idx))
+    if os.path.isfile(sitemap_path) and ((path_ in sm_paths) != _idx):
+        here.append(("sitemap", _idx))
+    if 'class="fav-btn fav-btn-lead"' in raw_:
+        here.append("お気に入りのボタン（新作をお知らせ）が出ている")
+    for t in tags(html_, "a"):
+        if has_class(t, "btn-hot") and (not fanza_https(t.get("href"), FANZA_LINK) or not SPONSORED <= set(t.get("rel", "").split())):
+            here.append("「FANZAで全作品を見る」のリンクの形")
+    if not re.search(r'"@type":\s*"ProfilePage"', raw_):
+        here.append("ProfilePage")
+    _hrow = _hist_by_name.get(name_) or {}
+    for _sid, _key in (("fanza-popular-title", "popular"), ("fanza-rated-title", "rated")):
+        _sec = re.search(rf'<section[^>]*aria-labelledby="{_sid}".*?</section>', raw_, re.S)
+        if _sec and len(_hrow.get(_key) or []) < 3:
+            here.append(("集めていない欄", _key))
+        if _sec and any(is_minor_title(htmllib.unescape(re.sub(r"<[^>]+>", "", _t)).replace("\u200b", "")) for _t in re.findall(r'class="mini-title">(.*?)</h3>', _sec.group(0), re.S)):
+            here.append(("未成年を連想させるタイトル", _key))
+    if here:
+        bad_nk.append((name_ or path_, here))
+_nk_missing = sorted(_nk_want - _nk_seen)
+check(f"名簿の人のページ（{len(_nk_pages)}ページ・うち検索エンジンに出す{_nk_index}ページ）: 年表（FANZAで{NENKAN_MIN_TOTAL}本以上）を集めた人だけ・全員にある・歩みの欄・年表と紹介文がそろった人だけ noindex を外して sitemap に",
+      not bad_nk and not _nk_missing, (bad_nk[:2], _nk_missing[:3]))
 
 # メーカーのページ（女優のページと同じように強くする。運営者の希望「素晴らしいサイトを目指して完璧に」。2026-10-06）:
 # タイトルに年月・次の新作・セール中の作品と入っているセール・よく出ている女優（顔の丸）・多いジャンル・更新日・CollectionPage
