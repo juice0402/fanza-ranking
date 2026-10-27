@@ -84,6 +84,11 @@ with tempfile.TemporaryDirectory() as d:
     saved = json.load(open(H.PATH))
     check("予算の中で読めた人だけ保存（3回で1人・残り1回では次の人は読めない）", done == 1 and list(saved["actresses"]) in (["1"], ["2"]) and saved["updated"] == "2026-10-27", (done, list(saved["actresses"])))
 
+    ticks = iter([0, 0, 999, 999, 999])
+    os.remove(H.PATH)
+    done = H.run("2026-10-27", max_calls=100, sleep=lambda s: None, call=fake_call, max_minutes=1, clock=lambda: next(ticks))
+    check("時間の上限をこえたら、そこまでで止めて保存する", done == 1 and len(json.load(open(H.PATH))["actresses"]) == 1, done)
+
     def broken(endpoint, params):
         raise RuntimeError("つながらない")
 

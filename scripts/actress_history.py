@@ -33,6 +33,8 @@ DATA_DIR = os.path.join(ROOT, "site", "src", "data")
 PATH = os.environ.get("ACTRESS_HISTORY_PATH", os.path.join(DATA_DIR, "actress_history.json"))
 HISTORY_MIN_ITEMS = 10  # このサイトに、この本数以上ある人だけ（約700人。2026-10-27）
 MAX_CALLS = int(os.environ.get("ACTRESS_HISTORY_CALLS", "400"))  # 1回に呼ぶ回数の上限（0.5秒ずつで約3〜4分）
+MAX_MINUTES = float(os.environ.get("ACTRESS_HISTORY_MINUTES", "12"))  # 1回に使う時間の上限（APIの返事が遅く、1回に約2秒かかる日がある。ワークフローの時間切れより前に止めて保存する。2026-10-27 の1回目が20分で切れたため）
+SAVE_EVERY = 10  # この人数ごとに保存する（途中で止まっても、そこまでは残る）
 REFRESH_DAYS = 21  # この日数より前に集めた人は、集め直す
 PAGE = 100
 OFFSET_MAX = 50000  # APIの offset の上限
@@ -170,7 +172,7 @@ def fetch_all(aid, budget, sleep=time.sleep, call=None):
     return [i for i in items if i], calls
 
 
-def run(today, max_calls=MAX_CALLS, dry=False, sleep=time.sleep, call=None):
+def run(today, max_calls=MAX_CALLS, dry=False, sleep=time.sleep, call=None, max_minutes=MAX_MINUTES, clock=time.monotonic):
     profiles = (load_json(os.path.join(DATA_DIR, "actresses.json"), {}) or {}).get("actresses") or []
     data = load_json(PATH, {"updated": "", "actresses": {}})
     history = data.setdefault("actresses", {})
@@ -179,8 +181,12 @@ def run(today, max_calls=MAX_CALLS, dry=False, sleep=time.sleep, call=None):
     if dry:
         return 0
     used, done, fails, skipped = 0, 0, 0, 0
+    started = clock()
     for aid, name in targets:
         if used >= max_calls:
+            break
+        if clock() - started > max_minutes * 60:
+            print(f"{max_minutes:g}分たったので、ここまでで止めます（続きは次の回）")
             break
         try:
             items, calls = fetch_all(aid, max_calls - used - 1, sleep=sleep, call=call)
@@ -200,6 +206,9 @@ def run(today, max_calls=MAX_CALLS, dry=False, sleep=time.sleep, call=None):
         fails = 0
         history[str(aid)] = summarize(name, items, today)
         done += 1
+        if done % SAVE_EVERY == 0:
+            data["updated"] = today
+            save_json(PATH, data)
     if done:
         data["updated"] = today
         save_json(PATH, data)
