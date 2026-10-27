@@ -97,6 +97,7 @@ run "人気順（新着の人気順・全体の人気順）の部品 (Node.js)" 
 run "FANZA同人・FANZAゲームのページの部品 (Node.js)" node tests/test_floors.mjs
 
 run "セール・キャンペーンの部品 (Node.js)" node tests/test_sale.mjs
+run "品番の見方の部品 (Node.js)" node tests/test_hinban.mjs
 
 run "10円セールの部品 (Node.js + Pythonとの突き合わせ)" node tests/test_ten_yen.mjs
 
