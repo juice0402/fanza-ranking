@@ -1,0 +1,108 @@
+---
+// 品番の見方（/hinban/。運営者の希望「ライバルのよい所を載せよう」。2026-10-27）
+// 品番で探して来る人が多い（Search Console）ので、品番のしくみと「頭の英字 → メーカー・レーベル」の一覧を、このサイトの作品から数えて出す。
+// 説明の実例・数字は、どれもビルドのたびにデータから作る（lib/hinban.js）。品番を入れる欄は、作品検索（/search/?q=）へ送るだけ
+import Base from '../layouts/Base.astro';
+import Breadcrumb from '../components/Breadcrumb.astro';
+import { all, today, makerByName, labelById } from '../lib/data.js';
+import { HINBAN_INDEX_MIN, HINBAN_PATH, hinbanByLetter, hinbanExamples, hinbanPrefixes } from '../lib/hinban.js';
+import { SEARCH_PATH } from '../lib/search.js';
+import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts } from '../lib/items.js';
+
+const rows = hinbanPrefixes(all);
+const letters = hinbanByLetter(rows);
+const ex = hinbanExamples(all, rows);
+const counted = rows.reduce((n, r) => n + r.count, 0);
+const single = rows.filter((r) => r.makers.length === 1).length;
+const ym = (day) => {
+  if (!day) return '';
+  const p = dateParts(day);
+  return `${p.y}年${p.m}月`;
+};
+const searchHref = (q) => `${SEARCH_PATH}?q=${encodeURIComponent(q)}`;
+const [exHead, exNum] = ex.plain ? ex.plain.code.split('-') : ['', ''];
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '品番の見方', path: HINBAN_PATH },
+];
+const top3 = rows.slice(0, 3).map((r) => r.prefix).join('・');
+const title = `FANZAの品番の見方｜頭の英字でメーカーが分かる${rows.length}の記号の一覧｜${SITE_NAME}`;
+const description = `FANZA動画の品番（${ex.plain ? ex.plain.code : 'SSIS-818'}など）の読み方と、頭の英字${rows.length}種類がどのメーカー・レーベルの作品かの一覧です。このサイトの作品${counted.toLocaleString('ja-JP')}本から数えています（多いのは${top3}）。品番から作品も探せます。`;
+const pageLd = { '@context': 'https://schema.org', '@type': 'Article', headline: 'FANZAの品番の見方', url: SITE_URL + HINBAN_PATH, dateModified: today, inLanguage: 'ja' };
+// 一覧が少なすぎるあいだは検索エンジンに出さない
+const noindex = rows.length < HINBAN_INDEX_MIN;
+---
+
+<Base title={title} description={description} path={HINBAN_PATH} noindex={noindex} jsonLd={[breadcrumbLd(trail), pageLd]}>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">FANZAの品番の見方</h1>
+      <p class="hero-lead">品番を入れると、このサイトの作品から探します。</p>
+      <form class="hb-form" role="search" action={SEARCH_PATH} method="get" autocomplete="off">
+        <div class="search-bar">
+          <svg class="search-bar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5 20 20" /></svg>
+          <label class="visually-hidden" for="hb-q">品番</label>
+          <input id="hb-q" class="search-bar-input" type="search" name="q" placeholder={`例 ${ex.plain ? ex.plain.code : 'SSIS-818'}`} enterkeyhint="search" />
+          <button type="submit" class="search-bar-btn">探す</button>
+        </div>
+      </form>
+    </section>
+
+    {ex.plain && (
+      <section class="section" aria-labelledby="hb-how">
+        <h2 id="hb-how" class="section-title">品番のしくみ</h2>
+        <figure class="hb-anatomy">
+          <p class="hb-code" aria-label={`品番 ${ex.plain.code}`}><span class="hb-part hb-head">{exHead}</span><span class="hb-dash">-</span><span class="hb-part hb-num">{exNum}</span></p>
+          <figcaption class="hb-parts">
+            <span class="hb-cap hb-cap-head">メーカー・レーベルの記号</span>
+            <span class="hb-cap hb-cap-num">作品の番号</span>
+          </figcaption>
+        </figure>
+        <p class="hb-text">FANZAのURLの作品IDでは、同じ作品が<code>{ex.plain.cid}</code>のように小文字で、番号は5桁に0をつめた形になります。</p>
+        {ex.headed && <p class="hb-text"><code>{ex.headed.cid}</code>のように、先頭に数字や「h_数字」が付く作品IDもあります。品番はそのうしろの<code>{ex.headed.code}</code>です。</p>}
+        <p class="hb-text">頭の英字は、このサイトの{rows.length}の記号のうち{single}が1つのメーカーだけの作品でした。</p>
+      </section>
+    )}
+
+    {rows.length > 0 && (
+      <section class="section" aria-labelledby="hb-list">
+        <h2 id="hb-list" class="section-title">頭の英字とメーカーの一覧</h2>
+        <p class="section-note note-source">このサイトの作品{counted.toLocaleString('ja-JP')}本から数えた、3本以上ある記号です。</p>
+        <nav class="hb-letters" aria-label="頭の文字">
+          {letters.map((l) => <a href={`#hb-${l.letter}`}>{l.letter}</a>)}
+        </nav>
+        {letters.map((l) => (
+          <section class="hb-letter" aria-labelledby={`hb-${l.letter}`}>
+            <h3 id={`hb-${l.letter}`} class="hb-letter-title">{l.letter}</h3>
+            <div class="table-scroll">
+              <table class="run-table hb-table">
+                <thead>
+                  <tr><th scope="col">記号</th><th scope="col">メーカー</th><th scope="col">レーベル</th><th scope="col">本数</th><th scope="col">いちばん新しい発売</th></tr>
+                </thead>
+                <tbody>
+                  {l.rows.map((r) => (
+                    <tr>
+                      <th scope="row"><a class="hb-prefix" href={searchHref(r.prefix)}>{r.prefix}</a></th>
+                      <td data-label="メーカー">{r.makers.map((m, i) => {
+                        const page = makerByName.get(m.name);
+                        return <>{i > 0 && '・'}{page ? <a href={page.path}>{m.name}</a> : m.name}</>;
+                      })}</td>
+                      <td data-label="レーベル">{r.labels.map((lb, i) => {
+                        const page = lb.id ? labelById.get(lb.id) : null;
+                        return <>{i > 0 && '・'}{page ? <a href={page.path}>{lb.name}</a> : lb.name}</>;
+                      })}</td>
+                      <td data-label="本数">{r.count}本</td>
+                      <td data-label="いちばん新しい発売">{ym(r.last)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ))}
+      </section>
+    )}
+  </div>
+</Base>

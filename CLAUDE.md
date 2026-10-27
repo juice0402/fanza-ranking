@@ -46,6 +46,7 @@ Gemini を使うのは `get_new_releases.py` のコメントの下書きだけ�
 - `scripts/claude_comments.py`・`claude_roundups.py`・`claude_monthly.py`・`claude_history.py` — Claude がコメント・週/月のまとめ・女優の歩みの紹介文を書く道具（`list` → 書く → `apply` が点検して書き込む）
 - `scripts/doujin_game.py`・`floor_data.py`・`floor_history.py`・`floor_sales.py` — 売り場（同人・ゲーム・アニメ・素人・成人映画・コミック・写真集・VR見放題）を集める・人気の動き・セールの記録・キャンペーンごと
 - `scripts/ten_yen.py` — 10円セール ／ `scripts/readings.py` — 読みがな ／ `scripts/genre_tops.py` — ジャンルの人気TOP20
+- `/sale/ending/`（今週終わるセール）・`/hinban/`（品番の見方。`lib/hinban.js`）— 2026-10-27。くわしくは docs/architecture.md の「セール・キャンペーン」の下
 - `scripts/agency_links.py`・`agency_events.py` — 所属事務所とSNS・女優のイベント情報（事務所の公式サイトから。守ること9）
 - `scripts/indexnow.py` — 検索エンジンへのお知らせ（IndexNow。本番の公開のときだけ）
 - `scripts/check.sh`（`quiet_step.sh`）— テスト一式 ／ `scripts/wait_run.py` — GitHub の実行を待つ ／ `scripts/already_updated.sh` — 今日の更新が済んだか
