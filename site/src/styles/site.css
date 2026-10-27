@@ -5059,7 +5059,7 @@ html:not(.js) .actress-search,
   padding: 0 4px;
   font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   font-size: 13px;
-  word-break: break-all;
+  white-space: nowrap; /* 作品ID・品番の途中で折り返さない（いちばん長い作品IDでもスマホの幅に入る） */
 }
 
 /* 頭の文字の目次: 辞書のつめのように、文字だけを並べる */
