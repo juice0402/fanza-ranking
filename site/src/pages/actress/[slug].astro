@@ -9,9 +9,11 @@ import EventList from '../../components/EventList.astro';
 import NextWorks from '../../components/NextWorks.astro';
 import OnSaleWorks from '../../components/OnSaleWorks.astro';
 import RatedShelf from '../../components/RatedShelf.astro';
+import ActressHistory from '../../components/ActressHistory.astro';
+import { historyDescriptionHead } from '../../lib/history.js';
 import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
-import { actressByName, actressGroups, actressReading, agencyOfName, events, eventsOfName, makerByName, profilesByName, sale, today, seriesById } from '../../lib/data.js';
+import { actressByName, actressGroups, actressReading, agencyOfName, events, eventsOfName, historyByName, makerByName, profilesByName, sale, storiesByName, today, seriesById } from '../../lib/data.js';
 import { readingLine } from '../../lib/kana.js';
 import { entryChips } from '../../lib/insights.js';
 import EntryChips from '../../components/EntryChips.astro';
@@ -73,7 +75,10 @@ const saleMaxOff = Math.max(0, ...saleWorks.map((i) => offPercent(i.sale.price, 
 const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 // 最後に変わった日（sitemap の lastmod と同じ）。画面の「○月○日更新」と、構造化データの dateModified に使う
 const modified = listLastmod(group.items, today);
-const description = entityDescription(summary, { next: upcomingWorks[0] ?? null, saleCount: saleWorks.length, maxOff: saleMaxOff });
+// 女優の歩み（年表。FANZAの全作品から数えたもの。集めてある人だけ。2026-10-27）
+const history = historyByName.get(group.name) ?? null;
+const story = history ? storiesByName.get(group.name) ?? null : null;
+const description = entityDescription(summary, { next: upcomingWorks[0] ?? null, saleCount: saleWorks.length, maxOff: saleMaxOff, head: historyDescriptionHead(history) });
 // 読みがな（FANZAのプロフィール・名簿から。見出しの下と、構造化データの alternateName に。2026-10-10）
 const ruby = readingLine(group.name, actressReading(group.name));
 const sameAs = agency ? [agency.x && `https://x.com/${agency.x}`, agency.instagram && `https://www.instagram.com/${agency.instagram}/`].filter(Boolean) : [];
@@ -98,7 +103,7 @@ const trail = [
 ---
 
 <Base
-  title={actressPageTitle(group, today)}
+  title={actressPageTitle(group, today, Boolean(history))}
   description={description}
   path={group.path}
   noindex={noindex}
@@ -182,6 +187,7 @@ const trail = [
     {facts.length > 0 && <p class="profile-source">年齢・身長・サイズは、FANZAの情報です。</p>}
 
     <NextWorks items={upcomingWorks} shown={NEXT_SHOWN} />
+    {history && <ActressHistory name={group.name} history={history} story={story} />}
     <OnSaleWorks items={saleWorks} shown={SALE_SHOWN} label="出演作品が入っているセール" />
     <RatedShelf items={group.items} title={`${group.name}さんの評価の高い作品`} />
 
