@@ -3,7 +3,10 @@
 // data/actress_stories.json（Claude が数字だけを使って書いた短い紹介文。scripts/claude_history.py）。
 // 書くのは FANZA の作品の数字だけ。「デビュー作」とは言い切らず「FANZAでいちばん古い作品」と書く（配信より前の作品があるため）。
 
+import { KANA_ROWS, KANA_OTHER, kanaRow, toHiragana } from './kana.js';
+
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+export const NENPYO_PATH = '/actress/nenpyo/'; // 女優の年表の一覧（2026-10-27。運営者「名前は女優の年表、入口は女優検索のページだけ」）
 export const HISTORY_MAKER_MIN = 3; // 年表に「〇〇でいちばん古い作品」を出すのは、そのメーカーの作品が3本以上あるときだけ
 export const HISTORY_MAKER_MAX = 4; // 年表に出すメーカーの数（最初の作品のメーカーは除く）
 export const HISTORY_GENRES = 5; // 「多いジャンル」の数
@@ -117,3 +120,37 @@ export function peakYear(h) {
 
 /** 説明文（meta description）の頭に付ける1文: 「FANZAの作品は277本（2018年から）。」 */
 export const historyDescriptionHead = (h) => (h ? `FANZAの作品は${h.total.toLocaleString('ja-JP')}本（${+h.first.d.slice(0, 4)}年から）。` : '');
+
+/** 一覧の1行の短い数字: 「2018〜2026年・120本」（同じ年なら「2026年・12本」） */
+export function historyBrief(h) {
+  if (!h) return '';
+  const from = +h.first.d.slice(0, 4);
+  const lastYear = h.years.length ? h.years[h.years.length - 1].year : from;
+  const to = Math.max(from, h.latest ? +h.latest.d.slice(0, 4) : lastYear, lastYear);
+  return `${from === to ? `${from}年` : `${from}〜${to}年`}・${h.total.toLocaleString('ja-JP')}本`;
+}
+
+const NENPYO_NONE = { head: 'その他', key: 'none' };
+
+/**
+ * 女優の年表の一覧（/actress/nenpyo/）: 50音の行ごとに分ける → [{ head, key, id, entries: [{ name, path, reading, brief }] }]
+ * entries: [{ name, path, history, reading }]。読みがなの無い人は、いちばん最後の「その他」（名前の順）
+ */
+export function nenpyoIndex(entries, prefix = 'nenpyo') {
+  const rows = new Map();
+  for (const e of entries) {
+    if (!e || !e.name || !e.path || !e.history) continue;
+    const reading = toHiragana(e.reading ?? '').replace(/\s+/g, '');
+    const row = reading ? kanaRow(reading) : NENPYO_NONE;
+    if (!rows.has(row.key)) rows.set(row.key, { head: row.head, key: row.key, id: `${prefix}-${row.key}`, entries: [] });
+    rows.get(row.key).entries.push({ name: e.name, path: e.path, reading, brief: historyBrief(e.history) });
+  }
+  const by = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+  const order = [...KANA_ROWS, KANA_OTHER, NENPYO_NONE].map((r) => r.key);
+  return order
+    .filter((k) => rows.has(k))
+    .map((k) => {
+      const r = rows.get(k);
+      return { ...r, entries: r.entries.sort((a, b) => by(a.reading, b.reading) || by(a.name, b.name)) };
+    });
+}

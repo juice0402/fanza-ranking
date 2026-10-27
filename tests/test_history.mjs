@@ -51,5 +51,23 @@ console.log('■ 紹介文');
 const st = H.normalizeStories({ stories: { 花子: { text: ' 紹介文です。 ', written: '2026-10-28', checked: '2026-10-27' }, 月子: { text: '', written: '2026-10-28' }, 星子: { text: 'x', written: 'きのう' } } });
 check('書いた日のある紹介文だけ（前後の空白は取る）', st.size === 1 && st.get('花子').text === '紹介文です。' && st.get('花子').checked === '2026-10-27');
 
+console.log('■ 女優の年表の一覧（/actress/nenpyo/）');
+check('一覧の1行の短い数字（年の幅と本数）', H.historyBrief(h) === '2018〜2026年・120本' && H.historyBrief(null) === '', H.historyBrief(h));
+const one = { ...h, total: 1234, first: { ...h.first, d: '2026-01-01' }, latest: null, years: [{ year: 2026, n: 1234, makers: [] }] };
+check('同じ年だけの人は「2026年・1,234本」', H.historyBrief(one) === '2026年・1,234本', H.historyBrief(one));
+const idx = H.nenpyoIndex([
+  { name: '佐藤', path: '/actress/a/#hist-title', history: h, reading: 'さとう' },
+  { name: '阿部', path: '/actress/b/#hist-title', history: h, reading: 'アベ' },
+  { name: '伊藤', path: '/actress/c/#hist-title', history: h, reading: 'いとう' },
+  { name: '草野', path: '/actress/d/#hist-title', history: h, reading: 'ぐさの' },
+  { name: 'Mia', path: '/actress/e/#hist-title', history: h, reading: 'mia' },
+  { name: '読めない', path: '/actress/f/#hist-title', history: h, reading: '' },
+  { name: 'データなし', path: '/actress/g/#hist-title', history: null, reading: 'でーた' },
+]);
+check('50音の行の順・最後に「その他」（読みがなの無い人）', idx.map((r) => r.head).join(',') === 'あ,か,さ,英数,その他', idx.map((r) => r.head).join(','));
+check('行の中は読みの順（カタカナもひらがなで比べる・濁音はもとの行）', idx[0].entries.map((e) => e.name).join(',') === '阿部,伊藤' && idx[1].entries[0].name === '草野', JSON.stringify(idx.map((r) => r.entries.map((e) => e.name))));
+check('年表のデータが無い人は入れない・飛び先と短い数字', !idx.some((r) => r.entries.some((e) => e.name === 'データなし')) && idx[0].entries[0].path === '/actress/b/#hist-title' && idx[0].entries[0].brief === '2018〜2026年・120本' && idx[0].id === 'nenpyo-a');
+check('0人でもこわれない', Array.isArray(H.nenpyoIndex([])) && H.nenpyoIndex([]).length === 0);
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

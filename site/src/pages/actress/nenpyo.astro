@@ -1,0 +1,60 @@
+---
+// 女優の年表の一覧（/actress/nenpyo/。運営者の希望「世界一の女優深掘りサイト」。2026-10-27）
+// 年表のデータ（actress_history.json）がある女優だけを、50音の行ごとに並べる。名前から女優のページの「〇〇さんの歩み」（#hist-title）へ。
+// データは毎日少しずつ増えるので、ビルドのたびにデータから作る（lib/history.js の nenpyoIndex・historyBrief）
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { actressByName, actressReading, historyByName, today } from '../../lib/data.js';
+import { NENPYO_PATH, nenpyoIndex } from '../../lib/history.js';
+import { nenpyoDescription } from '../../lib/describe.js';
+import { ACTRESS_INDEX_PATH, SITE_NAME, SITE_URL, breadcrumbLd } from '../../lib/items.js';
+
+// 女優のページがある人だけ（歩みの欄は女優のページにある）
+const people = [...historyByName.values()].filter((h) => actressByName.has(h.name));
+const rows = nenpyoIndex(people.map((h) => ({ name: h.name, path: `${actressByName.get(h.name).path}#hist-title`, history: h, reading: actressReading(h.name) })));
+const count = rows.reduce((n, r) => n + r.entries.length, 0);
+const top = people.reduce((best, h) => (!best || h.total > best.total ? h : best), null);
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '女優検索', path: ACTRESS_INDEX_PATH },
+  { name: '女優の年表', path: NENPYO_PATH },
+];
+const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: '女優の年表', url: SITE_URL + NENPYO_PATH, dateModified: today, inLanguage: 'ja' };
+---
+
+<Base
+  title={`女優の年表｜FANZAのAV女優${count > 0 ? `${count}人` : ''}の歩みを50音順に｜${SITE_NAME}`}
+  description={nenpyoDescription({ count, top })}
+  path={NENPYO_PATH}
+  noindex={count === 0}
+  jsonLd={[breadcrumbLd(trail), pageLd]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">女優の年表</h1>
+      <p class="hero-lead">{count > 0 ? `${count}人の年表があり、毎日ふえていきます。` : '年表は、毎日少しずつふえていきます。'}</p>
+    </section>
+
+    {rows.length > 0 && (
+      <section class="section" aria-labelledby="nenpyo-title">
+        <h2 id="nenpyo-title" class="section-title">50音で探す</h2>
+        <p class="section-note note-source">数字はFANZAの作品の年と本数です。</p>
+        <nav class="nenpyo-jump" aria-label="50音の行へ">
+          {rows.map((r) => <a href={`#${r.id}`}>{r.head}</a>)}
+        </nav>
+        {rows.map((r) => (
+          <div class="kana-block">
+            <h3 id={r.id} class="kana-head">{r.head}</h3>
+            <ul class="nenpyo-list">
+              {r.entries.map((e) => (
+                <li><a href={e.path}>{e.name}</a><span class="nenpyo-n">{e.brief}</span></li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </section>
+    )}
+  </div>
+</Base>

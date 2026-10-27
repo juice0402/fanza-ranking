@@ -3,11 +3,12 @@ import Base from '../../layouts/Base.astro';
 import { actressIndexDescription } from '../../lib/describe.js';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import Face from '../../components/Face.astro';
-import { actressGroups, actressSearchIndex, actressIndexCoverage, profilesByName } from '../../lib/data.js';
+import { actressByName, actressGroups, actressSearchIndex, actressIndexCoverage, historyByName, profilesByName } from '../../lib/data.js';
 import { ACTRESS_INDEX_PATH, SITE_NAME, ENTITY_MIN_ITEMS, breadcrumbLd } from '../../lib/items.js';
 import { ACTRESS_PAGE_SIZE, ACTRESS_SEARCH_INDEX_PATH, SIZE_BUCKETS, actressFirstPage, commonSizeBucket, compactSpec, faceUrl, sizeBucketLabel } from '../../lib/profiles.js';
 import { ACTRESS_FALLBACK_LIMIT } from '../../config.js';
 import { agencyCounts } from '../../lib/agencies.js';
+import { NENPYO_PATH } from '../../lib/history.js';
 
 const trail = [
   { name: 'トップ', path: '/' },
@@ -15,6 +16,8 @@ const trail = [
 ];
 const hasSearch = actressSearchIndex.actresses.length > 0;
 const cov = actressIndexCoverage;
+// 女優の年表の一覧への入口（/actress/nenpyo/。年表のある人がいるときだけ。2026-10-27）
+const nenpyoCount = [...historyByName.keys()].filter((n) => actressByName.has(n)).length;
 const fmt = (n) => n.toLocaleString('ja-JP');
 // JavaScriptが使えないとき用の一覧は、作品数の多い順に ACTRESS_FALLBACK_LIMIT 人まで（ふだんは「条件で探す」に入れかわって隠れるので、
 // ページを軽くするため少なめ。全員は、上の「条件で探す」で探せる）
@@ -65,6 +68,7 @@ import { assetUrl } from '../../lib/assets.js';
     <section class="hero">
       <h1 class="hero-title">女優検索</h1>
       <p class="hero-lead">{hasSearch ? <>FANZAの{fmt(cov.total)}人を、名前・年齢・体型で探せます。</> : <>作品が{ENTITY_MIN_ITEMS}本以上ある出演者です。</>}</p>
+      {nenpyoCount > 0 && <p class="hero-links"><a class="spec-link" href={NENPYO_PATH}>女優の年表（{fmt(nenpyoCount)}人）</a></p>}
     </section>
 
     {hasSearch && (
