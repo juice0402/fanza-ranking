@@ -48,14 +48,16 @@ MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
 
 # ---- 調整できる設定 ----
 DATA_PATH = os.environ.get("DATA_PATH", os.path.join("site", "src", "data", "new_releases.json"))
-# --- 件数の目安: Geminiの無料枠は「1日20回ほど」。新規(12+4)＋再挑戦(4)＝20回に収めています。---
-# 有料枠にしたときは、この3つと GEMINI_MAX_CALLS を増やしてOK（例: 20 / 12 / 6 / 40）
+# --- 件数の目安: Geminiの無料枠は「1日20回ほど」。新規(12+予約4)＋再挑戦(4)＝20回に収めています。---
+# 有料枠にしたときは、NEW_ITEMS_PER_RUN・UPCOMING_AI_ITEMS・RETRY_PER_RUN と GEMINI_MAX_CALLS を増やしてOK（例: 20 / 12 / 6 / 40）
 NEW_ITEMS_PER_RUN = 12      # 1回の実行で新しく追加する「発売済み」作品の最大数
-UPCOMING_ITEMS = 4          # 「予約受付中」として追加する作品の最大数
+UPCOMING_ITEMS = 12         # 「予約受付中」として追加する作品の最大数（FANZAの人気順の上から。2026-10-27 に4→12）
+UPCOMING_AI_ITEMS = 4       # そのうち Gemini の下書きを付ける本数（上位から。残りは代わりの文で入れ、Claude の予約タスクが仕上げる）
+UPCOMING_FETCH = 100        # 予約を取る本数（保存済みをのぞいても UPCOMING_ITEMS 本そろうよう多めに。APIの1回の上限は100）
 RETRY_PER_RUN = 4           # 代わりの文のままの作品に、AIコメントを再挑戦する最大数
 GEMINI_MAX_CALLS = int(os.environ.get("GEMINI_MAX_CALLS", "20"))  # 1回の実行でGeminiに頼む最大回数
 LOOKBACK_DAYS = 14          # 何日前までの発売作品を探すか
-UPCOMING_DAYS = 14          # 何日先までの予約作品を探すか
+UPCOMING_DAYS = 30          # 何日先までの予約作品を探すか
 MAX_COMMENT_TRIES = 3       # 1作品あたりのAI再挑戦の上限（ブロックされ続けるのを防ぐ）
 GEMINI_INTERVAL_SEC = float(os.environ.get("GEMINI_INTERVAL_SEC", "5"))  # API制限対策の待ち時間
 MAX_AI_FAILS_IN_ROW = 3     # 連続で失敗したら、その回はAI呼び出しをやめる
@@ -2213,8 +2215,9 @@ def main():
             "gte_date": iso(today - timedelta(days=LOOKBACK_DAYS)),
             "lte_date": iso(today.replace(hour=23, minute=59, second=59)),
         })
-        upcoming_raw = call_item_list({
-            "hits": UPCOMING_ITEMS,
+        upcoming_raw = call_item_list({  # FANZAの人気順の上から（保存済みをのぞいて UPCOMING_ITEMS 本）
+            "sort": "rank",
+            "hits": UPCOMING_FETCH,
             "gte_date": iso(today + timedelta(days=1)),
             "lte_date": iso(today + timedelta(days=UPCOMING_DAYS)),
         })
@@ -2253,12 +2256,19 @@ def main():
     maker = None
     if not refresh_only:
         newcomers = [p for p in released if p["cid"] not in archive][:NEW_ITEMS_PER_RUN]
-        newcomers += [p for p in upcoming if p["cid"] not in archive and p["cid"] not in {n["cid"] for n in newcomers}]
-        print(f"🆕 新しく追加: {len(newcomers)}件")
+        new_upcoming = [p for p in upcoming if p["cid"] not in archive and p["cid"] not in {n["cid"] for n in newcomers}][:UPCOMING_ITEMS]
+        template_only = {p["cid"] for p in new_upcoming[UPCOMING_AI_ITEMS:]}  # Gemini を使わず、代わりの文で入れる予約
+        newcomers += new_upcoming
+        print(f"🆕 新しく追加: {len(newcomers)}件（うち予約{len(new_upcoming)}件・代わりの文だけ{len(template_only)}件）")
 
         maker = CommentMaker()
         for i, item in enumerate(newcomers, 1):
-            maker.apply(item)
+            if item["cid"] in template_only:
+                item["comment"] = template_comment(item)
+                item["comment_kind"] = "template"
+                item.setdefault("comment_tries", 0)
+            else:
+                maker.apply(item)
             item["updated"] = today_str
             archive[item["cid"]] = item
             print(f"  [{i}/{len(newcomers)}] {item['comment_kind']:8s} {item['comment'][:24]}")
