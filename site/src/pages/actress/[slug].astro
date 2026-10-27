@@ -10,7 +10,8 @@ import NextWorks from '../../components/NextWorks.astro';
 import OnSaleWorks from '../../components/OnSaleWorks.astro';
 import RatedShelf from '../../components/RatedShelf.astro';
 import ActressHistory from '../../components/ActressHistory.astro';
-import { historyDescriptionHead } from '../../lib/history.js';
+import { HISTORY_TOP_MIN, historyDescriptionHead } from '../../lib/history.js';
+import MiniShelf from '../../components/MiniShelf.astro';
 import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
 import { actressByName, actressGroups, actressReading, agencyOfName, events, eventsOfName, historyByName, makerByName, profilesByName, sale, storiesByName, today, seriesById } from '../../lib/data.js';
@@ -58,7 +59,8 @@ const makersAll = rankedNames(group.items.map((i) => i.maker).filter((m) => m !=
 const makers = makersAll.slice(0, MAKERS_SHOWN);
 const formats = formatsOf(group.items);
 const profile = profilesByName.get(group.name); // FANZA公式の出演者データ（無い人もいる）
-const facts = profileFacts(profile);
+// 年齢・身長・サイズ・血液型・出身地・趣味（あるものだけ。趣味・出身地に未成年を連想させる言葉があれば出さない。2026-10-27「女優名鑑」）
+const facts = profileFacts(profile, { skip: isMinorTitle });
 // 所属事務所とSNS（事務所の公式サイトの所属女優のページに載っているものだけ。scripts/agency_links.py が週1回集める）。無い人もいる
 const agency = agencyOfName(group.name);
 const seenDay = agency ? `${Number(agency.seen.slice(5, 7))}月${Number(agency.seen.slice(8, 10))}日` : '';
@@ -70,7 +72,10 @@ const NEXT_SHOWN = 3;
 const SALE_SHOWN = 6;
 // 次の新作・セール中の作品は、こちらから案内する欄なので、未成年を連想させるタイトルの作品は入れない（下の「作品」の一覧には出る。2026-10-06）
 const upcomingWorks = group.items.filter((i) => i.dateKey > today && !isMinorTitle(i.title)).sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.cid.localeCompare(b.cid));
-const saleWorks = onSaleItems(group.items, sale, today).filter((i) => !isMinorTitle(i.title));
+// セールのデータに出演者が入っていれば、このサイトに無いセール中の作品も入れる（作品ページが無いので FANZA へ。2026-10-27）
+const groupCids = new Set(group.items.map((i) => i.cid));
+const saleExtras = sale.extras.filter((i) => !groupCids.has(i.cid) && i.actress.includes(group.name));
+const saleWorks = onSaleItems([...group.items, ...saleExtras], sale, today).filter((i) => !isMinorTitle(i.title));
 const saleMaxOff = Math.max(0, ...saleWorks.map((i) => offPercent(i.sale.price, i.sale.listPrice) ?? 0)) || null;
 const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 // 最後に変わった日（sitemap の lastmod と同じ）。画面の「○月○日更新」と、構造化データの dateModified に使う
@@ -78,6 +83,9 @@ const modified = listLastmod(group.items, today);
 // 女優の歩み（年表。FANZAの全作品から数えたもの。集めてある人だけ。2026-10-27）
 const history = historyByName.get(group.name) ?? null;
 const story = history ? storiesByName.get(group.name) ?? null : null;
+// 人気作ベスト10・評価の高い作品（FANZA全体の人気順・評価順。集めてある人だけ。3本から。2026-10-27）。評価のほうは、無い人だけ、このサイトの作品からの棚
+const popularTop = history && history.popular.length >= HISTORY_TOP_MIN ? history.popular : [];
+const ratedTop = history && history.rated.length >= HISTORY_TOP_MIN ? history.rated : [];
 const description = entityDescription(summary, { next: upcomingWorks[0] ?? null, saleCount: saleWorks.length, maxOff: saleMaxOff, head: historyDescriptionHead(history) });
 // 読みがな（FANZAのプロフィール・名簿から。見出しの下と、構造化データの alternateName に。2026-10-10）
 const ruby = readingLine(group.name, actressReading(group.name));
@@ -93,6 +101,9 @@ const profileLd = {
     ...(ruby ? { alternateName: ruby } : {}),
     ...(faceUrl(profile, true) ? { image: faceUrl(profile, true) } : {}),
     ...(sameAs.length ? { sameAs } : {}),
+    // schema.org の Person にある項目だけ（身長・出身地。2026-10-27「女優名鑑」）
+    ...(profile?.height ? { height: { '@type': 'QuantitativeValue', value: profile.height, unitCode: 'CMT' } } : {}),
+    ...(facts.some(([k]) => k === '出身地') ? { birthPlace: { '@type': 'Place', name: profile.birthplace } } : {}),
   },
 };
 const trail = [
@@ -103,7 +114,7 @@ const trail = [
 ---
 
 <Base
-  title={actressPageTitle(group, today, Boolean(history))}
+  title={actressPageTitle(group, today, Boolean(history), facts.length > 0)}
   description={description}
   path={group.path}
   noindex={noindex}
@@ -137,7 +148,12 @@ const trail = [
       </div>
     </section>
 
-    <dl class="spec section">
+    {facts.length > 0 && (
+      <div class="section-head profile-head">
+        <h2 id="profile-title" class="section-title">プロフィール</h2>
+      </div>
+    )}
+    <dl class="spec section" aria-labelledby={facts.length > 0 ? 'profile-title' : undefined}>
       <dt class="spec-term">掲載作品</dt>
       <dd class="spec-desc">{group.items.length}本（{shortSpan(group.items)}発売）</dd>
       {agency && (
@@ -184,12 +200,32 @@ const trail = [
     </dl>
 
     {agency && <p class="profile-source">所属とSNSは、所属事務所（{agency.agency}）の公式サイトに載っている情報です（{seenDay}時点）。</p>}
-    {facts.length > 0 && <p class="profile-source">年齢・身長・サイズは、FANZAの情報です。</p>}
+    {facts.length > 0 && <p class="profile-source">年齢から趣味までは、FANZAの情報です。</p>}
 
     <NextWorks items={upcomingWorks} shown={NEXT_SHOWN} />
+    <OnSaleWorks items={saleWorks} shown={SALE_SHOWN} label="出演作品が入っているセール" title="セール中の出演作" />
     {history && <ActressHistory name={group.name} history={history} story={story} />}
-    <OnSaleWorks items={saleWorks} shown={SALE_SHOWN} label="出演作品が入っているセール" />
-    <RatedShelf items={group.items} title={`${group.name}さんの評価の高い作品`} />
+
+    {popularTop.length > 0 && (
+      <section class="section" aria-labelledby="fanza-popular-title" data-vr-group>
+        <div class="section-head">
+          <h2 id="fanza-popular-title" class="section-title">{group.name}さんの人気作ベスト{popularTop.length}</h2>
+          <p class="section-note">FANZAの人気順｜{md(history.checked)}時点</p>
+        </div>
+        <MiniShelf items={popularTop} rank />
+      </section>
+    )}
+    {ratedTop.length > 0 ? (
+      <section class="section" aria-labelledby="fanza-rated-title" data-vr-group>
+        <div class="section-head">
+          <h2 id="fanza-rated-title" class="section-title">{group.name}さんの評価の高い作品</h2>
+          <p class="section-note">FANZA全体のレビューの評価順｜{md(history.checked)}時点</p>
+        </div>
+        <MiniShelf items={ratedTop} rate />
+      </section>
+    ) : (
+      <RatedShelf items={group.items} title={`${group.name}さんの評価の高い作品`} />
+    )}
 
     {myEvents.length > 0 && (
       <section class="section" aria-labelledby="events-title">

@@ -105,8 +105,11 @@ else:
         rows = [r for r in act_raw.get("actresses", []) if isinstance(r, dict)] if isinstance(act_raw, dict) else []
         ids = [str(r.get("id", "")) for r in rows]
         check("出演者: id は数字だけで重複がない・名前がある", all(re.fullmatch(r"\d{1,12}", i) for i in ids) and len(set(ids)) == len(ids) and all(str(r.get("name", "")).strip() for r in rows))
-        check("出演者: 使う項目だけを持つ（血液型・趣味・出身地などは持たない）",
-              all(set(r) == {"id", "name", "ruby", "image_small", "image_large", "bust", "cup", "waist", "hip", "height", "birthday", "list_url", "fetched"} for r in rows),
+        _base = {"id", "name", "ruby", "image_small", "image_large", "bust", "cup", "waist", "hip", "height", "birthday", "list_url", "fetched"}
+        _extra = {"blood_type", "prefectures", "hobby"}  # 2026-10-27「女優名鑑」から。入っているときだけ・空の値は書かない
+        check("出演者: 使う項目だけを持つ（血液型・出身地・趣味は、入っているときだけ）",
+              all(_base <= set(r) <= _base | _extra and all(str(r[k]).strip() for k in set(r) & _extra) for r in rows)
+              and all(r.get("blood_type", "A") in ("A", "B", "O", "AB") and len(r.get("hobby", "")) <= 100 and len(r.get("prefectures", "")) <= 30 for r in rows),
               sorted({k for r in rows for k in r})[:20])
         check("出演者: 顔写真・全作品リンクは、空かFANZA(DMM)のhttps", all(_fanza_https(r.get("image_small"), ["dmm.co.jp"]) or r.get("image_small") == "" for r in rows) and all(_fanza_https(r.get("image_large"), ["dmm.co.jp"]) or r.get("image_large") == "" for r in rows) and all(_fanza_https(r.get("list_url"), ["fanza.co.jp", "dmm.co.jp"]) or r.get("list_url") == "" for r in rows))
 
@@ -146,8 +149,9 @@ else:
         dids = [str(r.get("id", "")) for r in drows]
         check("名簿: id は数字だけで重複がない・名前がある・id の順", all(re.fullmatch(r"\d{1,12}", i) for i in dids) and len(set(dids)) == len(dids)
               and all(str(r.get("name", "")).strip() for r in drows) and dids == sorted(dids, key=int))
-        check("名簿: 使う項目だけを持つ（血液型・趣味・出身地・URLなどは持たない）",
-              all(set(r) == {"id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday", "seen"} for r in drows),
+        _dbase = {"id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday", "seen"}
+        check("名簿: 使う項目だけを持つ（URLなどは持たない。血液型・出身地・趣味は、入っているときだけ。2026-10-27 から）",
+              all(_dbase <= set(r) <= _dbase | {"blood_type", "prefectures", "hobby"} and all(str(r[k]).strip() for k in set(r) - _dbase) for r in drows),
               sorted({k for r in drows for k in r})[:20])
         check("名簿: 顔写真は、FANZAの画像のファイル名（英小文字・数字・_）か空", all(re.fullmatch(r"[a-z0-9_]{0,60}", str(r.get("img", "x"))) for r in drows))
         check("名簿: 体型は、空か範囲内の整数・カップは英字1文字か空",

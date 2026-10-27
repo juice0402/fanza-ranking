@@ -154,6 +154,7 @@ export function normalizeProfiles(raw, today) {
       birthMD: birthMonthDay(r.birthday, today),
       listUrl: safeHttpsUrl(r.list_url, FANZA_LIST_HOSTS),
       fetched: isDay(r.fetched) ? r.fetched : '',
+      ...profileExtras(r),
     });
   }
   return profiles;
@@ -165,8 +166,27 @@ export const profileByName = (profiles) => new Map(profiles.map((p) => [p.name, 
 /** 顔写真のURL。大きい画像（ページの見出し用）が無ければ小さい画像、その逆も。無ければ '' */
 export const faceUrl = (profile, large = false) => (profile ? (large ? profile.imageLarge || profile.imageSmall : profile.imageSmall || profile.imageLarge) : '');
 
-/** プロフィールの項目（出演者ページの表に出すもの）。載っている項目だけを [名前, 値] で返す */
-export function profileFacts(p) {
+const BLOOD_TYPES = new Set(['A', 'B', 'O', 'AB']);
+export const HOBBY_SHOWN = 50; // 趣味は公式の文のまま、長いときはこの文字数ほどで切る（2026-10-27）
+
+/** 血液型・出身地・趣味（FANZA公式の出演者検索の値。2026-10-27 から「女優名鑑」のプロフィール表に出す）。無い・形が違うときは '' */
+export function profileExtras(r) {
+  const text = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
+  return {
+    bloodType: typeof r?.blood_type === 'string' && BLOOD_TYPES.has(r.blood_type) ? r.blood_type : '',
+    birthplace: text(r?.prefectures, 30),
+    hobby: text(r?.hobby, 100),
+  };
+}
+
+/** 趣味を画面に出す長さに（HOBBY_SHOWN 文字をこえたら切って「…」） */
+export const hobbyLine = (h) => (h.length > HOBBY_SHOWN ? `${h.slice(0, HOBBY_SHOWN)}…` : h);
+
+/**
+ * プロフィールの表の項目 [[見出し, 値]…]（載っている項目だけ）: 年齢・身長・バスト（カップ）・ウエスト・ヒップ・血液型・出身地・趣味。
+ * skip: 出さない文（趣味に、未成年を連想させる言葉があるとき。ページの側で isMinorTitle を渡す）
+ */
+export function profileFacts(p, { skip = () => false } = {}) {
   const facts = [];
   if (!p) return facts;
   if (p.age !== null) facts.push(['年齢', `${p.age}歳`]);
@@ -175,6 +195,9 @@ export function profileFacts(p) {
   else if (p.cup) facts.push(['カップ', `${p.cup}カップ`]);
   if (p.waist !== null) facts.push(['ウエスト', `${p.waist}cm`]);
   if (p.hip !== null) facts.push(['ヒップ', `${p.hip}cm`]);
+  if (p.bloodType) facts.push(['血液型', `${p.bloodType}型`]);
+  if (p.birthplace && !skip(p.birthplace)) facts.push(['出身地', p.birthplace]);
+  if (p.hobby && !skip(p.hobby)) facts.push(['趣味', hobbyLine(p.hobby)]);
   return facts;
 }
 

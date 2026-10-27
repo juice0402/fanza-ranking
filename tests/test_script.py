@@ -859,7 +859,10 @@ check("顔写真のURLは https に直る", hanako.get("image_small", "").starts
 check("FANZAの全作品リンク（アフィリエイトURL）が入る", hanako.get("list_url", "").startswith("https://al.fanza.co.jp/?lurl="), hanako.get("list_url"))
 check("取得日が入る", hanako.get("fetched") == TODAY_STR)
 raw_text = open(act_path, encoding="utf-8").read()
-check("血液型・趣味・出身地は保存しない（必要ないため）", "散歩" not in raw_text and "東京都" not in raw_text and "blood" not in raw_text and "hobby" not in raw_text and "prefectures" not in raw_text)
+check("血液型・趣味・出身地を保存する（女優名鑑のプロフィール表。2026-10-27）", (hanako.get("blood_type"), hanako.get("hobby"), hanako.get("prefectures")) == ("A", "散歩", "東京都"), hanako)
+_bare = m_p.clean_actress_entry({"id": "9", "name": "x", "blood_type": "", "hobby": "制服集め", "prefectures": " "}, TODAY_STR)
+check("空の値・未成年を連想させる趣味は書かない", not any(k in _bare for k in ("blood_type", "hobby", "prefectures")), _bare)
+check("血液型は A・B・O・AB だけ（「AB型」「ｏ」も直す）", m_p.profile_extras({"blood_type": "AB型"}) == {"blood_type": "AB"} and m_p.profile_extras({"blood_type": "ｏ"}) == {"blood_type": "O"} and m_p.profile_extras({"blood_type": "C"}) == {})
 check("保存済みの作品にいるのに id が分からない名前は、名前の完全一致が1人だけのとき採用する", "既知の人" in by_name and by_name["既知の人"]["id"] == str(fake_actress_id("既知の人")), sorted(by_name))
 check("同じ名前が2人以上・見つからない名前は、推測で選ばず「見つからなかった」として覚える", "同名の人" not in by_name and "不明人A" not in by_name and act["unmatched"] == {"不明人A": TODAY_STR, "同名の人": TODAY_STR}, act["unmatched"])
 check("ログに件数が出る", "出演者プロフィール" in out_p, out_p[-400:])
@@ -1150,9 +1153,10 @@ check("1回目の一覧: バストありで、id の順・100人ずつ、1人目
 dj = json.load(open(dir_file, encoding="utf-8"))
 ids = [r["id"] for r in dj["rows"]]
 check("名簿に入るのは、体型・身長・生年月日のどれかがある人だけ（250人のうち225人）", len(ids) == 225 and all(r["bust"] or r["height"] or r["birthday"] for r in dj["rows"]), len(ids))
-check("名簿の1行: 決めた項目だけ（id・名前・読み・顔写真のファイル名・体型・身長・生年月日・最後に見かけた日）。血液型・趣味・出身地・URLは保存しない",
-      all(set(r) == {"id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday", "seen"} and r["seen"] == TODAY_STR for r in dj["rows"]) and "散歩" not in open(dir_file, encoding="utf-8").read()
-      and "東京都" not in open(dir_file, encoding="utf-8").read() and "http" not in open(dir_file, encoding="utf-8").read())
+_base_keys = {"id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday", "seen"}
+check("名簿の1行: 決めた項目だけ（id・名前・読み・顔写真のファイル名・体型・身長・生年月日・最後に見かけた日と、あれば血液型・出身地・趣味）。URLは保存しない",
+      all(_base_keys <= set(r) <= _base_keys | {"blood_type", "prefectures", "hobby"} and r["seen"] == TODAY_STR for r in dj["rows"])
+      and "http" not in open(dir_file, encoding="utf-8").read())
 check("顔写真は、FANZAの画像のファイル名だけ（a100001 など）", dj["rows"][0]["img"] == "a" + dj["rows"][0]["id"], dj["rows"][0])
 check("バストの一覧を最後まで取ったら、次の絞り込み（身長あり）の1人目へ進む", dj["cursor"] == {"filter": 1, "offset": 1} and dj["cycle_done"] == "", dj["cursor"])
 check("名簿のファイルは、1人1行（毎日の差分が、変わった人だけになるように）", open(dir_file, encoding="utf-8").read().count("\n") == len(ids) + 2)
@@ -1176,7 +1180,11 @@ m_d4 = load_module(d_path, directory_calls=10)
 code_d4, out_d4 = run_main_capture(m_d4, env_d4)
 check("一覧の取得が続けて失敗したら、その回はやめる（3回まで。1回につき3回まで試すので、問い合わせは9回）・ほかの更新は続ける・続きの位置は進めない", code_d4 == 0 and sum(1 for ep, q in env_d4.queries if ep == "ActressSearch" and "offset" in q) == 9 and json.load(open(dir_file, encoding="utf-8"))["cursor"] == {"filter": 0, "offset": 1}, out_d4[-300:])
 row_ok = m_d4.directory_row({"id": "123", "name": "テスト", "ruby": "てすと", "bust": "86", "height": "abc", "birthday": "1700-01-01", "blood_type": "A", "imageURL": {"small": "http://pics.dmm.co.jp/mono/actjpgs/thumbnail/test_a.jpg"}}, TODAY_STR)
-check("名簿の1行: 変な値（数字でない身長・ありえない生年月日）は捨てる。http の画像も、ファイル名だけ取り出す", row_ok == {"id": "123", "name": "テスト", "ruby": "てすと", "img": "test_a", "bust": 86, "cup": "", "waist": None, "hip": None, "height": None, "birthday": ""}, row_ok)
+check("名簿の1行: 変な値（数字でない身長・ありえない生年月日）は捨てる。http の画像も、ファイル名だけ取り出す。血液型など、入っているものだけ足す", row_ok == {"id": "123", "name": "テスト", "ruby": "てすと", "img": "test_a", "bust": 86, "cup": "", "waist": None, "hip": None, "height": None, "birthday": "", "blood_type": "A"}, row_ok)
+_st = {"actresses": {"123": m_d4.clean_actress_entry({"id": "123", "name": "テスト", "hobby": "古い趣味"}, TODAY_STR), "9": m_d4.clean_actress_entry({"id": "9", "name": "y"}, TODAY_STR)}}
+_dir = {"rows": {"123": dict(row_ok, seen=TODAY_STR), "9": dict(row_ok, id="9", seen="2026-01-01", hobby="読書")}}
+_n = m_d4.fill_profile_extras(_st, _dir, TODAY_STR)
+check("きょう名簿で見かけた人の血液型など（だけ）を、出演者データに写す（無くなった項目は消す）", _n == 1 and _st["actresses"]["123"].get("blood_type") == "A" and "hobby" not in _st["actresses"]["123"] and "hobby" not in _st["actresses"]["9"], _st)
 check("名簿の1行: 体型・身長・生年月日がどれも無い人・id が数字でない人は入れない", m_d4.directory_row({"id": "5", "name": "x", "imageURL": {"small": "http://pics.dmm.co.jp/mono/actjpgs/thumbnail/x.jpg"}}, TODAY_STR) is None and m_d4.directory_row({"id": "abc", "name": "x", "bust": "80"}, TODAY_STR) is None)
 check("名簿の1行: FANZAの画像でないURLは使わない", m_d4.directory_row({"id": "7", "name": "x", "bust": "80", "imageURL": {"small": "https://evil.example/mono/actjpgs/thumbnail/x.jpg"}}, TODAY_STR)["img"] == "")
 

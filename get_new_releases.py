@@ -33,6 +33,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -961,10 +962,31 @@ def clean_actress_entry(raw, today_str):
         "birthday": valid_birthday(raw.get("birthday"), today_str),
         "list_url": safe_https_url(list_url, LIST_HOSTS),
         "fetched": day_key(raw.get("fetched")),
+        **profile_extras(raw),
     }
 
 
-PROFILE_DETAIL_KEYS = ("image_small", "image_large", "bust", "cup", "waist", "hip", "height", "birthday", "list_url")
+BLOOD_TYPES = ("A", "B", "O", "AB")
+PROFILE_TEXT_MAX = {"hobby": 100, "prefectures": 30}  # 趣味・出身地を保存する長さ（画面では趣味を50文字ほどで切る）
+
+
+def profile_extras(raw):
+    """血液型・出身地・趣味（FANZA公式の出演者検索の値。運営者の判断で「女優名鑑」のプロフィール表に出す。2026-10-27）。
+    空の値は書かない（入っている項目だけの dict）。趣味・出身地に、未成年を連想させる言葉・露骨な言葉があれば、その項目は保存しない"""
+    out = {}
+    blood = unicodedata.normalize("NFKC", str(raw.get("blood_type") or "")).strip().upper().removesuffix("型")
+    if blood in BLOOD_TYPES:
+        out["blood_type"] = blood
+    for key, limit in PROFILE_TEXT_MAX.items():
+        text = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", str(raw.get(key) or ""))).strip()
+        low = text.lower()
+        if not text or text in ("-", "---", "不明", "非公開") or any(w.lower() in low for w in MINOR_WORDS + EXPLICIT_WORDS):
+            continue
+        out[key] = text[:limit]
+    return out
+
+
+PROFILE_DETAIL_KEYS = ("image_small", "image_large", "bust", "cup", "waist", "hip", "height", "birthday", "list_url", "blood_type", "prefectures", "hobby")
 
 
 def has_profile_details(entry):
@@ -1098,12 +1120,13 @@ def update_profiles(state, archive, today_str):
 # 女優検索の名簿（FANZA公式の出演者検索の一覧から。サイトに作品が無い人も、体型・身長・年齢で探せるようにする）
 # ------------------------------------------------------------------
 DIRECTORY_FIELDS = ("id", "name", "ruby", "img", "bust", "cup", "waist", "hip", "height", "birthday", "seen")  # seen: 一覧で最後に見かけた日
+PROFILE_EXTRA_KEYS = ("blood_type", "prefectures", "hobby")  # 名簿・出演者データに、入っているときだけ書く項目
 
 
 def directory_row(raw, today_str):
     """出演者検索の1件 → 名簿の1行（保存する形）。体型・身長・生年月日のどれも無い人は None（検索の条件に使えないため、名簿に入れない）。
     顔写真は、FANZAの画像のファイル名（例 hasumi_kurea）だけを持つ（URLは決まった形なので、サイト側で組み立てる）。
-    血液型・趣味・出身地は保存しない（clean_actress_entry と同じ決まり）"""
+    血液型・出身地・趣味は、入っているときだけ持つ（profile_extras。2026-10-27 から）"""
     entry = clean_actress_entry(raw, today_str)
     if not entry:
         return None
@@ -1113,7 +1136,25 @@ def directory_row(raw, today_str):
            "birthday": entry["birthday"]}
     if not any(row[k] for k in ("bust", "waist", "hip", "height", "birthday")):
         return None
+    row.update({k: entry[k] for k in PROFILE_EXTRA_KEYS if entry.get(k)})  # 血液型・出身地・趣味（あるものだけ。空の値は書かない）
     return row
+
+
+def fill_profile_extras(actress_state, directory, today_str):
+    """きょう名簿の一覧で見かけた人の血液型・出身地・趣味を、同じ id の出演者データ（actresses.json）に写す。写した人数を返す。
+    名簿は約5日で全員を一回りするので、前に取った人も、APIの回数を増やさずに少しずつ埋まる（2026-10-27）"""
+    changed = 0
+    for rid, row in directory["rows"].items():
+        entry = actress_state["actresses"].get(rid)
+        if entry is None or row.get("seen") != today_str:
+            continue
+        extras = {k: row[k] for k in PROFILE_EXTRA_KEYS if row.get(k)}
+        if {k: entry[k] for k in PROFILE_EXTRA_KEYS if entry.get(k)} != extras:
+            for k in PROFILE_EXTRA_KEYS:
+                entry.pop(k, None)
+            entry.update(extras)
+            changed += 1
+    return changed
 
 
 def load_directory(today_str):
@@ -1158,7 +1199,7 @@ def save_directory(state):
         os.makedirs(folder, exist_ok=True)
     head = {"cursor": state["cursor"], "cycle_done": state["cycle_done"], "cycle_start": state.get("cycle_start", ""),
             "prev_cycle_start": state.get("prev_cycle_start", "")}
-    body = ",\n".join(json.dumps({k: r[k] for k in DIRECTORY_FIELDS}, ensure_ascii=False) for r in rows)
+    body = ",\n".join(json.dumps({**{k: r[k] for k in DIRECTORY_FIELDS}, **{k: r[k] for k in PROFILE_EXTRA_KEYS if r.get(k)}}, ensure_ascii=False) for r in rows)
     text = json.dumps(head, ensure_ascii=False)[:-1] + ', "rows": [\n' + body + "\n]}\n"
     tmp_path = DIRECTORY_PATH + ".tmp"
     with open(tmp_path, "w", encoding="utf-8") as f:
@@ -2324,6 +2365,8 @@ def main():
     def directory_stage():
         result = update_directory(directory, today_str)
         save_directory(directory)
+        if actress_state is not None and fill_profile_extras(actress_state, directory, today_str):
+            save_actress_state(actress_state)  # 名簿で見た血液型・出身地・趣味を、出演者データにも写す（APIの回数は増やさない）
         return result
 
     directory_result = run_stage("女優検索の名簿の取得", directory_stage) if directory is not None and DIRECTORY_CALLS_PER_RUN > 0 else None
