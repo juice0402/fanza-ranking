@@ -13,7 +13,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "茨城県",
+   "hobby": "パソコン"
   },
   {
    "id": "126",
@@ -28,7 +31,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "広島県",
+   "hobby": "読書"
   },
   {
    "id": "238",
@@ -43,7 +49,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "神奈川県",
+   "hobby": "音楽鑑賞"
   },
   {
    "id": "244",
@@ -58,7 +67,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "東京都",
+   "hobby": "ショッピング"
   },
   {
    "id": "460",
@@ -73,7 +85,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "神奈川県"
   },
   {
    "id": "574",
@@ -103,7 +116,10 @@
    "height": 157,
    "birthday": "1978-06-30",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D592%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "A",
+   "prefectures": "東京都",
+   "hobby": "ショッピング"
   },
   {
    "id": "615",
@@ -118,7 +134,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "東京都",
+   "hobby": "水泳、サウナ"
   },
   {
    "id": "714",
@@ -148,7 +167,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "神奈川県",
+   "hobby": "ショッピング、バレーボール"
   },
   {
    "id": "1270",
@@ -163,7 +185,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "静岡県",
+   "hobby": "音楽鑑賞、バトミントン"
   },
   {
    "id": "1338",
@@ -178,7 +203,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O"
   },
   {
    "id": "1369",
@@ -193,7 +219,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "東京都",
+   "hobby": "映画鑑賞、ゴルフ♪"
   },
   {
    "id": "1372",
@@ -208,7 +237,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "東京都"
   },
   {
    "id": "1826",
@@ -223,7 +254,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "東京都",
+   "hobby": "ショッピング、水泳、スノーボード、スポーツ全般"
   },
   {
    "id": "2015",
@@ -238,7 +272,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "神奈川県",
+   "hobby": "クラシックバレエ"
   },
   {
    "id": "2482",
@@ -253,7 +290,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "東京都",
+   "hobby": "カラオケ"
   },
   {
    "id": "2752",
@@ -268,7 +308,10 @@
    "height": 160,
    "birthday": "1979-02-22",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D2752%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "O",
+   "prefectures": "東京都",
+   "hobby": "水泳"
   },
   {
    "id": "3611",
@@ -283,7 +326,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "AB",
+   "prefectures": "千葉県"
   },
   {
    "id": "4009",
@@ -298,7 +343,10 @@
    "height": 157,
    "birthday": "1983-01-26",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D4009%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "AB",
+   "prefectures": "神奈川県",
+   "hobby": "読書、旅行、ピアノ"
   },
   {
    "id": "4050",
@@ -313,7 +361,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "福島県"
   },
   {
    "id": "4294",
@@ -328,7 +377,10 @@
    "height": 160,
    "birthday": "1972-08-20",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D4294%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "O",
+   "prefectures": "東京都",
+   "hobby": "料理"
   },
   {
    "id": "4318",
@@ -343,7 +395,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "静岡県",
+   "hobby": "犬の散歩"
   },
   {
    "id": "4365",
@@ -373,7 +428,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O"
   },
   {
    "id": "5018",
@@ -418,7 +474,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "大阪府",
+   "hobby": "お菓子作り、ネイルアート"
   },
   {
    "id": "5240",
@@ -463,7 +522,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "hobby": "ドライブ、ショッピング"
   },
   {
    "id": "5981",
@@ -508,7 +569,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "青森県",
+   "hobby": "おかし作り、スポーツ観戦、映画鑑賞"
   },
   {
    "id": "7788",
@@ -523,7 +587,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "東京都",
+   "hobby": "買い物、トランペット"
   },
   {
    "id": "7849",
@@ -538,7 +605,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "茨城県"
   },
   {
    "id": "8983",
@@ -583,7 +652,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "東京都",
+   "hobby": "水泳、カラオケ、お風呂"
   },
   {
    "id": "10125",
@@ -598,7 +670,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "hobby": "英会話、トールペインティング、料理、ソーイング、書道"
   },
   {
    "id": "10228",
@@ -613,7 +687,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "hobby": "ガーデニング、旅"
   },
   {
    "id": "11823",
@@ -3916,6 +3992,21 @@
    "fetched": ""
   },
   {
+   "id": "1021359",
+   "name": "夏目彩春",
+   "ruby": "なつめいろは",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "",
+   "fetched": ""
+  },
+  {
    "id": "1021388",
    "name": "峰岸ふじこ",
    "ruby": "みねぎしふじこ",
@@ -4171,6 +4262,21 @@
    "fetched": ""
   },
   {
+   "id": "1023357",
+   "name": "富沢みすず",
+   "ruby": "とみざわみすず",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "",
+   "fetched": ""
+  },
+  {
    "id": "1023606",
    "name": "松島涼子",
    "ruby": "まつしまりょうこ",
@@ -4303,7 +4409,10 @@
    "height": 167,
    "birthday": "1993-07-07",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1024513%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "O",
+   "prefectures": "東京都",
+   "hobby": "DJ、絶対音感、中国語検定1級、フルート、歯科衛生士"
   },
   {
    "id": "1024786",
@@ -4333,7 +4442,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "東京都",
+   "hobby": "ジム、犬、料理"
   },
   {
    "id": "1025436",
@@ -4348,7 +4459,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "hobby": "作曲、料理、洋服作り"
   },
   {
    "id": "1025503",
@@ -4363,7 +4476,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "神奈川県"
   },
   {
    "id": "1025667",
@@ -4393,7 +4507,10 @@
    "height": 168,
    "birthday": "1980-06-04",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1025901%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "A",
+   "prefectures": "東京都",
+   "hobby": "クラシックバレエ"
   },
   {
    "id": "1026090",
@@ -4798,7 +4915,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "hobby": "料理"
   },
   {
    "id": "1028493",
@@ -4843,7 +4962,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "スポーツ、マッサージ"
   },
   {
    "id": "1028594",
@@ -4873,7 +4993,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "埼玉県",
+   "hobby": "買い物、料理"
   },
   {
    "id": "1028716",
@@ -5008,7 +5131,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "東京都",
+   "hobby": "ホットヨガ、料理"
   },
   {
    "id": "1029665",
@@ -5098,7 +5224,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "アイドルDVD鑑賞"
   },
   {
    "id": "1030267",
@@ -5128,7 +5255,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "石川県",
+   "hobby": "料理"
   },
   {
    "id": "1030359",
@@ -5203,7 +5333,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "音楽鑑賞"
   },
   {
    "id": "1030692",
@@ -5293,7 +5424,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "東京都",
+   "hobby": "お魚釣り"
   },
   {
    "id": "1031643",
@@ -5338,7 +5471,8 @@
    "height": 154,
    "birthday": "1991-04-19",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1031741%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "hobby": "クラシック音楽鑑賞、ピアノ、バイオリン演奏"
   },
   {
    "id": "1031775",
@@ -5383,7 +5517,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "AB",
+   "prefectures": "東京都",
+   "hobby": "カラオケ、大食い"
   },
   {
    "id": "1032093",
@@ -5413,7 +5550,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "愛知県"
   },
   {
    "id": "1032130",
@@ -5533,7 +5672,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "兵庫県",
+   "hobby": "バスケ、バレー"
   },
   {
    "id": "1032765",
@@ -5713,7 +5854,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "千葉県",
+   "hobby": "映画、漫画の声似"
   },
   {
    "id": "1033660",
@@ -5728,7 +5872,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "新体操"
   },
   {
    "id": "1033698",
@@ -5758,7 +5903,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "ゲーム(RPG)、映画"
   },
   {
    "id": "1033869",
@@ -5773,7 +5919,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "東京都",
+   "hobby": "絵を描くこと/バスケットボール"
   },
   {
    "id": "1033976",
@@ -5788,7 +5936,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A"
   },
   {
    "id": "1034081",
@@ -5803,7 +5952,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "AB",
+   "prefectures": "岐阜県"
   },
   {
    "id": "1034244",
@@ -5863,7 +6014,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "東京都",
+   "hobby": "映画、読書、散歩、コミュニケーション"
   },
   {
    "id": "1034540",
@@ -5878,7 +6031,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "京都府"
   },
   {
    "id": "1034659",
@@ -5893,7 +6047,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "東京都",
+   "hobby": "映画鑑賞、料理"
   },
   {
    "id": "1034956",
@@ -5908,7 +6065,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "神奈川県"
   },
   {
    "id": "1035123",
@@ -5938,7 +6097,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "ネイル"
   },
   {
    "id": "1035287",
@@ -5998,7 +6158,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "東京都",
+   "hobby": "旅行、読書、ブログ"
   },
   {
    "id": "1035513",
@@ -6013,7 +6176,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "東京",
+   "hobby": "ランニング/お菓子作り"
   },
   {
    "id": "1035596",
@@ -6043,7 +6209,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "ショッピング、誰とでも仲良くなれる"
   },
   {
    "id": "1035625",
@@ -6343,7 +6510,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "秋田県",
+   "hobby": "お酒、バスケットボール"
   },
   {
    "id": "1037431",
@@ -6403,7 +6573,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "神奈川県",
+   "hobby": "ネットサーフィン(WiFi命)、アイドル研究"
   },
   {
    "id": "1037986",
@@ -6598,7 +6771,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "和歌山県",
+   "hobby": "一人旅、バトン"
   },
   {
    "id": "1038950",
@@ -6643,7 +6818,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "prefectures": "京都府",
+   "hobby": "水泳"
   },
   {
    "id": "1039157",
@@ -6658,7 +6836,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "秋田県"
   },
   {
    "id": "1039192",
@@ -6748,7 +6927,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "ドライブ"
   },
   {
    "id": "1039995",
@@ -6838,7 +7018,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "栃木県",
+   "hobby": "スパ、食べ歩き、料理"
   },
   {
    "id": "1041095",
@@ -6853,7 +7036,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "兵庫県"
   },
   {
    "id": "1041106",
@@ -6913,7 +7097,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "水泳、Netflixを見ること"
   },
   {
    "id": "1041625",
@@ -6988,7 +7173,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "埼玉県",
+   "hobby": "絵を描く事、競馬、鉄道"
   },
   {
    "id": "1041835",
@@ -7153,7 +7341,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "滋賀県",
+   "hobby": "旅行・吹奏楽"
   },
   {
    "id": "1042125",
@@ -7198,7 +7389,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "栃木県",
+   "hobby": "お笑い、ピアノ"
   },
   {
    "id": "1042423",
@@ -7318,7 +7512,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "バドミントン"
   },
   {
    "id": "1043077",
@@ -7348,7 +7543,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "静岡県",
+   "hobby": "海外旅行"
   },
   {
    "id": "1043259",
@@ -7393,7 +7590,10 @@
    "height": 153,
    "birthday": "1998-06-18",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1043810%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "O",
+   "prefectures": "東京都",
+   "hobby": "ダンス"
   },
   {
    "id": "1043832",
@@ -7423,7 +7623,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "ウェイクボード"
   },
   {
    "id": "1043955",
@@ -7558,7 +7759,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "山梨県"
   },
   {
    "id": "1044864",
@@ -7693,7 +7895,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "鳥取県",
+   "hobby": "字を書くこと、読書、剣道、一人旅"
   },
   {
    "id": "1045963",
@@ -7738,7 +7942,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "AB",
+   "prefectures": "東京都",
+   "hobby": "ショッピング、体が柔らかいこと"
   },
   {
    "id": "1046149",
@@ -7753,7 +7960,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "愛知県",
+   "hobby": "筋トレ・ボクシング・ボルダリング、ダンス・アイスの早食い"
   },
   {
    "id": "1046237",
@@ -7768,7 +7978,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "神奈川県",
+   "hobby": "読書、映画"
   },
   {
    "id": "1046349",
@@ -7813,7 +8026,9 @@
    "height": 148,
    "birthday": "2000-01-01",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1046723%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "prefectures": "東京都",
+   "hobby": "ファッション、歌、ピアノ、トランペット、水泳、絵画"
   },
   {
    "id": "1046724",
@@ -7843,7 +8058,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "青森県",
+   "hobby": "お酒を飲むこと"
   },
   {
    "id": "1046896",
@@ -7918,7 +8136,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "長野県"
   },
   {
    "id": "1047288",
@@ -7963,7 +8182,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "東京都",
+   "hobby": "カラオケ、ダーツ、マッサージ"
   },
   {
    "id": "1047550",
@@ -7993,7 +8215,9 @@
    "height": 167,
    "birthday": "1991-04-25",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1047611%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "prefectures": "滋賀県",
+   "hobby": "弓道、体操、カフェ巡り"
   },
   {
    "id": "1047650",
@@ -8143,7 +8367,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "神奈川県",
+   "hobby": "カフェ巡り、料理"
   },
   {
    "id": "1048286",
@@ -8203,12 +8429,29 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "東京都",
+   "hobby": "美容、筋トレ、ゲーム、華道"
   },
   {
    "id": "1048552",
    "name": "七瀬沙菜",
    "ruby": "ななせさな",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "",
+   "fetched": ""
+  },
+  {
+   "id": "1048957",
+   "name": "チェリー・キス",
+   "ruby": "ちぇりーきす",
    "image_small": "",
    "image_large": "",
    "bust": null,
@@ -8278,7 +8521,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "イラスト、読書"
   },
   {
    "id": "1049136",
@@ -8353,7 +8597,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "東京都",
+   "hobby": "散歩、料理"
   },
   {
    "id": "1049518",
@@ -8368,7 +8614,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "アクセサリー集め、肩もみ"
   },
   {
    "id": "1049687",
@@ -8518,7 +8765,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "東京都",
+   "hobby": "アニメ"
   },
   {
    "id": "1050455",
@@ -8548,7 +8798,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "山梨県",
+   "hobby": "コスプレ、衣装作り"
   },
   {
    "id": "1050729",
@@ -8608,7 +8860,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "埼玉県",
+   "hobby": "ギター、ソフトボール、バスケ"
   },
   {
    "id": "1051008",
@@ -8623,7 +8877,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "お笑い、ダンス"
   },
   {
    "id": "1051009",
@@ -8713,7 +8968,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "映画鑑賞、ゲーム、字を書くこと"
   },
   {
    "id": "1051410",
@@ -8788,7 +9044,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "プラネタリウム鑑賞、笑顔"
   },
   {
    "id": "1051794",
@@ -8848,7 +9105,9 @@
    "height": 145,
    "birthday": "1999-12-30",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1051877%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "A",
+   "hobby": "ゲーム"
   },
   {
    "id": "1052094",
@@ -8968,7 +9227,9 @@
    "height": null,
    "birthday": "1995-11-30",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1052739%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "O",
+   "prefectures": "青森県"
   },
   {
    "id": "1052775",
@@ -9013,7 +9274,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "新潟県",
+   "hobby": "読書、ピアノ、音楽鑑賞、料理"
   },
   {
    "id": "1052881",
@@ -9103,7 +9366,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "料理、携帯の早打ち"
   },
   {
    "id": "1053258",
@@ -9148,7 +9412,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "AB",
+   "prefectures": "東京都"
   },
   {
    "id": "1053420",
@@ -9223,7 +9489,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "宮城県"
   },
   {
    "id": "1053618",
@@ -9298,7 +9566,8 @@
    "height": 149,
    "birthday": "1998-03-18",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1054167%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "hobby": "カラオケ、音楽鑑賞、ピアノ"
   },
   {
    "id": "1054168",
@@ -9328,7 +9597,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "タピオカ屋巡り、アニメ鑑賞、ギター、ベース、人の年齢を当てる事"
   },
   {
    "id": "1054437",
@@ -9358,7 +9628,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "B",
+   "prefectures": "東京都",
+   "hobby": "ゲーム、健康作り、アニメ、マンガ"
   },
   {
    "id": "1054715",
@@ -9508,7 +9781,9 @@
    "height": 158,
    "birthday": "2000-06-28",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1055230%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-06"
+   "fetched": "2026-10-06",
+   "prefectures": "長野県",
+   "hobby": "映画、水泳"
   },
   {
    "id": "1055313",
@@ -9523,7 +9798,9 @@
    "height": 168,
    "birthday": "1997-11-30",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1055313%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-05"
+   "fetched": "2026-10-05",
+   "blood_type": "AB",
+   "hobby": "ダンス、金管楽器"
   },
   {
    "id": "1055590",
@@ -9538,7 +9815,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "食べ歩き、空手"
   },
   {
    "id": "1055595",
@@ -9688,7 +9966,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "hobby": "映画鑑賞、バスケットボール"
   },
   {
    "id": "1056586",
@@ -9733,7 +10013,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "読書、歌うこと、速読"
   },
   {
    "id": "1057330",
@@ -9808,7 +10089,9 @@
    "height": 156,
    "birthday": "2000-09-03",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1057477%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-04"
+   "fetched": "2026-10-04",
+   "prefectures": "長野県",
+   "hobby": "料理、ピアノ"
   },
   {
    "id": "1057670",
@@ -9868,7 +10151,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "下着集め、お酒"
   },
   {
    "id": "1057921",
@@ -9928,7 +10212,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "映画鑑賞"
   },
   {
    "id": "1058155",
@@ -10003,7 +10288,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "カラオケ"
   },
   {
    "id": "1058580",
@@ -10063,7 +10349,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "prefectures": "栃木県",
+   "hobby": "カラオケ"
   },
   {
    "id": "1059206",
@@ -10123,7 +10411,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "hobby": "バレーボール、音楽鑑賞"
   },
   {
    "id": "1059341",
@@ -10168,7 +10458,9 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "A",
+   "hobby": "カラオケ、DVD鑑賞"
   },
   {
    "id": "1059499",
@@ -10228,7 +10520,8 @@
    "height": 156,
    "birthday": "2000-08-25",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1059611%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-05"
+   "fetched": "2026-10-05",
+   "prefectures": "長崎県"
   },
   {
    "id": "1059802",
@@ -10363,7 +10656,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "京都府",
+   "hobby": "プログラミング、ダーツ、スカッシュ"
   },
   {
    "id": "1060480",
@@ -10378,7 +10674,8 @@
    "height": 151,
    "birthday": "1999-09-20",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1060480%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-05"
+   "fetched": "2026-10-05",
+   "hobby": "ゲーム、速読"
   },
   {
    "id": "1060671",
@@ -10513,7 +10810,8 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "hobby": "一輪車、指パッチン"
   },
   {
    "id": "1061068",
@@ -10594,46 +10892,48 @@
    "id": "1061509",
    "name": "天音まひな",
    "ruby": "あまねまひな",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
-   "cup": "",
-   "waist": null,
-   "hip": null,
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/amane_mahina.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/amane_mahina.jpg",
+   "bust": 78,
+   "cup": "G",
+   "waist": 58,
+   "hip": 82,
    "height": null,
-   "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "birthday": "1999-07-16",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1061509%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1061517",
    "name": "滝川恵理",
    "ruby": "たきがわえり",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/takigawa_eri.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/takigawa_eri.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1061517%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1061586",
    "name": "森日向子",
    "ruby": "もりひなこ",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
-   "cup": "",
-   "waist": null,
-   "hip": null,
-   "height": null,
-   "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/mori_hinako.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/mori_hinako.jpg",
+   "bust": 75,
+   "cup": "A",
+   "waist": 56,
+   "hip": 88,
+   "height": 166,
+   "birthday": "2000-09-09",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1061586%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29",
+   "hobby": "メイク、アイドルの応援",
+   "prefectures": "三重県"
   },
   {
    "id": "1061659",
@@ -10654,76 +10954,79 @@
    "id": "1061760",
    "name": "葵いぶき",
    "ruby": "あおいいぶき",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
-   "cup": "",
-   "waist": null,
-   "hip": null,
-   "height": null,
-   "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/aoi_ibuki.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/aoi_ibuki.jpg",
+   "bust": 88,
+   "cup": "G",
+   "waist": 59,
+   "hip": 90,
+   "height": 162,
+   "birthday": "2001-05-18",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1061760%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1061763",
    "name": "神坂朋子",
    "ruby": "かみさかともこ",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/kamisaka_tomoko.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/kamisaka_tomoko.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1061763%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1062041",
    "name": "さつき芽衣",
    "ruby": "さつきめい",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
-   "cup": "",
-   "waist": null,
-   "hip": null,
-   "height": null,
-   "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/satuki_mei3.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/satuki_mei3.jpg",
+   "bust": 87,
+   "cup": "F",
+   "waist": 60,
+   "hip": 86,
+   "height": 154,
+   "birthday": "2000-08-16",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1062041%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29",
+   "hobby": "料理、アニメを見ること、絵を描く事",
+   "prefectures": "山形県"
   },
   {
    "id": "1062043",
    "name": "佐々波エリカ",
    "ruby": "さざなみえりか",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/sazanami_erika.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/sazanami_erika.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1062043%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1062051",
    "name": "前乃菜々",
    "ruby": "まえのなな",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
-   "cup": "",
-   "waist": null,
-   "hip": null,
-   "height": null,
-   "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/maeno_nana.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/maeno_nana.jpg",
+   "bust": 83,
+   "cup": "D",
+   "waist": 57,
+   "hip": 89,
+   "height": 157,
+   "birthday": "1997-12-24",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1062051%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29",
+   "hobby": "競馬を見る、軟体"
   },
   {
    "id": "1062053",
@@ -10744,16 +11047,16 @@
    "id": "1062074",
    "name": "宮島めい",
    "ruby": "みやじまめい",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/miyazima_mei.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/miyazima_mei.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
-   "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "birthday": "2000-10-17",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1062074%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1062570",
@@ -10767,8 +11070,8 @@
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1062570%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1062984",
@@ -10789,16 +11092,16 @@
    "id": "1062990",
    "name": "夕季ちとせ",
    "ruby": "ゆきちとせ",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
-   "cup": "",
-   "waist": null,
-   "hip": null,
-   "height": null,
-   "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/yuki_titose.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/yuki_titose.jpg",
+   "bust": 110,
+   "cup": "J",
+   "waist": 72,
+   "hip": 100,
+   "height": 168,
+   "birthday": "1991-10-10",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1062990%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1063016",
@@ -10813,67 +11116,71 @@
    "height": 153,
    "birthday": "2001-05-20",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1063016%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "A",
+   "prefectures": "神奈川県",
+   "hobby": "一人YouTube撮影、お菓子作り、サッカー観戦、バイオリン"
   },
   {
    "id": "1063057",
    "name": "飛鳥りいな",
    "ruby": "あすかりいな",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
-   "cup": "",
-   "waist": null,
-   "hip": null,
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/asuka_riina.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/asuka_riina.jpg",
+   "bust": 95,
+   "cup": "H",
+   "waist": 56,
+   "hip": 84,
    "height": null,
-   "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "birthday": "2001-02-04",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1063057%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1063058",
    "name": "三岳ゆうな",
    "ruby": "みたけゆうな",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/mitake_yuuna.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/mitake_yuuna.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1063058%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1063059",
    "name": "若宮はずき",
    "ruby": "わかみやはずき",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/wakamiya_hazuki.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/wakamiya_hazuki.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1063059%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1063214",
    "name": "七ツ森りり",
    "ruby": "ななつもりりり",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
-   "cup": "",
-   "waist": null,
-   "hip": null,
-   "height": null,
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/nanatumori_riri.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/nanatumori_riri.jpg",
+   "bust": 89,
+   "cup": "F",
+   "waist": 62,
+   "hip": 90,
+   "height": 153,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1063214%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29",
+   "hobby": "旅行、ゲーム"
   },
   {
    "id": "1063283",
@@ -10887,8 +11194,8 @@
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1063283%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1063306",
@@ -10902,8 +11209,8 @@
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1063306%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1063308",
@@ -10978,7 +11285,9 @@
    "height": null,
    "birthday": "2000-03-24",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1063674%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-26"
+   "fetched": "2026-10-26",
+   "blood_type": "O",
+   "prefectures": "東京都"
   },
   {
    "id": "1063720",
@@ -11038,7 +11347,8 @@
    "height": null,
    "birthday": "1993-02-12",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1063728%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-26"
+   "fetched": "2026-10-26",
+   "hobby": "ヨガ、水泳"
   },
   {
    "id": "1063762",
@@ -11113,7 +11423,9 @@
    "height": 152,
    "birthday": "1999-06-11",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1064143%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-06"
+   "fetched": "2026-10-06",
+   "prefectures": "千葉県",
+   "hobby": "料理/ピアノ"
   },
   {
    "id": "1064154",
@@ -11128,7 +11440,8 @@
    "height": 151,
    "birthday": "2002-01-26",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1064154%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-04"
+   "fetched": "2026-10-04",
+   "hobby": "茶道/料理/書道/着付け"
   },
   {
    "id": "1064208",
@@ -11188,7 +11501,8 @@
    "height": 148,
    "birthday": "1997-08-02",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1064392%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-26"
+   "fetched": "2026-10-26",
+   "prefectures": "東京都"
   },
   {
    "id": "1064393",
@@ -11203,7 +11517,8 @@
    "height": 160,
    "birthday": "1996-06-17",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1064393%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-26"
+   "fetched": "2026-10-26",
+   "hobby": "旅行、美容、料理、キックボクシング"
   },
   {
    "id": "1064397",
@@ -11368,7 +11683,9 @@
    "height": 163,
    "birthday": "1995-08-17",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1065327%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-25"
+   "fetched": "2026-10-25",
+   "prefectures": "東京都",
+   "hobby": "アニメ、コスプレ"
   },
   {
    "id": "1065376",
@@ -11443,7 +11760,9 @@
    "height": 150,
    "birthday": "2000-07-14",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1065525%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-25"
+   "fetched": "2026-10-25",
+   "blood_type": "O",
+   "hobby": "アニメ鑑賞"
   },
   {
    "id": "1065526",
@@ -11488,7 +11807,10 @@
    "height": 162,
    "birthday": "1996-12-10",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1065709%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-25"
+   "fetched": "2026-10-25",
+   "blood_type": "B",
+   "prefectures": "福岡県",
+   "hobby": "AV鑑賞/書道"
   },
   {
    "id": "1065724",
@@ -11593,7 +11915,8 @@
    "height": 154,
    "birthday": "1999-07-21",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1066231%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-25"
+   "fetched": "2026-10-25",
+   "hobby": "カラオケ/料理/ピアノ/歌"
   },
   {
    "id": "1066240",
@@ -11623,7 +11946,10 @@
    "height": 156,
    "birthday": "1988-08-24",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1066243%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "B",
+   "prefectures": "神奈川県",
+   "hobby": "ピアノ"
   },
   {
    "id": "1066367",
@@ -11684,6 +12010,23 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1066533%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-10-03"
+  },
+  {
+   "id": "1066537",
+   "name": "白峰ミウ",
+   "ruby": "しろみねみう",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/siromine_miu.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/siromine_miu.jpg",
+   "bust": 90,
+   "cup": "",
+   "waist": 60,
+   "hip": 94,
+   "height": 170,
+   "birthday": "1997-02-16",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1066537%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29",
+   "blood_type": "AB",
+   "hobby": "映画鑑賞、筋トレ"
   },
   {
    "id": "1066538",
@@ -11803,7 +12146,9 @@
    "height": 161,
    "birthday": "1999-10-06",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1067117%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "prefectures": "神奈川県",
+   "hobby": "アニメ、漫画"
   },
   {
    "id": "1067267",
@@ -11863,7 +12208,10 @@
    "height": 164,
    "birthday": "2000-08-17",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1067505%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-25"
+   "fetched": "2026-10-25",
+   "blood_type": "A",
+   "prefectures": "秋田県",
+   "hobby": "ショッピング"
   },
   {
    "id": "1067506",
@@ -11878,7 +12226,8 @@
    "height": 163,
    "birthday": "2001-01-03",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1067506%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-25"
+   "fetched": "2026-10-25",
+   "hobby": "アニメ鑑賞、ゲーム、美容研究"
   },
   {
    "id": "1067526",
@@ -11893,7 +12242,8 @@
    "height": 162,
    "birthday": "1998-07-01",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1067526%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-25"
+   "fetched": "2026-10-25",
+   "hobby": "猫カフェ/散歩"
   },
   {
    "id": "1067531",
@@ -11908,7 +12258,9 @@
    "height": 168,
    "birthday": "1997-05-08",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1067531%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-25"
+   "fetched": "2026-10-25",
+   "prefectures": "東京都",
+   "hobby": "食べ歩き/料理"
   },
   {
    "id": "1067711",
@@ -12073,7 +12425,9 @@
    "height": 160,
    "birthday": "2000-11-20",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1068670%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-21"
+   "fetched": "2026-10-21",
+   "prefectures": "青森県",
+   "hobby": "漫画、イラスト、麻雀、パチンコ、スロット、車、猫、歌"
   },
   {
    "id": "1068671",
@@ -12088,7 +12442,8 @@
    "height": null,
    "birthday": "2000-05-20",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1068671%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "hobby": "バレエ、ミュージカル鑑賞"
   },
   {
    "id": "1068870",
@@ -12148,7 +12503,9 @@
    "height": 166,
    "birthday": "1998-11-16",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1068961%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-21"
+   "fetched": "2026-10-21",
+   "prefectures": "神奈川県",
+   "hobby": "宝塚鑑賞、けん玉"
   },
   {
    "id": "1069005",
@@ -12253,7 +12610,8 @@
    "height": 175,
    "birthday": "1998-12-10",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1069253%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-21"
+   "fetched": "2026-10-21",
+   "hobby": "料理"
   },
   {
    "id": "1069257",
@@ -12313,7 +12671,8 @@
    "height": 164,
    "birthday": "1999-04-02",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1069330%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-21"
+   "fetched": "2026-10-21",
+   "hobby": "ジム通い、AV鑑賞、人と話す事"
   },
   {
    "id": "1069384",
@@ -12433,7 +12792,8 @@
    "height": null,
    "birthday": "1999-11-29",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1069632%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-20"
+   "fetched": "2026-10-20",
+   "hobby": "映画鑑賞、お菓子作り"
   },
   {
    "id": "1069634",
@@ -12493,7 +12853,9 @@
    "height": null,
    "birthday": "2002-08-08",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1069868%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-19"
+   "fetched": "2026-10-19",
+   "prefectures": "福岡県",
+   "hobby": "箱根駅伝を観ること、旅行、アニメ、運動すること"
   },
   {
    "id": "1069900",
@@ -12553,7 +12915,9 @@
    "height": null,
    "birthday": "2000-10-03",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1069952%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-19"
+   "fetched": "2026-10-19",
+   "prefectures": "兵庫県",
+   "hobby": "貯金"
   },
   {
    "id": "1069954",
@@ -12628,7 +12992,10 @@
    "height": 156,
    "birthday": "2001-12-08",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1070385%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "B",
+   "prefectures": "奈良県",
+   "hobby": "ゲーム、ダンス"
   },
   {
    "id": "1070448",
@@ -12688,7 +13055,8 @@
    "height": 163,
    "birthday": "1999-02-17",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1070480%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-19"
+   "fetched": "2026-10-19",
+   "blood_type": "A"
   },
   {
    "id": "1070484",
@@ -12973,7 +13341,8 @@
    "height": 161,
    "birthday": "1999-07-03",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1071242%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-04"
+   "fetched": "2026-10-04",
+   "blood_type": "A"
   },
   {
    "id": "1071247",
@@ -13048,7 +13417,9 @@
    "height": null,
    "birthday": "1999-12-22",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1071639%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-07"
+   "fetched": "2026-10-07",
+   "prefectures": "秋田県",
+   "hobby": "ラーメン屋巡り、貯金"
   },
   {
    "id": "1071691",
@@ -13123,7 +13494,10 @@
    "height": 155,
    "birthday": "1996-01-16",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1071712%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-19"
+   "fetched": "2026-10-19",
+   "blood_type": "O",
+   "prefectures": "北海道",
+   "hobby": "美容、体を動かす事"
   },
   {
    "id": "1071869",
@@ -13228,7 +13602,8 @@
    "height": 157,
    "birthday": "2001-06-28",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1072206%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-04"
+   "fetched": "2026-10-04",
+   "hobby": "クラシック音楽鑑賞、歌うこと、クラシックバレエ"
   },
   {
    "id": "1072355",
@@ -13333,7 +13708,9 @@
    "height": 152,
    "birthday": "2001-05-07",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1072805%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "prefectures": "千葉県",
+   "hobby": "旅行"
   },
   {
    "id": "1072891",
@@ -13738,7 +14115,9 @@
    "height": 153,
    "birthday": "2001-10-14",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1075010%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "prefectures": "東京都",
+   "hobby": "読書、映画、料理"
   },
   {
    "id": "1075066",
@@ -13813,7 +14192,9 @@
    "height": 165,
    "birthday": "1989-09-16",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1075159%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-14"
+   "fetched": "2026-10-14",
+   "prefectures": "京都府",
+   "hobby": "ドライブ、読書、映画鑑賞、カフェ"
   },
   {
    "id": "1075202",
@@ -13828,7 +14209,10 @@
    "height": 153,
    "birthday": "1999-10-20",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1075202%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-28"
+   "fetched": "2026-10-28",
+   "blood_type": "O",
+   "prefectures": "大分県",
+   "hobby": "スポーツ観戦、マッサージ"
   },
   {
    "id": "1075205",
@@ -13933,7 +14317,9 @@
    "height": 165,
    "birthday": "2000-01-18",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1075314%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-14"
+   "fetched": "2026-10-14",
+   "prefectures": "山梨県",
+   "hobby": "読書"
   },
   {
    "id": "1075330",
@@ -14128,7 +14514,9 @@
    "height": 156,
    "birthday": "1995-08-29",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1075825%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-26"
+   "fetched": "2026-10-26",
+   "prefectures": "大阪府",
+   "hobby": "旅行、歌うこと"
   },
   {
    "id": "1075826",
@@ -14218,7 +14606,8 @@
    "height": 156,
    "birthday": "1997-04-15",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1076340%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-24"
+   "fetched": "2026-10-24",
+   "hobby": "水泳、毎月100冊読書"
   },
   {
    "id": "1076421",
@@ -14278,7 +14667,9 @@
    "height": 155,
    "birthday": "2002-11-24",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1076492%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "prefectures": "兵庫県",
+   "hobby": "絵を描く事、マッサージ"
   },
   {
    "id": "1076561",
@@ -14428,7 +14819,10 @@
    "height": 155,
    "birthday": "2000-12-26",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1076762%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-06"
+   "fetched": "2026-10-06",
+   "blood_type": "A",
+   "prefectures": "東京都",
+   "hobby": "アイドルの追っかけ、お琴"
   },
   {
    "id": "1076764",
@@ -14746,6 +15140,21 @@
    "fetched": "2026-10-13"
   },
   {
+   "id": "1077777",
+   "name": "SADE ROSE",
+   "ruby": "しゃーでーろーず",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1077777%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
+  },
+  {
    "id": "1077840",
    "name": "柊ゆうき",
    "ruby": "ひいらぎゆうき",
@@ -14788,7 +15197,9 @@
    "height": 153,
    "birthday": "2001-04-10",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1077983%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "AB",
+   "hobby": "ギター、楽曲制作"
   },
   {
    "id": "1078009",
@@ -14953,7 +15364,9 @@
    "height": 157,
    "birthday": "2001-05-25",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1078407%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-18"
+   "fetched": "2026-10-18",
+   "blood_type": "A",
+   "prefectures": "福岡県"
   },
   {
    "id": "1078496",
@@ -15073,7 +15486,9 @@
    "height": 160,
    "birthday": "1995-11-11",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1078808%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-13"
+   "fetched": "2026-10-13",
+   "prefectures": "京都府",
+   "hobby": "マッサージ、美容、サウナ銭湯巡り、裁縫、脚が早い"
   },
   {
    "id": "1078814",
@@ -15088,7 +15503,9 @@
    "height": 161,
    "birthday": "1993-02-12",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1078814%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "prefectures": "静岡県",
+   "hobby": "旅行、散歩、絵を描くこと"
   },
   {
    "id": "1078900",
@@ -15268,7 +15685,10 @@
    "height": 160,
    "birthday": "2001-11-29",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1079604%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-24"
+   "fetched": "2026-10-24",
+   "blood_type": "O",
+   "prefectures": "愛知県",
+   "hobby": "犬と遊ぶこと"
   },
   {
    "id": "1079605",
@@ -15373,7 +15793,10 @@
    "height": 151,
    "birthday": "2002-09-10",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1081600%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-13"
+   "fetched": "2026-10-13",
+   "blood_type": "O",
+   "prefectures": "兵庫県",
+   "hobby": "映画鑑賞、食べること"
   },
   {
    "id": "1081630",
@@ -15629,6 +16052,21 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1083068%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-10-13"
+  },
+  {
+   "id": "1083071",
+   "name": "足立める",
+   "ruby": "あだちめる",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/adati_meru.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/adati_meru.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1083071%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1083166",
@@ -15943,7 +16381,9 @@
    "height": 163,
    "birthday": "1992-06-05",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1084406%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-06"
+   "fetched": "2026-10-06",
+   "prefectures": "神奈川県",
+   "hobby": "レーシングカート、つり、裁縫、マニュアル車の運転"
   },
   {
    "id": "1084461",
@@ -16108,7 +16548,10 @@
    "height": 165,
    "birthday": "1997-12-01",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1085080%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-24"
+   "fetched": "2026-10-24",
+   "blood_type": "B",
+   "prefectures": "千葉県",
+   "hobby": "読書、ゴルフ、美容"
   },
   {
    "id": "1085279",
@@ -16138,7 +16581,9 @@
    "height": 155,
    "birthday": "1999-01-08",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1085289%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-20"
+   "fetched": "2026-10-20",
+   "prefectures": "兵庫県",
+   "hobby": "旅行、映画鑑賞、水泳"
   },
   {
    "id": "1085389",
@@ -16573,7 +17018,10 @@
    "height": 149,
    "birthday": "2000-07-22",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1087427%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-17"
+   "fetched": "2026-10-17",
+   "blood_type": "A",
+   "prefectures": "東京都",
+   "hobby": "美容、新体操"
   },
   {
    "id": "1087517",
@@ -16618,7 +17066,10 @@
    "height": 150,
    "birthday": "1997-04-10",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1087621%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "blood_type": "AB",
+   "prefectures": "奈良県",
+   "hobby": "野球観戦、釣り"
   },
   {
    "id": "1087625",
@@ -16858,7 +17309,10 @@
    "height": 164,
    "birthday": "2003-01-14",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1088606%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-24"
+   "fetched": "2026-10-24",
+   "blood_type": "A",
+   "prefectures": "新潟県",
+   "hobby": "筋トレ"
   },
   {
    "id": "1088685",
@@ -16873,7 +17327,10 @@
    "height": 165,
    "birthday": "2002-10-30",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1088685%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-07"
+   "fetched": "2026-10-07",
+   "blood_type": "O",
+   "prefectures": "神奈川県",
+   "hobby": "サウナ、バドミントン"
   },
   {
    "id": "1088701",
@@ -17023,7 +17480,9 @@
    "height": 172,
    "birthday": "1999-11-11",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1089485%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-11"
+   "fetched": "2026-10-11",
+   "prefectures": "東京都",
+   "hobby": "ホットヨガ、料理、クラシックバレエ、ピアノ"
   },
   {
    "id": "1089578",
@@ -17083,7 +17542,9 @@
    "height": 164,
    "birthday": "2002-06-16",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1089946%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-07"
+   "fetched": "2026-10-07",
+   "prefectures": "東京都",
+   "hobby": "観劇、旅行"
   },
   {
    "id": "1089948",
@@ -17353,7 +17814,9 @@
    "height": 164,
    "birthday": "2002-04-21",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1091799%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-06"
+   "fetched": "2026-10-06",
+   "prefectures": "北海道",
+   "hobby": "ミュージカル観劇、音楽鑑賞、読書(活字が好き)"
   },
   {
    "id": "1091938",
@@ -17938,7 +18401,9 @@
    "height": 150,
    "birthday": "2005-01-10",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1094541%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-11"
+   "fetched": "2026-10-11",
+   "prefectures": "神奈川県",
+   "hobby": "たくさん食べること、絵を描くこと"
   },
   {
    "id": "1094629",
@@ -18223,7 +18688,9 @@
    "height": 152,
    "birthday": "1999-07-20",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1096367%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "prefectures": "神奈川県",
+   "hobby": "アニメ鑑賞、食べ歩き、中国語、バドミントン"
   },
   {
    "id": "1096442",
@@ -18508,7 +18975,9 @@
    "height": 157,
    "birthday": "2004-10-21",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1097609%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-03"
+   "fetched": "2026-10-03",
+   "prefectures": "静岡県",
+   "hobby": "メイク、テニス"
   },
   {
    "id": "1097644",
@@ -18688,7 +19157,9 @@
    "height": 167,
    "birthday": "2004-05-05",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1098305%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-06"
+   "fetched": "2026-10-06",
+   "prefectures": "岡山県",
+   "hobby": "人間観察、お料理"
   },
   {
    "id": "1098398",
@@ -19018,7 +19489,10 @@
    "height": 154,
    "birthday": "2003-08-08",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1099635%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-10"
+   "fetched": "2026-10-10",
+   "blood_type": "A",
+   "prefectures": "兵庫県",
+   "hobby": "料理"
   },
   {
    "id": "1099813",
@@ -19157,8 +19631,8 @@
   },
   {
    "id": "1100581",
-   "name": "新妻ゆうか",
-   "ruby": "にいづまゆうか",
+   "name": "YUUKA（新妻ゆうか）",
+   "ruby": "ゆうか（にいづまゆうか）",
    "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/niiduma_yuuka.jpg",
    "image_large": "https://pics.dmm.co.jp/mono/actjpgs/niiduma_yuuka.jpg",
    "bust": null,
@@ -19348,7 +19822,9 @@
    "height": 154,
    "birthday": "2004-09-30",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1101004%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-10"
+   "fetched": "2026-10-10",
+   "prefectures": "東京都",
+   "hobby": "バスケ、バレーボール"
   },
   {
    "id": "1101054",
@@ -19918,7 +20394,9 @@
    "height": 161,
    "birthday": "1999-10-21",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1103169%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-17"
+   "fetched": "2026-10-17",
+   "prefectures": "京都県",
+   "hobby": "旅行、ダイビング"
   },
   {
    "id": "1103170",
@@ -20248,7 +20726,9 @@
    "height": 159,
    "birthday": "2005-04-12",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1104833%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-13"
+   "fetched": "2026-10-13",
+   "prefectures": "岡山県",
+   "hobby": "サウナ・映画鑑賞"
   },
   {
    "id": "1104855",
@@ -20461,6 +20941,21 @@
    "fetched": "2026-10-08"
   },
   {
+   "id": "1105713",
+   "name": "双葉いろは",
+   "ruby": "ふたばいろは",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1105713%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
+  },
+  {
    "id": "1105797",
    "name": "篠原茉凛",
    "ruby": "しのはらまりん",
@@ -20623,7 +21118,9 @@
    "height": 161,
    "birthday": "2005-10-17",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1106590%2F&af_id=juice0402-990&ch=api",
-   "fetched": "2026-10-08"
+   "fetched": "2026-10-08",
+   "prefectures": "東京都",
+   "hobby": "ドラム、アニメ、映画鑑賞、筋肉と会話"
   },
   {
    "id": "1106652",
@@ -21691,6 +22188,21 @@
    "fetched": "2026-10-20"
   },
   {
+   "id": "1110363",
+   "name": "白花にあ",
+   "ruby": "しろはなにあ",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/sirohana_nia.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/sirohana_nia.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1110363%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
+  },
+  {
    "id": "1110365",
    "name": "藤崎そあ",
    "ruby": "ふじさきそあ",
@@ -22321,6 +22833,21 @@
    "fetched": "2026-10-23"
   },
   {
+   "id": "1112549",
+   "name": "星空ねる",
+   "ruby": "ほしぞらねる",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/hosizora_neru.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/hosizora_neru.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1112549%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
+  },
+  {
    "id": "1112602",
    "name": "南あいり",
    "ruby": "みなみあいり",
@@ -22591,6 +23118,21 @@
    "fetched": "2026-10-16"
   },
   {
+   "id": "1113536",
+   "name": "白間兎花",
+   "ruby": "しろまうか",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/siroma_uka.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/siroma_uka.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1113536%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
+  },
+  {
    "id": "1113610",
    "name": "来栖ユリ",
    "ruby": "くるすゆり",
@@ -22859,6 +23401,21 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1114478%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-10-03"
+  },
+  {
+   "id": "1114483",
+   "name": "風見渚月",
+   "ruby": "かざみなつき",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/kazami_natuki.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/kazami_natuki.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1114483%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1114484",
@@ -23296,6 +23853,36 @@
    "fetched": "2026-10-08"
   },
   {
+   "id": "1115027",
+   "name": "マクスミラン・ディオール",
+   "ruby": "まくすみらんでぃおーる",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1115027%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
+  },
+  {
+   "id": "1115028",
+   "name": "クリストフ・ケール",
+   "ruby": "くりすとふけーる",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1115028%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
+  },
+  {
    "id": "1115076",
    "name": "秋元いおり",
    "ruby": "あきもといおり",
@@ -23459,6 +24046,51 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1115162%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-10-20"
+  },
+  {
+   "id": "1115207",
+   "name": "今井なつめ",
+   "ruby": "いまいなつめ",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/imai_natume.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/imai_natume.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1115207%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
+  },
+  {
+   "id": "1115208",
+   "name": "佐野咲空",
+   "ruby": "さのさく",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/sano_saku.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/sano_saku.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1115208%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
+  },
+  {
+   "id": "1115209",
+   "name": "星村梨乃",
+   "ruby": "ほしむらりの",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/hosimura_rino.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/hosimura_rino.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1115209%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-10-29"
   },
   {
    "id": "1115210",
