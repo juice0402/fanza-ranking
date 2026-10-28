@@ -29,14 +29,14 @@ jobs:
           body='{"deployment_configs":{"production":{"env_vars":{"PAGES_WRANGLER_MAJOR_VERSION":{"type":"plain_text","value":"4"}}},"preview":{"env_vars":{"PAGES_WRANGLER_MAJOR_VERSION":{"type":"plain_text","value":"4"}}}}}'
           curl -sS -X PATCH "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/fanza-ranking" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data "$body" \
-            | python3 -c "import json,sys; d=json.load(sys.stdin); c=(d.get('result') or {}).get('deployment_configs',{}); print('success', d.get('success'), 'errors', [e.get('message') for e in d.get('errors',[])], 'prod', (c.get('production',{}).get('env_vars') or {}).get('PAGES_WRANGLER_MAJOR_VERSION',{}).get('value'), 'preview', (c.get('preview',{}).get('env_vars') or {}).get('PAGES_WRANGLER_MAJOR_VERSION',{}).get('value'))"
+            | python3 -c "import json,sys; d=json.load(sys.stdin); c=(d.get('result') or {}).get('deployment_configs',{}); print('::notice title=設定の結果::success', d.get('success'), 'errors', [e.get('message') for e in d.get('errors',[])], 'prod', (c.get('production',{}).get('env_vars') or {}).get('PAGES_WRANGLER_MAJOR_VERSION',{}).get('value'), 'preview', (c.get('preview',{}).get('env_vars') or {}).get('PAGES_WRANGLER_MAJOR_VERSION',{}).get('value'))"
       - name: プレビューに上げてみる（wrangler 4）
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           WRANGLER_SEND_METRICS: "false"
         run: |
-          npx --yes wrangler@4 --version
+          echo "::notice title=wrangler::$(npx --yes wrangler@4 --version 2>&1 | tail -1)"
           set +e
           npx --yes wrangler@4 pages deploy limit-test --project-name=fanza-ranking --branch=limit-test --commit-dirty=true 2>&1 | tail -25 | tee out.txt
           code=${PIPESTATUS[0]}
