@@ -90,11 +90,14 @@ if [ "$mode" = "preview" ]; then
   fi
   # 名前（alias）つきの URL を先に、そのあとに版ごとの URL
   urls="$(grep -Eo "https://${alias}-[a-z0-9.-]+\.workers\.dev" "$log" | sort -u; grep -Eo 'https://[a-z0-9.-]+\.workers\.dev' "$log" | grep -v "^https://${alias}-" | sort -u)"
-  rm -f "$log"
   if [ -z "$urls" ]; then
-    echo "::warning title=プレビュー::アップロードはできましたが、URL が出ませんでした（Workers の設定 preview_urls を確かめてください）"
+    # Worker のプレビューの URL がまだ無効のときなど（本番の wrangler deploy で preview_urls: true が入ると有効になる）。wrangler の言葉を注記に
+    hint="$(grep -Ei 'preview|alias|version id|warn' "$log" | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' | head -6 | tr '\n' ' ' | cut -c1-500)"
+    rm -f "$log"
+    echo "::warning title=プレビュー::アップロードはできましたが、URL が出ませんでした（Worker のプレビューの URL が有効か＝preview_urls を確かめてください）${hint:+ wrangler: $hint}"
     exit 0
   fi
+  rm -f "$log"
   say "### 👀 プレビューを作りました（本番は変わりません。${files}ファイル）"
   for u in $urls; do
     say "- $u"
