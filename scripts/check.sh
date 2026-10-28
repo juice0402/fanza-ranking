@@ -66,6 +66,8 @@ run "作品ページの「次に見るもの」の部品 (Node.js)" node tests/t
 
 run "RSS（新着のお知らせの配信）の部品 (Node.js)" node tests/test_feed.mjs
 
+run "読み物（/yomimono/）の部品 (Node.js)" node tests/test_yomimono.mjs
+
 run "人気の動き・シリーズ/レーベル・内部リンクの部品 (Node.js)" node tests/test_insights.mjs
 
 run "週のまとめ記事の部品 (Node.js + Pythonとの突き合わせ)" node tests/test_roundups.mjs
