@@ -27,6 +27,8 @@ const {
   noindex = false,
   stickyCta = false,
   jsonLd = [], // 検索エンジン向けの構造化データ（オブジェクトの配列）
+  ogType = 'website', // OGP の種類（作品ページは video.movie。issue #174）
+  ogMeta = [], // OGP に足す項目 [property, content] の配列（作品ページの video:actor・video:release_date・video:tag。lib/items.js の itemOgMeta）
   tenYenBar = true, // 10円セールの帯（開催中だけ出る）。10円セールの大きな案内があるページ（トップ・売り場のトップ・セールのページ・10円セールのページ）では出さない
 } = Astro.props;
 
@@ -52,12 +54,13 @@ import { assetUrl } from '../lib/assets.js';
     {GOOGLE_SITE_VERIFICATION && <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />}
     <meta name="rating" content="RTA-5042-1996-1400-1577-RTA" />
 
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:title" content={title} />
     {description && <meta property="og:description" content={description} />}
     <meta property="og:url" content={canonical} />
     {image && <meta property="og:image" content={image} />}
+    {ogMeta.map(([property, content]) => <meta property={property} content={content} />)}
     <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
 
     {jsonLd.map((data) => <script is:inline type="application/ld+json" set:html={jsonLdScript(data)} />)}

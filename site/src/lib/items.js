@@ -15,6 +15,7 @@ import {
   ENTITY_MIN_ITEMS,
   RANKING_SHOWN,
   CAST_LIMIT,
+  TAG_PAGE_GENRES,
 } from '../config.js';
 
 // ページ側が items.js からまとめて読めるように、そのまま出し直しています
@@ -382,30 +383,51 @@ export function itemPageTitle(item, code = '') {
   return `${code ? `${code} ` : ''}${shown}${cast ? `（${cast}）` : ''}｜${SITE_NAME}`;
 }
 
-/** 作品ページの説明文（コメント＋メーカー・発売日・品番） */
+/**
+ * 品番と出演者の書き方（説明文の頭・作品ページの見出しの下の1行。issue #174。2026-10-28）: 3人までは全員、4人以上は先頭の2人と残りの人数。
+ * 名前は FANZA のデータにあるものだけ（守ること9）。出演者がいない作品は names が空（何も足さない）
+ */
+export const CAST_HEAD_MAX = 3;
+export function castHead(actress) {
+  const list = [...new Set(Array.isArray(actress) ? actress.filter(Boolean) : [])];
+  const names = list.length > CAST_HEAD_MAX ? list.slice(0, 2) : list;
+  return { names, more: list.length - names.length };
+}
+
+/**
+ * 説明文の頭の文（「MKMP-761の出演は花子さん・月子さん。」・4人以上は「…花子さん・月子さんほか。」・品番を作れないときは「出演は…」）。
+ * 品番で調べて出演者を知りたい人に、検索結果ですぐ答えるため（運営者「世界一を目指す。できる限りSEO上位に」。2026-10-27）。
+ * 出演者がいない作品は ''（「名前が出ていない」とも書かない。運営者の判断）
+ */
+export function castLead(item, code = '') {
+  const { names, more } = castHead(item.actress);
+  if (names.length === 0) return '';
+  return `${code ? `${code}の` : ''}出演は${names.map((n) => `${n}さん`).join('・')}${more > 0 ? 'ほか' : ''}。`;
+}
+
+/** 作品ページの説明文（出演者がいれば品番と出演者の文 → コメント → メーカー・発売日・品番） */
 export function itemPageDescription(item, code = '') {
-  const base = `${item.maker}の${formatDateJp(item.dateKey)}発売作品${code ? `（品番 ${code}）` : ''}。`;
+  const head = castLead(item, code);
+  // 品番は、頭の文に入っていれば、後ろではくり返さない（コメントに使える文字を残すため）
+  const base = `${item.maker}の${formatDateJp(item.dateKey)}発売作品${code && !head ? `（品番 ${code}）` : ''}。`;
   const dur = durationJp(item.duration_min);
   const durText = dur ? `収録時間は${dur}${(item.duration_min ?? 0) >= 240 ? 'の長編' : ''}。` : '';
   const comment = String(item.comment ?? '').trim();
   if (comment) {
-    // メーカー・発売日・品番は、必ず最後まで残す（コメントが長いと、後ろに付けた品番が切れてしまうため。コメントのほうを縮める）。
+    // 出演者の文と、メーカー・発売日・品番は、必ず残す（コメントが長いと、後ろに付けた品番が切れてしまうため。コメントのほうを縮める）。
     // コメントが切らずに入るときだけ、あとに収録時間も足す（説明文は全角80〜120文字。lib/describe.js。2026-10-26）
-    const room = DESC_MAX - Array.from(base).length - 1;
-    if (room < 20) return truncate(base, DESC_MAX);
-    const full = `${comment} ${base}`;
-    if (Array.from(full).length > DESC_MAX) return `${truncate(comment, room)} ${base}`;
+    const room = DESC_MAX - Array.from(head + base).length - 1;
+    if (room < 20) return fit([head, base]);
+    const full = `${head}${comment} ${base}`;
+    if (Array.from(full).length > DESC_MAX) return `${head}${truncate(comment, room)} ${base}`;
     return fit([full, durText]);
   }
   // コメントがまだ無い作品（検索には出さないページ。lib/plan.js の itemIndexable）も、そのページの事実で80文字くらいまで（2026-10-26）
-  const cast = item.actress?.length
-    ? `出演は${item.actress.slice(0, 2).map((n) => `${n}さん`).join('、')}${item.actress.length > 2 ? 'ほか' : ''}。`
-    : '出演者の記載はありません。';
   // ジャンルは、おだやかなもの（ジャンルのページがあるもの・形式）だけ。レーベルは、メーカーと違い、おだやかな名前のときだけ（lib/describe.js）
   const genres = calmVideoGenres(item.genres);
   const label = String(item.label?.name ?? '').trim();
   const labelText = label && label !== item.maker && calmName(label) ? `レーベルは「${label}」。` : '';
-  return fit([base, durText, genres.length ? `ジャンルは${genres.join('・')}。` : '', cast, labelText]);
+  return fit([head, base, durText, genres.length ? `ジャンルは${genres.join('・')}。` : '', labelText]);
 }
 
 // ------------------------------------------------------------------
@@ -599,6 +621,55 @@ export function websiteLd(siteUrl = SITE_URL) {
     url: absoluteUrl('/', siteUrl),
     inLanguage: 'ja',
   };
+}
+
+// 構造化データの Movie と OGP の video:actor に入れる出演者の数（オムニバスなどで、ページの頭が名前だけで重くならないように）
+export const MOVIE_ACTOR_LIMIT = 10;
+// OGP の video:tag に入れるジャンルの数
+export const OG_TAG_LIMIT = 4;
+
+const uniqueCast = (item) => [...new Set((item.actress ?? []).filter(Boolean))].slice(0, MOVIE_ACTOR_LIMIT);
+
+/**
+ * 作品ページの構造化データ（schema.org の Movie。issue #174。2026-10-28）。name・品番（identifier。作れなければ作品ID）・発売日・表紙・
+ * 出演者（Person。FANZA のデータにある名前だけ。女優のページがあれば url）・メーカー（productionCompany。「不明」なら入れない）。
+ * pages: { actress: (名前) => ページのパスか ''、maker: メーカーのページのパスか '' }
+ */
+export function movieLd(item, code = '', pages = {}, siteUrl = SITE_URL) {
+  const actressPath = typeof pages.actress === 'function' ? pages.actress : () => '';
+  const ld = {
+    '@context': 'https://schema.org',
+    '@type': 'Movie',
+    name: item.title,
+    url: absoluteUrl(itemPath(item.cid), siteUrl),
+    identifier: code || item.cid,
+    datePublished: item.dateKey,
+  };
+  if (item.image_url) ld.image = item.image_url;
+  const cast = uniqueCast(item);
+  if (cast.length) {
+    ld.actor = cast.map((name) => {
+      const path = actressPath(name);
+      return { '@type': 'Person', name, ...(path ? { url: absoluteUrl(path, siteUrl) } : {}) };
+    });
+  }
+  if (item.maker && item.maker !== '不明') {
+    ld.productionCompany = { '@type': 'Organization', name: item.maker, ...(pages.maker ? { url: absoluteUrl(pages.maker, siteUrl) } : {}) };
+  }
+  return ld;
+}
+
+/**
+ * 作品ページの OGP の動画の項目（og:type は video.movie。issue #174）: [property, content] の配列。
+ * 出演者（video:actor。いない作品は出さない）・発売日（video:release_date）・ジャンル（video:tag。おだやかなものだけ、ジャンルのページがあるものを先に）
+ */
+export function itemOgMeta(item) {
+  const out = uniqueCast(item).map((name) => ['video:actor', name]);
+  if (isDay(item.dateKey)) out.push(['video:release_date', item.dateKey]);
+  const pageGenres = new Set(TAG_PAGE_GENRES);
+  const tags = calmVideoGenres(item.genres, Infinity).sort((a, b) => Number(pageGenres.has(b)) - Number(pageGenres.has(a)));
+  for (const tag of tags.slice(0, OG_TAG_LIMIT)) out.push(['video:tag', tag]);
+  return out;
 }
 
 /** <script type="application/ld+json"> の中身にする文字列。</script> などでページが壊れないよう記号を置き換える */

@@ -41,10 +41,50 @@ check('説明文: 短いコメントは縮めずに、そのまま入る', descS
 check('説明文: コメントが空なら、メーカー・発売日・品番から', L.itemPageDescription(mk({ cid: 'a1', comment: '' }), 'DLDSS-566').startsWith(mk({ cid: 'a1' }).maker + 'の'));
 // コメントがまだ無い作品（検索には出さないページ）: 収録時間・おだやかなジャンル・出演者・レーベルを、120文字に入るぶんだけ（2026-10-26。lib/describe.js）
 const noC = L.itemPageDescription(mk({ cid: 'a1', comment: '', duration_min: 250, genres: ['ハイビジョン', 'パイズリ', '巨乳', '中出し'], actress: ['花子', '月子', '星子'], label_id: 5, label: 'ながえSTYLE' }), 'DLDSS-566');
-check('説明文: コメントが無ければ、収録時間（4時間以上は長編）・おだやかなジャンルだけ・出演者2人まで・レーベル',
-  noC === 'メーカーAの2026年11月1日発売作品（品番 DLDSS-566）。収録時間は4時間10分の長編。ジャンルはハイビジョン・巨乳。出演は花子さん、月子さんほか。レーベルは「ながえSTYLE」。', noC);
+check('説明文: コメントが無ければ、品番と出演者の文・メーカー・発売日・収録時間（4時間以上は長編）・おだやかなジャンルだけ・レーベル',
+  noC === 'DLDSS-566の出演は花子さん・月子さん・星子さん。メーカーAの2026年11月1日発売作品。収録時間は4時間10分の長編。ジャンルはハイビジョン・巨乳。レーベルは「ながえSTYLE」。', noC);
 const rough = L.itemPageDescription(mk({ cid: 'a1', comment: '', label_id: 6, label: '婦女暴行' }), 'DLDSS-566');
-check('説明文: おだやかでない名前のレーベルは入れない・出演者が無ければ「記載はありません」', !rough.includes('レーベル') && rough.includes('出演者の記載はありません。'), rough);
+check('説明文: おだやかでない名前のレーベルは入れない・出演者がいなければ出演の話を書かない（「記載はありません」とも書かない）', !rough.includes('レーベル') && !rough.includes('出演') && rough.startsWith('メーカーAの') && rough.includes('（品番 DLDSS-566）'), rough);
+
+console.log('\n■ 品番と出演者（説明文の頭・見出しの下の1行・構造化データ・OGP。issue #174）');
+check('出演者の書き方: 3人までは全員・4人以上は先頭の2人と残りの人数・同じ名前は1回・いなければ空',
+  JSON.stringify(L.castHead(['花子', '月子', '星子'])) === JSON.stringify({ names: ['花子', '月子', '星子'], more: 0 })
+  && JSON.stringify(L.castHead(['花子', '月子', '星子', '雪子', '空子'])) === JSON.stringify({ names: ['花子', '月子'], more: 3 })
+  && JSON.stringify(L.castHead(['花子', '花子', ''])) === JSON.stringify({ names: ['花子'], more: 0 })
+  && L.castHead([]).names.length === 0 && L.castHead(undefined).names.length === 0);
+check('説明文の頭の文: 「品番の出演は○○さん・△△さん。」・4人以上は「ほか」・品番が無ければ「出演は…」・出演者がいなければ空',
+  L.castLead(mk({ cid: 'a1', actress: ['花子', '月子'] }), 'MKMP-761') === 'MKMP-761の出演は花子さん・月子さん。'
+  && L.castLead(mk({ cid: 'a1', actress: ['花子', '月子', '星子', '雪子'] }), 'MKMP-761') === 'MKMP-761の出演は花子さん・月子さんほか。'
+  && L.castLead(mk({ cid: 'a1', actress: ['花子'] })) === '出演は花子さん。'
+  && L.castLead(mk({ cid: 'a1', actress: [] }), 'MKMP-761') === '');
+const castDesc = L.itemPageDescription(mk({ cid: 'mkmp00761', comment: '落ち着いた雰囲気の一本。', actress: ['花子', '月子'] }), 'MKMP-761');
+check('説明文: 出演者がいれば、頭に品番と出演者。メーカー・発売日は残り、品番はくり返さない',
+  castDesc === 'MKMP-761の出演は花子さん・月子さん。落ち着いた雰囲気の一本。 メーカーAの2026年11月1日発売作品。' && castDesc.split('MKMP-761').length === 2, castDesc);
+const castLong = L.itemPageDescription(mk({ cid: 'mkmp00761', comment: longComment, actress: ['花子', '月子', '星子', '雪子'] }), 'MKMP-761');
+check('説明文: コメントが長いときは、出演者の文とメーカー・発売日を残して、コメントのほうを縮める（120文字まで）',
+  castLong.startsWith('MKMP-761の出演は花子さん・月子さんほか。') && castLong.endsWith('メーカーAの2026年11月1日発売作品。') && castLong.includes('…') && [...castLong].length === 120, castLong);
+const noCastDesc = L.itemPageDescription(mk({ cid: 'mkmp00761', comment: '落ち着いた雰囲気の一本。', actress: [] }), 'MKMP-761');
+check('説明文: 出演者がいない作品は、今までどおり（出演の話は書かない）', noCastDesc === '落ち着いた雰囲気の一本。 メーカーAの2026年11月1日発売作品（品番 MKMP-761）。', noCastDesc);
+
+const movie = L.movieLd(mk({ cid: 'mkmp00761', title: '作品の題名', actress: ['花子', '月子', '花子'], image_url: 'https://pics.dmm.co.jp/digital/video/mkmp00761/mkmp00761pl.jpg' }), 'MKMP-761',
+  { actress: (n) => (n === '花子' ? '/actress/abc/' : ''), maker: '/maker/def/' }, 'https://example.com');
+check('構造化データ Movie: 題名・品番・発売日・表紙・ページのURL',
+  movie['@context'] === 'https://schema.org' && movie['@type'] === 'Movie' && movie.name === '作品の題名' && movie.identifier === 'MKMP-761' && movie.datePublished === '2026-11-01'
+  && movie.image === 'https://pics.dmm.co.jp/digital/video/mkmp00761/mkmp00761pl.jpg' && movie.url === 'https://example.com/item/mkmp00761/', JSON.stringify(movie));
+check('構造化データ Movie: 出演者は Person（同じ名前は1回）。女優のページがある人だけ url・メーカーは productionCompany',
+  JSON.stringify(movie.actor) === JSON.stringify([{ '@type': 'Person', name: '花子', url: 'https://example.com/actress/abc/' }, { '@type': 'Person', name: '月子' }])
+  && JSON.stringify(movie.productionCompany) === JSON.stringify({ '@type': 'Organization', name: 'メーカーA', url: 'https://example.com/maker/def/' }), JSON.stringify(movie));
+const movieBare = L.movieLd(mk({ cid: '1sun00072a', maker: '', actress: [] }), '');
+check('構造化データ Movie: 出演者がいなければ actor なし・メーカー不明なら productionCompany なし・品番を作れなければ作品ID・表紙が無ければ image なし',
+  !('actor' in movieBare) && !('productionCompany' in movieBare) && movieBare.identifier === '1sun00072a' && !('image' in movieBare) && movieBare.url === L.SITE_URL + '/item/1sun00072a/', JSON.stringify(movieBare));
+check('構造化データ Movie: 出演者は10人まで', L.movieLd(mk({ cid: 'a1', actress: Array.from({ length: 30 }, (_, i) => `人${i}`) })).actor.length === L.MOVIE_ACTOR_LIMIT);
+
+const og = L.itemOgMeta(mk({ cid: 'a1', actress: ['花子', '月子'], genres: ['ハイビジョン', '中出し', '巨乳', '独占配信', '人妻・主婦', '4K', '単体作品'] }));
+const ogOf = (k) => og.filter(([p]) => p === k).map(([, v]) => v);
+check('OGP: video:actor（出演者）・video:release_date（発売日）', JSON.stringify(ogOf('video:actor')) === JSON.stringify(['花子', '月子']) && JSON.stringify(ogOf('video:release_date')) === JSON.stringify(['2026-11-01']), JSON.stringify(og));
+check('OGP: video:tag は、おだやかなジャンルだけ・ジャンルのページがあるものが先・4つまで',
+  JSON.stringify(ogOf('video:tag')) === JSON.stringify(['巨乳', '人妻・主婦', 'ハイビジョン', '独占配信']), JSON.stringify(ogOf('video:tag')));
+check('OGP: 出演者がいない作品には video:actor を出さない', !L.itemOgMeta(mk({ cid: 'a1', actress: [] })).some(([p]) => p === 'video:actor'));
 
 console.log('\n■ 「この作品のデータ」欄');
 const raw = JSON.parse(fs.readFileSync(new URL('./fixtures/items.json', import.meta.url), 'utf-8'));

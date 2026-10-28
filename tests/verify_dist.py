@@ -2006,21 +2006,66 @@ by_date_count = {}
 for x in everything.values():  # 「この作品のデータ」欄は、過去作品も含めて数える
     by_date_count[x["date"][:10]] = by_date_count.get(x["date"][:10], 0) + 1
 bad_code, bad_facts, with_code = [], [], 0
+bad_cast, bad_nocast, bad_movie, with_cast, with_movie = [], [], [], 0, 0
 for cid, x in valid.items():
     fp = os.path.join(DIST, "item", cid, "index.html")
     if not os.path.isfile(fp):
         continue
     html_ = read(fp)
     code_ = product_code(cid)
-    row_ = re.search(r'<dt class="spec-term">品番</dt>\s*<dd class="spec-desc">([^<]*)</dd>', html_)
+    # 品番の欄: 品番と、FANZAの品番（作品ID。例 mkmp00761）を、いっしょに出す（issue #174）
+    row_ = re.search(r'<dt class="spec-term">品番</dt>\s*<dd class="spec-desc">([^<]*)(?:<span class="spec-sub">([^<]*)</span>)?\s*</dd>', html_)
     title_ = re.search(r"<title>(.*?)</title>", html_, re.S).group(1)
     desc_ = re.search(r'<meta name="description" content="([^"]*)"', html_)
     if code_:
         with_code += 1
-        if not (row_ and row_.group(1) == code_ and htmllib.unescape(title_).startswith(code_ + " ") and desc_ and code_ in htmllib.unescape(desc_.group(1))):
+        if not (row_ and row_.group(1) == code_ and htmllib.unescape(row_.group(2) or "") == f"（FANZAの品番 {cid}）" and htmllib.unescape(title_).startswith(code_ + " ") and desc_ and code_ in htmllib.unescape(desc_.group(1))):
             bad_code.append((cid, code_, row_.group(1) if row_ else None, title_[:30]))
     elif row_ or re.match(r"^[A-Z0-9]+-\d{3,} ", htmllib.unescape(title_)):
         bad_code.append((cid, "品番を作れないのに出ている", title_[:30]))
+    # 品番と出演者（issue #174。2026-10-28）: 出演者がいる作品は、説明文・og:description の頭に「品番の出演は○○さん・△△さん。」、
+    # 見出しの下に「品番｜出演 ○○さん・△△さん」の1行、構造化データ Movie の actor（Person）、OGP の video:actor。
+    # 出演者がいない作品には、出演の話を何も足さない。og:type は video.movie・video:release_date は発売日・og:description は説明文と同じ
+    head_html = html_.split("</head>", 1)[0]
+    metas_ = tags(head_html, "meta")
+    og_ = lambda k: [m.get("content", "") for m in metas_ if m.get("property") == k]
+    desc_txt = htmllib.unescape(desc_.group(1)) if desc_ else ""
+    cast_ = list(dict.fromkeys(a_ for a_ in (x.get("actress") or []) if a_))  # 出演者（FANZAのデータの名前。同じ名前は1回）
+    try:
+        movies_ = [b for b in (json.loads(b_) for b_ in LD_BLOCK.findall(html_)) if isinstance(b, dict) and b.get("@type") == "Movie"]
+    except ValueError:
+        movies_ = []
+    line_ = re.search(r'<p class="detail-code">(.*?)</p>', html_, re.S)
+    if og_("og:type") != ["video.movie"] or og_("video:release_date") != [x["date"][:10]] or og_("og:description") != [desc_txt] or len(og_("video:tag")) > 4:
+        bad_movie.append((cid, "og:type・video:release_date・og:description・video:tag", og_("og:type"), og_("video:release_date")))
+    # 未成年を連想させるタイトルの作品は、題名を新しい場所に出さないよう Movie を付けない（ほかの作品には1つ）
+    want_movie = not is_minor_title(x.get("title"))
+    if len(movies_) != (1 if want_movie else 0):
+        bad_movie.append((cid, f"Movie の数 {len(movies_)}"))
+    elif movies_:
+        with_movie += 1
+        mv_ = movies_[0]
+        pc_ = mv_.get("productionCompany")
+        if mv_.get("name") != str(x.get("title", "")).strip() or mv_.get("identifier") != (code_ or cid) or mv_.get("datePublished") != x["date"][:10] \
+                or mv_.get("url") != f"{SITE_URL_V}/item/{cid}/" or (x.get("maker") not in (None, "", "不明") and not (isinstance(pc_, dict) and pc_.get("name") == x["maker"])):
+            bad_movie.append((cid, "Movie の name・identifier・datePublished・url・productionCompany", {k: mv_.get(k) for k in ("name", "identifier", "datePublished", "url")}))
+        for a_ in mv_.get("actor") or []:
+            u_ = str(a_.get("url", ""))
+            if a_.get("@type") != "Person" or (u_ and not (u_.startswith(SITE_URL_V + "/") and os.path.isfile(page_file(u_[len(SITE_URL_V):])))):
+                bad_movie.append((cid, "Movie の actor（Person・url は女優のページ）", a_))
+    if cast_:
+        with_cast += 1
+        head_names = cast_ if len(cast_) <= 3 else cast_[:2]
+        more_ = len(cast_) - len(head_names)
+        lead_ = (f"{code_}の" if code_ else "") + "出演は" + "・".join(n + "さん" for n in head_names) + ("ほか" if more_ else "") + "。"
+        want_line = (f"{code_}｜" if code_ else "") + "出演" + "・".join(n + "さん" for n in head_names) + (f"ほか{more_}人" if more_ else "")
+        got_line = re.sub(r"\s+", "", strip_tags(line_.group(1))) if line_ else ""
+        movie_actors = [a_.get("name") for a_ in (movies_[0].get("actor") or [])] if movies_ else cast_[:10]
+        if not desc_txt.startswith(lead_) or og_("video:actor") != cast_[:10] or movie_actors != cast_[:10] or got_line != re.sub(r"\s+", "", want_line):
+            bad_cast.append((cid, lead_, desc_txt[:40], got_line[:40], og_("video:actor")[:3], movie_actors[:3]))
+    elif re.match(r"^(?:[A-Z]+-\d+の)?出演は", desc_txt) or og_("video:actor") or line_ or (movies_ and "actor" in movies_[0]):
+        # （コメントの中の「出演」の言葉は数えない。足した頭の文だけを見る）
+        bad_nocast.append((cid, desc_txt[:40]))
     # 情報欄: 「同じ発売日」の行（いつも出る）の本数が、データを数えた値と同じ
     facts_ = re.search(r'<h2 id="facts-title"[^>]*>この作品のデータ</h2>\s*<ul class="facts">(.*?)</ul>', html_, re.S)
     rows_ = re.findall(r'<li class="facts-row">\s*<span class="facts-label">(.*?)</span>\s*<span class="facts-text">(.*?)</span>\s*</li>', facts_.group(1), re.S) if facts_ else []
@@ -2031,7 +2076,11 @@ for cid, x in valid.items():
         bad_facts.append((cid, want_day, (rows_[0] if rows_ else None)))
     if any(label == "収録時間" for label, _ in rows_):  # 収録時間の長さくらべは出さない（運営者の判断。2026-10-05）
         bad_facts.append((cid, "収録時間の長さくらべの行が出ている"))
-check(f"作品ページの品番（作れる{with_code}ページ）: 「品番」の欄・タイトルの先頭・説明文に、同じ品番が出ている。作れない作品には出ていない", not bad_code, bad_code[:3])
+check(f"作品ページの品番（作れる{with_code}ページ）: 「品番」の欄（FANZAの品番もいっしょに）・タイトルの先頭・説明文に、同じ品番が出ている。作れない作品には出ていない", not bad_code, bad_code[:3])
+check(f"作品ページの出演者（{with_cast}ページ）: 説明文・og:description の頭に「品番の出演は○○さん。」・見出しの下の1行・Movie の actor・video:actor がそろっている", not bad_cast, bad_cast[:3])
+check("出演者がいない作品ページには、説明文・見出しの下・Movie・video:actor に出演の話が無い", not bad_nocast, bad_nocast[:3])
+check(f"作品ページの OGP（og:type は video.movie・発売日・og:description は説明文と同じ）と構造化データ Movie（{with_movie}ページ。題名・品番・発売日・メーカー・出演者は Person）", not bad_movie, bad_movie[:3])
+warn("出演者のいる作品ページが1つ以上ある", with_cast > 0)
 check("作品ページに「この作品のデータ」欄があり、先頭の行（同じ発売日）の本数が、データを数えた値と同じ・収録時間の長さくらべの行は無い", not bad_facts, bad_facts[:2])
 warn("品番を作れる作品が1本以上ある", with_code > 0)
 

@@ -137,6 +137,14 @@ S.prepare(crow, coded.genres);
 const byCode = (q) => S.filterRows(crow, { terms: S.splitTerms(q), tags: [], status: '', sort: 'new' }, { today, hideVr: false }).map((r) => r.c).join();
 check('品番で探せる（DLDSS-566・dldss566・dldss-566・DLDSS566・作品IDの dldss00566）', ['DLDSS-566', 'dldss566', 'dldss-566', 'DLDSS566', 'dldss00566'].every((q) => byCode(q) === '1dldss00566'), ['DLDSS-566', 'dldss566'].map(byCode).join('/'));
 check('タイトルの言葉で探すとき、文節の区切りがあっても見つかる（「作品です」）', byCode('作品です') === '1dldss00566');
+// issue #174: 品番の書き方のゆれ（mkmp761・MKMP761・MKMP-761・FANZAの品番 mkmp00761・全角・空白で区切っても）
+const mk761 = L.buildItemsIndex(normalizeItems([{ cid: 'mkmp00761', title: '品番のゆれの確認', date: '2026-10-01', maker: 'KMP', actress: ['花子'] }, { cid: 'mkmp00076', title: 'べつの作品', date: '2026-10-01' }]), today);
+const row761 = plain(mk761.items).map((r) => ({ ...r }));
+S.prepare(row761, mk761.genres);
+const by761 = (q) => S.filterRows(row761, { terms: S.splitTerms(q), tags: [], status: '', sort: 'new' }, { today, hideVr: false }).map((r) => r.c).join();
+check('品番で探せる（mkmp761・MKMP761・MKMP-761・mkmp00761・ＭＫＭＰ－７６１・MKMP 761）。似た番号の作品は出ない',
+  ['mkmp761', 'MKMP761', 'MKMP-761', 'mkmp00761', 'ＭＫＭＰ－７６１', 'MKMP 761'].every((q) => by761(q) === 'mkmp00761') && by761('MKMP-076') === 'mkmp00076',
+  ['mkmp761', 'MKMP761', 'MKMP-761', 'mkmp00761'].map(by761).join('/'));
 
 console.log('\n■ 作品検索の「はじめの一覧」（ページを作るときに入れる。ブラウザと同じ中身。2026-10-07）');
 {
