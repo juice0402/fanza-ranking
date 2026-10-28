@@ -55,7 +55,8 @@ DAILY_LIMIT = 40        # 1日に仕上げる件数の上限（試運転で、1�
 # 1日40件のうち、売り場に回す件数（運営者の希望「動画35・同人4・ゲーム1」。2026-10-09。
 # 新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題）は、運営者の判断「上限は40のまま、1件ずつ」で各1件＝動画は29件。2026-10-10。
 # 対象が足りない日は、残りを動画に回す）
-FLOOR_QUOTA = {"doujin": 4, "game": 1, "anime": 1, "amateur": 1, "cinema": 1, "comic": 1, "photo": 1, "vr": 1}
+# 2026-10-28 運営者の判断「同人8・素人5・動画21」（同人・素人も人気があるとわかったため。ほかの売り場は各1件のまま）
+FLOOR_QUOTA = {"doujin": 8, "game": 1, "anime": 1, "amateur": 5, "cinema": 1, "comic": 1, "photo": 1, "vr": 1}
 FLOOR_REASON = {"doujin": "同人", "game": "ゲーム", "anime": "アニメ", "amateur": "素人", "cinema": "成人映画", "comic": "コミック", "photo": "写真集", "vr": "VR見放題"}
 # 作り手の呼び方（list の出力の項目名）: 同人はサークル・ゲームはブランド・ブックスは出版社・ほかはメーカー
 FLOOR_MAKER_FIELD = {"doujin": "circle", "game": "brand", "comic": "publisher", "photo": "publisher"}
