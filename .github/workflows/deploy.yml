@@ -27,7 +27,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 40  # ビルドと点検で10分ほど・アップロードで数分（4万ファイルまで。変わったファイルだけ送る）
+    timeout-minutes: 50  # ビルドと点検で16〜19分（2万7千ファイル。issue #188）・アップロードで数分（変わったファイルだけ送る）
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
