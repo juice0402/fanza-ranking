@@ -258,7 +258,8 @@ def make_workers_repo(routes=False):
     os.makedirs(os.path.join(repo, "workers"))
     os.makedirs(os.path.join(repo, "site", "dist"))
     open(os.path.join(repo, "scripts", "deploy_workers.sh"), "w", encoding="utf-8").write(read("scripts", "deploy_workers.sh"))
-    conf = read("workers", "wrangler.jsonc")
+    # 本物の設定から routes の行を消し、routes=True のときだけ足し直す（本物に routes があってもなくても、両方をためせるように）
+    conf = "\n".join(l for l in read("workers", "wrangler.jsonc").split("\n") if not re.match(r'\s*"routes"\s*:', l))
     if routes:
         conf = conf.replace('"workers_dev": true,', '"workers_dev": true,\n  "routes": [{ "pattern": "av-sale-guide.com/*", "zone_name": "av-sale-guide.com" }],')
     open(os.path.join(repo, "workers", "wrangler.jsonc"), "w", encoding="utf-8").write(conf)
@@ -311,6 +312,9 @@ conf = read("workers", "wrangler.jsonc")
 check("workers/wrangler.jsonc: 静的ファイルだけ（main なし）・site/dist・Pages と同じ末尾の / と 404 の扱い",
       '"directory": "../site/dist"' in conf and '"html_handling": "auto-trailing-slash"' in conf
       and '"not_found_handling": "404-page"' in conf and '"main"' not in conf)
+check("workers/wrangler.jsonc: routes を置くなら av-sale-guide.com だけ（custom_domain は使わない＝DNS の CNAME → Pages を残して、すぐ戻せる）",
+      not re.search(r'^\s*"routes"\s*:', conf, re.M)
+      or ('"pattern": "av-sale-guide.com/*"' in conf and '"zone_name": "av-sale-guide.com"' in conf and "custom_domain" not in conf))
 deploy = read(".github", "workflows", "deploy.yml")
 wstep = deploy[deploy.index("- name: Upload to Cloudflare Workers"):]
 check("deploy.yml: Workers へは Pages のあと・main のときだけ・Workers 用の鍵で",
