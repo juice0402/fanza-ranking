@@ -843,6 +843,24 @@ summary:focus-visible {
   }
 }
 
+/* 作品ページの見出しのすぐ下の「品番｜出演 〇〇さん・△△さん」の1行（issue #174。名前は女優のページへ） */
+.detail-code {
+  margin: -6px 0 16px;
+  color: var(--paper-dim);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.detail-code-num,
+.detail-code a {
+  color: var(--paper);
+}
+
+.detail-code-num {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .spec {
   display: grid;
   grid-template-columns: auto 1fr;

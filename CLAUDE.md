@@ -52,6 +52,7 @@ Gemini を使うのは `get_new_releases.py` のコメントの下書きだけ�
 - `/actress/nenpyo/`（女優の年表の一覧。年表のある女優を50音順に・入口は女優検索のページだけ）— 2026-10-27。くわしくは docs/architecture.md の「女優の歩み」
 - `scripts/agency_links.py`・`agency_events.py` — 所属事務所とSNS・女優のイベント情報（事務所の公式サイトから。守ること9）
 - `scripts/indexnow.py` — 検索エンジンへのお知らせ（IndexNow。本番の公開のときだけ）
+- 作品ページの品番と出演者（説明文の頭・見出しの下の1行・構造化データ Movie・OGP video.movie。出演者がいない作品には何も足さない）— 2026-10-28 #174。docs/architecture.md の `items.js` の節
 - `scripts/check.sh`（`quiet_step.sh`）— テスト一式 ／ `scripts/wait_run.py` — GitHub の実行を待つ ／ `scripts/already_updated.sh` — 今日の更新が済んだか
 - `scripts/health.py`（`health.yml`）— 週1回の見張り番（毎週月曜 0:01。Claude を使わない。`--last` で結果を1行ずつ）
 - `scripts/screens.mjs`（`screens.yml`）— 画面の写真と形のくずれの点検（GitHub の上で撮る）／ `scripts/probe_api.py`（`probe-api.yml`）— API の応答の形を調べる

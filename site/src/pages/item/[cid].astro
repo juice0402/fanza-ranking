@@ -18,12 +18,16 @@ import { endIso, endLabel, offPercent, onSaleItems } from '../../lib/sale.js';
 import { nextWorksOf, relatedForPage } from '../../lib/stay.js';
 import {
   breadcrumbLd,
+  castHead,
   formatDateJp,
+  itemOgMeta,
   itemPath,
   itemPageDescription,
   itemPageTitle,
+  movieLd,
   truncate,
 } from '../../lib/items.js';
+import { isMinorTitle } from '../../lib/gacha.js';
 import { searchPath } from '../../lib/search.js';
 import { productCode, itemFacts } from '../../lib/facts.js';
 import { monthLinkFor, VR_TAG_NAME } from '../../lib/collections.js';
@@ -77,6 +81,12 @@ const trail = [
 ];
 const makerPage = makerByName.get(item.maker)?.path;
 const code = productCode(item.cid); // 品番（作れないときは ''）
+// 見出しのすぐ下の「品番｜出演 〇〇さん・△△さん」の1行（issue #174。品番で調べて出演者を知りたい人に、すぐ答える）。
+// 3人までは全員、4人以上は先頭の2人と「ほか○人」。出演者がいない作品には出さない（「名前が出ていない」とも書かない）
+const head = castHead(item.actress);
+const actressPathOf = (name) => actressByName.get(name)?.path ?? '';
+// 構造化データ: パンくず＋Movie（未成年を連想させるタイトルの作品は、題名を新しい場所に出さないよう Movie を付けない。lib/gacha.js の isMinorTitle）
+const jsonLd = [breadcrumbLd(trail), ...(isMinorTitle(item.title) ? [] : [movieLd(item, code, { actress: actressPathOf, maker: makerPage ?? '' })])];
 // 出演者が多い作品（6人以上）は、先頭の4人だけを出し、残りは「ほか○人を見る」で開く（ページの上のほうが、名前だけで埋まらないように）
 const CAST_FOLD_AT = 6;
 const CAST_SHOWN = 4;
@@ -102,7 +112,9 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
   image={item.image_url}
   stickyCta={Boolean(item.url)}
   noindex={noindex}
-  jsonLd={[breadcrumbLd(trail)]}
+  jsonLd={jsonLd}
+  ogType="video.movie"
+  ogMeta={itemOgMeta(item)}
 >
   {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
   {(saleNow || tenNow?.end) && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
@@ -127,6 +139,11 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
 
       <div class="detail-body">
         <h1 class="detail-title">{item.title}</h1>
+        {head.names.length > 0 && (
+          <p class="detail-code">
+            {code && <span class="detail-code-num">{code}</span>}{code && '｜'}出演 {head.names.map((name, i) => <>{i > 0 && '・'}{actressPathOf(name) ? <a class="spec-link" href={actressPathOf(name)}>{name}</a> : name}さん</>)}{head.more > 0 && `ほか${head.more}人`}
+          </p>
+        )}
 
         {item.isAi
           ? (
@@ -139,31 +156,7 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
 
 
         <dl class="spec">
-          <dt class="spec-term">発売日</dt>
-          <dd class="spec-desc">{formatDateJp(item.dateKey)}</dd>
-          {code && (
-            <>
-              <dt class="spec-term">品番</dt>
-              <dd class="spec-desc">{code}</dd>
-            </>
-          )}
-          <dt class="spec-term">メーカー</dt>
-          <dd class="spec-desc">
-            {makerPage ? <a class="spec-link" href={makerPage}>{item.maker}</a> : item.maker}
-            {item.maker !== '不明' && <FavButton type="maker" favKey={item.maker} slug={makerByName.get(item.maker)?.slug ?? ''} size="mini" />}
-          </dd>
-          {item.series && (
-            <>
-              <dt class="spec-term">シリーズ</dt>
-              <dd class="spec-desc">{seriesGroup ? <a class="spec-link" href={seriesGroup.path}>{item.series.name}</a> : item.series.name}</dd>
-            </>
-          )}
-          {item.label && item.label.name !== item.maker && (
-            <>
-              <dt class="spec-term">レーベル</dt>
-              <dd class="spec-desc">{labelGroup ? <a class="spec-link" href={labelGroup.path}>{item.label.name}</a> : item.label.name}</dd>
-            </>
-          )}
+          {/* 出演者（顔の写真・女優のページへ）は、いちばん上に（issue #174。見出しの下の1行のすぐあとで、顔と名前が見えるように） */}
           {item.actress.length > 0 && (
             <>
               <dt class="spec-term">出演</dt>
@@ -192,6 +185,32 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
                   </details>
                 )}
               </dd>
+            </>
+          )}
+          <dt class="spec-term">発売日</dt>
+          <dd class="spec-desc">{formatDateJp(item.dateKey)}</dd>
+          {/* 品番と、FANZAの品番（作品ID。例 mkmp00761）。どちらの書き方で調べた人にも分かるように（issue #174） */}
+          {code && (
+            <>
+              <dt class="spec-term">品番</dt>
+              <dd class="spec-desc">{code}<span class="spec-sub">（FANZAの品番 {item.cid}）</span></dd>
+            </>
+          )}
+          <dt class="spec-term">メーカー</dt>
+          <dd class="spec-desc">
+            {makerPage ? <a class="spec-link" href={makerPage}>{item.maker}</a> : item.maker}
+            {item.maker !== '不明' && <FavButton type="maker" favKey={item.maker} slug={makerByName.get(item.maker)?.slug ?? ''} size="mini" />}
+          </dd>
+          {item.series && (
+            <>
+              <dt class="spec-term">シリーズ</dt>
+              <dd class="spec-desc">{seriesGroup ? <a class="spec-link" href={seriesGroup.path}>{item.series.name}</a> : item.series.name}</dd>
+            </>
+          )}
+          {item.label && item.label.name !== item.maker && (
+            <>
+              <dt class="spec-term">レーベル</dt>
+              <dd class="spec-desc">{labelGroup ? <a class="spec-link" href={labelGroup.path}>{item.label.name}</a> : item.label.name}</dd>
             </>
           )}
           {/* FANZAのレビューの評価（2026-10-10。lib/reviews.js）。高評価ランキングに入っていれば、その順位とリンク */}
