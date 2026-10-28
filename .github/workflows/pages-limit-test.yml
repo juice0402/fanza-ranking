@@ -1,0 +1,35 @@
+# Cloudflare の有料プラン（Workers Paid）で、Pages のファイル数の上限が2万→10万になったかを確かめるだけの、使い捨てのワークフロー（連絡 C-012。2026-10-28）。
+# このブランチに push したときだけ動く。2万5千の小さなファイルを、本番ではないプレビュー（limit-test.fanza-ranking.pages.dev）に上げてみる。
+# 本番（main・av-sale-guide.com）にはさわらない。確かめたら、このブランチごと消す（main には入れない）。
+name: Pages file limit test
+on:
+  push:
+    branches: [claude/pages-limit-test]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 2万5千のファイルを作る
+        run: |
+          mkdir -p limit-test/p
+          printf '<!doctype html><meta name="robots" content="noindex"><title>test</title>test\n' > limit-test/index.html
+          for i in $(seq 1 25000); do printf '<!doctype html><meta name="robots" content="noindex">%s\n' "$i" > "limit-test/p/$i.html"; done
+          echo "files: $(find limit-test -type f | wc -l)"
+      - name: プレビューに上げてみる（wrangler 4）
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          npx --yes wrangler@4 --version
+          set +e
+          npx --yes wrangler@4 pages deploy limit-test --project-name=fanza-ranking --branch=limit-test --commit-dirty=true 2>&1 | tail -25 | tee out.txt
+          code=${PIPESTATUS[0]}
+          if [ "$code" = "0" ]; then echo "::notice title=上限の確認::2万5千ファイルを上げられた（2万の上限はもう効いていない）"; else echo "::error title=上限の確認::上げられなかった（終了コード $code）: $(grep -iE 'error|limit|exceed|20,?000' out.txt | head -3 | tr '\n' ' ')"; fi
+          exit $code
