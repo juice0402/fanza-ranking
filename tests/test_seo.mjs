@@ -60,6 +60,12 @@ check('説明文の頭の文: 「品番の出演は○○さん・△△さん�
 const castDesc = L.itemPageDescription(mk({ cid: 'mkmp00761', comment: '落ち着いた雰囲気の一本。', actress: ['花子', '月子'] }), 'MKMP-761');
 check('説明文: 出演者がいれば、頭に品番と出演者。メーカー・発売日は残り、品番はくり返さない',
   castDesc === 'MKMP-761の出演は花子さん・月子さん。落ち着いた雰囲気の一本。 メーカーAの2026年11月1日発売作品。' && castDesc.split('MKMP-761').length === 2, castDesc);
+const echoDesc = L.itemPageDescription(mk({ cid: 'mkmp00761', comment: '花子さん・月子さんの2人が共演する作品です。収録は約150分です。', actress: ['花子', '月子'] }), 'MKMP-761');
+check('説明文: コメントの1文目が出演者の名前のくり返しなら落とす（名前が2回並ばない）・1文だけのコメントや名前が足りない文は残す',
+  echoDesc.split('花子さん').length === 2 && echoDesc.includes('収録は約150分です。')
+  && L.dropCastEcho('花子さんの作品です。', ['花子']) === '花子さんの作品です。'
+  && L.dropCastEcho('花子さんの作品です。2文目。', ['花子', '月子']) === '花子さんの作品です。2文目。'
+  && L.dropCastEcho('花子さんの作品です。2文目。', ['花子']) === '2文目。', echoDesc);
 const castLong = L.itemPageDescription(mk({ cid: 'mkmp00761', comment: longComment, actress: ['花子', '月子', '星子', '雪子'] }), 'MKMP-761');
 check('説明文: コメントが長いときは、出演者の文とメーカー・発売日を残して、コメントのほうを縮める（120文字まで）',
   castLong.startsWith('MKMP-761の出演は花子さん・月子さんほか。') && castLong.endsWith('メーカーAの2026年11月1日発売作品。') && castLong.includes('…') && [...castLong].length === 120, castLong);

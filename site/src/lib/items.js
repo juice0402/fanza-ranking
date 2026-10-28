@@ -405,6 +405,18 @@ export function castLead(item, code = '') {
   return `${code ? `${code}の` : ''}出演は${names.map((n) => `${n}さん`).join('・')}${more > 0 ? 'ほか' : ''}。`;
 }
 
+/**
+ * 説明文の頭に出演者の文を入れたとき、コメントの1文目が同じ出演者の名前を全部くり返していれば、その1文を落とす
+ * （「MKMP-761の出演は南日菜乃さん・…。南日菜乃さん・…の3人が共演する…」のように名前が2回並ばないように。2文目以降があるときだけ）
+ */
+export function dropCastEcho(comment, names) {
+  if (!comment || names.length === 0) return comment;
+  const cut = comment.indexOf('。');
+  if (cut < 0 || cut === comment.length - 1) return comment;
+  const first = comment.slice(0, cut + 1);
+  return names.every((n) => first.includes(n)) ? comment.slice(cut + 1).trim() : comment;
+}
+
 /** 作品ページの説明文（出演者がいれば品番と出演者の文 → コメント → メーカー・発売日・品番） */
 export function itemPageDescription(item, code = '') {
   const head = castLead(item, code);
@@ -412,7 +424,7 @@ export function itemPageDescription(item, code = '') {
   const base = `${item.maker}の${formatDateJp(item.dateKey)}発売作品${code && !head ? `（品番 ${code}）` : ''}。`;
   const dur = durationJp(item.duration_min);
   const durText = dur ? `収録時間は${dur}${(item.duration_min ?? 0) >= 240 ? 'の長編' : ''}。` : '';
-  const comment = String(item.comment ?? '').trim();
+  const comment = dropCastEcho(String(item.comment ?? '').trim(), head ? castHead(item.actress).names : []);
   if (comment) {
     // 出演者の文と、メーカー・発売日・品番は、必ず残す（コメントが長いと、後ろに付けた品番が切れてしまうため。コメントのほうを縮める）。
     // コメントが切らずに入るときだけ、あとに収録時間も足す（説明文は全角80〜120文字。lib/describe.js。2026-10-26）
