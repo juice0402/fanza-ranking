@@ -359,6 +359,27 @@ else:
               and [(r["begin"] or r["first"]) for r in rows_h] == sorted([(r["begin"] or r["first"]) for r in rows_h], reverse=True),
               str(sh)[:120])
 
+# ---- 作品ごとの値段の記録（get_new_releases.py の save_price_history。sale.json を書くたびに足す。issue #183・2026-10-29 から）----
+PRICE_HISTORY = os.path.join(ROOT, "site", "src", "data", "price_history.json")
+if not os.path.exists(PRICE_HISTORY):
+    print("  （price_history.json はまだありません。毎日の更新・セールの読み直しで作られます）")
+else:
+    try:
+        phj = json.load(open(PRICE_HISTORY, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        phj = None
+        check("price_history.json を読める", False, str(e))
+    if phj is not None:
+        _d = re.compile(r"\d{4}-\d{2}-\d{2}")
+        _pi = lambda v: isinstance(v, int) and not isinstance(v, bool) and v > 0  # noqa: E731
+        _ph_items = phj.get("items") if isinstance(phj, dict) else None
+        check("price_history.json: since（記録を始めた日）・更新日・作品ごとに [定価, いちばん安い値段, その日, セールに入った回数, 今のセールが始まった日, 最後に見かけた日]（値段と回数は1以上・日付は since〜更新日）",
+              isinstance(phj, dict) and set(phj) == {"since", "updated", "items"} and _d.fullmatch(str(phj["since"])) and _d.fullmatch(str(phj["updated"]))
+              and phj["since"] <= phj["updated"] and isinstance(_ph_items, dict)
+              and all(isinstance(r, list) and len(r) == 6 and _pi(r[0]) and _pi(r[1]) and _pi(r[3]) and all(isinstance(x, str) and _d.fullmatch(x) for x in (r[2], r[4], r[5]))
+                      and phj["since"] <= r[2] <= r[5] <= phj["updated"] and phj["since"] <= r[4] <= r[5] for r in _ph_items.values()),
+              str(phj)[:120])
+
 # ---- FANZA同人・FANZAゲームなどの売り場の人気の動き・セールの記録（scripts/floor_history.py。2026-10-09 から。新しい売り場は 2026-10-10 から）----
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import floor_history as _FH  # noqa: E402

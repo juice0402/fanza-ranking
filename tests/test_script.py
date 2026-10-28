@@ -1469,12 +1469,70 @@ with tempfile.TemporaryDirectory() as tmp_h:
     text_h = open(ok_h, encoding="utf-8").read()
     check("保存は1行に1つ・読み直せる", json.loads(text_h)["campaigns"][0]["title"] == "週末セール" and text_h.count("\n") == 4, text_h)
 
+print("\n■ 作品ごとの値段の記録（price_history.json。sale.json を書くたびに足していく。issue #183）")
+ph = json.load(open(os.path.join(s_dir, "price_history.json"), encoding="utf-8"))
+check("毎日の更新: sale.json と同じ場所に、セール中の作品の [定価, いちばん安い値段, その日, 回数, 今のセールが始まった日, 最後に見かけた日]（値引きが確かめられない作品は書かない）・はじめは since が今日",
+      ph["since"] == TODAY_STR and ph["updated"] == TODAY_STR and set(ph["items"]) == {"cat00003", "cat00006"}
+      and ph["items"]["cat00003"] == [2692, 1884, TODAY_STR, 1, TODAY_STR, TODAY_STR], ph)
+check("一覧が取れなかった日は、値段の記録も書きかえない（sale.json と同じ）", json.load(open(os.path.join(s_dir, "price_history.json"), encoding="utf-8")) == ph)
+camp_p1 = {"title": "週末セール", "begin": "2026-01-01 00:00", "end": "2026-01-02 23:59"}
+camp_p2 = {"title": "次のセール", "begin": "2026-01-04 00:00", "end": "2026-01-09 23:59"}
+info_p = {"r": 5, "t": "このサイトに無い作品", "u": "https://www.dmm.co.jp/x", "i": "https://pics.dmm.co.jp/x.jpg", "d": "2025-01-01", "m": "どこか", "a": [], "g": []}
+with tempfile.TemporaryDirectory() as tmp_p:
+    p_sale, p_hist = os.path.join(tmp_p, "sale.json"), os.path.join(tmp_p, "price_history.json")
+
+    def p_day(today_p, sales_p, extras_p=None):
+        """その日の sale.json を書いてから読み直し、値段の記録に足す（毎日の更新・読み直しと同じ順）"""
+        open(p_sale, "w", encoding="utf-8").write(m_s.dump_sale_file(sales_p, today_p, extras_p))
+        return m_s.save_price_history(m_s.load_sale_file(p_sale), today_p, m_s.load_sale_extras(p_sale)[0], p_hist)
+
+    p_day("2026-01-01", {"a": (camp_p1, 1500, 3000), "b": (camp_p1, None, None)}, {"x": (camp_p1, 700, 1000, dict(info_p))})
+    p_day("2026-01-01", {"a": (camp_p1, 1200, 3000)})  # 同じ日の2回目（読み直し）
+    ph1 = json.load(open(p_hist, encoding="utf-8"))
+    check("1日目: 回数1・いちばん安い値段は、その日に読んだうちの安いほう・このサイトに無い作品（extra）も入れる・価格の無い作品は書かない",
+          ph1["since"] == "2026-01-01" and ph1["items"] == {"a": [3000, 1200, "2026-01-01", 1, "2026-01-01", "2026-01-01"], "x": [1000, 700, "2026-01-01", 1, "2026-01-01", "2026-01-01"]}, ph1)
+    p_day("2026-01-02", {"a": (camp_p1, 1500, 3000)})
+    ph2 = json.load(open(p_hist, encoding="utf-8"))["items"]["a"]
+    check("2日目も見かけた: 同じ回（回数1のまま）・いちばん安い値段と、その日はそのまま・最後に見かけた日は2日目", ph2 == [3000, 1200, "2026-01-01", 1, "2026-01-01", "2026-01-02"], ph2)
+    p_day("2026-01-04", {"a": (camp_p2, 1000, 3200)})
+    ph4 = json.load(open(p_hist, encoding="utf-8"))
+    check("見かけない日（3日）をはさんで、新しいセールでまた見かけた: 回数2・今のセールの始まりは4日・もっと安ければ、いちばん安い値段とその日も新しく・定価は今の定価に",
+          ph4["items"]["a"] == [3200, 1000, "2026-01-04", 2, "2026-01-04", "2026-01-04"] and ph4["since"] == "2026-01-01" and ph4["updated"] == "2026-01-04", ph4)
+    p_day("2026-01-07", {"a": (camp_p2, 1000, 3200)})
+    ph7 = json.load(open(p_hist, encoding="utf-8"))["items"]["a"]
+    check("見かけない日があっても、前に見かけた日より前から始まっているセールなら、同じ回の続き（読み直しで見かけなかっただけ）・同じ値段なら、いちばん安い日ははじめての日のまま",
+          ph7 == [3200, 1000, "2026-01-04", 2, "2026-01-04", "2026-01-07"], ph7)
+    check("このサイトに無い作品も、見かけた日だけ（最後に見かけた日は1日のまま）", json.load(open(p_hist, encoding="utf-8"))["items"]["x"] == [1000, 700, "2026-01-01", 1, "2026-01-01", "2026-01-01"])
+    text_p = open(p_hist, encoding="utf-8").read()
+    check("保存は1行に1作品・品番の順・読み直せる", text_p.count("\n") == 5 and text_p.index('"a":') < text_p.index('"x":'), text_p)
+    open(p_hist, "w").write("{壊れている")
+    with contextlib.redirect_stdout(io.StringIO()):
+        res_p = m_s.save_price_history({"a": (camp_p2, 900, 3200)}, "2026-01-08", None, p_hist)
+    check("前の記録が壊れていたら、上書きしない（前の記録を消さない。毎日の更新は止めない）", res_p is None and open(p_hist).read() == "{壊れている")
+    open(p_hist, "w").write('{"since":"x","items":{}}')
+    with contextlib.redirect_stdout(io.StringIO()):
+        res_p2 = m_s.save_price_history({"a": (camp_p2, 900, 3200)}, "2026-01-08", None, p_hist)
+    check("形が違う（since が日付でない・items が無い）ときも、上書きしない", res_p2 is None and open(p_hist).read() == '{"since":"x","items":{}}')
+mp = m_s.merge_price_history({"since": "2026-01-01", "updated": "2026-01-02", "items": {
+    "old": [1000, 500, "2025-01-01", 1, "2025-01-01", "2025-01-02"], "keep": [1000, 500, "2025-01-03", 1, "2025-01-03", "2025-01-03"],
+    "bad1": [1000, 0, "2026-01-01", 1, "2026-01-01", "2026-01-01"], "bad2": [1000, 500, "2026-01-02", 1, "2026-01-01", "2026-01-01"], "bad3": "x",
+    "noday": [1000, 500, "2026-01-01", 1, "2026-01-01", "2026-01-01"]}},
+    {"noday": (1000, 400, ""), "new": (2000, 1000, "2026-01-01")}, "2026-01-03")
+check("1年（365日）より前に最後に見かけた作品・形の違う行は消す・始まりの分からないセールは、見かけない日をはさめば別の回・はじめての作品は回数1",
+      set(mp["items"]) == {"keep", "noday", "new"} and mp["items"]["noday"] == [1000, 400, "2026-01-03", 2, "2026-01-03", "2026-01-03"]
+      and mp["items"]["new"] == [2000, 1000, "2026-01-03", 1, "2026-01-03", "2026-01-03"] and mp["since"] == "2026-01-01", mp)
+check("値段の記録に足すのは、価格が定価より安い作品だけ（null・0・定価以上は入れない）・同じ作品なら、このサイトの作品のほう",
+      m_s.price_rows_of({"a": (camp_p1, 700, 1000), "b": (camp_p1, None, None), "c": (camp_p1, 0, 1000), "d": (camp_p1, 1000, 1000), "e": (camp_p1, True, 2)},
+                        {"a": (camp_p2, 600, 1000, {}), "f": (camp_p2, 500, 900, {})})
+      == {"a": (1000, 700, "2026-01-01"), "f": (900, 500, "2026-01-04")})
+
 print("\n■ 日中のセールの読み直し（--sales-only。運営者の「FANZAの動画は、だいたい10時にいつもセールの更新が入る」）")
 camp_c = {"date_begin": day(1) + " 10:00:00", "date_end": day(3) + " 09:59:59", "title": "10時からのセール30％OFF"}
 with tempfile.TemporaryDirectory() as tmp_r:
     r_sale, r_hist = os.path.join(tmp_r, "sale.json"), os.path.join(tmp_r, "sale_history.json")
     shutil.copy(os.path.join(s_dir, "sale.json"), r_sale)
     shutil.copy(os.path.join(s_dir, "sale_history.json"), r_hist)
+    shutil.copy(os.path.join(s_dir, "price_history.json"), os.path.join(tmp_r, "price_history.json"))
     r_calls = []
 
     def r_call(params, rows=None):
@@ -1503,6 +1561,10 @@ with tempfile.TemporaryDirectory() as tmp_r:
           {c["title"]: c.get("n") for c in rs["campaigns"]} == {"10時からのセール30％OFF": 3, "日替わりセール★": None}, rs["campaigns"])
     rh = {r["title"]: r for r in json.load(open(r_hist, encoding="utf-8"))["campaigns"]}
     check("セールの履歴: 10時に始まったセールを、その日に見かけたことになる", rh["10時からのセール30％OFF"]["first"] == day(1) and rh["10時からのセール30％OFF"]["max_off"] == 40, rh.get("10時からのセール30％OFF"))
+    rp = json.load(open(os.path.join(tmp_r, "price_history.json"), encoding="utf-8"))
+    check("値段の記録: 読み直しでも、sale.json と同じ場所の記録に足す（前の日から続けて見かけた作品は同じ回・安くなれば新しく・定価は今の定価に）",
+          rp["since"] == TODAY_STR and rp["updated"] == day(1) and rp["items"]["cat00003"] == [2500, 1500, day(1), 1, TODAY_STR, day(1)]
+          and rp["items"]["cat00006"] == [2692, 1884, TODAY_STR, 1, TODAY_STR, TODAY_STR], rp)
     before_r = open(r_sale, encoding="utf-8").read()
     with contextlib.redirect_stdout(io.StringIO()):
         saved_r2, lines_r2 = m_s.refresh_sales(now_r, call=r_call, sale_path=r_sale, history_path=r_hist)

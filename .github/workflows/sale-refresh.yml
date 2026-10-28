@@ -3,7 +3,7 @@ name: Sale Refresh (daytime)
 # FANZAのセールの入れかわり（10時）に合わせて、全部の売り場のセールを読み直す。
 # 運営者の「FANZAの動画は、だいたい10時にいつもセールの更新が入る」→「動画基準で全ての売り場はもう10時更新で統一しちゃおう」（2026-10-10）。
 # 毎日の更新（0:05）だけだと、10時に始まったセールが、次の日の0時すぎまでサイトに出なかった（9:59に終わったセールは、ブラウザで隠れるので、その日の昼からはセールが少なく見えた）。
-# ・動画: 人気順の上位1,000本と新着の人気順の上位500本を読み直し、セール中の作品（sale.json）とセールの履歴（sale_history.json）だけを新しくする（get_new_releases.py --sales-only）
+# ・動画: 人気順の上位1,000本と新着の人気順の上位500本を読み直し、セール中の作品（sale.json）とセールの履歴（sale_history.json）・作品ごとの値段の記録（price_history.json）だけを新しくする（get_new_releases.py --sales-only）
 # ・同人・ゲーム・アニメ・素人・成人映画・コミック・写真集・VR見放題: 0:05 と同じく集め直す（scripts/doujin_game.py --update。価格・セールの札・人気の順位・
 #   人気の動き・セールの記録。同じ日に2回動いても、その日の記録はあとのほうで上書きするだけ）
 # ・動画は、人気順の上位5万本まで読み、このサイトに無いセール中の作品も特集ごとに48本まで保存する（運営者の「日替わりセールはFANZAで51本なのに、サイトは1本」。2026-10-10。
@@ -65,6 +65,8 @@ jobs:
             site/src/data/doujin.json site/src/data/game.json site/src/data/anime.json site/src/data/amateur.json \
             site/src/data/cinema.json site/src/data/comic.json site/src/data/photo.json site/src/data/vr.json \
             site/src/data/floor_rank_history.json site/src/data/floor_sale_history.json
+          # 作品ごとの値段の記録（sale.json を書いたときに足す。issue #183）。はじめて書く日まで無いので、あるときだけ（無いファイルを名前で指定すると git add が失敗する）
+          if [ -f site/src/data/price_history.json ]; then git add -- site/src/data/price_history.json; fi
           if git diff --staged --quiet; then
             echo "データに変更なし。保存しません。"
             exit 0

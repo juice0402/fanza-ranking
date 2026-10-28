@@ -211,7 +211,10 @@ check("sale-refresh.yml: 全部の売り場も10時すぎに集め直す（失�
       "python scripts/doujin_game.py --update" in sr and sr.index("python get_new_releases.py --sales-only") < sr.index("python scripts/doujin_game.py")
       and "continue-on-error: true" in sr[sr.rindex("- name:", 0, sr.index("python scripts/doujin_game.py")):sr.index("python scripts/doujin_game.py")]
       and set(_sr_files) == {"site/src/data/sale.json", "site/src/data/sale_history.json", "site/src/data/floor_rank_history.json", "site/src/data/floor_sale_history.json",
-                             *(f"site/src/data/{k}.json" for k in _FD.FLOORS)}, _sr_files)
+                             "site/src/data/price_history.json", *(f"site/src/data/{k}.json" for k in _FD.FLOORS)}, _sr_files)
+# 作品ごとの値段の記録（issue #183）: はじめて書く日まで無いので、あるときだけ git add する（無いファイルを名前で指定すると git add が失敗して、保存も公開も止まる）
+check("sale-refresh.yml: 作品ごとの値段の記録（price_history.json）も保存する・ファイルがあるときだけ git add",
+      "if [ -f site/src/data/price_history.json ]; then git add -- site/src/data/price_history.json; fi" in sstep[:sstep.index("git diff --staged")])
 # 素人・アニメ・成人映画のキャンペーンごと（運営者の「素人のセールも、動画みたいに『○○セール』ごとに」。2026-10-12）:
 # 0:35（と手動）だけ（キャンペーンは0時に入れかわる。10時の読み直しが20分遅れないように。運営者の「20分って結構かかるね。最適化できない？」。2026-10-12）。
 # 動画のセールを保存・公開したあとに読み（日替わりセールの公開が遅れない）、もう一度、キャンペーンのデータだけを保存・公開する。失敗しても止めない

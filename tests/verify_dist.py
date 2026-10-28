@@ -2281,6 +2281,44 @@ else:
     check("セール中の特集が無いときは、トップに欄を出さない", not home_sale and not camp_ul)
 check("フッターにセール・キャンペーンへのリンクがある", 'href="/sale/"' in home_html)
 
+# 作品ごとの値段の記録（price_history.json。作品ページのセールの欄の下に1行。issue #183。site/src/lib/price-history.js）。
+# 記録が30日たまるまで出さない・いつからの記録かを書く・数字は記録のとおり・言い切る言葉や急がせる言葉を書かない（DMMアフィリエイト参加規約 第4条＝有利誤認）・構造化データに入れない
+print("\n■ 作品ごとの値段の記録")
+try:
+    _ph = json.load(open(os.path.join(ROOT, "site", "src", "data", "price_history.json"), encoding="utf-8"))
+except (OSError, ValueError):
+    _ph = {}
+_ph_since = str(_ph.get("since") or "") if isinstance(_ph, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(_ph.get("since") or "")) else ""
+_ph_items = _ph.get("items") if isinstance(_ph, dict) and isinstance(_ph.get("items"), dict) else {}
+PRICE_RECORD_NG = re.compile(r"史上最安|過去最安|最安値|底値|買い時|今だけ|見逃")  # lib/price-history.js の PRICE_RECORD_NG と同じ
+_pr_lines, _pr_ld = {}, []
+for p in item_pages:
+    raw_ = read_raw(p)
+    if "price-record" in raw_:
+        m_ = re.search(r'<p class="[^"]*\bprice-record\b[^"]*"[^>]*>(.*?)</p>', raw_, re.S)
+        if m_:
+            _pr_lines[os.path.basename(os.path.dirname(p))] = re.sub(r"\s+", " ", strip_tags(unphrase(m_.group(1)))).strip()
+    for ld_ in LD_BLOCK.findall(raw_):
+        if "このサイトの記録" in ld_ or re.search(r'"(lowPrice|highPrice|priceSpecification|priceValidUntil)"', ld_):
+            _pr_ld.append(rel(p))
+_pr_days = (datetime.date.fromisoformat(JST_DAY) - datetime.date.fromisoformat(_ph_since)).days if _ph_since else -1
+if _pr_days < 30:
+    check(f"値段の記録は、記録が30日たまるまで出さない（記録を始めた日 {_ph_since or 'まだ無い'}・{max(_pr_days, 0)}日目）", not _pr_lines, list(_pr_lines.items())[:2])
+else:
+    _since_jp = f"{int(_ph_since[:4])}年{int(_ph_since[5:7])}月{int(_ph_since[8:10])}日"
+    _pr_bad = []
+    for cid_, t_ in _pr_lines.items():
+        r_ = _ph_items.get(cid_)
+        mm_ = re.fullmatch(r"このサイトの記録（" + re.escape(_since_jp) + r"から）：いちばん安かったのは(?:\d{4}年)?(\d{1,2})月(\d{1,2})日の([\d,]+)円・セールは(\d+)回目?", t_)
+        if (not mm_ or not isinstance(r_, list) or len(r_) != 6 or int(mm_.group(3).replace(",", "")) != r_[1] or int(mm_.group(4)) != r_[3]
+                or (int(mm_.group(1)), int(mm_.group(2))) != (int(str(r_[2])[5:7]), int(str(r_[2])[8:10]))):
+            _pr_bad.append((cid_, t_))
+    check(f"値段の記録の1行（{len(_pr_lines)}ページ）: いつからの記録かを書く・いちばん安い値段・その日・回数は price_history.json のとおり", not _pr_bad, _pr_bad[:2])
+    warn(f"値段の記録の1行が、作品ページに出ている（{len(_pr_lines)}ページ）", bool(_pr_lines) or not _ph_items)
+check("値段の記録の1行に、言い切る言葉・急がせる言葉（史上最安・過去最安・最安値・底値・今が買い時・今だけ・見逃す）を書かない",
+      not [t_ for t_ in _pr_lines.values() if PRICE_RECORD_NG.search(t_)], [t_ for t_ in _pr_lines.values() if PRICE_RECORD_NG.search(t_)][:2])
+check("作品ページの構造化データ（JSON-LD）に、値段の記録を入れない", not _pr_ld, _pr_ld[:3])
+
 # 特集ごとのページ（/sale/<印>/）と「FANZAのセールはいつ？」（/sale/history/）（運営者の希望「SEOを上位に」→ ①セールを検索の入り口に。2026-10-06）
 print("\n■ 特集ごとのページ・セールの履歴")
 try:
