@@ -8,9 +8,9 @@ import { itemPath } from './items.js';
 
 /** 作品ページ以外のファイルの数（見積もり）。counts: 出演者・メーカー・シリーズ・レーベル・月・ジャンル・まとめ記事・セール（特集ごと・履歴）のページの数、カレンダー（.ics）の数、過去の作品の一覧に並ぶ本数、
  * FANZA同人・FANZAゲームのページの数（floors。作品ページ・サークル/ブランドのページも全部入れる。動画の作品ページより先に枠を取る。2026-10-09。lib/floors.js の floorFileCount）、
- * 作品検索の続きのファイルの数（search。2026-10-11） */
-export function nonItemFileCount({ actress = 0, maker = 0, series = 0, label = 0, month = 0, tag = 0, weekly = 0, sale = 0, ics = 0, archiveItems = 0, floors = 0, search = 0 } = {}, fixed = FIXED_FILES, pageSize = ARCHIVE_PAGE_SIZE) {
-  return fixed + actress + maker + series + label + month + tag + weekly + sale + ics + floors + search + Math.max(1, Math.ceil(archiveItems / pageSize));
+ * 作品検索の続きのファイルの数（search。2026-10-11）、読み物のページと一覧のページの数（yomimono。2026-10-28） */
+export function nonItemFileCount({ actress = 0, maker = 0, series = 0, label = 0, month = 0, tag = 0, weekly = 0, yomimono = 0, sale = 0, ics = 0, archiveItems = 0, floors = 0, search = 0 } = {}, fixed = FIXED_FILES, pageSize = ARCHIVE_PAGE_SIZE) {
+  return fixed + actress + maker + series + label + month + tag + weekly + yomimono + sale + ics + floors + search + Math.max(1, Math.ceil(archiveItems / pageSize));
 }
 
 /** 作品ページの優先順（小さいほど先）: 毎日の更新で載せた作品 → コメントのある過去作品 → そのほかの過去作品 */

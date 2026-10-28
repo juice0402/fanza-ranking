@@ -2032,6 +2032,75 @@ summary:focus-visible {
   font-size: 13px;
 }
 
+/* ---------- 読み物（/yomimono/。2026-10-28 #181） ----------
+   一覧は罫線で区切った行（題・数えた日と本数）。記事は本文の幅をしぼって読みやすく、棚と棚の下の1行の案内は、ほかのページの棚と同じ形 */
+.yomi-checked {
+  margin-top: 2px;
+}
+
+.yomi-lead {
+  margin-top: 18px;
+}
+
+.yomi-text {
+  max-width: 40em;
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.yomi-sec .section-title {
+  margin-bottom: 14px;
+}
+
+/* 年ごとの本数の棒（女優の歩みと同じ .hist-chart。その節の1段落目のあと） */
+.hist-chart.yomi-chart {
+  margin: 4px 0 20px;
+}
+
+.yomi-more {
+  margin: 14px 0 0;
+  font-size: 13px;
+}
+
+.mini-note {
+  font-variant-numeric: tabular-nums;
+}
+
+.yomi-index {
+  max-width: 48em;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.yomi-index-row {
+  display: grid;
+  gap: 2px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.yomi-index-link {
+  color: var(--paper);
+  font-size: 15px;
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+.yomi-index-meta {
+  color: var(--paper-dim);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ジャンルのページ・VRの売り場のトップの、見出しの下の「読み物：…」の1行 */
+.yomi-entry {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
 /* ---------- パッケージ写真（動画がある作品の、サンプル画像の下） ---------- */
 
 .package .sample-link {

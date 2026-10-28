@@ -1,7 +1,7 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
-import { actressByName, historyByName, storiesByName, nenkanActressGroups, all, allReleased, events, paged, popularity, sale, saleWorks, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorHasSale, floorSale, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors, reviewRanking, reviews, floorReviewRankings, floorPeriodRankings, floorSearchIndexes } from '../lib/data.js';
+import { actressByName, historyByName, storiesByName, nenkanActressGroups, all, allReleased, events, paged, popularity, sale, saleWorks, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, yomimonoPages, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorHasSale, floorSale, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors, reviewRanking, reviews, floorReviewRankings, floorPeriodRankings, floorSearchIndexes } from '../lib/data.js';
 import { REVIEW_RANKING_MIN_ITEMS, REVIEW_RANKING_PATH, floorReviewRankingPath } from '../lib/reviews.js';
 import { FLOORS, FLOOR_COLLECTION_KINDS, FLOOR_HUB_SHOWN, FLOOR_PERIODS, floorGirlsPath, girlsIndexable, floorPeriodIndexable, floorPeriodPath, floorEntityIndexable, floorEntityRankingPath, collectionIndexIndexable, collectionIndexable, floorCollectionIndexPath, floorSaleHistoryIndexable, floorSaleHistoryPath, floorSalePageIndexable, FLOOR_RANKING_LIMIT, FLOOR_SALE_LIMIT, floorItemPath, floorMakerIndexPath, floorNewPopular, floorPath, floorRanking, floorRankingPath, floorSaleItems, floorSalePath, floorSaleShelf, floorUpcoming } from '../lib/floors.js';
 import { LABEL_INDEX_PATH, SERIES_INDEX_PATH } from '../lib/insights.js';
@@ -28,6 +28,7 @@ import {
 } from '../lib/items.js';
 import { WEEKLY_INDEX_PATH, weeklyPath } from '../lib/roundups.js';
 import { NENPYO_PATH, nenkanIndexable } from '../lib/history.js';
+import { YOMIMONO_PATH } from '../lib/yomimono.js';
 
 export function GET() {
   const home = [...released.slice(0, HOME_RELEASED_LIMIT), ...upcoming.slice(0, HOME_UPCOMING_LIMIT)];
@@ -131,6 +132,13 @@ export function GET() {
       ? [
           { path: WEEKLY_INDEX_PATH, lastmod: roundups.map((r) => r.written).sort().at(-1) },
           ...roundups.map((r) => ({ path: weeklyPath(r.week_start), lastmod: r.written })),
+        ]
+      : []),
+    // 読み物（2026-10-28。1本も無いあいだは、一覧ページも地図に入れない。ページの側の noindex と同じ決まり）。lastmod は数えた日
+    ...(yomimonoPages.length > 0
+      ? [
+          { path: YOMIMONO_PATH, lastmod: yomimonoPages.map((a) => a.checked).sort().at(-1) },
+          ...yomimonoPages.map((a) => ({ path: a.path, lastmod: a.checked })),
         ]
       : []),
   ];

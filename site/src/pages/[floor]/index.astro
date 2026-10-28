@@ -13,7 +13,7 @@ import FloorHotSquares from '../../components/FloorHotSquares.astro';
 import FloorSaleCards from '../../components/FloorSaleCards.astro';
 import GachaCorner from '../../components/GachaCorner.astro';
 import TenYenHero from '../../components/TenYenHero.astro';
-import { activeFloors, floorCollectionGroups, floorEntityRankings, floorGachaPools, floorMakerGroups, floorRankHistory, floorSaleHistory, floorSalePageGroups, floors, tenYenNow } from '../../lib/data.js';
+import { activeFloors, floorCollectionGroups, floorEntityRankings, floorGachaPools, floorMakerGroups, floorRankHistory, floorSaleHistory, floorSalePageGroups, floors, tenYenNow, yomimonoPages } from '../../lib/data.js';
 import {
   DOUJIN_TYPES, FLOORS, FLOOR_HUB_SHOWN, floorCollectionIndexPath, floorEntityLabel, floorEntityRankingPath, floorItemListLd, floorMakerIndexPath, floorMaxOff, floorNewPopular,
   floorPath, floorRankNote, floorRanking, floorRankingName, floorRankingPath, floorGirlsPath, FLOOR_PERIODS, floorPeriodPath, floorSaleCount, floorSaleHistoryPath, floorSaleItems, floorSalePath, floorSearchHint, floorSearchPath, floorTopics, floorUpcoming, hubThemes, priceNote,
@@ -49,6 +49,8 @@ const types = cols.type;
 const themes = hubThemes(cols.theme);
 const hot = ['maker', 'author'].filter((by) => floorEntityRankings[key][by]?.length >= 3).map((by) => ({ by, label: floorEntityLabel(f, by), path: floorEntityRankingPath(key, by), rows: floorEntityRankings[key][by].slice(0, 3) }));
 // ほかの売り場（2026-10-10 から8つ。2つより多いときは、短い名前で4つずつ。トップの「作品を探す」の下と同じ）
+// VRの読み物（VR見放題の売り場のトップに、見出しの下の1行。2026-10-28 #181）
+const reads = key === 'vr' ? yomimonoPages.filter((p) => p.vr) : [];
 const gacha = floorGachaPools[key];
 const hasGacha = gacha.length >= 3;
 // 運命の作品のスマホの置き場所（新作で人気の下。無ければ人気ランキングの下）
@@ -79,6 +81,7 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
       <header class="today-head">
         {day && <p class="today-date"><time datetime={data.updated}>{day.m}月{day.d}日（{day.wd}）</time>の更新</p>}
         <h1 class="today-title">{f.label}の人気作品</h1>
+        {reads.map((r) => <p class="yomi-entry">読み物：<a class="spec-link" href={r.path}>{r.title}</a></p>)}
       </header>
 
       <TenYenHero first={key} />

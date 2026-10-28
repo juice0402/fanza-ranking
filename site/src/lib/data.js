@@ -22,11 +22,12 @@ import { FLOOR_REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, normalizeReviews, topRated 
 import { normalizeReadings } from './kana.js';
 import { nenkanGroups, normalizeHistory, normalizeStories } from './history.js';
 import { isMinorTitle } from './gacha.js';
+import { buildYomimonoPages, normalizeYomimono } from './yomimono.js';
 import { FLOOR_KEYS, FLOOR_PERIODS, FLOORS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorPeriodRanking, floorSaleItems, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorGenreTops, normalizeFloorSale, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews,readings,genre_tops,actress_history,actress_stories,price_history}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews,readings,genre_tops,actress_history,actress_stories,price_history,yomimono}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -131,6 +132,18 @@ export const saleCampaignBySlug = new Map(saleCampaignPages.map((p) => [p.slug, 
 /** 特集（キャンペーン）へのリンク先: 10円セールの特集は10円セールのページ、ほかは特集ごとのページ（無ければ /sale/ のその特集の見出し）。c: { title, k } */
 export const campaignHrefOf = (c) => (isTenYenCampaign(c.title) ? TEN_YEN_PATH : saleCampaignBySlug.get(campaignSlug(c.title))?.path ?? saleHref(c.k));
 export const factsContext = buildFactsContext(all);
+// 読み物（/yomimono/。Claude が scripts/claude_yomimono.py で書く。2026-10-28 #181。lib/yomimono.js）。まだ無ければ空。
+// ページを作るのは、テーマの作品の棚（人気・評価・いまセール中・新作と予約）が1つでもある読み物だけ
+export const yomimono = normalizeYomimono(optionalData('yomimono'));
+export const yomimonoPages = buildYomimonoPages(yomimono.articles, {
+  works: all,
+  today,
+  sale,
+  saleWorks,
+  popDate: popularity.date,
+  saleDate: sale.date,
+  tagPathOf: (name) => tagByName.get(name)?.path ?? '',
+});
 // シリーズ・レーベルのページ（2026-10-07。作品が3本以上のもの。名前が未成年を連想させるもの・メーカーと同じ名前のレーベルは作らない。lib/insights.js）
 export const seriesGroups = groupByEntry(all, 'series', { minItems: SERIES_MIN_ITEMS, max: SERIES_PAGE_MAX });
 export const labelGroups = groupByEntry(all, 'label', { minItems: LABEL_MIN_ITEMS, max: LABEL_PAGE_MAX });
@@ -228,6 +241,7 @@ export const pagePlan = planPages(all, {
   month: monthGroups.length,
   tag: tagGroups.length,
   weekly: roundups.length,
+  yomimono: yomimonoPages.length + 1, // 読み物のページ＋一覧のページ（2026-10-28）
   sale: saleCampaignPages.length + 1 + 1 + FLOOR_KEYS.length + 1 + FLOOR_KEYS.length, // 特集ごとのページと「セールはいつ？」のページ・10円セールのページ（まとめ＋売り場ごと）・高評価ランキング（動画＋売り場ごと）
   ics: calendarActressGroups.length + calendarMakerGroups.length,
   archiveItems: allReleased.length,
