@@ -31,4 +31,4 @@ jobs:
           cw=$(curl -sI "$W/favicon.svg" | grep -i '^cache-control' | tr -d '\r'); cp=$(curl -sI "$P/favicon.svg" | grep -i '^cache-control' | tr -d '\r')
           xw=$(curl -sI "$W/" | grep -iE '^(x-robots-tag|x-content-type-options|referrer-policy|content-security-policy)' | tr -d '\r' | sort | tr '\n' ';'); xp=$(curl -sI "$P/" | grep -iE '^(x-robots-tag|x-content-type-options|referrer-policy|content-security-policy)' | tr -d '\r' | sort | tr '\n' ';')
           echo "::notice title=_headers のくらべ::favicon W[$cw] P[$cp] ／ トップ W[$xw] P[$xp]"
-          mark=$(curl -s "$W/__served-by.txt"); echo "::notice title=Workers の印::$mark"
+          mark=$(curl -s "$W/__served-by.txt"); live=$(curl -s "$P/__served-by.txt?cb=$(date +%s)"); echo "::notice title=Workers の印::W[$mark] 本番[$live]"
