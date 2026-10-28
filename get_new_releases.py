@@ -21,6 +21,7 @@ GitHub Actions から毎日自動で実行されます。
 保存先（人気順）: site/src/data/popularity.json … 新着の人気順（最近30日の発売の、その日の上位500本）と、毎日の更新の作品の全体の人気順の順位
 保存先（きょうの数字）: site/src/data/today.json … FANZA動画の日ごとの発売本数（7日分）・予約受付中の本数・予約の人気順の上位30本
 保存先（セール）: site/src/data/sale.json … その日に見かけた、セール・キャンペーン中の作品（キャンペーンの名前・期間・価格。FANZA公式のAPIから）
+保存先（値段の記録）: site/src/data/price_history.json … sale.json を書くたびに、セール中の作品の定価・いちばん安い値段・セールに入った回数を足していく（2026-10-29 から）
 保存先（人気の動き）: site/src/data/rank_history.json … 新着の人気順に出てきた作品の、毎日の順位（新着の人気順は8日分・全体の人気順の上位1,000本は30日分）
   コメントは無し（"none"）か、Claude が書いたもの（"claude"）
 
@@ -112,6 +113,11 @@ SALE_PATH = os.environ.get("SALE_PATH", os.path.join(os.path.dirname(DATA_PATH),
 # 毎日、その日に見かけたキャンペーンの名前・期間・このサイトの作品の本数・最大の割引を足していく。SALE_HISTORY_DAYS 日より前に最後に見かけたものは消す
 SALE_HISTORY_PATH = os.environ.get("SALE_HISTORY_PATH", os.path.join(os.path.dirname(DATA_PATH), "sale_history.json"))
 SALE_HISTORY_DAYS = 400
+# 作品ごとの値段の記録（issue #183。競合に無い「値下がりの記録」＝このサイトにしか無い数字。2026-10-29 から）。
+# セールを読むたび（sale.json を書くたび。毎日の更新と sale-refresh.yml）に、セール中の作品（sale.json の items と extra）の定価・いちばん安い値段などを足していく。
+# APIの回数は増やさない。画面（作品ページ）に出すのは、記録が30日たまってから（site/src/lib/price-history.js）
+PRICE_HISTORY_PATH = os.environ.get("PRICE_HISTORY_PATH", os.path.join(os.path.dirname(DATA_PATH), "price_history.json"))
+PRICE_HISTORY_DAYS = 365  # 最後に見かけてから、この日数をこえた作品は消す（ファイルが大きくなりすぎないように）
 # きょうの数字・予約の人気（トップの「きょうの数字」「きょうの話題」に使う。Gemini は使わない）
 TODAY_PATH = os.environ.get("TODAY_PATH", os.path.join(os.path.dirname(DATA_PATH), "today.json"))
 TODAY_STATS = os.environ.get("TODAY_STATS", "1") != "0"
@@ -1493,7 +1499,7 @@ def load_sale_file(path=None):
     return out
 
 
-def refresh_sales(now, call=None, sale_path=None, history_path=None):
+def refresh_sales(now, call=None, sale_path=None, history_path=None, price_path=None):
     """日中のセールの入れかわりに合わせて、セール中の作品（sale.json）とセールの履歴だけを新しくする（--sales-only）。
     運営者の「FANZAの動画は、だいたい10時にいつもセールの更新が入る」（2026-10-10）。毎日の更新（0:05）だけだと、
     10時に始まったセールが、次の日の0時すぎまでサイトに出なかった（sale_history.json で、10時に始まるセールの first が次の日になっていた）。
@@ -1503,9 +1509,11 @@ def refresh_sales(now, call=None, sale_path=None, history_path=None):
       サイトは1本」。2026-10-10。日替わりセールの作品は、ふだんは人気の上位に入らない昔の作品で、このサイトの過去作品（上位1万本）に無かった）。
       未成年を連想させる作品は入れない。特集ごとの本数（人気順の上位5万本のうち）も "n" に
     ・見かけなかった作品は、前のセールのうち、いまも期間中（終わりの時刻がまだ来ていない）のものだけ残す
-    ・Gemini は使わない。ほかのデータには触らない
+    ・Gemini は使わない。ほかのデータには触らない（セールの履歴と、作品ごとの値段の記録 price_history.json だけは、sale.json を書いたときに足す）
     → (保存したか, 要約の行)。上位を最後まで読めなかったとき・前のデータが壊れていたときは、保存しない"""
     call = call or call_item_list
+    # 値段の記録は、sale.json と同じ場所に（ほかの場所の sale.json を読み直すとき＝テスト・probe_api.py は、本物の記録に書かない）
+    price_path = price_path or (os.path.join(os.path.dirname(sale_path), "price_history.json") if sale_path else PRICE_HISTORY_PATH)
     sale_path = sale_path or SALE_PATH
     today_str, now_str = now.strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d %H:%M")
     try:
@@ -1617,6 +1625,7 @@ def refresh_sales(now, call=None, sale_path=None, history_path=None):
         f.write(text)
     os.replace(sale_path + ".tmp", sale_path)
     save_sale_history(sales, today_str, history_path)
+    save_price_history(sales, today_str, extras, price_path)  # 作品ごとの値段の記録（sale.json に書いた作品。issue #183）
     return True, lines + ["- 保存しました: " + "・".join(camps[:8])]
 
 
@@ -1710,6 +1719,100 @@ def save_sale_history(sales, today_str, path=None):
     merged = merge_sale_history(history, sales, today_str)
     with open(path + ".tmp", "w", encoding="utf-8") as f:
         f.write(dump_sale_history(merged))
+    os.replace(path + ".tmp", path)
+    return merged
+
+
+DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _pos_int(v):
+    return isinstance(v, int) and not isinstance(v, bool) and v > 0
+
+
+def price_rows_of(sales, extras=None):
+    """セール中の作品 {cid: (キャンペーン, 価格, 定価)} と、このサイトに無い作品 {cid: (キャンペーン, 価格, 定価, 作品の情報)}
+    → 値段の記録に足すもの {cid: (定価, 価格, キャンペーンの始まりの日)}。値引きが確かめられないもの（価格が null・0・定価より高い）は入れない"""
+    out = {}
+    for src in (extras or {}, sales or {}):  # 同じ作品なら、このサイトの作品のほう
+        for cid, v in src.items():
+            camp, price, list_price = v[0], v[1], v[2]
+            if not _pos_int(price) or not _pos_int(list_price) or price >= list_price:
+                continue
+            out[str(cid)] = (list_price, price, str((camp or {}).get("begin") or "")[:10])
+    return out
+
+
+def clean_price_row(r):
+    """値段の記録の1作品 [定価, いちばん安い値段, その日, セールに入った回数, 今のセールが始まった日, 最後に見かけた日]（形を確かめる）。使えなければ None"""
+    if not isinstance(r, list) or len(r) != 6:
+        return None
+    list_price, low, low_day, count, start, last = r
+    if not all(_pos_int(v) for v in (list_price, low, count)) or not all(isinstance(d, str) and DAY_RE.match(d) for d in (low_day, start, last)):
+        return None
+    if low_day > last or start > last:
+        return None
+    return [list_price, low, low_day, count, start, last]
+
+
+def merge_price_history(history, rows, today_str):
+    """前の値段の記録 {since, updated, items}（無ければ None）と、今日見かけたセール中の作品 {cid: (定価, 価格, キャンペーンの始まりの日)} → 新しい記録。
+    ・はじめて見かけた作品は、回数1・今のセールが始まった日＝今日
+    ・セールに入った回数は、見かけない日をはさんで、また見かけたら +1（同じ日に何回読んでも1回。続けて見かけている間は同じ回）。
+      ただし、今日のキャンペーンが、前に見かけた日より前から始まっていれば、同じセールの続き（日中の読み直しは、ふだんは人気の上位1万本だけ読むので、
+      それより下の作品は、セール中でも見かけない日がある。それを別の回に数えない）
+    ・いちばん安い値段は、それより安くなった日に新しくする（同じ値段なら、はじめての日のまま）。定価は、いつも今日の定価に
+    ・最後に見かけてから PRICE_HISTORY_DAYS 日をこえた作品は消す。since（記録を始めた日）は、はじめて作った日のまま"""
+    since = history.get("since") if isinstance(history, dict) and DAY_RE.match(str(history.get("since") or "")) else today_str
+    items = {}
+    for cid, r in ((history or {}).get("items") or {}).items() if isinstance(history, dict) and isinstance(history.get("items"), dict) else []:
+        row = clean_price_row(r)
+        if row:
+            items[str(cid)] = row
+    yesterday = (datetime.strptime(today_str, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+    for cid, (list_price, price, camp_begin) in rows.items():
+        row = items.get(cid)
+        if row is None:
+            items[cid] = [list_price, price, today_str, 1, today_str, today_str]
+            continue
+        _lp, low, low_day, count, start, last = row
+        if last < yesterday and not (camp_begin and camp_begin <= last):
+            count, start = count + 1, today_str  # 見かけない日のあとで、新しいセールに入った
+        if price < low:
+            low, low_day = price, today_str
+        items[cid] = [list_price, low, low_day, count, start, max(last, today_str)]
+    keep = {cid: r for cid, r in items.items() if (days_between(r[5], today_str) or 0) <= PRICE_HISTORY_DAYS}
+    return {"since": since, "updated": today_str, "items": keep}
+
+
+def dump_price_history(history):
+    """1行に1作品・品番の順（毎日の差分が、変わった作品の行だけになるように）"""
+    rows = ",\n".join(f"{json.dumps(cid, ensure_ascii=False)}:{json.dumps(r, separators=(',', ':'))}" for cid, r in sorted(history["items"].items()))
+    return f'{{"since":{json.dumps(history["since"])},"updated":{json.dumps(history["updated"])},\n"items":{{\n{rows}\n}}}}\n'
+
+
+def load_price_history(path):
+    """値段の記録を読む。無ければ None。読めない・形が違えば ValueError（上書きしない）"""
+    raw = read_json_file(path)
+    if raw is None:
+        return None
+    if not isinstance(raw, dict) or not isinstance(raw.get("items"), dict) or not DAY_RE.match(str(raw.get("since") or "")):
+        raise ValueError(f"{os.path.basename(path)} の形が違います")
+    return raw
+
+
+def save_price_history(sales, today_str, extras=None, path=None):
+    """値段の記録に今日の分を足して保存する（sale.json を書くたびに）。ファイルが無ければ、今日を since にして作る。
+    前の記録が壊れていたら、上書きせずに知らせるだけ（記録が足せなくても、毎日の更新・セールの読み直しは止めない）"""
+    path = path or PRICE_HISTORY_PATH
+    try:
+        history = load_price_history(path)
+    except ValueError as e:
+        print(f"  ⚠️ 値段の記録を読めなかったので、今回は足しません（前の記録はそのまま。{e}）")
+        return None
+    merged = merge_price_history(history, price_rows_of(sales, extras), today_str)
+    with open(path + ".tmp", "w", encoding="utf-8") as f:
+        f.write(dump_price_history(merged))
     os.replace(path + ".tmp", path)
     return merged
 
@@ -1829,6 +1932,7 @@ def save_catalog(state):
         os.replace(SALE_PATH + ".tmp", SALE_PATH)
         if state.get("sales_date"):
             save_sale_history(state["sales"], state["sales_date"])
+            save_price_history(state["sales"], state["sales_date"], extras)  # 作品ごとの値段の記録（sale.json に書いた作品。issue #183）
     head = {"cursor": state["cursor"], "cycle": state["cycle"], "cycle_done": state["cycle_done"], "limit": CATALOG_LIMIT, "items": len(state["items"])}
     with open(CATALOG_STATE_PATH + ".tmp", "w", encoding="utf-8") as f:
         json.dump(head, f, ensure_ascii=False)

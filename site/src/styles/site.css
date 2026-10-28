@@ -1043,6 +1043,12 @@ summary:focus-visible {
   text-underline-offset: 3px;
 }
 
+/* 作品ごとの値段の記録の1行（components/PriceRecord.astro。セールの札の下の小さな注記。issue #183） */
+.price-record {
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* 小さな表紙の棚（作品ページの「同じ出演者・メーカーの作品」。components/MiniShelf.astro）: スマホ3列・広い画面6列 */
 .mini-shelf {
   display: grid;

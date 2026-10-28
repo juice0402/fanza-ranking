@@ -10,6 +10,7 @@ import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizePr
 import { hasCalendar, planPages } from './plan.js';
 import { bestRank, catalogAllRank, normalizePopularity, normalizeRankHistory } from './popularity.js';
 import { campaignPages, campaignSlug, isTenYenCampaign, normalizeSale, normalizeSaleHistory, saleHref } from './sale.js';
+import { normalizePriceHistory } from './price-history.js';
 import { normalizeAgencies, withAgencies } from './agencies.js';
 import { eventsByName, normalizeEvents, upcomingEvents } from './events.js';
 import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
@@ -25,7 +26,7 @@ import { FLOOR_KEYS, FLOOR_PERIODS, FLOORS, floorCollections, floorEntityRanking
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews,readings,genre_tops,actress_history,actress_stories}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews,readings,genre_tops,actress_history,actress_stories,price_history}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -42,6 +43,8 @@ export const rankHistory = normalizeRankHistory(optionalData('rank_history'));
 export const sale = normalizeSale(optionalData('sale'));
 // セールの履歴（毎日の更新が、その日に見かけたキャンペーンを足していく。2026-10-05 から。lib/sale.js）
 export const saleHistory = normalizeSaleHistory(optionalData('sale_history'));
+// 作品ごとの値段の記録（sale.json を書くたびに足していく。2026-10-29 から。lib/price-history.js）。作品ページの「このサイトの記録」の1行だけに使う
+export const priceHistory = normalizePriceHistory(optionalData('price_history'));
 // きょうの数字・予約の人気順（毎日の更新が集めたもの。lib/topics.js）
 export const todayData = normalizeToday(optionalData('today'));
 const catalogRanks = optionalData('catalog_rank');

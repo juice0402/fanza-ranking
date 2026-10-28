@@ -29,9 +29,9 @@ FANZAの新作・予約作品を毎日自動で集め、ひとことコメント
 
 | いつ | 何が動く | おもに書くデータ（`site/src/data/`） |
 |---|---|---|
-| 毎日 0:05 | `update.yml`: `get_new_releases.py`（動画の新作・予約（人気順に1日12本・30日先まで）・Gemini の下書き・出演者・名簿・売れ筋・過去作品（人気の上位1万本）・人気の順位・セール・レビュー）→ 所属事務所（週1）・イベント・売り場（同人・ゲーム・アニメ・素人・成人映画・コミック・写真集・VR見放題）・読みがな（週1）・ジャンルの人気TOP20・10円セール → main に commit → `deploy.yml` | `new_releases.json`・`catalog/`・`popularity.json`・`sale.json`・`reviews.json`・`actresses.json`・`doujin.json` などの売り場・`ten_yen.json` ほか |
+| 毎日 0:05 | `update.yml`: `get_new_releases.py`（動画の新作・予約（人気順に1日12本・30日先まで）・Gemini の下書き・出演者・名簿・売れ筋・過去作品（人気の上位1万本）・人気の順位・セール・レビュー）→ 所属事務所（週1）・イベント・売り場（同人・ゲーム・アニメ・素人・成人映画・コミック・写真集・VR見放題）・読みがな（週1）・ジャンルの人気TOP20・10円セール → main に commit → `deploy.yml` | `new_releases.json`・`catalog/`・`popularity.json`・`sale.json`・`price_history.json`・`reviews.json`・`actresses.json`・`doujin.json` などの売り場・`ten_yen.json` ほか |
 | 毎日 0:20 | Claude の予約タスク: コメントを仕上げる（1日40件。手順は `docs/claude-comments.md`）＋女優の歩みの紹介文を5人（`docs/claude-history.md`。2026-10-27〜） | `new_releases.json`・`catalog/`・売り場のファイル・`actress_stories.json` |
-| 毎日 0:35・10:17 | `sale-refresh.yml`: 動画のセールの読み直し（はじめは上位1万本だけ）・10:17 は売り場の集め直し・0:35 は素人/アニメ/成人映画のキャンペーンごと | `sale.json`・`sale_history.json`・`floor_sale.json` |
+| 毎日 0:35・10:17 | `sale-refresh.yml`: 動画のセールの読み直し（はじめは上位1万本だけ）・10:17 は売り場の集め直し・0:35 は素人/アニメ/成人映画のキャンペーンごと | `sale.json`・`sale_history.json`・`price_history.json`・`floor_sale.json` |
 | 毎日 10:12・12:12・16:12・20:12 | `ten-yen.yml`: 10円セールが変わったときだけ保存して公開 | `ten_yen.json` |
 | 毎日 4:23 | `actress-history.yml`: 女優の歩み（出演者ごとの全作品を数える。`scripts/actress_history.py`。1回600回まで。公開はしない） | `actress_history.json` |
 | 毎週月曜 0:01 | `health.yml`: 見張り番（この7日の更新・公開・コメント・過去作品の数・リポジトリの大きさ。Claude を使わない。おかしいときだけ ⚠️ と GitHub の知らせ） | なし（読むだけ） |

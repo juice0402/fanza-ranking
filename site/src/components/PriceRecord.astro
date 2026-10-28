@@ -1,0 +1,16 @@
+---
+// 作品ごとの値段の記録の1行（作品ページのセールの欄の下。issue #183。lib/price-history.js）。
+// 「このサイトの記録（○年○月○日から）：いちばん安かったのは○月○日の○円・セールは○回目」。記録が30日たまるまでと、記録の無い作品は何も出さない。
+// 今の値段はセールの札（sale.json）のまま。構造化データには入れない
+import { priceHistory, sale, today } from '../lib/data.js';
+import { priceRecordText } from '../lib/price-history.js';
+
+interface Props {
+  cid: string;
+  onSale?: boolean;
+  nowPrice?: number | null;
+}
+const { cid, onSale = false, nowPrice = null } = Astro.props;
+const text = priceRecordText(cid, priceHistory, today, { onSale, nowPrice, saleDate: sale.date });
+---
+{text && <p class="section-note note-source price-record">{text}</p>}
