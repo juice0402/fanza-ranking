@@ -4,6 +4,8 @@
   X-Frame-Options: SAMEORIGIN
   Content-Security-Policy: frame-ancestors 'self'; base-uri 'self'; object-src 'none'
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  # Pages は書かなくても付けていた。Workers は付けないので、同じにするため書いておく（2026-10-28 C-012 の引っ越し）
+  Referrer-Policy: strict-origin-when-cross-origin
 
 # ビルドで名前に「中身の印（ハッシュ）」が付くファイル（CSS など）。中身が変わると名前も変わるので、1年間ブラウザに置いてよい
 # （毎回「新しくなっていないか」を確かめに行かなくなり、2ページ目からの表示が速くなる）
