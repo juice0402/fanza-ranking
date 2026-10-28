@@ -1,4 +1,4 @@
-"""公開のしくみ（Cloudflare Pages への直接アップロード。scripts/deploy_pages.sh と .github/workflows/）のテスト。
+"""公開のしくみ（Cloudflare Workers への直接アップロード scripts/deploy_workers.sh・戻すときのための Pages の scripts/deploy_pages.sh と .github/workflows/）のテスト。
 実行: python3 tests/test_deploy.py
 （ネットには出ない。wrangler は、受け取った引数を書き出すだけの、にせものに差しかえる。鍵も作ったもの）"""
 import os
@@ -169,12 +169,14 @@ print("\n■ ワークフロー")
 deploy = read(".github", "workflows", "deploy.yml")
 check("deploy.yml: main に入ったとき・手動実行で動く", re.search(r"push:\s*\n\s*branches: \[main\]", deploy) and "workflow_dispatch:" in deploy)
 check("deploy.yml: ビルド → 全ページの点検 → アップロードの順（点検に落ちたら公開しない）",
-      deploy.index("npm run build") < deploy.index("python3 tests/verify_dist.py") < deploy.index("bash scripts/deploy_pages.sh production"))
-check("deploy.yml: 本番になるのは main のときだけ（ほかのブランチはプレビュー）",
-      'if [ "$REF_NAME" = "main" ]; then\n            bash scripts/deploy_pages.sh production\n          else\n            bash scripts/deploy_pages.sh preview "$REF_NAME"' in deploy
+      deploy.index("npm run build") < deploy.index("python3 tests/verify_dist.py") < deploy.index("bash scripts/deploy_workers.sh production"))
+check("deploy.yml: 本番になるのは main のときだけ（ほかのブランチは Workers のプレビュー）",
+      'if [ "$REF_NAME" = "main" ]; then\n            bash scripts/deploy_workers.sh production\n          else\n            bash scripts/deploy_workers.sh preview "$REF_NAME"' in deploy
       and "REF_NAME: ${{ github.ref_name }}" in deploy)
+check("deploy.yml: Pages には出さない（2万ファイルまでのため。issue #188）・アップロードできたら IndexNow の印",
+      "bash scripts/deploy_pages.sh" not in deploy and "UPLOADED_MARK: ${{ runner.temp }}/uploaded" in deploy[deploy.index("- name: Upload to Cloudflare Workers"):])
 check("deploy.yml: 鍵は Secrets から・権限は読むだけ・続けて Merge したら新しいほうだけ",
-      "${{ secrets.CLOUDFLARE_API_TOKEN }}" in deploy and "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" in deploy
+      "${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}" in deploy and "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" in deploy
       and "permissions:\n  contents: read\n" in deploy and "cancel-in-progress: true" in deploy)
 check("deploy.yml: Gemini・FANZA の鍵は渡さない", "GEMINI" not in deploy and "API_ID" not in deploy and "AFFILIATE_ID" not in deploy)
 
@@ -239,13 +241,15 @@ for name in ("update.yml", "refresh-data.yml"):
           and "continue-on-error: true" in wf[wf.rindex("- name:", 0, wf.index("scripts/ten_yen.py")):wf.index("scripts/ten_yen.py")])
 
 ci = read(".github", "workflows", "ci.yml")
-prev = ci[ci.index("Preview on Cloudflare Pages"):]
+prev = ci[ci.index("Preview on Cloudflare Workers"):]
 check("ci.yml: PRのプレビューは、テスト・ビルド・点検のあと・同じリポジトリのPRだけ・失敗してもチェックの結果は変えない",
-      ci.index("bash scripts/check.sh --build") < ci.index("Preview on Cloudflare Pages")
+      ci.index("bash scripts/check.sh --build") < ci.index("Preview on Cloudflare Workers")
       and "github.event.pull_request.head.repo.full_name == github.repository" in prev and "continue-on-error: true" in prev[:600])
 check("ci.yml: ブランチの名前は環境変数で渡す（そのまま命令に埋め込まない）・Merge の元（HEAD^1）と比べる",
-      "HEAD_REF: ${{ github.head_ref }}" in prev and 'bash scripts/deploy_pages.sh preview "$HEAD_REF" HEAD^1' in prev
+      "HEAD_REF: ${{ github.head_ref }}" in prev and 'bash scripts/deploy_workers.sh preview "$HEAD_REF" HEAD^1' in prev
       and "fetch-depth: 2" in ci)
+check("ci.yml: プレビューは Workers の鍵で（Pages には送らない）",
+      "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}" in prev[:900] and "bash scripts/deploy_pages.sh" not in ci)
 
 print("\n■ Workers への公開（scripts/deploy_workers.sh production。連絡 C-012）")
 
@@ -267,6 +271,21 @@ def make_workers_repo(routes=False):
     return repo
 
 
+def commit_workers_repo(repo, changed_files):
+    """プレビューの「比べる元」を試すため、1つ目のコミットのあと、changed_files を変えて2つ目のコミットを作る（dist は入れない）"""
+    git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *a], cwd=repo, check=True, capture_output=True)
+    open(os.path.join(repo, ".gitignore"), "w").write("site/dist/\n")
+    git("add", "-A")
+    git("commit", "-q", "-m", "first")
+    for f in changed_files:
+        path = os.path.join(repo, f)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        open(path, "w").write("changed\n")
+    git("add", "-A")
+    git("commit", "-q", "-m", "second")
+    return repo
+
+
 def make_workers_wrangler(exit_code=0):
     folder = tempfile.mkdtemp(dir=tmp)
     log = os.path.join(folder, "args.txt")
@@ -277,19 +296,25 @@ printf '%s\\n' "$@" > {log}
 echo "token_set=${{CLOUDFLARE_API_TOKEN:+yes}}" >> {log}
 if [ {exit_code} -ne 0 ]; then echo "✘ [ERROR] A request to the Cloudflare API failed."; exit {exit_code}; fi
 echo "Uploaded av-sale-guide"
-echo "Deployed av-sale-guide triggers"
+if [ "$1" = "versions" ]; then
+  echo "Version Preview URL: https://1a2b3c4d-av-sale-guide.juice-juice-0402.workers.dev"
+  for i in "$@"; do if [ "$prev" = "--preview-alias" ]; then echo "Version Preview Alias URL: https://$i-av-sale-guide.juice-juice-0402.workers.dev"; fi; prev="$i"; done
+else
+  echo "Deployed av-sale-guide triggers"
+fi
 """)
     os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC)
     return path, log
 
 
-def run_workers(repo, wrangler, secrets=True):
+def run_workers(repo, wrangler, secrets=True, args=("production",), extra_env=None):
     env = {k: v for k, v in os.environ.items() if not k.startswith(("CLOUDFLARE_", "GITHUB_"))}
     env.update({"WRANGLER": wrangler, "LIVE_URL": "", "CHECK_TRIES": "1", "CHECK_WAIT": "0",
                 "GITHUB_STEP_SUMMARY": os.path.join(repo, "summary.md")})
     if secrets:
         env.update({"CLOUDFLARE_API_TOKEN": FAKE_TOKEN, "CLOUDFLARE_ACCOUNT_ID": "0" * 32})
-    r = subprocess.run(["bash", "scripts/deploy_workers.sh", "production"], cwd=repo, env=env, capture_output=True, text=True)
+    env.update(extra_env or {})
+    r = subprocess.run(["bash", "scripts/deploy_workers.sh", *args], cwd=repo, env=env, capture_output=True, text=True)
     return r.returncode, r.stdout + r.stderr
 
 
@@ -300,6 +325,12 @@ a = args_of(log)
 check("Workers: workers/wrangler.jsonc で deploy する・鍵は環境変数で届く", code == 0 and a[:3] == ["deploy", "--config", "workers/wrangler.jsonc"] and "token_set=yes" in a, out)
 check("Workers: どこから出ているかの印（__served-by.txt）を、コミットの印つきで作る",
       open(os.path.join(repo, "site", "dist", "__served-by.txt")).read().startswith("workers "))
+mark = os.path.join(tmp, "uploaded-w")
+code, out = run_workers(make_workers_repo(routes=True), make_workers_wrangler()[0], extra_env={"UPLOADED_MARK": mark})
+check("Workers: アップロードできたら、IndexNow の印（UPLOADED_MARK）を付ける", code == 0 and os.path.exists(mark), out)
+mark2 = os.path.join(tmp, "uploaded-w2")
+code, out = run_workers(make_workers_repo(routes=True), make_workers_wrangler(exit_code=1)[0], extra_env={"UPLOADED_MARK": mark2})
+check("Workers: アップロードに失敗したら、印は付けない", code == 1 and not os.path.exists(mark2), out)
 check("Workers: 鍵がまだ無いときは、何もせずに成功（本番は Pages のまま）",
       run_workers(make_workers_repo(), make_workers_wrangler()[0], secrets=False)[0] == 0)
 code, out = run_workers(make_workers_repo(), make_workers_wrangler(exit_code=1)[0])
@@ -308,7 +339,50 @@ code, out = run_workers(make_workers_repo(routes=True), make_workers_wrangler(ex
 check("Workers: routes のあと（本番が Workers）の失敗は、公開の失敗", code == 1 and "::error" in out, out)
 code, out = run_workers(make_workers_repo(routes=True), make_workers_wrangler()[0], secrets=False)
 check("Workers: routes のあとで鍵が無いのも、公開の失敗", code == 1 and "CLOUDFLARE_WORKERS_TOKEN" in out, out)
+print("\n■ Workers のプレビュー（scripts/deploy_workers.sh preview <ブランチ名> [比べる元]。issue #188）")
+repo = commit_workers_repo(make_workers_repo(routes=True), ["site/src/pages/index.astro"])
+w, log = make_workers_wrangler()
+code, out = run_workers(repo, w, args=("preview", "claude/Night_188.test", "HEAD^1"))
+a = args_of(log)
+summary = open(os.path.join(repo, "summary.md"), encoding="utf-8").read() if os.path.exists(os.path.join(repo, "summary.md")) else ""
+check("プレビューは versions upload（本番の deploy はしない）・名前は英小文字と数字とハイフンだけ",
+      code == 0 and a[:4] == ["versions", "upload", "--config", "workers/wrangler.jsonc"] and "deploy" not in a
+      and a[a.index("--preview-alias") + 1] == "claude-night-188-test" and "token_set=yes" in a, (a, out))
+check("プレビューの名前つきの URL を、注釈（::notice）と要約に出す（名前つきを先に）",
+      "::notice title=プレビュー::https://claude-night-188-test-av-sale-guide.juice-juice-0402.workers.dev" in out
+      and summary.index("claude-night-188-test-av-sale-guide") < summary.index("1a2b3c4d-av-sale-guide"), out + summary)
+check("鍵をログ・要約に出さない（プレビュー）", FAKE_TOKEN not in out and FAKE_TOKEN not in summary)
+w, log = make_workers_wrangler()
+code, out = run_workers(commit_workers_repo(make_workers_repo(), ["site/src/pages/x.astro"]), w,
+                        args=("preview", "claude/" + "very-long-branch-name-" * 4, "HEAD^1"))
+al = args_of(log)[args_of(log).index("--preview-alias") + 1] if "--preview-alias" in args_of(log) else ""
+check("長いブランチ名は40文字までに短くする（終わりにハイフンを残さない）", code == 0 and 0 < len(al) <= 40 and not al.endswith("-") and al.startswith("claude-"), al)
+w, log = make_workers_wrangler()
+code, out = run_workers(commit_workers_repo(make_workers_repo(), ["site/src/pages/x.astro"]), w, args=("preview", "123_fix", "HEAD^1"))
+check("数字ではじまる名前は、英字ではじめる", "b-123-fix" in args_of(log), args_of(log))
+w, log = make_workers_wrangler()
+repo = commit_workers_repo(make_workers_repo(), ["site/src/data/new_releases.json"])
+code, out = run_workers(repo, w, args=("preview", "claude/comments-20261010-0021", "HEAD^1"))
+check("データ（site/src/data/）だけの変更には、プレビューを作らない", code == 0 and not os.path.exists(log) and "データだけ" in open(os.path.join(repo, "summary.md"), encoding="utf-8").read(), out)
+w, log = make_workers_wrangler()
+repo = commit_workers_repo(make_workers_repo(), ["docs/architecture.md", "tests/test_x.py"])
+code, out = run_workers(repo, w, args=("preview", "claude/docs", "HEAD^1"))
+check("サイトの作り（site/）が変わらない変更には、プレビューを作らない", code == 0 and not os.path.exists(log) and "変わっていない" in open(os.path.join(repo, "summary.md"), encoding="utf-8").read(), out)
+w, log = make_workers_wrangler()
+code, out = run_workers(commit_workers_repo(make_workers_repo(), ["site/src/data/a.json", "site/src/lib/a.js"]), w, args=("preview", "claude/mix", "HEAD^1"))
+check("データとコードの両方が変わっていれば、プレビューを作る", code == 0 and os.path.exists(log), out)
+w, log = make_workers_wrangler()
+code, out = run_workers(commit_workers_repo(make_workers_repo(), ["site/src/lib/a.js"]), w, secrets=False, args=("preview", "claude/x", "HEAD^1"))
+check("鍵が無ければ、プレビューは作らずに成功で終わる（ほかの人のPRなど）", code == 0 and not os.path.exists(log), out)
+code, out = run_workers(commit_workers_repo(make_workers_repo(routes=True), ["site/src/lib/a.js"]), make_workers_wrangler(exit_code=1)[0], args=("preview", "claude/x"))
+check("プレビューの失敗は注意書き（::warning。routes があっても本番の失敗にしない）", code == 1 and "::warning title=プレビューを作れませんでした" in out and "::error" not in out, out)
+for bad in (("preview", "main"), ("preview",), ("publish",), ()):
+    w, log = make_workers_wrangler()
+    code, _ = run_workers(make_workers_repo(), w, args=bad)
+    check(f"まちがった使い方（{' '.join(bad) or '引数なし'}）では送らない（Workers）", code == 2 and not os.path.exists(log))
+
 conf = read("workers", "wrangler.jsonc")
+check("workers/wrangler.jsonc: プレビューの URL を使う（preview_urls）", '"preview_urls": true' in conf)
 check("workers/wrangler.jsonc: 静的ファイルだけ（main なし）・site/dist・Pages と同じ末尾の / と 404 の扱い",
       '"directory": "../site/dist"' in conf and '"html_handling": "auto-trailing-slash"' in conf
       and '"not_found_handling": "404-page"' in conf and '"main"' not in conf)
@@ -317,10 +391,8 @@ check("workers/wrangler.jsonc: routes を置くなら av-sale-guide.com だけ�
       or ('"pattern": "av-sale-guide.com/*"' in conf and '"zone_name": "av-sale-guide.com"' in conf and "custom_domain" not in conf))
 deploy = read(".github", "workflows", "deploy.yml")
 wstep = deploy[deploy.index("- name: Upload to Cloudflare Workers"):]
-check("deploy.yml: Workers へは Pages のあと・main のときだけ・Workers 用の鍵で",
-      deploy.index("bash scripts/deploy_pages.sh production") < deploy.index("bash scripts/deploy_workers.sh production")
-      and "if: github.ref == 'refs/heads/main'" in wstep[:200]
-      and "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}" in wstep[:600])
+check("deploy.yml: Workers へは Workers 用の鍵で",
+      "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}" in wstep[:600])
 
 print("\n■ 設定の突き合わせ")
 site_url = re.search(r"SITE_URL = '([^']+)'", read("site", "src", "config.js")).group(1)

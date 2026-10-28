@@ -209,10 +209,10 @@ srv.shutdown()
 print("\n■ ワークフロー（deploy.yml）と公開の道具")
 dep = open(os.path.join(ROOT, ".github", "workflows", "deploy.yml"), encoding="utf-8").read()
 check("えらぶのは、全ページの点検のあと・アップロードの前（本番のときだけ）",
-      dep.index("python3 tests/verify_dist.py") < dep.index("indexnow.py prepare") < dep.index("bash scripts/deploy_pages.sh production")
+      dep.index("python3 tests/verify_dist.py") < dep.index("indexnow.py prepare") < dep.index("bash scripts/deploy_workers.sh production")
       and re.search(r"Choose pages[^\n]*\n\s*if: github.ref == 'refs/heads/main'\n\s*continue-on-error: true", dep))
 check("知らせるのは、アップロードのあと。あとの公開に止められても、アップロード済みなら知らせる（always()）・本番だけ・失敗しても止めない",
-      dep.index("bash scripts/deploy_pages.sh production") < dep.index("indexnow.py send")
+      dep.index("bash scripts/deploy_workers.sh production") < dep.index("indexnow.py send")
       and re.search(r"Tell search engines[^\n]*\n(?:\s*id: indexnow\n)?\s*if: always\(\) && github.ref == 'refs/heads/main'\n\s*continue-on-error: true", dep)
       and 'UPLOADED_MARK: ${{ runner.temp }}/uploaded' in dep and '--uploaded "$RUNNER_TEMP/uploaded"' in dep)
 check("main にコミットを足さない（記録はサイトといっしょに公開）", "git push" not in dep and "git commit" not in dep)
@@ -221,8 +221,11 @@ check("送り直しの一覧: えらぶ前に置き場から読み、知らせ�
       and "--retry .indexnow-retry.json" in dep and "--retry-out .indexnow-retry.json" in dep and "restore-keys: indexnow-retry-" in dep
       and "if: always() && steps.indexnow.outputs.retry == 'written'" in dep and dep.count("path: .indexnow-retry.json") == 2
       and ".indexnow-retry.json" in open(os.path.join(ROOT, ".gitignore"), encoding="utf-8").read())
+sh = open(os.path.join(ROOT, "scripts", "deploy_workers.sh"), encoding="utf-8").read()
+check("deploy_workers.sh: 本番のアップロードに成功したあと（確かめる前）に、印を付ける（2026-10-28 から本番は Workers。issue #188）",
+      sh.index("$WRANGLER deploy") < sh.index('if [ "$rc" -ne 0 ]', sh.index("$WRANGLER deploy")) < sh.index('Workers に出しました') < sh.index(': > "$UPLOADED_MARK"') < sh.index("workers.dev で、新しい中身になったか"))
 sh = open(os.path.join(ROOT, "scripts", "deploy_pages.sh"), encoding="utf-8").read()
-check("deploy_pages.sh: 本番のアップロードに成功したあと（確かめる前）に、印を付ける",
+check("deploy_pages.sh（Pages に戻すとき用）: 本番のアップロードに成功したあと（確かめる前）に、印を付ける",
       sh.index('if [ "$rc" -ne 0 ]') < sh.index('本番に公開しました') < sh.index(': > "$UPLOADED_MARK"') < sh.index("本当に新しくなったか"))
 
 print(f"\n=== {passed}/{passed + failed} 合格 ===")

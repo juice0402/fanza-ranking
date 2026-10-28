@@ -18,12 +18,12 @@ FANZAの新作・予約作品を毎日自動で集め、ひとことコメント
 
 ## 公開
 
-**公開は GitHub Actions が行う**（`deploy.yml`。ビルド → 全ページの点検 `tests/verify_dist.py` → Cloudflare Pages に直接アップロード＝Direct Upload。Cloudflare のビルド（月500回を「あそびトーク」と共有）は使わない。2026-10-09 から）。
+**公開は GitHub Actions が行う**（`deploy.yml`。ビルド → 全ページの点検 `tests/verify_dist.py` → Cloudflare Workers に直接アップロード（2026-10-28 から。前は Pages）。Cloudflare のビルド（月500回を「あそびトーク」と共有）は使わない。2026-10-09 から）。
 - main に入ると本番に公開される。毎日の更新・取り直しは、データを保存したあとに `deploy.yml` を動かす（ワークフローが保存したコミットでは、ほかのワークフローが自動では動かないため）。点検に落ちたら公開しない（前の公開のまま）。
-- コード・デザインを変えるPR（`site/` の中。データ `site/src/data/` は除く）は、CI が**プレビュー**（`<ブランチ名>.fanza-ranking.pages.dev`。URL は check の注釈と要約）を作る。データだけ・手順書やテストだけのPRには作らない。
+- コード・デザインを変えるPR（`site/` の中。データ `site/src/data/` は除く）は、CI が**プレビュー**（`<ブランチ名を英数字とハイフンにしたもの>-av-sale-guide.juice-juice-0402.workers.dev`。URL は check の注釈と要約）を作る。データだけ・手順書やテストだけのPRには作らない。
 - **独自ドメイン**（2026-10-22 取得。Cloudflare Registrar・1年・自動更新）: サイト名も「FANZA新作情報」から **FANZAセール情報** に（`config.js` の `SITE_NAME`）。本番は `https://av-sale-guide.com`（`site/src/config.js` の `SITE_URL` 1か所で、URL・canonical・sitemap・robots.txt・RSS・構造化データ・IndexNow が切りかわる）。旧 `https://fanza-ranking.pages.dev` は Cloudflare の Bulk Redirects で同じパスへ 301（プレビューの `<ブランチ名>.fanza-ranking.pages.dev` は転送しない＝サブドメインを含めない）。Search Console は新ドメインのドメインプロパティ＋旧プロパティからアドレス変更。DMM は新しいサイトとして追加（リンクは API 用の `juice0402-990` のまま）
 - **検索エンジンへのお知らせ（IndexNow。2026-10-17）**: 本番の公開のたびに `deploy.yml` が `scripts/indexnow.py` で、新しいページ・コメントや記事が入ったページ（一覧・ランキングなどは7日に1回まで）を Bing などへ知らせる（1万件ずつ。前回の記録は本番の `/indexnow-pages.json`。受け付けてもらえなかったページは Actions の置き場（cache）にとっておき、次の公開で送り直す。main にはコミットしない。鍵は `site/public/<鍵>.txt`。Google は sitemap と Search Console のまま。くわしくは docs/architecture.md の「公開」）
-- **Workers への引っ越し（連絡 C-012。2026-10-28）**: Pages は有料プランでも2万ファイルまで（本物で確かめた）。Workers（静的ファイル10万まで）にも出す（`workers/wrangler.jsonc`・`scripts/deploy_workers.sh`・鍵は Secrets の `CLOUDFLARE_WORKERS_TOKEN`）。`routes` を足すと av-sale-guide.com が Workers から出る（消せば Pages に戻る）。くわしくは docs/architecture.md の「Workers への引っ越し」
+- **Workers への引っ越し（連絡 C-012。2026-10-28）**: Pages は有料プランでも2万ファイルまで（本物で確かめた）。本番もプレビューも Workers（静的ファイル10万まで）に出す（`workers/wrangler.jsonc` の `routes` で av-sale-guide.com が Workers から出る・`scripts/deploy_workers.sh`・鍵は Secrets の `CLOUDFLARE_WORKERS_TOKEN`）。Pages には出さない（プロジェクトは pages.dev の転送のために残す）。`FILE_BUDGET` は4万（#188。次に上げるかは11/10 の見直しで）。戻し方は docs/architecture.md の「Workers への引っ越し」
 - Cloudflare 側の自動ビルドは止めてある（2026-10-09。ダッシュボードの「ブランチコントロール」。戻すときはそこをオンに）。コミット・Merge のメッセージに `[CI Skip]` は要らない（入れても何も変わらない）。
 
 ## 仕組み（時刻は日本時間。くわしくは docs/architecture.md の「データの流れ」）
@@ -59,7 +59,7 @@ Gemini を使うのは `get_new_releases.py` のコメントの下書きだけ�
 - `scripts/health.py`（`health.yml`）— 週1回の見張り番（毎週月曜 0:01。Claude を使わない。`--last` で結果を1行ずつ）
 - `scripts/screens.mjs`（`screens.yml`）— 画面の写真と形のくずれの点検（GitHub の上で撮る）／ `scripts/probe_api.py`（`probe-api.yml`）— API の応答の形を調べる
 - `.github/workflows/` — update・sale-refresh・ten-yen・ci・deploy（`scripts/deploy_pages.sh`）・health（見張り番）・refresh-data（取り直しだけ。手動）・probe-api・screens
-- `site/` — サイト本体（Astro 7・静的出力）。`src/config.js` がサイト名・URL・件数・ファイル数の上限（`FILE_BUDGET`。Cloudflare Pages の無料プランは2万ファイルまで）の設定
+- `site/` — サイト本体（Astro 7・静的出力）。`src/config.js` がサイト名・URL・件数・ファイル数の上限（`FILE_BUDGET`＝4万。Workers の静的ファイルは10万まで）の設定
 - `site/src/lib/` — 画面に依存しない部品（テストは `tests/test_*.mjs`）。`data.js`（読み込み）・`items.js`（並べ替え・構造化データ・規約の表記）・`plan.js`（ファイル数の計画）・`floors.js`（売り場）・`sale.js`・`ten-yen.js`・`topics.js`（トップ）・`search.js`・`profiles.js`・`insights.js`・`reviews.js`・`kana.js`・`phrase.js`（文節の改行）・`describe.js`（検索結果の説明文。ページのデータの数字から80〜120文字）など
 - `site/src/pages/`・`components/`・`layouts/Base.astro`・`styles/site.css` — ページ・部品・全ページ共通の部分・デザイン
 - `site/public/` — ブラウザで動く小さなスクリプト（作品検索・女優検索・売り場の検索・VR/単体の絞り込み・お気に入り・運命の作品・セール・拡大表示・サンプル動画）と `_headers`・`_redirects`
@@ -80,14 +80,14 @@ cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
 - `get_new_releases.py` を本物のAPIで動かすのは、運営者に頼まれたときだけ（`API_ID`/`GEMINI_API_KEY` が要る。`DATA_PATH` で書き込み先を変えられる）。
   - **Geminiを使わずに、取り直しだけ**したいときは `python get_new_releases.py --refresh-only`（Actions では「Refresh FANZA Data」）。新しい作品の追加もAIコメントもしないので、Geminiの無料枠を使わない。`ACTRESSES_PATH` / `RANKING_PATH` で出演者データ・ランキングの書き込み先も変えられる。
 - 本番サイトを WebFetch で確認するときは、URLの末尾に `?cb=日時` を付ける（付けないと、前に取得した古い内容が返ってきて、更新されていないように見えることがある。2026-10-03 の仮運転で確認）。
-- Claude のクラウド環境では npm が使えない/ビルドが動かないことがある。その場合は `bash scripts/check.sh`（ビルドなし）で確認し、**PRのCIが最初のビルド**になる。コード・デザインのPRなら、CI がプレビュー（`<ブランチ名>.fanza-ranking.pages.dev`）も作るので、運営者にスマホで見てもらえる（URL は check の注釈。クラウド環境からは pages.dev が見えない）。見ていないものを「確認した」と書かない。
+- Claude のクラウド環境では npm が使えない/ビルドが動かないことがある。その場合は `bash scripts/check.sh`（ビルドなし）で確認し、**PRのCIが最初のビルド**になる。コード・デザインのPRなら、CI がプレビュー（`<名前>-av-sale-guide.juice-juice-0402.workers.dev`）も作るので、運営者にスマホで見てもらえる（URL は check の注釈。クラウド環境からは開かない）。見ていないものを「確認した」と書かない。
 - 本番に公開されたかは `python3 scripts/wait_run.py deploy <Merge のコミット>`（`deploy.yml` の実行を見る。ビルドと点検とアップロードで10〜15分。`cancelled` は、あとの Merge の公開に含まれたということで、そちらの結果を返す）
 
 ## 守ること
 
 1. **main へ直接 push しない。** ブランチ（`claude/...`）→ PR。PRの作成は `gh api repos/juice0402/fanza-ranking/pulls`（REST）を使う（Claude Code環境では GraphQL が使えず `gh pr create` は失敗する）。毎日更新の GitHub Actions（`update.yml`）だけは、データファイルだけを main に直接 commit する。
    - 例外の許可: 予約タスクの**コメント更新PR（`new_releases.json` と、過去作品の `site/src/data/catalog/` の中のファイルと、売り場の `doujin.json`・`game.json`・`anime.json`・`amateur.json`・`cinema.json`・`comic.json`・`photo.json`・`vr.json` と、女優の歩みの紹介文 `actress_stories.json` だけを変えるもの）は、CIが緑なら Claude 自身が Merge してよい**（運営者の許可済み。過去作品のコメントは、2026-10-04 夜に、運営者の「5万件くらい網羅したい」に合わせて加え、報告した。同人・ゲームのコメントは、2026-10-09 に、運営者の「動画35・同人4・ゲーム1の割合で執筆を」に合わせて加えた。新しい売り場のコメントは、2026-10-10 に、運営者の「上限は40のまま、1件ずつ」に合わせて加えた）。同じく、**週のまとめ記事のPR（`roundups.json` だけを変えるもの）も、CIが緑なら Claude 自身が Merge してよい**（運営者の「そっち側でできることは極力やっていい」という包括的な許可にもとづき、2026-10-03 に追加して運営者へ報告した。やめてほしいと言われたら、この文を消す）。**月のまとめ記事のPR（`monthly.json` だけを変えるもの）と、週と月のまとめを1つにしたPR（`roundups.json`・`monthly.json` だけを変えるもの）も同じ**（運営者の希望「月のまとめ記事＋予約タスク」にもとづき、2026-10-07 に追加して運営者へ報告した。2026-10-13 から、月のまとめは毎週月曜の予約タスクが同じPRで書く）。**読み物のPR（`yomimono.json` だけ、またはまとめ記事のデータとの組み合わせだけを変えるもの）も同じ**（運営者の「週に1本ずつ自動で増やす」。2026-10-28 #181）。コード・デザインを変えるPRは、運営者に知らせてからMergeする。
-2. **秘密情報をコードやログに書かない。** 使うのは GitHub Secrets の `API_ID` / `AFFILIATE_ID` / `GEMINI_API_KEY` と、公開用の `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`（`deploy.yml` と CI のプレビューだけに渡す）のみ。リポジトリは公開なので、一度でも書くと履歴に残る。Geminiのキーは URL ではなくヘッダ（`x-goog-api-key`）で渡す。
+2. **秘密情報をコードやログに書かない。** 使うのは GitHub Secrets の `API_ID` / `AFFILIATE_ID` / `GEMINI_API_KEY` と、公開用の `CLOUDFLARE_WORKERS_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`（`deploy.yml` と CI のプレビューだけに渡す。Pages 用の `CLOUDFLARE_API_TOKEN` は戻すときのために残す）のみ。リポジトリは公開なので、一度でも書くと履歴に残る。Geminiのキーは URL ではなくヘッダ（`x-goog-api-key`）で渡す。
 3. **規約の表記を消さない。** 全ページに「広告（アフィリエイト）表記」「18歳確認」「RTAラベル」「Powered by FANZA Webサービス」。AIコメントの注記も残す。`tests/verify_dist.py` が全ページを検査する。
    - **FANZA のクレジットは、DMMの規定のHTMLを1文字も変えない**（DMMアフィリエイト公式の「クレジット表示」の FANZA クレジット・テキスト形式 `Powered by <a href="https://affiliate.dmm.com/api/">FANZA Webサービス</a>`。改変すると API の利用を止められることがある。運営者が公式のページで確かめた。2026-10-07）。`items.js` の `DMM_CREDIT_HTML` を、フッターの `<p class="foot-credit">` に `set:html` でそのまま入れる。class・target・rel を足さない。文節の区切りも入れない（`lib/phrase.js` が `foot-credit` の中を飛ばす）。見た目は CSS の `.foot-credit a` で整える。`tests/verify_dist.py` が全ページで1文字ずつ突き合わせる
    - 「広告」のラベルは、**最初に見える画面（ヘッダーの `pr-chip`）に残す**。くわしい文はフッター。フッターだけにしない（ASPの案内で「ファーストビューに表示」「下部やフッターだけは不適切」とされているため。ステマ規制への対応）。

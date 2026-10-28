@@ -1,13 +1,15 @@
 name: Deploy
 
-# サイトをビルドして、全ページを点検し、Cloudflare Pages に直接アップロードする（Direct Upload。2026-10-09 から）。
+# サイトをビルドして、全ページを点検し、Cloudflare Workers（静的ファイルだけ）に直接アップロードする（2026-10-28 から。前は Pages。issue #188）。
 # Cloudflare 側のビルド（月500回を「あそびトーク」と共有）を使わないため。点検（tests/verify_dist.py）に通ったものだけを公開する。
 #   - main に入ったとき（PR の Merge）→ 本番（https://av-sale-guide.com/）
 #   - 毎日の更新（update.yml）・取り直し（refresh-data.yml）がデータを保存したとき → そのワークフローが、これを動かす
 #     （GitHub の決まりで、ワークフローが保存したコミットでは、ほかのワークフローが自動では動かないため）
 #   - 手動実行（Actions の画面の「Run workflow」）: main を選べば本番、ほかのブランチを選べばプレビュー
-#     （<ブランチ名>.fanza-ranking.pages.dev。本番は変わらない）
-# 鍵は GitHub の Secrets（CLOUDFLARE_API_TOKEN・CLOUDFLARE_ACCOUNT_ID。Cloudflare Pages の編集だけの権限）。
+#     （<ブランチ名を英数字とハイフンにしたもの>-av-sale-guide.juice-juice-0402.workers.dev。本番は変わらない）
+# 鍵は GitHub の Secrets（CLOUDFLARE_WORKERS_TOKEN・CLOUDFLARE_ACCOUNT_ID）。
+# Pages（2万ファイルまで）には出さない。Pages のプロジェクト fanza-ranking は fanza-ranking.pages.dev の転送のために残す
+# （戻すときは docs/architecture.md の「Workers への引っ越し」。scripts/deploy_pages.sh は戻すときのために残してある）。
 on:
   push:
     branches: [main]
@@ -25,7 +27,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 40  # ビルドと点検で10分ほど・アップロードで数分（2万ファイル近く）
+    timeout-minutes: 40  # ビルドと点検で10分ほど・アップロードで数分（4万ファイルまで。変わったファイルだけ送る）
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -69,30 +71,22 @@ jobs:
         shell: bash
         run: python3 scripts/indexnow.py prepare --out "$RUNNER_TEMP/indexnow-urls.json" --retry .indexnow-retry.json
 
-      - name: Upload to Cloudflare Pages
+      # 本番（main）は Cloudflare Workers へ（連絡 C-012・issue #188。Workers は有料プランで10万ファイルまで・Pages は2万まで）。
+      # workers/wrangler.jsonc の routes で、av-sale-guide.com は Workers から出る。ほかのブランチ（手動実行）はプレビュー。
+      # アップロードできたら印（UPLOADED_MARK）を付け、IndexNow で知らせる（scripts/deploy_workers.sh）
+      - name: Upload to Cloudflare Workers
         shell: bash
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           REF_NAME: ${{ github.ref_name }}
           UPLOADED_MARK: ${{ runner.temp }}/uploaded
         run: |
           if [ "$REF_NAME" = "main" ]; then
-            bash scripts/deploy_pages.sh production
+            bash scripts/deploy_workers.sh production
           else
-            bash scripts/deploy_pages.sh preview "$REF_NAME"
+            bash scripts/deploy_workers.sh preview "$REF_NAME"
           fi
-
-      # 本番を Cloudflare Workers にも出す（連絡 C-012。2026-10-28。Workers は有料プランで10万ファイルまで・Pages は2万まで）。
-      # 鍵は Workers 用の別の鍵（CLOUDFLARE_WORKERS_TOKEN）。無ければ何もしない。workers/wrangler.jsonc に routes を足すまでは、
-      # 本番の URL は Pages のままで、ここの失敗は注意だけ（scripts/deploy_workers.sh）
-      - name: Upload to Cloudflare Workers
-        if: github.ref == 'refs/heads/main'
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: bash scripts/deploy_workers.sh production
 
       # 検索エンジンに知らせる（IndexNow。Bing・Yandex・Naver・Seznam・Yep。Google は sitemap と Search Console のまま）。
       # 本番にアップロードできたときだけ（印 uploaded）。あとの公開に止められたときも、アップロード済みなら知らせる（always()）。

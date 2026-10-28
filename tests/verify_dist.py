@@ -43,7 +43,7 @@ def nenkan_glob():
 DATA = os.path.join(ROOT, "site", "src", "data", "new_releases.json")
 CATALOG_DIR = os.path.join(ROOT, "site", "src", "data", "catalog")  # 過去作品（発売月ごとのファイル。まだ無いこともある）
 CATALOG_RANK = os.path.join(ROOT, "site", "src", "data", "catalog_rank.json")  # 過去作品の人気順の順位 {cid: [順位, 一回りの番号]}
-FILE_LIMIT = 20000  # Cloudflare Pages の無料プランの、1つのサイトのファイル数の上限
+FILE_LIMIT = 100000  # Cloudflare Workers（有料プラン）の静的ファイルの、1つのサイトの上限（2026-10-28 まではPages の2万。issue #188）
 ROUNDUPS = os.path.join(ROOT, "site", "src", "data", "roundups.json")
 ACTRESSES = os.path.join(ROOT, "site", "src", "data", "actresses.json")
 RANKING = os.path.join(ROOT, "site", "src", "data", "ranking.json")
@@ -237,10 +237,16 @@ paged = {os.path.basename(os.path.dirname(p)) for p in item_pages}
 check("作品ページは、データにある作品のものだけ", paged <= set(everything), sorted(paged - set(everything))[:3])
 check(f"毎日の更新で載せた作品（{len(curated)}本）は、すべて作品ページがある", set(curated) <= paged, sorted(set(curated) - paged)[:3])
 
-print("\n■ ファイル数（Cloudflare Pages の無料プランは2万ファイルまで）")
+print(f"\n■ ファイル数（Cloudflare Workers の静的ファイルは{FILE_LIMIT}まで・config.js の FILE_BUDGET 以内）")
 dist_files = sum(len(fs) for _, _, fs in os.walk(DIST))
 print(f"   ファイル {dist_files} ／ 作品ページ {len(paged)} ／ 作品 {len(everything)}本（過去作品 {len(catalog)}本）")
 check(f"サイト全体のファイル数（{dist_files}）が {FILE_LIMIT} 以内", dist_files <= FILE_LIMIT, dist_files)
+_cfg = read(os.path.join(ROOT, "site", "src", "config.js"))
+budget = int(re.search(r"export const FILE_BUDGET = (\d+);", _cfg).group(1))
+fixed = int(re.search(r"export const FIXED_FILES = (\d+);", _cfg).group(1))
+check(f"上限の計画（FILE_BUDGET {budget}）は Workers の上限（{FILE_LIMIT}）より少ない（余裕を残す）", 0 < budget < FILE_LIMIT, budget)
+# 作品ページ以外のファイルは見積もり（FIXED_FILES）より少ないので、ファイル数は計画より大きくはならない（少し余裕を見る）
+check(f"サイト全体のファイル数（{dist_files}）が、計画（FILE_BUDGET {budget}）をこえていない", dist_files <= budget + fixed, (dist_files, budget))
 # IndexNow（検索エンジンへのお知らせ。scripts/indexnow.py。2026-10-17）の鍵: いちばん上に「<鍵>.txt」（中身は鍵だけ）が1つ。
 # 前回の記録（indexnow-pages.json）は、点検のあとで公開の手順が置くので、ここには無い。どちらも sitemap には入れない
 _inkeys = [f[:-4] for f in os.listdir(DIST) if re.fullmatch(r"[A-Za-z0-9]{32}\.txt", f) and read_raw(os.path.join(DIST, f)).strip() == f[:-4]]
@@ -262,8 +268,6 @@ if unpaged:
     worst_paged = max((page_rank(c) for c in paged), default=(-1, 0))
     best_unpaged = min(page_rank(c) for c in unpaged)
     check(f"作品ページの無い作品（{len(unpaged)}本）は、優先順があとのものだけ（毎日の更新で載せた作品→コメントのある過去作品→人気順の順位が上の作品）", worst_paged <= best_unpaged, (worst_paged, best_unpaged))
-    budget = int(re.search(r"export const FILE_BUDGET = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1))
-    fixed = int(re.search(r"export const FIXED_FILES = (\d+);", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1))
     # 作品ページ以外のファイルは見積もり（FIXED_FILES）より少ないので、そのぶん上限より少し下になる。大きく余らせていないことだけを見る
     check("あふれた作品があるときは、上限近くまで作品ページを作っている（枠を大きく余らせていない）", dist_files >= budget - 2 * fixed, (dist_files, budget - 2 * fixed))
 bad_noindex = [c for c in paged if c in everything and (('name="robots" content="noindex' in read_raw(os.path.join(DIST, "item", c, "index.html"))) == has_comment(everything[c]))]

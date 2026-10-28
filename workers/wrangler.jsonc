@@ -4,11 +4,13 @@
 // ・はじめは workers.dev だけで動かして確かめ、そのあと routes で av-sale-guide.com の前に置く（DNS の CNAME → Pages はそのまま残す）。
 //   戻すときは routes を消して公開すれば、また Pages が出る（すぐ戻せる形）。
 // ・_headers・_redirects は Pages と同じ書き方で、Workers の静的ファイルでも効く。
+// ・PR のプレビューも Workers（`wrangler versions upload --preview-alias`。URL は <alias>-av-sale-guide.juice-juice-0402.workers.dev。issue #188）。
+// ・末尾の / が無い URL の転送は 307（Pages は 308）。wrangler の設定では変えられない（サイトの中のリンクは / 付きなので、そのまま）。
 {
   "name": "av-sale-guide",
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
-  "preview_urls": false,
+  "preview_urls": true,
   // 本番の URL（av-sale-guide.com）の前に Workers を置く（2026-10-28 しょーくん「つなぎかえは今」）。消して公開すると Pages に戻る
   "routes": [{ "pattern": "av-sale-guide.com/*", "zone_name": "av-sale-guide.com" }],
   "assets": {

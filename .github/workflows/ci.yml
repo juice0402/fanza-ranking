@@ -16,7 +16,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # 過去作品が増えると、ビルドと点検に時間がかかる（2万ファイル近くで、10分ほどの見込み）
+    timeout-minutes: 30  # 過去作品が増えると、ビルドと点検に時間がかかる（2万ファイル近くで11分ほど。4万までにした。issue #188）
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -41,20 +41,20 @@ jobs:
         shell: bash
         run: bash scripts/check.sh --build 2>&1 | tee "$RUNNER_TEMP/check.log"
 
-      # コード・デザインを変えるPRだけ、できあがったサイトを Cloudflare Pages のプレビューに直接アップロードする
-      # （<ブランチ名>.fanza-ranking.pages.dev。本番は変わらない。Cloudflare のビルドの回数は使わない。2026-10-09 から）。
+      # コード・デザインを変えるPRだけ、できあがったサイトを Cloudflare Workers のプレビューに直接アップロードする
+      # （<ブランチ名を英数字とハイフンにしたもの>-av-sale-guide.juice-juice-0402.workers.dev。本番は変わらない。issue #188 で Pages から移した）。
       # サイトの作り（site/ の中。データは除く）が変わらないPR（毎日のコメント・まとめ記事・手順書だけ）には作らない。URL は、注釈と実行結果の要約に出る。
       # プレビューを作れなくても、このチェック（テスト・ビルド・点検）の結果は変えない
-      - name: Preview on Cloudflare Pages
+      - name: Preview on Cloudflare Workers
         if: success() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         continue-on-error: true
         timeout-minutes: 15
         shell: bash
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           HEAD_REF: ${{ github.head_ref }}
-        run: bash scripts/deploy_pages.sh preview "$HEAD_REF" HEAD^1
+        run: bash scripts/deploy_workers.sh preview "$HEAD_REF" HEAD^1
 
       # 失敗したときだけ、ログの大事なところ（❌の行と、最後の部分）を「注釈」に出す。
       # ログ全体を開かなくても、PRの画面やAPIから理由が読める
