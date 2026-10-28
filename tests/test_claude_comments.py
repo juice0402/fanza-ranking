@@ -550,7 +550,7 @@ check("過去作品のファイルが壊れていたら、止める（書き戻�
 shutil.rmtree(CAT_DIR)
 os.remove(os.path.join(tmp, "catalog_state.json"))
 
-print("\n■ FANZA同人・FANZAゲーム（doujin.json・game.json。1日40件のうち同人4件・ゲーム1件。2026-10-09）")
+print("\n■ FANZA同人・FANZAゲーム（doujin.json・game.json。1日40件のうち同人8件・ゲーム1件。2026-10-28 から）")
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import floor_data as FD  # noqa: E402
 fresh_data()
@@ -579,19 +579,19 @@ dj_before = open(os.path.join(tmp, "doujin.json"), encoding="utf-8").read()
 lst = json.loads(run("list", "--today", "2026-11-03", "--limit", "40").stdout)
 fl_rows = [r for r in lst["items"] if r.get("floor")]
 vid_rows = [r for r in lst["items"] if not r.get("floor")]
-check("list: 同人4件・ゲーム1件を、動画のあとに出す（動画は残りの枠）",
-      [r["floor"] for r in fl_rows] == ["doujin"] * 4 + ["game"] and lst["items"][-5:] == fl_rows and len(vid_rows) == len(pending), ([r["floor"] for r in fl_rows], len(vid_rows)))
+check("list: 同人（枠は8件。この見本ではコメントの無い6件）・ゲーム1件を、動画のあとに出す（動画は残りの枠）",
+      [r["floor"] for r in fl_rows] == ["doujin"] * 6 + ["game"] and lst["items"][-7:] == fl_rows and len(vid_rows) == len(pending), ([r["floor"] for r in fl_rows], len(vid_rows)))
 check("list: 同人は人気順の順位が上の作品から（コメントのある作品は出さない）・ゲームは順位の上の作品",
-      [r["cid"] for r in fl_rows[:4]] == ["d_900001", "d_900005", "d_900003", "d_900000"] and fl_rows[4]["cid"] == "brand_0002", [r["cid"] for r in fl_rows])
+      [r["cid"] for r in fl_rows[:6]] == ["d_900001", "d_900005", "d_900003", "d_900000", "d_900004", "d_900002"] and fl_rows[6]["cid"] == "brand_0002", [r["cid"] for r in fl_rows])
 row_d = fl_rows[0]
 check("list: 同人の行（reason 同人・サークル・タイトル・おだやかなジャンルだけ・文字数の下限100。価格・順位は出さない）",
       row_d["reason"] == "同人" and row_d["circle"] == "作ったサークル1" and row_d["title"].startswith("魔法の森") and row_d["genres"] == ["ファンタジー", "巨乳", "恋愛"]
       and row_d["min_len"] == 100 and not any(k in row_d for k in ("price", "rank", "list_price", "url")), row_d)
-check("list: ゲームの行（reason ゲーム・ブランド・作家）", fl_rows[4]["reason"] == "ゲーム" and fl_rows[4]["brand"] == "作ったサークル11" and fl_rows[4]["authors"] == ["作った原画家"], fl_rows[4])
+check("list: ゲームの行（reason ゲーム・ブランド・作家）", fl_rows[6]["reason"] == "ゲーム" and fl_rows[6]["brand"] == "作ったサークル11" and fl_rows[6]["authors"] == ["作った原画家"], fl_rows[6])
 check("list: 残りの数（同人6本・ゲーム3本）が total_pending にも入る", lst["doujin_pending"] == 6 and lst["game_pending"] == 3 and lst["total_pending"] == len(pending) + 9, (lst["doujin_pending"], lst["game_pending"], lst["total_pending"]))
 lst10 = json.loads(run("list", "--today", "2026-11-03", "--limit", "10").stdout)
-check("list: --limit が40でないときは、同じ割合（10件なら同人1件・ゲーム0件・動画9件）",
-      [r.get("floor") for r in lst10["items"]].count("doujin") == 1 and not any(r.get("floor") == "game" for r in lst10["items"]) and len(lst10["items"]) == 10, [r.get("floor") for r in lst10["items"]])
+check("list: --limit が40でないときは、同じ割合（10件なら同人2件・ゲーム0件・動画8件）",
+      [r.get("floor") for r in lst10["items"]].count("doujin") == 2 and not any(r.get("floor") == "game" for r in lst10["items"]) and len(lst10["items"]) == 10, [r.get("floor") for r in lst10["items"]])
 payload_f = {"d_900001": "魔法の森を舞台に、作ったサークル1が描くふたりの暮らしの物語です。ファンタジーの世界で少しずつ近づいていく関係を、恋愛を軸にしたおだやかな展開で追いかけていきます。シリーズの1冊として、読みやすい一作です。",
              "brand_0002": "作ったサークル11が手がけるゲームで、原画は作った原画家が担当しています。森の奥で暮らすふたりを描く物語で、ファンタジーの世界を舞台に、恋愛の行方を選びながら進めていく作りです。8月1日に発売されました。"}
 r = run("apply", write_comments("floor.json", payload_f), "--today", "2026-11-03")
@@ -662,9 +662,9 @@ check("同人・ゲームのファイルが壊れていたら、止める（書�
 os.remove(os.path.join(tmp, "game.json"))
 os.remove(os.path.join(tmp, "doujin.json"))
 _new6 = ("anime", "amateur", "cinema", "comic", "photo", "vr")
-check("売り場に回す数は、40件のうち同人4件・ゲーム1件・新しい売り場は各1件（運営者の希望。2026-10-09・2026-10-10）＝動画は29件",
-      cc_mod.FLOOR_QUOTA == {"doujin": 4, "game": 1, **{k: 1 for k in _new6}} and sum(cc_mod.floor_quota(40).values()) == 11
-      and cc_mod.floor_quota(30) == {"doujin": 3, "game": 1, **{k: 1 for k in _new6}} and set(cc_mod.FLOOR_QUOTA) == set(FD.FLOORS) and set(cc_mod.FLOOR_REASON) == set(FD.FLOORS))
+check("売り場に回す数は、40件のうち同人8件・素人5件・ゲームとほかの売り場は各1件（運営者の判断「同人8・素人5・動画21」。2026-10-28）＝動画は21件",
+      cc_mod.FLOOR_QUOTA == {"doujin": 8, "game": 1, **{k: 1 for k in _new6}, "amateur": 5} and sum(cc_mod.floor_quota(40).values()) == 19
+      and cc_mod.floor_quota(30) == {"doujin": 6, "game": 1, **{k: 1 for k in _new6}, "amateur": 4} and set(cc_mod.FLOOR_QUOTA) == set(FD.FLOORS) and set(cc_mod.FLOOR_REASON) == set(FD.FLOORS))
 
 print("\n■ 新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題。各1件。2026-10-10）")
 vr = {"updated": "2026-11-03", "scanned": 100, "skipped": 0, "ranks": {"vr_0001": 1, "vr_0002": 2}, "items": {}}
