@@ -756,6 +756,22 @@ if isinstance(act_raw, dict):
     for r in act_raw.get("actresses", []):
         if isinstance(r, dict) and str(r.get("name", "")).strip() and r.get("fetched") and str(r["name"]).strip() not in profiles:
             profiles[str(r["name"]).strip()] = r
+# 出演者ページの表の点検に使うプロフィール: 画面（site/src/lib/profiles.js の normalizeProfiles）と同じえらび方。id（数字）と名前がある記録・
+# 同じ名前で id が2つ以上ある人は使わない・同じ id は先のもの。まだ取り直していない（fetched が空の）記録も、画面は使う
+# （血液型・出身地・趣味が入っていることがある。2026-10-29 の更新で、点検だけが外していて合わなくなった）
+page_profiles = {}
+if isinstance(act_raw, dict):
+    _rows = [r for r in act_raw.get("actresses", []) if isinstance(r, dict) and re.fullmatch(r"\d{1,12}", str(r.get("id") or "").strip()) and str(r.get("name") or "").strip()]
+    _ids_by_name = {}
+    for r in _rows:
+        _ids_by_name.setdefault(str(r["name"]).strip(), set()).add(str(r["id"]).strip())
+    _seen_ids = set()
+    for r in _rows:
+        _id, _nm = str(r["id"]).strip(), str(r["name"]).strip()
+        if _id in _seen_ids or len(_ids_by_name[_nm]) > 1:
+            continue
+        _seen_ids.add(_id)
+        page_profiles.setdefault(_nm, r)
 bad_faces = []
 for pth in all_html:
     for t in tags(read(pth), "img"):
@@ -773,7 +789,7 @@ for pth in actress_pages:
     name = h1_text[: -len("の新作・出演作品")] if h1_text.endswith("の新作・出演作品") else ""
     if name:
         page_name_slug[name] = os.path.basename(os.path.dirname(pth))
-    prof = profiles.get(name)
+    prof = page_profiles.get(name)
     btn_text = f"FANZAで{name}の全作品を見る"
     btns = [t for t in tags(text, "a") if has_class(t, "btn") and has_class(t, "btn-hot")]
     list_url = str((prof or {}).get("list_url") or "")
