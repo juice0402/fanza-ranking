@@ -11,7 +11,8 @@ import { isMinorTitle } from '../lib/gacha.js';
 
 // picks: [{ note, item }]、facts: 記事の数字（人気の作品の最高順位を使う。無くてもよい）、id: 見出しの id。
 // こちらから勧める欄なので、未成年を連想させるタイトルの作品は出さない（道具の apply も選ばせない。前の記事のための守り）
-const { picks: allPicks, facts = null, id = 'picks-title', title = '注目の作品' } = Astro.props;
+// keepVr: 「VR作品を隠す」を選んでいても隠さない（VRの読み物の厳選。2026-10-28）
+const { picks: allPicks, facts = null, id = 'picks-title', title = '注目の作品', keepVr = false } = Astro.props;
 const picks = allPicks.filter((p) => !isMinorTitle(p.item.title));
 const factBest = new Map((facts?.popular ?? []).map((p) => [p.cid, p.best]));
 const bestOf = (i) => factBest.get(i.cid) ?? rankHistory.get(i.cid)?.bestNew?.rank ?? null;
@@ -32,7 +33,7 @@ const md = (dateKey) => {
         const meta = [castLine(p.item.actress, CAST_LIMIT, ''), p.item.maker && p.item.maker !== '不明' ? p.item.maker : '', `${md(p.item.dateKey)}発売`].filter(Boolean).join('・');
         const best = bestOf(p.item);
         return (
-          <li class="shelf-cell pick" {...filterAttrs(p.item)}>
+          <li class="shelf-cell pick" {...filterAttrs(p.item, { vr: !keepVr })}>
             <article class="pick-card">
               <a class="item-cover pick-cover" href={link.href} tabindex="-1" aria-hidden="true" {...outbound}>
                 {p.item.image_url && <Thumb src={p.item.image_url} kind="tiny" class="item-img is-small" />}

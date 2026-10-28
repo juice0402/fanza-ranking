@@ -6,7 +6,8 @@ import DaySection from '../../components/DaySection.astro';
 import CastFaces from '../../components/CastFaces.astro';
 import MiniShelf from '../../components/MiniShelf.astro';
 import RatedShelf from '../../components/RatedShelf.astro';
-import { all, tagGroups, tagByName, contentGenres, genreTops, fanzaGenreTops } from '../../lib/data.js';
+import { all, tagGroups, tagByName, contentGenres, genreTops, fanzaGenreTops, yomimonoPages } from '../../lib/data.js';
+import { yomimonoForTag } from '../../lib/yomimono.js';
 import { campaignSummary } from '../../lib/sale.js';
 import { relatedGenres } from '../../lib/insights.js';
 import { TAG_INDEX_PATH, VR_TAG_NAME, tagPageTitle, tagSummary } from '../../lib/collections.js';
@@ -32,6 +33,8 @@ const mdOf = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 const castFaces = campaignSummary(group.items, { genres: contentGenres, limit: 6 }).actresses.slice(0, 6);
 const pages = new Map([...tagByName].map(([name, g]) => [name, g.path]));
 const nearGenres = isVr ? [] : relatedGenres(group.items, group.name, contentGenres, pages);
+// このジャンルの読み物（2026-10-28 #181。あれば見出しの下に1行）
+const reads = yomimonoForTag(yomimonoPages, group.name);
 const trail = [
   { name: 'トップ', path: '/' },
   { name: 'ジャンルから探す', path: TAG_INDEX_PATH },
@@ -51,6 +54,7 @@ const trail = [
     <section class="hero">
       <h1 class="hero-title">{isVr ? 'VR作品' : group.name}の新作・予約作品</h1>
       <p class="page-facts">{group.items.length}本・{shortSpan(group.items)}発売</p>
+      {reads.map((r) => <p class="yomi-entry">読み物：<a class="spec-link" href={r.path}>{r.title}</a></p>)}
     </section>
 
     {fanzaTop && (

@@ -27,6 +27,7 @@ run "Claudeのコメント差し替えの道具 (Python)" python3 tests/test_cla
 
 run "Claudeの週のまとめ記事の道具 (Python)" python3 tests/test_claude_roundups.py
 run "女優の歩みの紹介文を書く道具 (Python)" python3 tests/test_claude_history.py
+run "Claudeの読み物の記事の道具 (Python)" python3 tests/test_claude_yomimono.py
 
 run "Claudeの月のまとめ記事の道具 (Python)" python3 tests/test_claude_monthly.py
 
@@ -64,6 +65,8 @@ run "検索結果に出る説明文（ページごとの数字入り）の部品
 run "作品ページの「次に見るもの」の部品 (Node.js)" node tests/test_stay.mjs
 
 run "RSS（新着のお知らせの配信）の部品 (Node.js)" node tests/test_feed.mjs
+
+run "読み物（/yomimono/）の部品 (Node.js)" node tests/test_yomimono.mjs
 
 run "人気の動き・シリーズ/レーベル・内部リンクの部品 (Node.js)" node tests/test_insights.mjs
 
