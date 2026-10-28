@@ -247,6 +247,77 @@ check("ci.yml: ブランチの名前は環境変数で渡す（そのまま命�
       "HEAD_REF: ${{ github.head_ref }}" in prev and 'bash scripts/deploy_pages.sh preview "$HEAD_REF" HEAD^1' in prev
       and "fetch-depth: 2" in ci)
 
+print("\n■ Workers への公開（scripts/deploy_workers.sh production。連絡 C-012）")
+
+
+def make_workers_repo(routes=False):
+    """deploy_workers.sh・workers/wrangler.jsonc・dist だけの作業場所（routes=True なら av-sale-guide.com の前に置いたあとの設定）"""
+    repo = tempfile.mkdtemp(dir=tmp)
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    os.makedirs(os.path.join(repo, "scripts"))
+    os.makedirs(os.path.join(repo, "workers"))
+    os.makedirs(os.path.join(repo, "site", "dist"))
+    open(os.path.join(repo, "scripts", "deploy_workers.sh"), "w", encoding="utf-8").write(read("scripts", "deploy_workers.sh"))
+    conf = read("workers", "wrangler.jsonc")
+    if routes:
+        conf = conf.replace('"workers_dev": true,', '"workers_dev": true,\n  "routes": [{ "pattern": "av-sale-guide.com/*", "zone_name": "av-sale-guide.com" }],')
+    open(os.path.join(repo, "workers", "wrangler.jsonc"), "w", encoding="utf-8").write(conf)
+    open(os.path.join(repo, "site", "dist", "index.html"), "w").write("<!doctype html><title>t</title>")
+    return repo
+
+
+def make_workers_wrangler(exit_code=0):
+    folder = tempfile.mkdtemp(dir=tmp)
+    log = os.path.join(folder, "args.txt")
+    path = os.path.join(folder, "wrangler")
+    with open(path, "w") as f:
+        f.write(f"""#!/usr/bin/env bash
+printf '%s\\n' "$@" > {log}
+echo "token_set=${{CLOUDFLARE_API_TOKEN:+yes}}" >> {log}
+if [ {exit_code} -ne 0 ]; then echo "✘ [ERROR] A request to the Cloudflare API failed."; exit {exit_code}; fi
+echo "Uploaded av-sale-guide"
+echo "Deployed av-sale-guide triggers"
+""")
+    os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC)
+    return path, log
+
+
+def run_workers(repo, wrangler, secrets=True):
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("CLOUDFLARE_", "GITHUB_"))}
+    env.update({"WRANGLER": wrangler, "LIVE_URL": "", "CHECK_TRIES": "1", "CHECK_WAIT": "0",
+                "GITHUB_STEP_SUMMARY": os.path.join(repo, "summary.md")})
+    if secrets:
+        env.update({"CLOUDFLARE_API_TOKEN": FAKE_TOKEN, "CLOUDFLARE_ACCOUNT_ID": "0" * 32})
+    r = subprocess.run(["bash", "scripts/deploy_workers.sh", "production"], cwd=repo, env=env, capture_output=True, text=True)
+    return r.returncode, r.stdout + r.stderr
+
+
+repo = make_workers_repo()
+w, log = make_workers_wrangler()
+code, out = run_workers(repo, w)
+a = args_of(log)
+check("Workers: workers/wrangler.jsonc で deploy する・鍵は環境変数で届く", code == 0 and a[:3] == ["deploy", "--config", "workers/wrangler.jsonc"] and "token_set=yes" in a, out)
+check("Workers: どこから出ているかの印（__served-by.txt）を、コミットの印つきで作る",
+      open(os.path.join(repo, "site", "dist", "__served-by.txt")).read().startswith("workers "))
+check("Workers: 鍵がまだ無いときは、何もせずに成功（本番は Pages のまま）",
+      run_workers(make_workers_repo(), make_workers_wrangler()[0], secrets=False)[0] == 0)
+code, out = run_workers(make_workers_repo(), make_workers_wrangler(exit_code=1)[0])
+check("Workers: routes の前の失敗は注意だけ（本番は Pages のまま）", code == 0 and "::warning" in out, out)
+code, out = run_workers(make_workers_repo(routes=True), make_workers_wrangler(exit_code=1)[0])
+check("Workers: routes のあと（本番が Workers）の失敗は、公開の失敗", code == 1 and "::error" in out, out)
+code, out = run_workers(make_workers_repo(routes=True), make_workers_wrangler()[0], secrets=False)
+check("Workers: routes のあとで鍵が無いのも、公開の失敗", code == 1 and "CLOUDFLARE_WORKERS_TOKEN" in out, out)
+conf = read("workers", "wrangler.jsonc")
+check("workers/wrangler.jsonc: 静的ファイルだけ（main なし）・site/dist・Pages と同じ末尾の / と 404 の扱い",
+      '"directory": "../site/dist"' in conf and '"html_handling": "auto-trailing-slash"' in conf
+      and '"not_found_handling": "404-page"' in conf and '"main"' not in conf)
+deploy = read(".github", "workflows", "deploy.yml")
+wstep = deploy[deploy.index("- name: Upload to Cloudflare Workers"):]
+check("deploy.yml: Workers へは Pages のあと・main のときだけ・Workers 用の鍵で",
+      deploy.index("bash scripts/deploy_pages.sh production") < deploy.index("bash scripts/deploy_workers.sh production")
+      and "if: github.ref == 'refs/heads/main'" in wstep[:200]
+      and "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}" in wstep[:600])
+
 print("\n■ 設定の突き合わせ")
 site_url = re.search(r"SITE_URL = '([^']+)'", read("site", "src", "config.js")).group(1)
 check("送り先のプロジェクト（fanza-ranking）は、サイトのURL（config.js の SITE_URL）と同じ",
