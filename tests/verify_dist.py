@@ -1718,6 +1718,7 @@ check("CSS: ふだん（ぼかしが使えない古いブラウザ）と「透�
 hdr = os.path.join(DIST, "_headers")
 htext = read(hdr) if os.path.isfile(hdr) else ""
 check("応答ヘッダーの設定（_headers）がある: nosniff・フレームへの埋め込み禁止（frame-ancestors）", "X-Content-Type-Options: nosniff" in htext and "frame-ancestors 'self'" in htext and re.search(r"^/\*\s*$", htext, re.M) is not None)
+check("応答ヘッダー: Referrer-Policy を自分で書く（Pages は書かなくても付けたが、Workers は付けない。2026-10-28 の引っ越し）", "Referrer-Policy: strict-origin-when-cross-origin" in htext)
 check("応答ヘッダー: 名前にハッシュが付くファイル（/_astro/*）と、中身の印つきで読むスクリプト（/*.js）は、長くキャッシュ（immutable）",
       re.search(r"^/_astro/\*\s*\n\s+Cache-Control: public, max-age=31536000, immutable", htext, re.M) is not None and re.search(r"^/\*\.js\s*\n\s+Cache-Control: public, max-age=31536000, immutable", htext, re.M) is not None)
 # スクリプトを長く置くので、ページからは必ず中身の印つき（?v=8けた）で読む（印が無いと、新しくしても古いものが使われ続ける）。印は今のファイルの中身と同じ

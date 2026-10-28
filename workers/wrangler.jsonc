@@ -9,6 +9,8 @@
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
   "preview_urls": false,
+  // 本番の URL（av-sale-guide.com）の前に Workers を置く（2026-10-28 しょーくん「つなぎかえは今」）。消して公開すると Pages に戻る
+  "routes": [{ "pattern": "av-sale-guide.com/*", "zone_name": "av-sale-guide.com" }],
   "assets": {
     "directory": "../site/dist",
     "html_handling": "auto-trailing-slash",
