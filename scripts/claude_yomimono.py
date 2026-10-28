@@ -179,12 +179,14 @@ def load_reviews():
     return out
 
 
-def load_sale(today):
-    """いまセール中の作品 {cid: {"off": 割引の%（分からなければ None）, "end": 終わる日時}}（今日が期間に入っているキャンペーンだけ。lib/sale.js と同じ）"""
+def load_sale(today, key="items"):
+    """いまセール中の作品 {cid: {"off": 割引の%（分からなければ None）, "end": 終わる日時}}（今日が期間に入っているキャンペーンだけ。lib/sale.js と同じ）。
+    key="extra" のときは、このサイトに無いセール中の作品（sale.json の extra）を {cid: {"off", "end", "title", "genres", "date"}} で返す
+    （読み物のページの「いまセール中」の棚は extra の作品も数えるので、本数と割引の数字をページとそろえるため。2026-10-28）"""
     raw = cc._read_dict(SALE_PATH)
     camps = raw.get("campaigns") if isinstance(raw.get("campaigns"), list) else []
     out = {}
-    for r in raw.get("items") if isinstance(raw.get("items"), list) else []:
+    for r in raw.get(key) if isinstance(raw.get(key), list) else []:
         if not isinstance(r, dict) or not isinstance(r.get("c"), str) or not isinstance(r.get("k"), int) or not (0 <= r["k"] < len(camps)):
             continue
         camp = camps[r["k"]] if isinstance(camps[r["k"]], dict) else {}
@@ -194,6 +196,8 @@ def load_sale(today):
         p, lp = r.get("p"), r.get("l")
         priced = isinstance(p, int) and isinstance(lp, int) and 0 < p < lp
         out[r["c"]] = {"off": min(99, half_up((1 - p / lp) * 100)) if priced else None, "end": end[:16]}
+        if key == "extra":
+            out[r["c"]].update(title=str(r.get("t") or ""), genres=[g for g in r.get("g") or [] if isinstance(g, str)], date=str(r.get("d") or ""))
     return out
 
 
@@ -289,7 +293,7 @@ def build_ctx(today):
     site_reviews = [reviews[x["cid"]][0] for x in works if x["cid"] in reviews]
     return {
         "today": today, "works": works, "words": load_exclude_words(), "ranks": load_ranks(), "reviews": reviews,
-        "sale": load_sale(today), "site_avg": round(statistics.mean(site_reviews), 2) if site_reviews else None,
+        "sale": load_sale(today), "sale_extra": load_sale(today, "extra"), "site_avg": round(statistics.mean(site_reviews), 2) if site_reviews else None,
         "site_total": len(works), "month_all": Counter(day_of(x)[:7] for x in works),
     }
 
@@ -357,7 +361,10 @@ def theme_facts(ctx, theme):
     count = sum(r[1] for r in revs)
     review = {"reviewed": len(revs), "avg": round(statistics.mean(r[0] for r in revs), 2) if revs else None,
               "site_avg": ctx["site_avg"], "count": count, "per_work": round(count / len(revs), 1) if revs else None}
-    on_sale = [sale[x["cid"]] for x in released if x["cid"] in sale]
+    # いまセール中: 読み物のページの棚と同じ数え方（外す題の作品は入れない・このサイトに無いセール中の作品 extra も入れる）
+    site_cids = {x["cid"] for x in ctx["works"]}
+    on_sale = [sale[x["cid"]] for x in released if x["cid"] in sale and not is_excluded(x, words)]
+    on_sale += [e for c, e in ctx.get("sale_extra", {}).items() if c not in site_cids and day_of(e) <= today and matches(e, theme) and not is_excluded(e, words)]
     offs = [s["off"] for s in on_sale if s["off"]]
     rk = [ranks[x["cid"]] for x in rows if x["cid"] in ranks]
 
