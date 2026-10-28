@@ -145,5 +145,10 @@ check("名簿から集めた人のうち、21日より前の人を集め直す",
 _few, _n = H.fetch_all(8, 10, call=lambda e, p: {"total_count": 49, "items": []}, min_total=50)
 check("名簿の人は、本数が50本より少なければ1回で few", _few == H.FEW and _n == 1)
 
+print("■ 歩みの棒（ActressHistory.astro）")
+_comp = open(os.path.join(ROOT, "site", "src", "components", "ActressHistory.astro"), encoding="utf-8").read()
+# site.css の .hist-bar は calc((100% - 15px) * var(--h) / 100)。--h に % が付くと「長さ×%」で計算が無効になり、棒が消える（10/28 に本番で見つけた）
+check("棒の高さ --h は % の付かない数", "--h:${" in _comp and "0}%`" not in _comp)
+
 print(f"\n=== {passed}/{passed + failed} 合格 ===")
 sys.exit(1 if failed else 0)
