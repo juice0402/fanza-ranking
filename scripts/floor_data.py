@@ -32,9 +32,11 @@ DATA_DIR = os.path.join(ROOT, "site", "src", "data")
 #   運営者の「素人のセールも、動画みたいに『○○セール』ごとに」。2026-10-12。同人の「50%OFF」はサークルごとの名前の無い値引きなので割引ごと、ゲームは札ごとのまま。
 #   ブックスはAPIにキャンペーンが出ない・VR見放題は月額なので無し＝probe_api.py の 18）・
 # campaign_quick: はじめに読む回数（顔ぶれが前と同じなら、ここでやめる。無ければ floor_sales.py の QUICK_CALLS＝上位1万本。アニメ・成人映画は全部で4千・6千本ほどなので上位1千本）
+# 同人・素人は各3,000本に（運営者「同人とか素人も人気コンテンツってこともわかった」。2026-10-28 #190）。10/29 の本物の割合（同人は上位2,100本で1,000本・
+#   素人は1,900本で1,000本）から、3,000本には6,300本・5,700本ほど読むので、1日 80回まで（1回の更新で数分ふえるだけ。分けない）
 FLOORS = {
     "doujin": {
-        "label": "FANZA同人", "service": "doujin", "floor": "digital_doujin", "floor_id": 81, "target": 1000, "max_calls": 40, "upcoming": 0,
+        "label": "FANZA同人", "service": "doujin", "floor": "digital_doujin", "floor_id": 81, "target": 3000, "max_calls": 80, "upcoming": 0,
         "env": "DOUJIN_PATH", "file": "doujin.json", "samples": 6,
     },
     "game": {
@@ -48,7 +50,7 @@ FLOORS = {
     },
     # 素人は 1,000本（運営者の希望「素人のページを1,000本ほどに拡充」。2026-10-12。未成年を連想させる作品を外すと、1,000本目は人気順の約1,800本目＝probe_api.py の 17）
     "amateur": {
-        "label": "FANZA素人", "service": "digital", "floor": "videoc", "floor_id": 44, "target": 1000, "max_calls": 30, "upcoming": 0, "duration": True,
+        "label": "FANZA素人", "service": "digital", "floor": "videoc", "floor_id": 44, "target": 3000, "max_calls": 80, "upcoming": 0, "duration": True,
         "campaign_calls": 500,
         "env": "AMATEUR_PATH", "file": "amateur.json", "samples": 8,
     },

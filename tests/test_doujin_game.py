@@ -289,7 +289,7 @@ check("本物の置き場所は site/src/data（毎日の更新が保存する�
       and H.sale_history_path().endswith(os.path.join("site", "src", "data", "floor_sale_history.json")))
 
 print("\n■ 本番の設定")
-check("同人は1,000本・ゲームは500本（運営者の希望。2026-10-09）・ゲームは予約も", F.FLOORS["doujin"]["target"] == 1000 and F.FLOORS["game"]["target"] == 500 and F.FLOORS["game"]["upcoming"] > 0)
+check("同人は3,000本（2026-10-28 に1,000本から）・ゲームは500本（運営者の希望。2026-10-09）・ゲームは予約も", F.FLOORS["doujin"]["target"] == 3000 and F.FLOORS["doujin"]["max_calls"] >= 70 and F.FLOORS["game"]["target"] == 500 and F.FLOORS["game"]["upcoming"] > 0)
 check("同人は service=doujin・floor=digital_doujin、ゲームは service=pcgame・floor=digital_pcgame（2026-10-09 に本物のAPIで確認）",
       (F.FLOORS["doujin"]["service"], F.FLOORS["doujin"]["floor"], F.FLOORS["game"]["service"], F.FLOORS["game"]["floor"]) == ("doujin", "digital_doujin", "pcgame", "digital_pcgame"))
 wf = open(os.path.join(ROOT, ".github", "workflows", "update.yml"), encoding="utf-8").read()
@@ -302,8 +302,8 @@ check("取り直しのワークフロー: 「同人・ゲームだけ」のと�
       "floors_only" in rf and rf.count("inputs.floors_only != '1'") >= 4 and "python scripts/doujin_game.py --update" in rf)
 
 print("\n■ 新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題。2026-10-10）")
-check("本数: アニメ・成人映画・コミック・写真集・VR見放題は100本・素人は1,000本（運営者の希望。2026-10-12 に500本から）。API の service/floor は 2026-10-10 に本物で確認したもの",
-      all(F.FLOORS[k]["target"] == 100 for k in ("anime", "cinema", "comic", "photo", "vr")) and F.FLOORS["amateur"]["target"] == 1000 and F.FLOORS["amateur"]["max_calls"] >= 20
+check("本数: アニメ・成人映画・コミック・写真集・VR見放題は100本・素人は3,000本（運営者の希望。2026-10-12 に500本から1,000本・2026-10-28 に3,000本）。API の service/floor は 2026-10-10 に本物で確認したもの",
+      all(F.FLOORS[k]["target"] == 100 for k in ("anime", "cinema", "comic", "photo", "vr")) and F.FLOORS["amateur"]["target"] == 3000 and F.FLOORS["amateur"]["max_calls"] >= 70
       and [(F.FLOORS[k]["service"], F.FLOORS[k]["floor"]) for k in ("anime", "amateur", "cinema", "comic", "photo", "vr")]
       == [("digital", "anime"), ("digital", "videoc"), ("digital", "nikkatsu"), ("ebook", "comic"), ("ebook", "photo"), ("monthly", "vr")]
       and len({F.FLOORS[k]["file"] for k in F.FLOORS}) == len(F.FLOORS) and len({F.FLOORS[k]["env"] for k in F.FLOORS}) == len(F.FLOORS))
