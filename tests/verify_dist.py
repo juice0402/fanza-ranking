@@ -506,6 +506,75 @@ check("月のまとめ記事の無い月のページには、記事の欄を出�
       for m in month_pages_built - {r.get("month") for r in months_raw if isinstance(r, dict)}))
 print(f"  （月のまとめ記事 {shown_months}本を確認）")
 
+# ---- 読み物（yomimono.json。2026-10-28 #181。site/src/lib/yomimono.js）: 読み物の下に、テーマの作品の棚を自動で並べる ----
+print("\n■ 読み物（/yomimono/）")
+YOMIMONO = os.path.join(ROOT, "site", "src", "data", "yomimono.json")
+_yomi_raw = json.load(open(YOMIMONO, encoding="utf-8")) if os.path.isfile(YOMIMONO) else {}
+_yomi_arts = _yomi_raw.get("articles") if isinstance(_yomi_raw, dict) and isinstance(_yomi_raw.get("articles"), dict) else {}
+_yomi_words = json.load(open(os.path.join(ROOT, "site", "src", "lib", "yomimono-exclude.json"), encoding="utf-8"))["title_words"]
+yomi_excluded = lambda t: is_minor_title(t) or any(w_ in str(t or "") for w_ in _yomi_words)  # noqa: E731  lib/yomimono.js の isExcludedTitle と同じ
+yomi_index = os.path.join(DIST, "yomimono", "index.html")
+yomi_pages = {os.path.basename(os.path.dirname(p_)): p_ for p_ in glob.glob(os.path.join(DIST, "yomimono", "*", "index.html"))}
+check("読み物の一覧ページ（/yomimono/）がある", os.path.isfile(yomi_index))
+check("読み物のページは、データにある読み物のものだけ", set(yomi_pages) <= set(_yomi_arts), sorted(set(yomi_pages) - set(_yomi_arts))[:3])
+if not yomi_pages:
+    check("読み物が無いあいだは、一覧ページが noindex で、sitemap にもない", os.path.isfile(yomi_index) and 'name="robots" content="noindex' in read_raw(yomi_index)
+          and not any(p_.startswith("/yomimono/") for p_ in sm_paths))
+else:
+    check("読み物がある: 一覧ページは noindex でなく、sitemap にあり、すべての読み物へのリンクがある", 'name="robots" content="noindex' not in read_raw(yomi_index)
+          and "/yomimono/" in sm_paths and all(f'href="/yomimono/{s_}/"' in read_raw(yomi_index) for s_ in yomi_pages))
+for _slug, _p in sorted(yomi_pages.items()):
+    _a = _yomi_arts[_slug]
+    _raw = read_raw(_p)
+    _html = read(_p)
+    _url = f"/yomimono/{_slug}/"
+    # 棚（人気・評価の高い・いまセール中・新作と予約）: 1つ以上・どれも6本まで・棚の下に、続きを見られる所への1行
+    _shelves = re.findall(r'<section class="section yomi-shelf"[^>]*>([\s\S]*?)</section>', _raw)
+    _cells = [re.findall(r'class="shelf-cell mini-cell"', s_) for s_ in _shelves]
+    check(f"{_slug}: 作品の棚が1つ以上あり、どれも6本まで・棚の下に続きへの1行（{len(_shelves)}つ）",
+          0 < len(_shelves) <= 4 and all(0 < len(c_) <= 6 for c_ in _cells) and all('class="yomi-more"' in s_ for s_ in _shelves), [len(c_) for c_ in _cells])
+    # 数えた日の1行（出どころ・時点の注記）
+    _ck = str(_a.get("checked", ""))
+    check(f"{_slug}: 「この読み物の数字は◯月◯日に数えました」の1行（数えた日 {_ck}）",
+          bool(DAY.match(_ck)) and f'この読み物の数字は<time datetime="{_ck}">{int(_ck[5:7])}月{int(_ck[8:10])}日</time>に数えました' in _html)
+    # 出さない題（未成年を連想させる・無理やりや犯罪を思わせる）の作品が、棚にも厳選にも出ていない
+    _titles = [htmllib.unescape(re.sub(r"<[^>]+>", "", t_)).replace("​", "") for t_ in re.findall(r'class="(?:mini-title|pick-title)">(.*?)</h3>', _html, re.S)]
+    _bad_t = [t_ for t_ in _titles if yomi_excluded(re.sub(r"^\d+", "", t_))]
+    check(f"{_slug}: 棚・厳選に、未成年を連想させる題・外す言葉を含む題の作品が無い（{len(_titles)}本）", _titles and not _bad_t, _bad_t[:2])
+    # 厳選: データの作品のうち、見つかって出してよい作品だけ（カードにひとことの理由）
+    _want = [q_ for q_ in (_a.get("picks") or []) if isinstance(q_, dict) and q_.get("cid") in everything and not yomi_excluded(everything[q_["cid"]].get("title"))]
+    check(f"{_slug}: 厳選の作品（{len(_want)}本）のカードと、ひとことの理由", _raw.count('<article class="pick-card">') == len(_want)
+          and all(str(q_.get("why", "")).strip()[:12] in _html for q_ in _want))
+    # 構造化データ: Article（公開日＝書いた日）・BreadcrumbList（トップ / 読み物 / 題）・説明文はデータの description
+    _lds = []
+    for b_ in LD_BLOCK.findall(_raw):
+        try:
+            _lds.append(json.loads(b_))
+        except ValueError:
+            pass
+    _art = [x_ for x_ in _lds if isinstance(x_, dict) and x_.get("@type") == "Article"]
+    _crumb = [x_ for x_ in _lds if isinstance(x_, dict) and x_.get("@type") == "BreadcrumbList"]
+    _names = [e_.get("name") for e_ in (_crumb[0].get("itemListElement") or [])] if _crumb else []
+    check(f"{_slug}: 構造化データ Article（公開日 written・題）と BreadcrumbList（トップ / 読み物 / 題）",
+          len(_art) == 1 and _art[0].get("datePublished") == _a.get("written") and _art[0].get("headline") == _a.get("title")
+          and _names == ["トップ", "読み物", _a.get("title")] and 'class="crumbs"' in _raw, (_art[:1], _names))
+    if str(_a.get("description") or "").strip():
+        _d = re.search(r'<meta name="description" content="([^"]*)"', _raw)
+        check(f"{_slug}: 説明文（description）はデータの description", bool(_d) and htmllib.unescape(_d.group(1)) == _a["description"].strip()[:300])
+    check(f"{_slug}: sitemap に入っていて lastmod が数えた日", _url in sm_paths and lastmod_of.get(_url) == _ck, lastmod_of.get(_url))
+    if "data-sale-end=" in _raw:
+        check(f"{_slug}: いまセール中の棚があるときは、終わったら隠すスクリプト（sale.js）が先に入っている", sale_js_ok(_raw))
+# 入口: ジャンルのページ・VRの売り場のトップの1行は、読み物のページがあるものだけ（リンク切れは全ページの点検でも見る）
+_yomi_entry_bad = []
+for p_ in glob.glob(os.path.join(DIST, "tag", "*", "index.html")) + [os.path.join(DIST, "vr", "index.html")]:
+    if not os.path.isfile(p_):
+        continue
+    for h_ in re.findall(r'<p class="yomi-entry">読み物：<a class="spec-link" href="([^"]+)"', read(p_)):
+        if not (h_.startswith("/yomimono/") and h_.strip("/").split("/")[-1] in yomi_pages):
+            _yomi_entry_bad.append((rel(p_), h_))
+check("ジャンルのページ・VRの売り場のトップの「読み物：…」の1行は、ある読み物へのリンクだけ", not _yomi_entry_bad, _yomi_entry_bad[:3])
+print(f"  （読み物 {len(yomi_pages)}本を確認）")
+
 print("\n■ 作品ページの表示（サンプル画像の拡大・カード）")
 check("拡大表示のスクリプト（lightbox.js）が公開されている", os.path.isfile(os.path.join(DIST, "lightbox.js")))
 bad_samples = []

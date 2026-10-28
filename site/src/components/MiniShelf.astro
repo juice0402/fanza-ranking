@@ -9,7 +9,10 @@ import Thumb from './Thumb.astro';
 
 // rate: 出演者の代わりに、FANZAのレビューの評価（★4.71（31件））を出す（「評価の高い作品」の棚。2026-10-10）
 // rank: タイトルの前に順位（1から。ジャンルの「FANZA全体で人気の作品」。2026-10-10）
-const { items, level = 'h3', rate = false, rank = false } = Astro.props;
+// note: 出演者の代わりに出す短い文（作品 → 文。空なら出演者。読み物の「いまセール中」の割引・「新作と予約」の発売日。2026-10-28）
+// saleEnd: セールの終わり（作品 → 時刻。すぎたらブラウザで隠す /sale.js。ページの側で読み込む）
+// keepVr: 「VR作品を隠す」を選んでいても隠さない（VRの読み物。そこで全部が消えて空になるのを防ぐ）
+const { items, level = 'h3', rate = false, rank = false, note = () => '', saleEnd = () => '', keepVr = false } = Astro.props;
 const Heading = level;
 ---
 
@@ -18,12 +21,13 @@ const Heading = level;
     const link = itemHref(i, paged);
     const outbound = link.external ? OUTBOUND_ATTRS : {};
     return (
-      <li class="shelf-cell mini-cell" {...filterAttrs(i)}>
+      <li class="shelf-cell mini-cell" {...filterAttrs(i, { vr: !keepVr })} {...(saleEnd(i) ? { 'data-sale-end': saleEnd(i) } : {})}>
         <a class="mini-card" href={link.href} {...outbound}>
           <span class="mini-cover">{i.image_url && <Thumb src={i.image_url} kind="tiny" class="item-img is-small" />}</span>
           <Heading class="mini-title">{rank && <span class="mini-rank">{n + 1}</span>}{i.title}</Heading>
           {rate && i.review
             ? <span class="mini-cast mini-rate"><span class="rate-star">★{i.review.avg.toFixed(2)}</span>（{i.review.count.toLocaleString('ja-JP')}件）</span>
+            : note(i) ? <span class="mini-cast mini-note">{note(i)}</span>
             : <span class="mini-cast">{castLine(i.actress, 1, '')}</span>}
         </a>
       </li>

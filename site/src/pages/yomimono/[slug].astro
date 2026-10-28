@@ -1,0 +1,143 @@
+---
+// 読み物のページ（/yomimono/<slug>/。2026-10-28 #181。部品は lib/yomimono.js）。
+// パンくず → 見出し → 数えた日の1行 → 導入文 → 節（見出し・段落。年ごとの本数の棒は、その節の1段落目のあと）→ 厳選の作品（ひとことの理由つき）→
+// テーマの作品の棚（人気・評価の高い・いまセール中・新作と予約。毎日のビルドで入れかわる）→ ほかの読み物・関係するジャンルのページ。
+// 作品の題は、カードにだけ出す（本文には書かない）。出さない題の作品（未成年を連想させる・無理やりや犯罪を思わせる）は、棚にも厳選にも出さない
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import MiniShelf from '../../components/MiniShelf.astro';
+import PickCards from '../../components/PickCards.astro';
+import { paged, tagByName, today, yomimonoPages } from '../../lib/data.js';
+import { itemHref } from '../../lib/plan.js';
+import { SITE_NAME, breadcrumbLd, truncate } from '../../lib/items.js';
+import { VR_TAG_NAME } from '../../lib/collections.js';
+import { searchPath } from '../../lib/search.js';
+import { endIso, saleBadge } from '../../lib/sale.js';
+import { inlineScript } from '../../lib/assets.js';
+import {
+  YOMIMONO_PATH, mdJp, picksHeadingFor, yomimonoArticleLd, yomimonoPeak, yomimonoPicksLd, yomimonoYearBars,
+} from '../../lib/yomimono.js';
+
+export function getStaticPaths() {
+  return yomimonoPages.map((article) => ({ params: { slug: article.slug }, props: { article } }));
+}
+
+const { article: a } = Astro.props;
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '読み物', path: YOMIMONO_PATH },
+  { name: a.title, path: a.path },
+];
+const bars = yomimonoYearBars(a.years);
+const peak = yomimonoPeak(bars);
+const max = Math.max(1, ...bars.map((b) => b.n));
+const showValues = bars.length <= 12;
+const ticks = new Set(bars.length <= 12 ? bars.map((b) => b.year) : bars.map((b) => b.year).filter((y, n) => n === 0 || n === bars.length - 1 || y % 5 === 0));
+const chartAt = a.sections.findIndex((s) => s.chart === 'years');
+const picks = a.picks.map((p) => ({ note: p.why, item: p.item }));
+const picksTitle = picksHeadingFor(a.picksHeading, picks.length);
+const pathOf = (item) => {
+  const link = itemHref(item, paged);
+  return link.external ? '' : link.href;
+};
+const saleShelf = a.shelves.find((s) => s.key === 'sale');
+const shelfNote = {
+  sale: (i) => `${saleBadge(i.sale)}・${mdJp(i.sale.end.slice(0, 10))}まで`,
+  new: (i) => `${mdJp(i.dateKey)}発売${i.dateKey > today ? '予定' : ''}`,
+};
+// 関係するジャンルのページ（ページがあるジャンル）と、ページの無いジャンルは作品検索へ
+const genreLinks = [
+  ...a.theme.genres.filter((g) => !a.tags.some((t) => t.name === g) && !tagByName.has(g) && !/VR/i.test(g)).map((g) => ({ name: g, path: searchPath(g), search: true })),
+  ...a.tags.map((t) => ({ name: t.name, path: t.path, search: false })),
+];
+const others = yomimonoPages.filter((p) => p.slug !== a.slug);
+const description = a.description || truncate(a.lead.join(''), 110);
+const ld = [breadcrumbLd(trail), yomimonoArticleLd(a), yomimonoPicksLd(picks, pathOf)].filter(Boolean);
+---
+
+<Base title={`${a.title}｜${SITE_NAME}`} description={description} path={a.path} ogType="article" jsonLd={ld}>
+  {saleShelf && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <article class="yomi">
+      <header class="hero">
+        <h1 class="hero-title">{a.title}</h1>
+        <p class="section-note note-source yomi-checked">この読み物の数字は<time datetime={a.checked}>{mdJp(a.checked)}</time>に数えました</p>
+      </header>
+
+      <div class="yomi-lead">
+        {a.lead.map((t) => <p class="yomi-text">{t}</p>)}
+      </div>
+
+      {a.sections.map((s, n) => (
+        <section class="section yomi-sec" aria-labelledby={`yomi-sec-${n + 1}`}>
+          <h2 id={`yomi-sec-${n + 1}`} class="section-title">{s.h}</h2>
+          {s.paras.map((t, k) => (
+            <>
+              <p class="yomi-text">{t}</p>
+              {n === chartAt && k === 0 && bars.length > 1 && (
+                <figure class="hist-chart yomi-chart">
+                  <div class="hist-bars" style={`--cols:${bars.length}`} role="img" aria-label={`年ごとの本数: ${bars.map((b) => `${b.year}年${b.n}本`).join('、')}`}>
+                    {bars.map((b) => (
+                      <div class:list={['hist-col', { 'is-peak': peak && b.year === peak.year }]}>
+                        <span class="hist-val">{(showValues || (peak && b.year === peak.year) || b === bars[bars.length - 1]) && b.n > 0 ? b.n : ''}</span>
+                        <span class="hist-bar" style={`--h:${b.n > 0 ? Math.max(3, Math.round((b.n / max) * 100)) : 0}`}></span>
+                      </div>
+                    ))}
+                  </div>
+                  <div class="hist-years" style={`--cols:${bars.length}`} aria-hidden="true">
+                    {bars.map((b) => <span>{ticks.has(b.year) ? b.year : ''}</span>)}
+                  </div>
+                  <figcaption class="hist-cap">年ごとの本数{peak && `。いちばん多いのは${peak.year}年の${peak.n.toLocaleString('ja-JP')}本`}</figcaption>
+                </figure>
+              )}
+            </>
+          ))}
+        </section>
+      ))}
+
+      <p class="fine">文とひとことは、作品の情報と数字から自動で作成しています（正確さは保証できません。詳細はFANZAの公式ページで）。</p>
+
+      <PickCards picks={picks} id="yomi-picks-title" title={picksTitle} keepVr={a.vr} />
+    </article>
+
+    {a.shelves.map((s) => (
+      <section class="section yomi-shelf" aria-labelledby={`yomi-${s.key}-title`} data-vr-group {...(s.key === 'sale' ? { 'data-sale-group': '' } : {})}>
+        <div class="section-head">
+          <h2 id={`yomi-${s.key}-title`} class="section-title">{s.title}</h2>
+          <p class="section-note">{s.note}</p>
+        </div>
+        <MiniShelf
+          items={s.items}
+          rank={s.key === 'pop'}
+          rate={s.key === 'rated'}
+          note={shelfNote[s.key] ?? (() => '')}
+          saleEnd={s.key === 'sale' ? (i) => endIso(i.sale.end) : () => ''}
+          keepVr={a.vr}
+        />
+        <p class="yomi-more"><a class="spec-link" href={s.more.href}>{s.more.text}</a></p>
+      </section>
+    ))}
+
+    {(others.length > 0 || genreLinks.length > 0) && (
+      <section class="section yomi-next" aria-labelledby="yomi-next-title">
+        <h2 id="yomi-next-title" class="section-title">あわせて読む</h2>
+        {others.length > 0 && (
+          <ul class="yomi-index">
+            {others.map((p) => (
+              <li class="yomi-index-row">
+                <a class="yomi-index-link" href={p.path}>{p.title}</a>
+              </li>
+            ))}
+          </ul>
+        )}
+        {genreLinks.length > 0 && (
+          <nav class="sale-jump genre-chips" aria-label="関係するジャンル">
+            {genreLinks.map((g) => <a class="chip-link" href={g.path}>{g.search ? `作品検索：${g.name}` : g.name === VR_TAG_NAME ? 'VR作品の新作・予約' : `${g.name}の新作・予約`}</a>)}
+          </nav>
+        )}
+      </section>
+    )}
+  </div>
+</Base>

@@ -1,0 +1,47 @@
+---
+// 読み物の一覧（/yomimono/。2026-10-28 #181。部品は lib/yomimono.js）。題・数えた日・テーマの作品の数を、1行ずつ（新しく書いた順）。
+// 読み物がまだ1本も無いあいだは、検索エンジンに出さない（noindex・sitemap にも入れない。中身が空のため。週のまとめと同じ）
+import Base from '../../layouts/Base.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { yomimonoPages } from '../../lib/data.js';
+import { SITE_NAME, breadcrumbLd } from '../../lib/items.js';
+import { YOMIMONO_PATH, mdJp, yomimonoIndexDescription } from '../../lib/yomimono.js';
+
+const trail = [
+  { name: 'トップ', path: '/' },
+  { name: '読み物', path: YOMIMONO_PATH },
+];
+---
+
+<Base
+  title={`読み物｜FANZA動画のジャンルを数字で読む｜${SITE_NAME}`}
+  description={yomimonoIndexDescription(yomimonoPages)}
+  path={YOMIMONO_PATH}
+  noindex={yomimonoPages.length === 0}
+  jsonLd={[breadcrumbLd(trail)]}
+>
+  <div class="wrap">
+    <Breadcrumb trail={trail} />
+
+    <section class="hero">
+      <h1 class="hero-title">読み物</h1>
+      <p class="hero-lead">ジャンルやテーマを、毎日の数字で読む</p>
+    </section>
+
+    <section class="section" aria-labelledby="yomi-list-title">
+      <h2 id="yomi-list-title" class="visually-hidden">読み物の一覧</h2>
+      {yomimonoPages.length > 0
+        ? (
+          <ul class="yomi-index">
+            {yomimonoPages.map((p) => (
+              <li class="yomi-index-row">
+                <a class="yomi-index-link" href={p.path}>{p.title}</a>
+                <span class="yomi-index-meta"><time datetime={p.checked}>{mdJp(p.checked)}</time>に数えた・{(p.total || p.count).toLocaleString('ja-JP')}本</span>
+              </li>
+            ))}
+          </ul>
+        )
+        : <p class="empty">読み物は、書きあがりしだい公開します。</p>}
+    </section>
+  </div>
+</Base>
