@@ -41,7 +41,7 @@ const barsLabel = bars.map((b) => `${b.year}年${b.n}本`).join('、');
         {bars.map((b) => (
           <div class:list={['hist-col', { 'is-peak': peak && b.year === peak.year }]}>
             <span class="hist-val">{(showValues || (peak && b.year === peak.year) || b === bars[bars.length - 1]) && b.n > 0 ? b.n : ''}</span>
-            <span class="hist-bar" style={`--h:${b.n > 0 ? Math.max(3, Math.round((b.n / max) * 100)) : 0}%`}></span>
+            <span class="hist-bar" style={`--h:${b.n > 0 ? Math.max(3, Math.round((b.n / max) * 100)) : 0}`}></span>
           </div>
         ))}
       </div>
