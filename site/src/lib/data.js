@@ -232,7 +232,7 @@ export const tenYenInfo = (key, cid) => tenYenInfoMap.get(`${key}:${cid}`) ?? nu
  * 同人・ゲームはいつも、ほかの売り場は10円の作品を見かけたことがあるときだけ（空のページを作らない） */
 export const tenYenFloors = activeFloors.filter((k) => TEN_YEN_KEYS.includes(k) && (TEN_YEN_ALWAYS.includes(k) || tenYenIndexable(tenYen, k)));
 
-// 作品ページを作る作品（サイト全体を2万ファイル以内に収める。lib/plan.js）
+// 作品ページを作る作品（サイト全体を FILE_BUDGET 以内に収める。lib/plan.js）
 export const pagePlan = planPages(all, {
   actress: actressPageGroups.length,
   maker: makerGroups.length,

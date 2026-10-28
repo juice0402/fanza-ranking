@@ -1,5 +1,5 @@
 // サイトのファイル数の計画（site/src/lib/plan.js）のテスト。実行: node tests/test_plan.mjs
-// 過去作品（カタログ）が増えても、Cloudflare Pages の無料プランの上限（2万ファイル）をこえないように、
+// 過去作品（カタログ）が増えても、上限（config.js の FILE_BUDGET。Workers の10万より下）をこえないように、
 // 作品ページを優先順に、残りの枠の数だけ作る。あふれた作品は、FANZAへ直接リンクする。
 import * as P from '../site/src/lib/plan.js';
 import { ARCHIVE_PAGE_SIZE, FILE_BUDGET, FIXED_FILES, ENTITY_LIST_LIMIT, INDEX_LIST_LIMIT, ACTRESS_FALLBACK_LIMIT } from '../site/src/config.js';
@@ -14,7 +14,7 @@ const check = (name, cond, detail = '') => {
 const it = (cid, dateKey, extra = {}) => ({ cid, dateKey, comment: '', url: `https://www.dmm.co.jp/digital/videoa/-/detail/=/cid=${cid}/`, actress: [], maker: 'M', ...extra });
 
 console.log('■ 設定');
-check('上限は Cloudflare Pages の無料プランの2万ファイルより少ない（余裕を残す）', FILE_BUDGET > 0 && FILE_BUDGET < 20000, String(FILE_BUDGET));
+check('上限は Cloudflare Workers の静的ファイルの10万より少ない（余裕を残す。2026-10-28 まではPages の2万）', FILE_BUDGET > 0 && FILE_BUDGET < 100000, String(FILE_BUDGET));
 check('固定のファイルの見積もり・一覧の上限が正の数', FIXED_FILES > 0 && ENTITY_LIST_LIMIT > 0 && INDEX_LIST_LIMIT > 0 && ACTRESS_FALLBACK_LIMIT > 0 && ACTRESS_FALLBACK_LIMIT <= INDEX_LIST_LIMIT);
 
 console.log('\n■ 作品ページ以外のファイルの数');

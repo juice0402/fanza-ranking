@@ -95,7 +95,7 @@ run "作品検索・「VR作品を隠す」の部品 (Node.js)" node tests/test_
 
 run "日本語の文節改行の部品 (Node.js)" node tests/test_phrase.mjs
 
-run "サイトのファイル数の計画（過去作品が増えても2万ファイル以内） (Node.js)" node tests/test_plan.mjs
+run "サイトのファイル数の計画（過去作品が増えても FILE_BUDGET 以内） (Node.js)" node tests/test_plan.mjs
 
 run "人気順（新着の人気順・全体の人気順）の部品 (Node.js)" node tests/test_popularity.mjs
 

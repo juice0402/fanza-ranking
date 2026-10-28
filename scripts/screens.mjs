@@ -1,5 +1,5 @@
 // 画面の写真（スクリーンショット）を撮って、形のくずれを調べる道具（運営者の「改行・高さがそろっていない所を全域調査して」。2026-10-09）。
-// .github/workflows/screens.yml が、GitHub の上で動かす（Claude のクラウド環境からは pages.dev が見えないため）。
+// .github/workflows/screens.yml が、GitHub の上で動かす（Claude のクラウド環境からは pages.dev・workers.dev が見えないため）。
 // 設定は scripts/screens.json（base: 撮るサイト、paths: ページ、widths: 画面の幅、chunks: 1ページを何枚に分けて撮るか、at: 見たい所のセレクター（任意。その所を上にして1枚ずつ）、
 // local: 見本のデータの名前（任意。scripts/screens_sample.py。まだ本番に無い状態を、GitHub の上でビルドして写す））。
 // 作品の画像は写さない（灰色の箱にする。形だけを見るため・公開のリポジトリに作品の画像を置かないため）。
