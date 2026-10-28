@@ -47,13 +47,13 @@ GitHub Actions（毎日 0:05 JST。日付が変わった直後）
       女優のイベント情報（4つの事務所の公式サイトのイベントの一覧（RSS）を1ページずつ。robots.txt を守る。所属の名前を使うので、所属事務所のあと）
       → site/src/data/events.json（きょうから60日先まで。FANZAの名前と完全に同じ1人に結びつくイベントだけ。Geminiは使わない）
   → scripts/doujin_game.py --update（毎日。失敗しても更新は止めない。2026-10-09 から。アニメ・素人・成人映画・コミック・写真集・VR見放題は 2026-10-10 から）
-      FANZA同人（service=doujin・floor=digital_doujin）1,000本・FANZAゲーム（PCゲーム・DL版。service=pcgame・floor=digital_pcgame）500本＋予約を、人気順の上から毎日集め直す（0:05 と、10時のセールの入れかわりに合わせて 10:17 にも＝sale-refresh.yml）。
+      FANZA同人（service=doujin・floor=digital_doujin）3,000本（2026-10-28 に1,000本から。#190）・FANZAゲーム（PCゲーム・DL版。service=pcgame・floor=digital_pcgame）500本＋予約を、人気順の上から毎日集め直す（0:05 と、10時のセールの入れかわりに合わせて 10:17 にも＝sale-refresh.yml）。
       未成年を連想させる作品（タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前）は入れない（同人の約半分・ゲームの約7割が当たるので、上位2,000本・1,300本ほどまで見る）
       → site/src/data/doujin.json・game.json（1作品1行。順位は ranks に分ける。Geminiは使わない。Claude がコメントを書いた作品は、上位から外れても残す）
       → site/src/data/floor_rank_history.json（人気の動き。売り場ごとの人気ランキングの順位を、上位300本・30日分）・floor_sale_history.json（セールの記録。1日ごとのセール中の本数・最大の割引と、セールの名前ごとの期間・本数。400日分）（scripts/floor_history.py。2026-10-09 から）
       新しい売り場（運営者の希望「アニメ動画・素人・成人映画・FANZAブックス（コミック・写真集）・VR見放題も。各100、素人は見たい人が多いので500」。2026-10-10）:
       FANZAアニメ（digital/anime）・FANZA成人映画（digital/nikkatsu）・FANZAコミック（ebook/comic）・FANZA写真集（ebook/photo）・FANZA VR見放題（monthly/vr）各100本・
-      FANZA素人（digital/videoc）1,000本（2026-10-12 に500本から。運営者の希望「素人のページを1,000本ほどに拡充」）を、同じしくみで（未成年を連想させる名前の調べ先に、レーベル・出版社・出演者・監督も）
+      FANZA素人（digital/videoc）3,000本（2026-10-28 に1,000本から。#190。2026-10-12 に500本から。運営者の希望「素人のページを1,000本ほどに拡充」）を、同じしくみで（未成年を連想させる名前の調べ先に、レーベル・出版社・出演者・監督も）
       → site/src/data/anime.json・amateur.json・cinema.json・comic.json・photo.json・vr.json（形は doujin.json と同じ）
   → scripts/readings.py --update（週1回。前に集めてから7日たった日と、読みきれなかった一覧の続きがある日だけ。失敗しても更新は止めない。2026-10-10 から）
       ジャンル・メーカー・シリーズ・作家の読みがな（FANZA公式のAPIの GenreSearch・MakerSearch・SeriesSearch・AuthorSearch。売り場ごと。1回400回まで）
@@ -137,7 +137,7 @@ Claude がコメントを書き上げるための道具（`list` で対象と下
 
 #### `scripts/doujin_game.py` / `scripts/floor_data.py`
 
-**FANZA同人・FANZAゲーム**（運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも」→「同人1,000本・ゲーム500本」。2026-10-09）。**新しい売り場**（2026-10-10。運営者の希望「アニメ動画・素人・成人映画・FANZAブックス（コミック・写真集）・VR見放題も。各100、素人は500」）: `FLOORS` に anime・amateur（500本）・cinema・comic・photo・vr（各100本）。service/floor・floor_id は 2026-10-10 に本物で確かめたもの（`scripts/probe_api.py` の 11・12）。作品の項目に `actress`（出演者・8人まで）・`sample_movie`（サンプル動画のページ）・`trial_url`（立ち読みのページ）を足した（同人・ゲームのデータも移行済み）。**`label`・`label_id`（レーベル。素人は「電影シロウト-バズ-」のようなメーカーの中の名前）・`duration`（収録時間の分。動画の売り場＝`FLOORS` の `duration` だけ。APIの volume は「120」か「1:03:00」の形＝`volume_minutes`）**も（2026-10-12。全部の売り場のデータを移行済み）。表紙は大きい版、無ければ小さい版（素人は 1200×1200 の四角・成人映画の一部は表紙だけ）。ブックスはメーカーの代わりに出版社（`manufacture`）。「ハイビジョン」「4K」「単体作品」などは形式（`formats`）。未成年を連想させる名前の調べ先に、レーベル・出版社・出演者・監督も。`doujin_game.py --update` が、人気順（sort=rank・発売済み）を上から100本ずつ読み、未成年を連想させる作品を飛ばして決めた本数まで集める（`FLOORS` の `target`・1日 `max_calls` 回まで。ゲームは予約の人気順も30本）。ジャンルの札は、中身（`genres`）・形式（`formats`。男性向け・Windows11対応作品 など）・セールの札（`sales`。ゲームの「最大90%OFFセール【…】」「3点以上で5%OFFクーポン」など）に分け、「CGがいい」のような評価の札は持たない。ゲームのサンプル画像は、APIが小さい版（js-）しか返さないので大きい版（jp-。640×360）にする。前の日にあって今日の上位に無い作品は外す（Claude のコメントがある作品は残す）。最後まで読めなかった日・本数が前の半分より少ない日は、前の作品を外さない。読み書きは `floor_data.py`（`claude_comments.py` も使う。読んで書き直しても1文字も変わらない）。`tests/test_doujin_game.py`
+**FANZA同人・FANZAゲーム**（運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも」→「同人1,000本・ゲーム500本」。2026-10-09）。**新しい売り場**（2026-10-10。運営者の希望「アニメ動画・素人・成人映画・FANZAブックス（コミック・写真集）・VR見放題も。各100、素人は500」）: `FLOORS` に anime・amateur（500本）・cinema・comic・photo・vr（各100本）。service/floor・floor_id は 2026-10-10 に本物で確かめたもの（`scripts/probe_api.py` の 11・12）。作品の項目に `actress`（出演者・8人まで）・`sample_movie`（サンプル動画のページ）・`trial_url`（立ち読みのページ）を足した（同人・ゲームのデータも移行済み）。**`label`・`label_id`（レーベル。素人は「電影シロウト-バズ-」のようなメーカーの中の名前）・`duration`（収録時間の分。動画の売り場＝`FLOORS` の `duration` だけ。APIの volume は「120」か「1:03:00」の形＝`volume_minutes`）**も（2026-10-12。全部の売り場のデータを移行済み）。表紙は大きい版、無ければ小さい版（素人は 1200×1200 の四角・成人映画の一部は表紙だけ）。ブックスはメーカーの代わりに出版社（`manufacture`）。「ハイビジョン」「4K」「単体作品」などは形式（`formats`）。未成年を連想させる名前の調べ先に、レーベル・出版社・出演者・監督も。**同人・素人は各3,000本**（2026-10-28 #190。運営者「同人とか素人も人気コンテンツってこともわかった」。`max_calls` は80。10/29 の割合で同人は約6,300本・素人は約5,700本読む＝1回の更新で数分ふえるだけなので分けない。サイトのファイルは約2.7万 → 約3.3万の見込みで、FILE_BUDGET 4万の中なので動画の作品ページは減らない。売り場の人気の動き floor_rank_history は上位300本のまま）。`doujin_game.py --update` が、人気順（sort=rank・発売済み）を上から100本ずつ読み、未成年を連想させる作品を飛ばして決めた本数まで集める（`FLOORS` の `target`・1日 `max_calls` 回まで。ゲームは予約の人気順も30本）。ジャンルの札は、中身（`genres`）・形式（`formats`。男性向け・Windows11対応作品 など）・セールの札（`sales`。ゲームの「最大90%OFFセール【…】」「3点以上で5%OFFクーポン」など）に分け、「CGがいい」のような評価の札は持たない。ゲームのサンプル画像は、APIが小さい版（js-）しか返さないので大きい版（jp-。640×360）にする。前の日にあって今日の上位に無い作品は外す（Claude のコメントがある作品は残す）。最後まで読めなかった日・本数が前の半分より少ない日は、前の作品を外さない。読み書きは `floor_data.py`（`claude_comments.py` も使う。読んで書き直しても1文字も変わらない）。`tests/test_doujin_game.py`
 
 #### `scripts/floor_sales.py`
 
