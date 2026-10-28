@@ -23,6 +23,7 @@ FANZAの新作・予約作品を毎日自動で集め、ひとことコメント
 - コード・デザインを変えるPR（`site/` の中。データ `site/src/data/` は除く）は、CI が**プレビュー**（`<ブランチ名>.fanza-ranking.pages.dev`。URL は check の注釈と要約）を作る。データだけ・手順書やテストだけのPRには作らない。
 - **独自ドメイン**（2026-10-22 取得。Cloudflare Registrar・1年・自動更新）: サイト名も「FANZA新作情報」から **FANZAセール情報** に（`config.js` の `SITE_NAME`）。本番は `https://av-sale-guide.com`（`site/src/config.js` の `SITE_URL` 1か所で、URL・canonical・sitemap・robots.txt・RSS・構造化データ・IndexNow が切りかわる）。旧 `https://fanza-ranking.pages.dev` は Cloudflare の Bulk Redirects で同じパスへ 301（プレビューの `<ブランチ名>.fanza-ranking.pages.dev` は転送しない＝サブドメインを含めない）。Search Console は新ドメインのドメインプロパティ＋旧プロパティからアドレス変更。DMM は新しいサイトとして追加（リンクは API 用の `juice0402-990` のまま）
 - **検索エンジンへのお知らせ（IndexNow。2026-10-17）**: 本番の公開のたびに `deploy.yml` が `scripts/indexnow.py` で、新しいページ・コメントや記事が入ったページ（一覧・ランキングなどは7日に1回まで）を Bing などへ知らせる（1万件ずつ。前回の記録は本番の `/indexnow-pages.json`。受け付けてもらえなかったページは Actions の置き場（cache）にとっておき、次の公開で送り直す。main にはコミットしない。鍵は `site/public/<鍵>.txt`。Google は sitemap と Search Console のまま。くわしくは docs/architecture.md の「公開」）
+- **Workers への引っ越し（連絡 C-012。2026-10-28）**: Pages は有料プランでも2万ファイルまで（本物で確かめた）。Workers（静的ファイル10万まで）にも出す（`workers/wrangler.jsonc`・`scripts/deploy_workers.sh`・鍵は Secrets の `CLOUDFLARE_WORKERS_TOKEN`）。`routes` を足すと av-sale-guide.com が Workers から出る（消せば Pages に戻る）。くわしくは docs/architecture.md の「Workers への引っ越し」
 - Cloudflare 側の自動ビルドは止めてある（2026-10-09。ダッシュボードの「ブランチコントロール」。戻すときはそこをオンに）。コミット・Merge のメッセージに `[CI Skip]` は要らない（入れても何も変わらない）。
 
 ## 仕組み（時刻は日本時間。くわしくは docs/architecture.md の「データの流れ」）

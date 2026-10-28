@@ -83,6 +83,17 @@ jobs:
             bash scripts/deploy_pages.sh preview "$REF_NAME"
           fi
 
+      # 本番を Cloudflare Workers にも出す（連絡 C-012。2026-10-28。Workers は有料プランで10万ファイルまで・Pages は2万まで）。
+      # 鍵は Workers 用の別の鍵（CLOUDFLARE_WORKERS_TOKEN）。無ければ何もしない。workers/wrangler.jsonc に routes を足すまでは、
+      # 本番の URL は Pages のままで、ここの失敗は注意だけ（scripts/deploy_workers.sh）
+      - name: Upload to Cloudflare Workers
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bash scripts/deploy_workers.sh production
+
       # 検索エンジンに知らせる（IndexNow。Bing・Yandex・Naver・Seznam・Yep。Google は sitemap と Search Console のまま）。
       # 本番にアップロードできたときだけ（印 uploaded）。あとの公開に止められたときも、アップロード済みなら知らせる（always()）。
       # 1万件ずつ送り、結果は注記に1行。失敗しても公開は止めない

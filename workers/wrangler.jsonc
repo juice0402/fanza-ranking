@@ -1,0 +1,17 @@
+// Cloudflare Workers（静的ファイルだけ）で本番を出すための設定（連絡 C-012。2026-10-28）。
+// Cloudflare の有料プラン（Workers Paid）で、Workers の静的ファイルは1つのサイトで10万まで（Pages は2万のまま。2026-10-28 に本物で確かめた）。
+// scripts/deploy_workers.sh が `wrangler deploy --config workers/wrangler.jsonc` で使う。鍵は GitHub の Secrets の CLOUDFLARE_WORKERS_TOKEN。
+// ・はじめは workers.dev だけで動かして確かめ、そのあと routes で av-sale-guide.com の前に置く（DNS の CNAME → Pages はそのまま残す）。
+//   戻すときは routes を消して公開すれば、また Pages が出る（すぐ戻せる形）。
+// ・_headers・_redirects は Pages と同じ書き方で、Workers の静的ファイルでも効く。
+{
+  "name": "av-sale-guide",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "../site/dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}
