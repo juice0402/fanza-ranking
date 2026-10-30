@@ -1713,10 +1713,10 @@ for _fp in ("feed.xml", os.path.join("weekly", "feed.xml")):
           and not any(is_minor_title(t) for t in _titles), _links[:2])
 _about = page_file("/about/")
 _about_html = read(_about) if os.path.isfile(_about) else ""
-check("このサイトについて（/about/）: 情報の出どころ（FANZA公式のAPI・所属事務所の公式サイト）・更新のしかた・自動で作成の注記・広告・お気に入りの保存先・検索エンジンに出す・sitemap にある・AboutPage",
+check("このサイトについて（/about/）: 情報の出どころ（FANZA公式のAPI・所属事務所の公式サイト）・更新のしかた・自動で作成の注記・広告・お気に入りの保存先・アクセス解析（C-015）・検索エンジンに出す・sitemap にある・AboutPage",
       '<h1 class="hero-title">このサイトについて</h1>' in _about_html and "FANZA Webサービス" in _about_html and "所属事務所の公式サイト" in _about_html
       and "自動で作成しており、内容の正確さは保証できません" in _about_html.split("<footer", 1)[0] and "アフィリエイト広告" in _about_html.split("<footer", 1)[0]
-      and "端末のブラウザの中にだけ保存" in _about_html and 'name="robots" content="noindex' not in read_raw(_about) and "/about/" in sm_paths and '"AboutPage"' in read_raw(_about))
+      and "端末のブラウザの中にだけ保存" in _about_html and 'id="about-analytics"' in _about_html and "Cloudflare Web Analytics" in _about_html and "クッキーは使わず" in _about_html and 'name="robots" content="noindex' not in read_raw(_about) and "/about/" in sm_paths and '"AboutPage"' in read_raw(_about))
 check(f"全ページの <head>: 画面幅・OGP・Twitterカード・アイコン（ico / svg / apple-touch）", not bad_head, bad_head[:3])
 # 書体（Google Fonts）: 表示を止めないよう preload して、読み込み終わったら stylesheet に切り替える。JavaScript が無いときのための <noscript> の読み込みもある
 bad_fonts = []
