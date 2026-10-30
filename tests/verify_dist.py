@@ -1938,9 +1938,9 @@ check(f"スマホのサムネ（{n_pic}枚 {dict(pic_kinds)}）: 縮めて返す
 check("スマホのサムネ: 一覧のパッケージ画像（pl.jpg。同人の表紙も）は、すべて <picture> の中（スマホは小さい版を読む）・作品ページの表紙・パッケージ写真・サンプル画像は元のまま", not bad_bare, bad_bare[:4])
 # 赤札の見た目（運営者がえらんだ案B「赤札の紙」。2026-10-30）: 赤いボタン・10円セールの帯と案内は紙の目つき、ボタンは白い細い枠、帯の下はギザギザ
 check("赤札の見た目: 赤いボタン・10円セールの帯と案内に紙の目（--grain）・ボタンに白い細い枠・帯の下のはしはギザギザ",
-      css_has(".btn-hot", r"background-image\s*:\s*var\(--grain\)") and css_has(".btn-hot", r"inset 0 0 0 4px")
-      and css_has(".ten-bar", r"background-image\s*:\s*var\(--grain\)") and css_has(".ten-hero", r"background-image\s*:\s*var\(--grain\)")
-      and css_has(".ten-bar::after", r"repeat-x"))
+      # ビルドで background-color と background-image が1つの background にまとめられたり、::after が :after になったりするので、ゆるく見る
+      all(css_has(sel_, r"var\(--grain\)") for sel_ in (".btn-hot", ".ten-bar", ".ten-hero")) and css_has(".btn-hot", r"0 0 0 4px")
+      and (css_has(".ten-bar::after", r"repeat-x") or css_has(".ten-bar:after", r"repeat-x")))
 _home_raw = read_raw(os.path.join(DIST, "index.html"))
 _top3 = re.search(r'<ol class="medals rank-podium".*?</ol>', _home_raw, re.S)
 _top3_imgs = re.findall(r'<img ([^>]*)>', _top3.group(0)) if _top3 else []
