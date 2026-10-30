@@ -15,3 +15,7 @@ CLAUDE.md の「変更のしかた」から移したもの（2026-10-30。CLAUDE
 ## コメントの文体・代替文
 
 - コメントの文体・代替文 → `get_new_releases.py`（`ANGLES`/`OPENINGS`/`CLOSINGS`、`HYPE_WORDS`、`template_comment`、`build_prompt`。**切り口・書き出し・結びを作品ごとに変えて、似た文章の量産にならないようにしている**。確かめられない評価が入った答えは採用しない）。Claude が書くコメントの書き方・手順 → `docs/claude-comments.md`。週のまとめ記事の書き方・手順 → `docs/claude-roundups.md`。月のまとめ記事 → `docs/claude-monthly.md`
+
+## 赤札の見た目（2026-10-30）
+
+運営者が2案から「案B 赤札の紙」をえらんだ（「是非B案にして」）。赤いボタン（`.btn-hot`）・10円セールの帯（`.ten-bar`）と案内（`.ten-hero`）は、紙の目（`--grain`。48px の小さな PNG をくり返す）と白い細い枠を刷った赤札。帯の下のはしはギザギザ（`.ten-bar::after`）。10円玉（`.ten-coin`）は刻印のような2重のふち（図柄は入れない）。赤いボタンと10円セールの黄色いボタンは、押した瞬間に1px 沈む。Canva は使わない（Canva の素材の規約でアダルトの用途が禁止されているため。絵はコードで描く）。`tests/verify_dist.py` の「赤札の見た目」が点検する。
