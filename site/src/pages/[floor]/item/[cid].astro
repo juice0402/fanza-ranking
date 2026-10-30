@@ -39,6 +39,10 @@ const gallery = samples.map((src, i) => ({ src, label: `サンプル画像 ${i +
 const shape = f.detail ?? 'tall';
 const coverSize = { wide: [560, 420], square: [600, 600], spread: [800, 538], tall: [411, 560] }[shape];
 const doujinImg = key === 'doujin';
+// サンプル動画のある作品は、動画の作品ページと同じ並び: 上に動画、表紙はサンプル画像の下の「パッケージ写真」へ（運営者の希望「動画のほうが先に見たい」。2026-10-30）
+const hasMovie = Boolean(item.sampleMovie);
+const coverBelow = hasMovie && Boolean(item.image_url);
+const zoomable = gallery.length > 0 || coverBelow; // 拡大表示（lightbox）を使う画像がある
 const noindex = !item.comment;
 const trail = [
   { name: 'トップ', path: '/' },
@@ -78,17 +82,19 @@ const tenNow = tenYenInfo(key, item.cid);
 
     <article class="detail-grid">
       <div class="detail-media">
-        {item.image_url && (
-          <img
-            class:list={['detail-cover', `is-${shape}`]}
-            src={item.image_url}
-            alt={`${truncate(item.title, 60)} の表紙`}
-            width={coverSize[0]}
-            height={coverSize[1]}
-            fetchpriority="high"
-            referrerpolicy="no-referrer"
-            onerror={doujinImg ? DOUJIN_IMG_ONERROR : undefined}
-          />
+        {hasMovie
+          ? <SampleMovie src={item.sampleMovie} title={truncate(item.title, 60)} fallbackUrl={item.url} />
+          : item.image_url && (
+            <img
+              class:list={['detail-cover', `is-${shape}`]}
+              src={item.image_url}
+              alt={`${truncate(item.title, 60)} の表紙`}
+              width={coverSize[0]}
+              height={coverSize[1]}
+              fetchpriority="high"
+              referrerpolicy="no-referrer"
+              onerror={doujinImg ? DOUJIN_IMG_ONERROR : undefined}
+            />
         )}
       </div>
 
@@ -217,14 +223,6 @@ const tenNow = tenYenInfo(key, item.cid);
       </div>
     </article>
 
-    {/* サンプル動画（アニメ・素人・VR見放題など。FANZAの公式の埋め込み。動画の作品ページと同じ部品。2026-10-10） */}
-    {item.sampleMovie && (
-      <section class="subsection" aria-labelledby="movie-title">
-        <h2 id="movie-title" class="subsection-title">サンプル動画</h2>
-        <SampleMovie src={item.sampleMovie} title={truncate(item.title, 60)} fallbackUrl={item.url} />
-      </section>
-    )}
-
     {gallery.length > 0 && (
       <section class="subsection" aria-labelledby="samples-title">
         <h2 id="samples-title" class="subsection-title">サンプル画像</h2>
@@ -240,9 +238,28 @@ const tenNow = tenYenInfo(key, item.cid);
       </section>
     )}
 
+    {coverBelow && (
+      <section class:list={['subsection', 'package', `is-${shape}`]} aria-labelledby="package-title">
+        <h2 id="package-title" class="subsection-title">パッケージ写真</h2>
+        <a class="sample-link" href={item.image_url} data-label="パッケージ画像" target="_blank" rel="noopener noreferrer" aria-label="パッケージ写真を拡大して見る">
+          <img
+            class:list={['package-img', `is-${shape}`]}
+            src={item.image_url}
+            alt={`${truncate(item.title, 60)} の表紙`}
+            width={coverSize[0]}
+            height={coverSize[1]}
+            loading="lazy"
+            decoding="async"
+            referrerpolicy="no-referrer"
+            onerror={doujinImg ? DOUJIN_IMG_ONERROR : undefined}
+          />
+        </a>
+      </section>
+    )}
+
     {trendLines.length > 0 && <RankTrend hist={hist} max={FLOOR_TREND_TRACK} title="人気の動き" caption={floorTrendCaption(f)} lines={trendLines} />}
 
-    {gallery.length > 0 && (
+    {zoomable && (
       <dialog id="lightbox" class="lightbox" aria-label="画像の拡大表示" tabindex="-1">
         <div class="lightbox-stage">
           <div class="lightbox-view"><img class="lightbox-img" alt="" referrerpolicy="no-referrer" /></div>
@@ -277,7 +294,7 @@ const tenNow = tenYenInfo(key, item.cid);
     <GachaCorner src={`/data/${key}-gacha.json`} exclude={item.cid} floor={key} level="h2" />
   </div>
 
-  {gallery.length > 0 && <script is:inline src={assetUrl('/lightbox.js')} defer></script>}
+  {zoomable && <script is:inline src={assetUrl('/lightbox.js')} defer></script>}
   {item.sampleMovie && <script is:inline src={assetUrl('/movie.js')} defer></script>}
   <script is:inline src={assetUrl('/gacha.js')} defer></script>
 
