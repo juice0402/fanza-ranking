@@ -3185,6 +3185,27 @@ for _fk in _FD.FLOORS:
     check(f"{_flabel}: sitemap の作品ページ = コメントのある作品（{len(_commented)}本）・コメントの無い作品ページは noindex",
           _sm_floor_items == _commented and all(('name="robots" content="noindex' in read_raw(os.path.join(DIST, _fk, "item", c_, "index.html"))) != (c_ in _commented) for c_ in list(_fdata["items"])[:200] if c_ in {x["cid"] for x in _fshow}),
           (sorted(_commented - _sm_floor_items)[:3], sorted(_sm_floor_items - _commented)[:3]))
+    # サンプル動画のある作品は、動画の作品ページと同じ並び: 上に動画（表紙は上に出さない）・表紙はサンプル画像の下の「パッケージ写真」（運営者の希望。2026-10-30）
+    _bad_mv, _n_mv = [], 0
+    for x_ in _fshow:
+        _pg = os.path.join(DIST, _fk, "item", x_["cid"], "index.html")
+        if not fanza_https(str(x_.get("sample_movie") or ""), DMM) or not os.path.isfile(_pg):
+            continue
+        _n_mv += 1
+        _t = read(_pg)
+        _cov = str(x_.get("image_url") or "").strip()
+        _media = re.search(r'<div class="detail-media"[^>]*>(.*?)</div>\s*<div class="detail-body"[^>]*>', _t, re.S)
+        _prob = []
+        if not _media or "<iframe" not in _media.group(1) or any(has_class(t, "detail-cover") for t in tags(_t, "img")):
+            _prob.append("動画が上に無い・表紙が上に出ている")
+        if 'id="movie-title"' in _t:
+            _prob.append("下にサンプル動画の欄が残っている")
+        if _cov and not ('id="package-title"' in _t and ('id="samples-title"' not in _t or _t.find('id="samples-title"') < _t.find('id="package-title"'))
+                         and any(has_class(t, "package-img") and t.get("src") == _cov for t in tags(_t, "img")) and 'id="lightbox"' in _t):
+            _prob.append("パッケージ写真の欄（サンプル画像の下・拡大表示つき）がない")
+        if _prob:
+            _bad_mv.append((x_["cid"], _prob))
+    check(f"{_flabel}: サンプル動画のある作品ページ（{_n_mv}本）は、動画が上・表紙はサンプル画像の下のパッケージ写真（動画の作品ページと同じ並び）", not _bad_mv, _bad_mv[:3])
     # コレクション（ジャンル・シリーズ・作家・発売月のページ。運営者の希望「動画と同じレベルのコレクションを。SEO対策も徹底的に」。2026-10-09）
     # ページのある名前 = ここで数えた、決まった本数以上の名前（ジャンルはおだやかなものだけ）。ページがあれば一覧もある
     _ok_genres = set(re.findall(r"'([^']+)'", re.search(r"FLOOR_GENRE_OK = \[([\s\S]*?)\];", _floor_src).group(1)))

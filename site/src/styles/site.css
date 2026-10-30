@@ -2115,6 +2115,23 @@ summary:focus-visible {
   background: var(--board);
   object-fit: contain;
 }
+/* 売り場の作品ページ（素人など。2026-10-30）: 表紙の形に合わせる（素人は正方形・同人は横長・ゲーム/ブックスは縦長） */
+.package-img.is-square {
+  aspect-ratio: 1 / 1;
+}
+.package-img.is-wide {
+  aspect-ratio: 560 / 420;
+}
+.package-img.is-tall {
+  aspect-ratio: 411 / 560;
+}
+.package.is-square .sample-link,
+.package.is-wide .sample-link {
+  max-width: 560px;
+}
+.package.is-tall .sample-link {
+  max-width: 411px;
+}
 
 /* ---------- サンプル画像の拡大表示 ---------- */
 
