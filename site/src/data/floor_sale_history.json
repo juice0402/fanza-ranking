@@ -501,8 +501,8 @@
 {"d":"2026-10-30","n":0,"max":0},
 {"d":"2026-10-31","n":0,"max":0}
 ],"tags":[
-{"title":"surviveMORE他50％OFF","begin":"2026-10-30","first":"2026-10-30","last":"2026-10-30","count":561,"off":50},
-{"title":"PoROre：50％OFF","begin":"2026-10-30","first":"2026-10-30","last":"2026-10-30","count":66,"off":50},
+{"title":"surviveMORE他50％OFF","begin":"2026-10-30","first":"2026-10-30","last":"2026-10-31","count":561,"off":50},
+{"title":"PoROre：50％OFF","begin":"2026-10-30","first":"2026-10-30","last":"2026-10-31","count":66,"off":50},
 {"title":"PoROre：50％OFF","begin":"2026-10-23","first":"2026-10-23","last":"2026-10-29","count":65,"off":50},
 {"title":"surviveMORE他50％OFF","begin":"2026-09-25","first":"2026-10-10","last":"2026-10-15","count":246,"off":50},
 {"title":"WORLDPG ANIMATION他50％OFF","begin":"2026-09-18","first":"2026-10-10","last":"2026-10-15","count":306,"off":50},
@@ -532,6 +532,7 @@
 {"d":"2026-10-30","n":409,"max":30},
 {"d":"2026-10-31","n":407,"max":30}
 ],"tags":[
+{"title":"厳選人気作品！素人50％OFF","begin":"2026-10-30","first":"2026-10-31","last":"2026-10-31","count":126,"off":50},
 {"title":"俺の素人-Z-他30％OFF","begin":"2026-10-28","first":"2026-10-28","last":"2026-10-31","count":6389,"off":30},
 {"title":"10円セール","begin":"2026-10-28","first":"2026-10-28","last":"2026-10-30","count":8,"off":0},
 {"title":"10円セール","begin":"2026-10-26","first":"2026-10-27","last":"2026-10-28","count":4,"off":0},
