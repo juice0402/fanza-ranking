@@ -15,6 +15,8 @@
   --paper-dim: #b7aabf;  /* 控えめな文字 */
   --pop: #ffd23f;        /* POPの黄色（新作シール・フォーカス） */
   --hot: #d9123f;        /* 赤札（行動ボタン） */
+  /* 赤札の紙の目（48px の小さな PNG をくり返す。赤いボタン・10円セールの帯と案内に。2026-10-30 運営者がえらんだ案B「赤札の紙」） */
+  --grain: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAFg0lEQVR42p1Za6/kNAx1uLAf5vb9bmc6//93IcECQiChRSC0rPniLOd67STdSle37aSJ48fxsUNERMz8ysy13B9E1Mh9Jf9rgouZF2bumbkhoo7Uxcwd3L9S+url/9P6UeSJ9zvcT9bgSj2PasiWEGRm5l5v1Bi3q+cmfsfMLRFVzDxbG7hyDWCZxtIuMw/q/a6ea2fuh/EurrHCu1PLk5njiwnwGh3zzp6wzDyhBZi5ZeaGmTdnwze4b9R0kwj9tNYnR7gYB5v1PvHdKxFNCQtcuaIVDme++c1uQLjWEGy1LAAanQyfHiRIu0KBe8MavSN8p2Ouf7MjokObCScmorto5pLbRSvGGFKBPoK7bYaLzETUCwoObwKCmSuAvDFGv4EknUYG47kXAJg9P7dQD2KjgeBNotC3zPxHCIFCCB9gkndE9Lc8/gMb/UREP6rFWCNYCOE3+T0w8xFC+JeZX0IIf4L1fiCimog+4MchhPfijlMI4Vdm7kIIn0GGmTmE8IveSC1/JP46OaZfCmKjNn6bQHBEJdTuoqA6xgP6eZVCjyHxW5/4bS3ZKLpgLpIFTGpPNiPBUgUv9eIjCqnSeW9p3lloUME661yg4PumqEgyFh6W5iTI1gKN7YDZevyGfAh5Emx8QQhWuWeHNeacIJEmrGrRVaX9PcFvTmWBJ8TAKBa13Kg1rHzAPLXM1VjuM0fNMfPgLEBqU7UDh7NBNWZnPsvtbpjt1RwPgfs95Qr43BrD7kQ0MPMhmbh3CFju2lJrJ3jX9iZekFcbCakyhO8N8rcAZ7GCbVXKWMDaR4KUnVmyKW7xcAqK2YNUK9NaLBEtZBDBKjHHDTJ3LLY6z72LqifhJzUR1YDNlttEzQ5G5UUXXe4pSe8WrajjRGvuhLKxE2HRlVp5v2CScTRZJaqqKMAO6+xO3CH89l+4tlVfauKl3QetYtyPuo5IZOBBlFI7Y9oY8CbzjQW6Z74MhbASzppCOLBYZxVMmcIfLb2luIxZzFv0N6HZMwedBRl+jrJELwE4vWFSa41CZkkIPVwtYpQWp0LMz4FKlubsiqjdjc7A3XI7b3F5f79giEMnVSs+I+Zbqf1wUv5iaUN8vXPoQiuLPy1YFWufVn3hCV3ih6XdhTrX4Si4KitnGN+fHgcalXYnFQ+zQqeHiguzTZhwp8kY91T9oLyyEgssJYEHMFxrPzX4VaMS0/Nrm0bM3JssL4E+KOwBAu1i/jjXDv2iQzV7O6ON8vl/xtdXBRY9QlxT6Lspf74b0NbnWoHJFmEiDqOSe9FAJdp56nae0V6vFbXYLiLFUpLEILvXgHSVURHmOxQyyQNcyEs2uXZ444xLdfhOlZ17nVUrz+cLNNVdheWvaPxeqt6ShxKp/tEVjnNVCcCFRq83pInc4Pj/qrrHo/L/e6bjgZSgyp3AqE63vWmnk1Z7xUUJw5T+TuuVpheuSne0S09m7oVBqZFpsGAYNmNVcLPkgCVFuXNwu6kqaLRQxsnad+sAz/XT/316NTzgUUKTrXOyk4hOpAWwY+xjjnj4YJ3qWAlQNLwrujEaNOXM5JN7LnixqXsD7fSZbzyt1U5bflTx4rnOCoFe5/x4LEjri8Mon5lGweH4sS5YWmChE4x55oQ/jEJm0aaLMSCNra7w5BK7f0NOSQpCB+hJ3QAo3J7S5HF1B24fSsDXgpb8aNDrxQrMTGs+W4hnixArYXn+DO1267e2cP3BShSbAU+1kcYHj3oYne01tWFltcltF375DX43hsT4iZm/I6KPRPQxhPC7jpEQwl9E9I6Ifi404ApjK2b+REQVnDpuRPSTIceLnFR+Q0TvJR5fiOh7z8wLQFsNcLZBx6GCRusoNLct3IjJgcQStXUO54zv/gNN90hmR8MsggAAAABJRU5ErkJggg==");
   --hot-hover: #f0224f;
   /* 押せるもの（ボタン・チップ・切り替え・入力欄）の枠と地。暗い背景に溶けこまないよう、枠は背景との明るさの差（コントラスト）を3:1以上に、
      地もほんの少し明るくする（運営者の指摘「黒いボタン系が、背景と同化しすぎて見づらい」。2026-10-06）。パネル・表の罫線は --line のまま */
@@ -669,12 +671,22 @@ summary:focus-visible {
 }
 
 .btn-hot {
-  background: var(--hot);
+  /* 赤札: 紙の目と、白い細い枠を刷った形（2026-10-30 案B） */
+  background-color: var(--hot);
+  background-image: var(--grain);
+  box-shadow: inset 0 0 0 3px var(--hot), inset 0 0 0 4px rgba(255, 255, 255, 0.6);
   color: #fff;
+  letter-spacing: 0.04em;
+}
+/* 押した瞬間に少し沈む（押せたのが分かるように） */
+.btn-hot:active,
+.ten-hero-cta:active {
+  transform: translateY(1px);
 }
 
 .btn-hot:hover {
-  background: var(--hot-hover);
+  background-color: var(--hot-hover);
+  box-shadow: inset 0 0 0 3px var(--hot-hover), inset 0 0 0 4px rgba(255, 255, 255, 0.7);
 }
 
 .btn-quiet {
@@ -6337,9 +6349,11 @@ a.tf-name {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, var(--bronze-hi) 0, var(--bronze) 46%, var(--bronze-lo) 100%);
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.28), inset 0 0 0 4px rgba(135, 74, 32, 0.55), 0 1px 0 rgba(0, 0, 0, 0.35);
+  /* 刻印のような2重のふち（2026-10-30 案B。図柄は入れない） */
+  background: var(--bronze);
+  box-shadow: inset 0 0 0 1.5px var(--bronze-lo), inset 0 0 0 3.5px var(--bronze-hi), inset 0 0 0 5px var(--bronze-lo), 0 1px 0 rgba(0, 0, 0, 0.35);
   color: #3a1a06;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
   line-height: 1;
 }
 
@@ -6368,13 +6382,29 @@ a.tf-name {
 
 /* 全部のページの帯（ヘッダーのすぐ下・横いっぱい。中の文字はページの幅にそろえる） */
 .ten-bar {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px max(var(--gutter), calc((100% - var(--maxw)) / 2 + var(--gutter)));
-  background: var(--hot);
+  background-color: var(--hot);
+  background-image: var(--grain);
   color: #fff;
   text-decoration: none;
+}
+/* 帯の下のはしは、赤札を切ったギザギザ（2026-10-30 案B） */
+.ten-bar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -6px;
+  left: 0;
+  height: 6px;
+  background: linear-gradient(135deg, var(--hot) 4px, transparent 0) 0 0 / 8px 6px repeat-x, linear-gradient(-135deg, var(--hot) 4px, transparent 0) 0 0 / 8px 6px repeat-x;
+}
+.ten-bar + * {
+  margin-top: 6px;
 }
 
 .ten-bar[hidden] {
@@ -6414,9 +6444,10 @@ a.tf-name {
   margin-top: 24px;
   padding: 18px 16px 16px;
   border-radius: var(--r-panel);
-  background: var(--hot);
-  outline: 2px dashed rgba(255, 255, 255, 0.32);
-  outline-offset: -7px;
+  background-color: var(--hot);
+  background-image: var(--grain);
+  outline: 1px solid rgba(255, 255, 255, 0.55); /* 白い細い枠を刷った赤札（2026-10-30 案B） */
+  outline-offset: -6px;
   color: #fff;
   container-type: inline-size;
 }
