@@ -1941,6 +1941,44 @@ check("赤札の見た目: 赤いボタン・10円セールの帯と案内に紙
       # ビルドで background-color と background-image が1つの background にまとめられたり、::after が :after になったりするので、ゆるく見る
       all(css_has(sel_, r"var\(--grain\)") for sel_ in (".btn-hot", ".ten-bar", ".ten-hero")) and css_has(".btn-hot", r"0 0 0 4px")
       and (css_has(".ten-bar::after", r"repeat-x") or css_has(".ten-bar:after", r"repeat-x")))
+# 女優のページと読み物の2列（パソコン 960px〜。連絡 C-017・#205 案A「右に柱」。2026-10-31）: トップと同じ幅の2列・柱は sticky にしない・
+# 読み物は article の箱をなくして並べる・読み物の中身の一覧はスマホでは出さない（スマホの見た目を変えない）
+# ビルドで「clamp(300px, 30%, 380px)」の空白が消えたり、「> 」が「>」になったりするので、ゆるく見る
+check("2列のページ（.page-cols）: トップと同じ幅の2列（左は残り・右は clamp(300px,30%,380px)・すき間48px）で、柱は sticky にしない",
+      css_has(".page-cols", r"grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s*clamp\(300px,\s*30%,\s*380px\)") and css_has(".page-cols", r"column-gap\s*:\s*48px")
+      and not any(re.search(r"position\s*:\s*sticky", b_) for s_, b_ in css_rules if any("col-side" in x_ for x_ in s_))
+      and any(re.search(r"\.page-cols\s*>\s*\.yomi$", x_) for s_, b_ in css_rules for x_ in s_ if re.search(r"display\s*:\s*contents", b_))
+      and css_has(".yomi-toc", r"display\s*:\s*none") and css_has(".yomi-toc", r"display\s*:\s*block"))
+# 読み物: 本文（.col-main）→ 柱（中身の一覧 → 厳選の作品）→ 棚 → あわせて読む（柱の続き）の順。中身の一覧は、すべての節へのページ内リンク
+_cols_bad = []
+for _slug, _p in sorted(yomi_pages.items()):
+    _raw = read_raw(_p)
+    _ids = re.findall(r'<h2 id="(yomi-sec-\d+)"', _raw)
+    _toc = re.search(r'<nav class="yomi-toc"[^>]*>([\s\S]*?)</nav>', _raw)
+    _order = [_raw.find(k_) for k_ in ('class="wrap page-cols"', 'class="col-main"', 'class="col-side"', 'class="section yomi-shelf"', 'col-side-more"')]
+    if _order[-1] < 0 and 'class="section yomi-next' not in _raw:
+        _order.pop()  # あわせて読むが無い読み物（ほかの読み物も関係するジャンルも無いとき）
+    if not (_ids and _toc and re.findall(r'href="#(yomi-sec-\d+)"', _toc.group(1)) == _ids and min(_order) >= 0 and _order == sorted(_order)
+            and _raw.find('class="pick-list"') > _order[2]):
+        _cols_bad.append((_slug, _order, len(_ids)))
+check(f"読み物（{len(yomi_pages)}本）: パソコンの2列の形（本文｜中身の一覧 → 厳選の作品、棚のあとに あわせて読む）・中身の一覧はすべての節へのリンク",
+      bool(yomi_pages) and not _cols_bad, _cols_bad[:3])
+# 女優のページ: 2列のページは、柱（プロフィール）→ 左の欄 → 柱の続き（イベントの予定・シリーズ）→ 出演作品の一覧 の順。名簿の人のページも同じ形
+_act_cols, _act_bad, _act_nenkan = 0, [], 0
+for pth in actress_pages:
+    _raw = read_raw(pth)
+    if 'class="wrap page-cols"' not in _raw:
+        continue
+    _act_cols += 1
+    _act_nenkan += 'data-nenkan="1"' in _raw
+    _order = [_raw.find(k_) for k_ in ('class="hero"', 'class="col-side"', 'class="col-main"', 'class="col-side-more"')]
+    _works = _raw.find('id="works-title"')
+    _side = _raw[_order[1]:_order[2]] if min(_order) >= 0 else ""
+    if not (min(_order) >= 0 and _order == sorted(_order) and (_works < 0 or _works > _order[3]) and 'class="spec section"' in _side
+            and 'id="events-title"' not in _raw[:_order[3]] and 'id="series-title"' not in _raw[:_order[3]]):
+        _act_bad.append((rel(pth), _order, _works))
+check(f"女優のページの2列（{_act_cols}ページ。名簿の人 {_act_nenkan}）: 柱にプロフィール → 左の欄 → 柱の続き（イベント・シリーズ）→ 出演作品の一覧（横いっぱい）",
+      _act_cols > 0 and not _act_bad, _act_bad[:3])
 _home_raw = read_raw(os.path.join(DIST, "index.html"))
 _top3 = re.search(r'<ol class="medals rank-podium".*?</ol>', _home_raw, re.S)
 _top3_imgs = re.findall(r'<img ([^>]*)>', _top3.group(0)) if _top3 else []

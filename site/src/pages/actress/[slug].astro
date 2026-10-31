@@ -12,6 +12,7 @@ import RatedShelf from '../../components/RatedShelf.astro';
 import ActressHistory from '../../components/ActressHistory.astro';
 import { HISTORY_TOP_MIN, historyDescriptionHead, nenkanDescription, nenkanIndexable, nenkanPageTitle } from '../../lib/history.js';
 import MiniShelf from '../../components/MiniShelf.astro';
+import { ratedShelf } from '../../lib/reviews.js';
 import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
 import { actressByName, actressPageGroups, actressReading, agencyOfName, events, eventsOfName, historyByName, makerByName, profilesByName, sale, storiesByName, today, seriesById } from '../../lib/data.js';
@@ -108,6 +109,15 @@ const profileLd = {
     ...(facts.some(([k]) => k === '出身地') ? { birthPlace: { '@type': 'Place', name: profile.birthplace } } : {}),
   },
 };
+// 出演しているシリーズ（下の EntryChips。パソコンでは右の柱に入るので、ここで1回だけ数える）
+const seriesChips = entryChips(group.items, seriesById, 'series');
+// パソコン（960px〜）の2列（連絡 C-017・#205。トップの .home.has-side と同じ幅）: 右の柱に プロフィール → イベントの予定 → 出演しているシリーズ、
+// 左に 次の新作 → セール中の出演作 → 歩み → 人気作 → 評価の高い作品。出演作品の一覧は下で横いっぱい。
+// どちらかの欄に置くものが無いページは、今の1列のまま（site.css の .page-cols）
+const hasSpec = group.items.length > 0 || Boolean(agency) || facts.length > 0;
+const hasMain = upcomingWorks.length > 0 || saleWorks.length > 0 || Boolean(history) || popularTop.length > 0 || ratedTop.length > 0
+  || ratedShelf(group.items, today, { skip: (i) => isMinorTitle(i.title) }).length > 0;
+const twoCols = (hasSpec || myEvents.length > 0 || seriesChips.length > 0) && hasMain;
 const trail = [
   { name: 'トップ', path: '/' },
   { name: '女優検索', path: ACTRESS_INDEX_PATH },
@@ -124,7 +134,7 @@ const trail = [
 >
   {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
   {saleWorks.length > 0 && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
-  <div class="wrap">
+  <div class:list={['wrap', { 'page-cols': twoCols }]}>
     <Breadcrumb trail={trail} />
 
     <section class="hero">
@@ -152,6 +162,8 @@ const trail = [
       </div>
     </section>
 
+    {/* 右の柱（パソコン）: プロフィール。スマホでは、見出しの下にそのまま並ぶ */}
+    <div class="col-side">
     {facts.length > 0 && (
       <div class="section-head profile-head">
         <h2 id="profile-title" class="section-title">プロフィール</h2>
@@ -209,7 +221,10 @@ const trail = [
 
     {agency && <p class="profile-source">所属とSNSは、所属事務所（{agency.agency}）の公式サイトに載っている情報です（{seenDay}時点）。</p>}
     {facts.length > 0 && <p class="profile-source">年齢から趣味までは、FANZAの情報です。</p>}
+    </div>
 
+    {/* 左の欄（パソコン） */}
+    <div class="col-main">
     <NextWorks items={upcomingWorks} shown={NEXT_SHOWN} />
     <OnSaleWorks items={saleWorks} shown={SALE_SHOWN} label="出演作品が入っているセール" title="セール中の出演作" />
     {history && <ActressHistory name={group.name} history={history} story={story} />}
@@ -234,7 +249,10 @@ const trail = [
     ) : (
       <RatedShelf items={group.items} title={`${group.name}さんの評価の高い作品`} />
     )}
+    </div>
 
+    {/* 右の柱の続き（パソコン）: イベントの予定 → 出演しているシリーズ */}
+    <div class="col-side-more">
     {myEvents.length > 0 && (
       <section class="section" aria-labelledby="events-title">
         <div class="section-head">
@@ -253,7 +271,8 @@ const trail = [
       </section>
     )}
 
-    <EntryChips chips={entryChips(group.items, seriesById, 'series')} title="出演しているシリーズ" id="series-title" label={`${group.name}さんが出演しているシリーズ`} />
+    <EntryChips chips={seriesChips} title="出演しているシリーズ" id="series-title" label={`${group.name}さんが出演しているシリーズ`} />
+    </div>
 
     {group.items.length > 0 && (
     <section class="section" aria-labelledby="works-title">
