@@ -80,5 +80,23 @@ const attrs = F.workFavoriteAttrs(items[1]);
 check('作品の☆ボタンの情報', attrs['data-fav-type'] === 'work' && attrs['data-fav-key'] === 'recent1' && attrs['data-actress'] === 'A' && attrs['data-date'] === '2026-09-25' && attrs['data-maker'] === 'M');
 check('ページのパス', F.FAVORITES_PATH === '/favorites/' && F.FAVORITES_INDEX_PATH === '/data/favorites-index.json');
 
+console.log('\n■ 推しの棚のセールの索引（buildFavoritesSale。2026-10-31）');
+{
+  const off = (p, l) => (p && l && p < l ? Math.round((1 - p / l) * 100) : null);
+  const row = (cid, actress, maker, end, price = 700, listPrice = 1000, image = `https://pics.dmm.co.jp/digital/video/${cid}/${cid}pl.jpg`) =>
+    ({ cid, actress, maker, image_url: image, sale: { price, listPrice, end } });
+  const saleItems = [
+    row('a1', ['A', 'A', 'X'], 'M', '2026-11-03 23:59'),
+    row('a2', ['X'], 'N', '2026-11-03 23:59'),
+    row('a3', ['B'], '不明', '2026-11-05 23:59', null, null, 'https://example.net/a3.jpg'),
+    row('a4', ['A'], 'N', '2026-11-05 23:59'),
+  ];
+  const out = F.buildFavoritesSale(saleItems, '2026-10-31', off, { actress: new Set(['A', 'B']), maker: new Set(['M']) });
+  check('☆を付けられない名前だけの作品（a2）は入れない・終わりは番号で持つ', JSON.stringify(out.items.map((r) => r[0])) === '["a1","a3","a4"]' && JSON.stringify(out.ends) === '["2026-11-03 23:59","2026-11-05 23:59"]', JSON.stringify(out));
+  check('割引（分からなければ 0）・決まった形の画像は省く・ほかの画像は持つ', JSON.stringify(out.items) === JSON.stringify([['a1', 30, 0], ['a3', 0, 1, 'https://example.net/a3.jpg'], ['a4', 30, 1]]), JSON.stringify(out.items));
+  check('名前から作品の番号を引ける（同じ名前が2回あっても1つ・人気の順）', JSON.stringify(out.actress) === '{"A":[0,2],"B":[1]}' && JSON.stringify(out.maker) === '{"M":[0]}', JSON.stringify([out.actress, out.maker]));
+  check('決まった形の画像', F.standardImage('abc00123') === 'https://pics.dmm.co.jp/digital/video/abc00123/abc00123pl.jpg' && F.FAVORITES_SALE_PATH === '/data/favorites-sale.json');
+}
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

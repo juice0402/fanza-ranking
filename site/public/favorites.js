@@ -1,6 +1,6 @@
 // お気に入り（ブックマーク）。作品・出演者・メーカーに ☆ を付けて、「お気に入り」ページに集める。
 // 保存先は、この端末のこのブラウザの localStorage だけ（サーバーには何も送らない）。
-// お気に入りの出演者・メーカーの新作・予約は、「お気に入り」ページと、トップの小さなお知らせで教える。
+// お気に入りの出演者・メーカーの新作・予約は「お気に入り」ページで、新作・予約・セール中の作品はトップの推しの棚で教える。
 // JavaScript や localStorage が使えないときは、☆ボタンを出さない（サイトの他の機能には影響しない）。
 (function () {
   var KEY = 'fanza-fav-v1';
@@ -10,7 +10,9 @@
   var DAY = /^\d{4}-\d{2}-\d{2}$/;
   var SLUG = /^[0-9a-f]{10}$/;
   var RECENT_DAYS = 30; // 「最近発売」に出す日数
-  var BANNER_DAYS = 7; // トップのお知らせに数える、発売済みの日数
+  var OSHI_DAYS = 14; // トップの推しの棚の「新作」に入れる、発売済みの日数
+  var OSHI_PEOPLE = 4; // 推しの棚に出す人数（ほかは「お気に入り」ページへ）
+  var OSHI_COVERS = 4; // 1人に出す表紙の数
 
   // ------------------------------------------------------------
   // 部品（画面に依存しない。tests/test_favorites.mjs でテストしている）
@@ -159,6 +161,57 @@
     return { upcoming: upcoming, recent: recent };
   }
 
+  // 決まった形のパッケージ画像（site/src/lib/favorites.js の standardImage と同じ。セールの索引は、この形のときは画像を省いている）
+  function oshiImage(cid) {
+    return 'https://pics.dmm.co.jp/digital/video/' + cid + '/' + cid + 'pl.jpg';
+  }
+
+  // 推しの棚（トップ）: お気に入りの出演者・メーカーごとに、予約・新作（発売から recentDays 日）・セール中（終わりの時刻 nowKey をすぎていない）を集める。
+  // items は favorites-index.json の items、sale は favorites-sale.json（lib/favorites.js の buildFavoritesSale の形）。
+  // 1つも無い人は入れない。予約か新作がある人を先に、同じなら☆を付けたのが新しい人から
+  function pickOshi(store, items, sale, today, nowKey, recentDays) {
+    var found = pickNew(store, items, today, recentDays);
+    var s = sale && typeof sale === 'object' ? sale : {};
+    var rows = Array.isArray(s.items) ? s.items : [];
+    var ends = Array.isArray(s.ends) ? s.ends : [];
+    var people = [];
+    ['actress', 'maker'].forEach(function (type) {
+      var byName = s[type] && typeof s[type] === 'object' && !Array.isArray(s[type]) ? s[type] : {};
+      Object.keys(store[type]).forEach(function (name) {
+        var hit = function (item) { return type === 'actress' ? Array.isArray(item.a) && item.a.indexOf(name) >= 0 : item.m === name; };
+        var up = found.upcoming.filter(hit);
+        var recent = found.recent.filter(hit);
+        var onSale = [];
+        var list = Object.prototype.hasOwnProperty.call(byName, name) && Array.isArray(byName[name]) ? byName[name] : [];
+        list.forEach(function (n) {
+          var r = rows[n];
+          if (!Array.isArray(r) || typeof r[0] !== 'string' || !CID.test(r[0])) return;
+          var end = ends[r[2]];
+          if (typeof end !== 'string' || end < nowKey) return;
+          onSale.push({ c: r[0], o: typeof r[1] === 'number' && r[1] > 0 ? Math.round(r[1]) : 0, e: end, i: typeof r[3] === 'string' ? r[3] : oshiImage(r[0]) });
+        });
+        if (!up.length && !recent.length && !onSale.length) return;
+        var entry = store[type][name];
+        people.push({ type: type, name: name, slug: entry.slug, at: entry.at, up: up, recent: recent, sale: onSale });
+      });
+    });
+    people.sort(function (x, y) {
+      return (y.up.length + y.recent.length > 0) - (x.up.length + x.recent.length > 0) || y.at - x.at;
+    });
+    return people;
+  }
+
+  // 日付の短い形（'2026-11-03' → '11/3'）。セールの終わり（'2026-11-03 23:59'）も日付だけ
+  function shortDay(day) {
+    var d = String(day || '').slice(0, 10);
+    return DAY.test(d) ? +d.slice(5, 7) + '/' + +d.slice(8, 10) : '';
+  }
+
+  // いまの日本時間（'YYYY-MM-DD HH:MM'。セールの終わりとくらべる）
+  function jstNowKey(nowMs) {
+    return new Date(nowMs + 9 * 3600 * 1000).toISOString().slice(0, 16).replace('T', ' ');
+  }
+
   // 一覧に出す出演者（先頭から max 人）と、出しきれない人数（オムニバスなど出演者が多い作品で、カードが長くならないように。
   // max は site/src/config.js の CAST_LIMIT と同じ3人。tests で突き合わせている）
   var CAST_LIMIT = 3;
@@ -191,7 +244,7 @@
     module.exports = {
       castShown: castShown, CAST_LIMIT: CAST_LIMIT, THUMB_MEDIA: THUMB_MEDIA, smallImageUrl: smallImageUrl, tinyImageUrl: tinyImageUrl, unresizedUrl: unresizedUrl,
       emptyStore: emptyStore, parseStore: parseStore, isOn: isOn, toggle: toggle, remove: remove,
-      hasPeople: hasPeople, matches: matches, pickNew: pickNew, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT,
+      hasPeople: hasPeople, matches: matches, pickNew: pickNew, pickOshi: pickOshi, shortDay: shortDay, jstNowKey: jstNowKey, OSHI_DAYS: OSHI_DAYS, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT,
     };
     return;
   }
@@ -213,8 +266,9 @@
     Array.prototype.forEach.call(document.querySelectorAll('.fav-btn'), function (button) {
       button.hidden = true;
     });
-    var noBanner = document.getElementById('fav-banner');
-    if (noBanner) noBanner.hidden = true;
+    var noShelf = document.getElementById('oshi-shelf');
+    if (noShelf) noShelf.hidden = true;
+    document.documentElement.classList.remove('has-favs');
     // 「お気に入り」ページが空白にならないよう、理由を出す
     var emptyRoot = document.getElementById('fav-root');
     if (emptyRoot) {
@@ -318,22 +372,105 @@
     return indexPromise;
   }
 
-  // ---- トップの小さなお知らせ ----
-  // お気に入りの出演者・メーカーがある人には、場所をはじめから出しておく（<head> の小さなスクリプトが html.has-favs を付ける。
-  // あとから上に出てきて、ページ全体が下にずれないように。2026-10-07）。新作・予約があれば、本数に書きかえる
-  var banner = document.getElementById('fav-banner');
-  if (banner) {
-    var s = read();
-    if (hasPeople(s)) {
-      banner.hidden = false;
-      loadIndex().then(function (index) {
-        var found = pickNew(s, index.items, jstToday(Date.now()), BANNER_DAYS);
-        var count = found.upcoming.length + found.recent.length;
-        if (count > 0) banner.textContent = '★ お気に入りの新作・予約が ' + count + '本あります';
-      }).catch(function () {});
+  // セール中の作品の索引（トップの推しの棚だけが読む。/data/favorites-sale.json）
+  var salePromise = null;
+  function loadSale() {
+    if (!salePromise) {
+      salePromise = fetch('/data/favorites-sale.json', { cache: 'no-cache' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('status ' + res.status);
+          return res.json();
+        })
+        .catch(function (error) {
+          salePromise = null;
+          throw error;
+        });
+    }
+    return salePromise;
+  }
+
+  // ---- トップの推しの棚（2026-10-31。C-016 案B。前の1行のお知らせの代わり） ----
+  // お気に入りの出演者・メーカーがある人には、場所をはじめから出しておく（<head> の小さなスクリプトが html.has-favs と行の数 --oshi-rows を付ける。
+  // あとから出てきて、下がずれないように）。推しごとに、名前・予約/新作/セールの本数・小さな表紙（予約 → 新作 → セールの順）
+  var oshi = document.getElementById('oshi-shelf');
+  var oshiBody = oshi && oshi.querySelector('[data-oshi-body]');
+  if (oshi && oshiBody) {
+    var os = read();
+    if (hasPeople(os)) {
+      oshi.hidden = false;
+      Promise.all([loadIndex(), loadSale()]).then(function (res) {
+        var people = pickOshi(os, res[0].items, res[1], jstToday(Date.now()), jstNowKey(Date.now()), OSHI_DAYS);
+        if (!people.length) {
+          oshiBody.appendChild(el('p', 'oshi-empty', 'いまは推しの新作・予約・セールはありません'));
+          return;
+        }
+        renderOshi(oshiBody, people, res[0].pages);
+      }).catch(function () {
+        oshiBody.appendChild(el('p', 'oshi-empty', '読みこめませんでした。開き直すと出ます'));
+      });
     } else {
-      banner.hidden = true;
+      oshi.hidden = true;
       document.documentElement.classList.remove('has-favs');
+    }
+  }
+
+  function oshiCover(item, note, off) {
+    var li = el('li', 'oshi-cell');
+    var a = el('a', 'oshi-card');
+    a.href = '/item/' + item.c + '/';
+    var cover = el('span', 'oshi-cover');
+    if (typeof item.i === 'string' && item.i.indexOf('https://') === 0) {
+      var img = el('img', 'item-img is-small');
+      img.alt = '';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.width = 90;
+      img.height = 122;
+      img.addEventListener('error', function () {
+        if (img.src.indexOf(AWS_IMG) === 0) img.src = unresizedUrl(img.src);
+        else img.style.visibility = 'hidden';
+      });
+      img.src = tinyImageUrl(smallImageUrl(item.i));
+      cover.appendChild(img);
+    }
+    // セールの割引は、表紙の左下に白い字（セール中の特集のカードと同じ形）
+    if (off) cover.appendChild(el('span', 'oshi-off', off));
+    a.appendChild(cover);
+    a.appendChild(el('span', 'oshi-note', note));
+    li.appendChild(a);
+    return li;
+  }
+
+  function renderOshi(body, people, pages) {
+    var list = el('ul', 'oshi-people');
+    people.slice(0, OSHI_PEOPLE).forEach(function (p) {
+      var li = el('li', 'oshi-person');
+      var head = el('div', 'oshi-person-head');
+      var slug = p.slug || (pages && pages[p.type] && typeof pages[p.type][p.name] === 'string' && SLUG.test(pages[p.type][p.name]) ? pages[p.type][p.name] : '');
+      var name = el(slug ? 'a' : 'span', 'oshi-name', p.name);
+      if (slug) name.href = (p.type === 'actress' ? '/actress/' : '/maker/') + slug + '/';
+      head.appendChild(name);
+      var counts = [];
+      if (p.up.length) counts.push('予約' + p.up.length);
+      if (p.recent.length) counts.push('新作' + p.recent.length);
+      if (p.sale.length) counts.push('セール' + p.sale.length);
+      head.appendChild(el('span', 'oshi-count', counts.join('・')));
+      li.appendChild(head);
+      var ul = el('ul', 'oshi-covers');
+      p.up.concat(p.recent).slice(0, OSHI_COVERS).forEach(function (item) {
+        ul.appendChild(oshiCover(item, shortDay(item.d) + '発売', ''));
+      });
+      p.sale.slice(0, Math.max(0, OSHI_COVERS - ul.children.length)).forEach(function (item) {
+        ul.appendChild(oshiCover(item, shortDay(item.e) + 'まで', item.o > 0 ? item.o + '%OFF' : 'セール'));
+      });
+      li.appendChild(ul);
+      list.appendChild(li);
+    });
+    body.appendChild(list);
+    if (people.length > OSHI_PEOPLE) {
+      var more = el('a', 'oshi-more', 'ほかの推し（' + (people.length - OSHI_PEOPLE) + '人）');
+      more.href = '/favorites/';
+      body.appendChild(more);
     }
   }
 

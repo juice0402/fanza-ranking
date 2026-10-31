@@ -310,11 +310,11 @@ Claude が**月のまとめ記事**を書くための道具（2026-10-07 から�
 
 #### `site/src/lib/favorites.js` / `site/src/lib/calendar.js`
 
-お気に入りの索引（`/data/favorites-index.json`）と、発売日カレンダー（`.ics`）の部品（画面に依存しない。`tests/test_calendar.mjs`）。カレンダーの予定の**題名に作品タイトルを入れない**（「【発売】○○の新作」。タイトル・品番・リンクは説明に入れる）。`escapeIcsText` は `;` `,` `\` 改行を書き換える
+お気に入りの索引（`/data/favorites-index.json`）・推しの棚のセールの索引（`/data/favorites-sale.json`。`buildFavoritesSale`。セール中で作品ページがある作品を、☆を付けられる名前から番号で引く形。決まった形の画像は省く。300KB 以内を `verify_dist.py` が見る）と、発売日カレンダー（`.ics`）の部品（画面に依存しない。`tests/test_calendar.mjs`）。カレンダーの予定の**題名に作品タイトルを入れない**（「【発売】○○の新作」。タイトル・品番・リンクは説明に入れる）。`escapeIcsText` は `;` `,` `\` 改行を書き換える
 
 #### `site/public/favorites.js` / `site/public/lightbox.js`
 
-ブラウザで動く小さなスクリプト（ビルドを通さずそのまま配信）。`lightbox.js` はサンプル画像・パッケージ写真の拡大表示（前・次のボタンと枚数は、画像に重ならないよう、画像の下の帯 `.lightbox-bar` に。運営者の希望。2026-10-05）。`favorites.js` は ☆ の付け外しと「お気に入り」ページ・トップのお知らせ（**保存先は端末の localStorage だけ。サーバーには送らない**）。部品は node でテストできる（`tests/test_favorites.mjs`）。DOM は `textContent` で作り、保存データの HTML は実行しない
+ブラウザで動く小さなスクリプト（ビルドを通さずそのまま配信）。`lightbox.js` はサンプル画像・パッケージ写真の拡大表示（前・次のボタンと枚数は、画像に重ならないよう、画像の下の帯 `.lightbox-bar` に。運営者の希望。2026-10-05）。`favorites.js` は ☆ の付け外しと「お気に入り」ページ・トップの推しの棚（`pickOshi`。2026-10-31。docs/design.md の「トップの推しの棚」）（**保存先は端末の localStorage だけ。サーバーには送らない**）。部品は node でテストできる（`tests/test_favorites.mjs`）。DOM は `textContent` で作り、保存データの HTML は実行しない
 
 #### `site/src/lib/search.js` / `site/public/search.js`
 
@@ -354,7 +354,7 @@ JSON読み込み。`curated`（毎日の更新で載せた作品）/`catalog`（
 
 #### `site/src/pages/`
 
-トップ、`item/[cid]`（作品）、`archive/[page]`（過去作品）、`actress/`（出演者別。2本以上の人だけ）、`maker/`（メーカー別。2本以上だけ）、`month/`（月ごと）、`tag/`（ジャンルごと）、`weekly/`（週のまとめ記事。1本も無いあいだは一覧が noindex・sitemap にも入らず、リンクも出さない）、`favorites`（お気に入り。noindex）、`calendar/`（使い方のページ＋購読用の `.ics`。使い方は noindex）、`data/favorites-index.json.js`、`data/actresses-index.json.js`（出演者検索の索引）、404、`sitemap.xml.js`、`robots.txt.js`
+トップ、`item/[cid]`（作品）、`archive/[page]`（過去作品）、`actress/`（出演者別。2本以上の人だけ）、`maker/`（メーカー別。2本以上だけ）、`month/`（月ごと）、`tag/`（ジャンルごと）、`weekly/`（週のまとめ記事。1本も無いあいだは一覧が noindex・sitemap にも入らず、リンクも出さない）、`favorites`（お気に入り。noindex）、`calendar/`（使い方のページ＋購読用の `.ics`。使い方は noindex）、`data/favorites-index.json.js`、`data/favorites-sale.json.js`（推しの棚のセール）、`data/actresses-index.json.js`（出演者検索の索引）、404、`sitemap.xml.js`、`robots.txt.js`
 
 ### データ（site/src/data/。自動更新のデータは手で編集しない）
 

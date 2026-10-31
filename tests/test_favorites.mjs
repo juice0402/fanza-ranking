@@ -111,5 +111,32 @@ check('日本語の日付', F.jpDate('2026-10-07') === '2026年10月7日' && F.j
 console.log('\n■ お気に入りの一覧の出演者は3名まで');
 check('3名まで出して、残りは人数だけ（作品検索・一覧のカードと同じ3名）', F.CAST_LIMIT === 3 && JSON.stringify(plain(F.castShown(['a', 'b', 'c', 'd', 'e'], F.CAST_LIMIT))) === JSON.stringify({ names: ['a', 'b', 'c'], more: 2 }) && plain(F.castShown([], 3)).more === 0);
 
+console.log('\n■ トップの推しの棚（推しごとに、予約・新作・セール中を集める。2026-10-31）');
+{
+  const sale = {
+    generated: today,
+    ends: ['2026-10-03 23:59', '2026-10-02 23:59'],
+    items: [['s1', 30, 0], ['s2', 50, 1], ['s3', 0, 0, 'https://example.net/s3.jpg'], ['bad id', 30, 0], ['s4', 20, 9]],
+    actress: { 花子: [0, 1, 3, 4], 葵: [2] },
+    maker: { MA: [0] },
+  };
+  const store = F.toggle(F.toggle(F.toggle(F.toggle(F.emptyStore(), 'actress', '花子', { slug: 'abcdef0123' }, 1).store, 'maker', 'MA', {}, 2).store, 'actress', '葵', {}, 3).store, 'actress', '静か', {}, 4).store;
+  const people = plain(F.pickOshi(store, index, sale, today, '2026-10-03 12:00', 14));
+  const names = people.map((p) => p.name).join();
+  check('作品が1つも無い人（静か）は出ない・予約か新作がある人が先・同じなら☆が新しい人から', names === '葵,MA,花子', names);
+  const hanako = people.find((p) => p.name === '花子');
+  check('花子: 予約1・新作1・セールは終わっていないものだけ（終わった s2・壊れた番号と品番は出ない）',
+    hanako.up.map((x) => x.c).join() === 'u1' && hanako.recent.map((x) => x.c).join() === 'r1' && hanako.sale.map((x) => x.c).join() === 's1', JSON.stringify(hanako));
+  check('セールは割引・終わり・決まった形の画像を作り直す', hanako.sale[0].o === 30 && hanako.sale[0].e === '2026-10-03 23:59' && hanako.sale[0].i === 'https://pics.dmm.co.jp/digital/video/s1/s1pl.jpg');
+  const aoi = people.find((p) => p.name === '葵');
+  check('索引に画像があれば、その画像（割引0は0のまま）', aoi.sale[0].i === 'https://example.net/s3.jpg' && aoi.sale[0].o === 0);
+  const ma = people.find((p) => p.name === 'MA');
+  check('メーカーの作品も（MA: 予約 u3・u1、セール s1）・種類と短い名前を持つ', ma.type === 'maker' && ma.up.map((x) => x.c).join() === 'u3,u1' && ma.sale.map((x) => x.c).join() === 's1' && hanako.slug === 'abcdef0123');
+  check('セールの索引が壊れていても、予約・新作だけで出る', plain(F.pickOshi(store, index, null, today, '2026-10-03 12:00', 14)).map((p) => p.name).join() === '葵,MA,花子');
+  check('お気に入りが無ければ、だれも出ない', F.pickOshi(F.emptyStore(), index, sale, today, '2026-10-03 12:00', 14).length === 0);
+  check('日付の短い形（セールの終わりは日付だけ）', F.shortDay('2026-11-03') === '11/3' && F.shortDay('2026-11-03 23:59') === '11/3' && F.shortDay('あした') === '');
+  check('いまの日本時間（UTC の 15:30 は次の日の 0:30）', F.jstNowKey(Date.UTC(2026, 9, 31, 15, 30)) === '2026-11-01 00:30');
+}
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

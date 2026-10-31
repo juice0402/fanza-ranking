@@ -27,6 +27,39 @@ export function buildFavoritesIndex(items, today, days = FAVORITES_INDEX_DAYS, p
   };
 }
 
+export const FAVORITES_SALE_PATH = '/data/favorites-sale.json';
+
+/** 動画の作品の、決まった形のパッケージ画像（索引では、この形のときは画像を省く。favorites.js の oshiImage と同じ） */
+export const standardImage = (cid) => `https://pics.dmm.co.jp/digital/video/${cid}/${cid}pl.jpg`;
+
+/**
+ * トップの「推しの棚」が、お気に入りの出演者・メーカーのセール中の作品を探すための索引（2026-10-31。C-016 案B）。
+ * saleItems: sale.js の onSaleItems の結果（人気の順）。names: { actress: Set, maker: Set } ☆を付けられる名前（専用ページがある人だけ）。
+ * 小さくするため、作品は配列で持ち、名前から作品の番号を引く形にする:
+ * { generated, ends: [セールの終わり 'YYYY-MM-DD HH:MM'], items: [[作品ID, 割引（%。分からなければ 0）, ends の番号, 画像（決まった形でないときだけ）]],
+ *   actress: {名前: [items の番号（人気の順）]}, maker: {名前: [...]} }
+ */
+export function buildFavoritesSale(saleItems, today, offPercent, names) {
+  const out = { generated: today, ends: [], items: [], actress: {}, maker: {} };
+  const endIndex = new Map();
+  for (const i of saleItems) {
+    const cast = [...new Set(i.actress)].filter((n) => names.actress.has(n));
+    const maker = i.maker && names.maker.has(i.maker) ? i.maker : '';
+    if (!cast.length && !maker) continue;
+    if (!endIndex.has(i.sale.end)) {
+      endIndex.set(i.sale.end, out.ends.length);
+      out.ends.push(i.sale.end);
+    }
+    const row = [i.cid, offPercent(i.sale.price, i.sale.listPrice) ?? 0, endIndex.get(i.sale.end)];
+    if (i.image_url !== standardImage(i.cid)) row.push(i.image_url || '');
+    const n = out.items.length;
+    out.items.push(row);
+    for (const a of cast) (out.actress[a] ??= []).push(n);
+    if (maker) (out.maker[maker] ??= []).push(n);
+  }
+  return out;
+}
+
 /** 出演者・メーカーのまとまり（groupByActress / groupByMaker の結果）→ {名前: 短い名前}（索引の pages 用） */
 export const pageSlugMap = (groups) => Object.fromEntries(groups.map((g) => [g.name, g.slug]));
 
