@@ -1511,8 +1511,14 @@ if os.path.isfile(fav_page):
     check("お気に入りページ: お気に入りが無い人（html.fav-none）には「まだお気に入りがありません」を、はじめから出しておく（スクリプトと同じ文。あとから出てきて下がずれないように。2026-10-07）",
           bool(_fav_msg) and strip_tags(_fav_msg.group(1)).strip().replace("\u200b", "") in _fav_js.replace("\u200b", "") and "classList.add('fav-none')" in read_raw(os.path.join(DIST, "index.html")),
           _fav_msg.group(1)[:60] if _fav_msg else None)
-check("トップに、お気に入りのお知らせ欄（#fav-banner）がある（ふだんは隠れていて、お気に入りの出演者・メーカーがある人（html.has-favs）には、はじめから場所を出す。はじめの文字つき）",
-      bool(re.search(r'<a id="fav-banner"[^>]*\bhidden\b[^>]*>★ お気に入りの新作・予約を見る</a>', home_html)))
+# トップの推しの棚（2026-10-31。C-016 案B。前の1行のお知らせ #fav-banner の代わり）
+_oshi = re.search(r'<section id="oshi-shelf"[^>]*>(.*?)</section>', home_html, re.S)
+check("トップに推しの棚（#oshi-shelf）がある（ふだんは hidden。見出し「推しの棚」・お気に入りへのリンク・中身の入れ物 data-oshi-body）",
+      bool(_oshi) and re.search(r'<section id="oshi-shelf"[^>]*\bhidden\b', home_html) is not None and "推しの棚" in _oshi.group(1)
+      and 'href="/favorites/"' in _oshi.group(1) and "data-oshi-body" in _oshi.group(1), _oshi.group(0)[:120] if _oshi else None)
+check("推しの棚は右の欄（.home-side）のいちばん上（スマホは TOP3 のすぐ下）",
+      re.search(r'<div class="home-side">\s*<section id="oshi-shelf"', home_html) is not None)
+check("トップに前の1行のお知らせ（#fav-banner）が残っていない", 'id="fav-banner"' not in home_html)
 
 # 索引: お気に入りの出演者・メーカーの新作を、ブラウザ側で探すための小さなJSON
 fav_index_path = os.path.join(DIST, "data", "favorites-index.json")
@@ -1530,6 +1536,33 @@ if os.path.isfile(fav_index_path):
         check("索引は発売日の新しい順", [r["d"] for r in rows] == sorted((r["d"] for r in rows), reverse=True))
         warn("索引に作品が1件以上ある", bool(rows))
         check("索引の大きさが 300KB 以内（毎回ダウンロードされるため）", os.path.getsize(fav_index_path) <= 300 * 1024, os.path.getsize(fav_index_path))
+
+# 索引: 推しの棚が、お気に入りの出演者・メーカーのセール中の作品を探すための小さなJSON（2026-10-31）
+fav_sale_path = os.path.join(DIST, "data", "favorites-sale.json")
+check("セールの索引（/data/favorites-sale.json）がある", os.path.isfile(fav_sale_path))
+if os.path.isfile(fav_sale_path):
+    try:
+        fav_sale = json.loads(read(fav_sale_path))
+    except ValueError:
+        fav_sale = None
+    _ok = isinstance(fav_sale, dict) and DAY.match(str(fav_sale.get("generated", ""))) and isinstance(fav_sale.get("ends"), list) and isinstance(fav_sale.get("items"), list) \
+        and isinstance(fav_sale.get("actress"), dict) and isinstance(fav_sale.get("maker"), dict)
+    check("セールの索引が正しいJSONで、generated・ends・items・actress・maker がある", _ok, str(fav_sale)[:80])
+    if _ok:
+        _ends, _rows = fav_sale["ends"], fav_sale["items"]
+        check("セールの終わり（ends）が「YYYY-MM-DD HH:MM」", all(isinstance(e, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}", e) for e in _ends), _ends[:3])
+        _bad = [r for r in _rows if not (isinstance(r, list) and 3 <= len(r) <= 4 and r[0] in valid and isinstance(r[1], int) and 0 <= r[1] <= 99
+                                         and isinstance(r[2], int) and 0 <= r[2] < len(_ends) and (len(r) == 3 or isinstance(r[3], str)))]
+        check("セールの索引の作品が [作品ID（作品ページがある）, 割引, 終わりの番号, (画像)] の形", not _bad, _bad[:2])
+        _std = [r for r in _rows if len(r) == 4 and r[3] == f"https://pics.dmm.co.jp/digital/video/{r[0]}/{r[0]}pl.jpg"]
+        check("決まった形の画像は省いている（favorites.js が作り直す）", not _std, _std[:1])
+        _names = [(t, n, v) for t in ("actress", "maker") for n, v in fav_sale[t].items()
+                  if not (isinstance(v, list) and v and all(isinstance(x, int) and 0 <= x < len(_rows) for x in v) and v == sorted(set(v)))]
+        check("名前から引く作品の番号が、items の中を指していて、人気の順（小さい順・重なりなし）", not _names, _names[:2])
+        _minor = [r[0] for r in _rows if is_minor_title(valid[r[0]].get("title", ""))]
+        check("セールの索引に、未成年を連想させるタイトルの作品が入っていない", not _minor, _minor[:3])
+        warn("セールの索引に作品が1件以上ある", bool(_rows))
+        check("セールの索引の大きさが 300KB 以内（推しの棚を開くたびにダウンロードされるため）", os.path.getsize(fav_sale_path) <= 300 * 1024, os.path.getsize(fav_sale_path))
 
 # 発売日カレンダー（.ics）
 def unfold_ics(text):
@@ -2026,8 +2059,9 @@ js_only = {re.sub(r"\s+", " ", s_) for sels, b in css_rules for s_ in sels if re
 check("CSS: JavaScript が使えるときだけ使える部品（VR・単体のスイッチ・お気に入りのボタン・運命の作品・「もっと見る」・作品検索）は、使えないときだけ隠す（はじめから出しておき、あとから出てきて下がずれないように。2026-10-07）",
       {"html:not(.js) .vr-toggle", "html:not(.js) .fav-btn", "html:not(.js) #gacha", "html:not(.js) [data-fold-more]", "html:not(.js) .work-search", ".js .ws-fallback:not(.is-fallback)"} <= js_only,
       sorted({"html:not(.js) .vr-toggle", "html:not(.js) .fav-btn", "html:not(.js) #gacha", "html:not(.js) [data-fold-more]", "html:not(.js) .work-search", ".js .ws-fallback:not(.is-fallback)"} - js_only))
-check("CSS: お気に入りの出演者・メーカーがある人（html.has-favs）には、トップのお知らせの場所を、はじめから出す（あとから上に出てきて、ページ全体がずれないように）",
-      any(".has-favs .fav-banner[hidden]" in [re.sub(r"\s+", " ", x) for x in sels] and re.search(r"display\s*:\s*block", b) for sels, b in css_rules))
+check("CSS: お気に入りの出演者・メーカーがある人（html.has-favs）には、トップの推しの棚の場所を、はじめから出す（読みこむまでは推しの人数の行の高さを取る。あとから出てきて、下がずれないように）",
+      any(".has-favs .oshi-shelf[hidden]" in [re.sub(r"\s+", " ", x) for x in sels] and re.search(r"display\s*:\s*block", b) for sels, b in css_rules)
+      and any(".has-favs .oshi-body:empty" in [re.sub(r"\s+", " ", x) for x in sels] and "--oshi-rows" in b for sels, b in css_rules))
 # 押した見た目は「□」の印（.vr-toggle-mark）が黄色になること（2026-10-22 から。スイッチの枠と地は付けない）
 _press = [sels for sels, b in css_rules if any(re.sub(r"\s+", " ", s_) == ".hide-vr .vr-toggle[data-vr-toggle] .vr-toggle-mark" for s_ in sels) and re.search(r"background\s*:\s*var\(--pop\)", b)]
 check("CSS: VR・単体のスイッチの押した見た目（□の印）は、html の印（hide-vr・only-solo）でもすぐに出る（スクリプトを待たない）", bool(_press) and any(".only-solo .vr-toggle[data-solo-toggle] .vr-toggle-mark" in [re.sub(r"\s+", " ", x) for x in sels] for sels in _press), _press[:1])

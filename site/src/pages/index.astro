@@ -23,6 +23,7 @@ import SideMonths from '../components/SideMonths.astro';
 import { MONTH_INDEX_PATH, TAG_INDEX_PATH } from '../lib/collections.js';
 import { weeklyPath } from '../lib/roundups.js';
 import { SEARCH_PATH } from '../lib/search.js';
+import { FAVORITES_PATH } from '../lib/favorites.js';
 import {
   dateParts,
   groupByDate,
@@ -115,9 +116,6 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
   {/* セールの「終わったら隠す」（public/sale.js）を、ページの先頭にそのまま入れる。中身が読み込まれるそばから印を付けるので、終わったものが見えてから消えて下がずれない（2026-10-07） */}
   {(saleCamps.length > 0 || tenYenNow.total > 0) && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
   <div class="wrap">
-    {/* お気に入りの出演者・メーカーがある人だけに出る（html.has-favs。はじめから場所を取り、新作・予約があれば本数に書きかわる。favorites.js） */}
-    <a id="fav-banner" class="fav-banner" href="/favorites/" hidden>★ お気に入りの新作・予約を見る</a>
-
     {/* スマホ: 見出し → TOP3 → 作品を探す → いま人気の女優 → 人気のジャンル → きょうの話題 → セール → 発売中（いちばん新しい日付の下におすすめのコーナー）→ 予約 の1列
         （右の欄の中の並びは site.css の order。週のまとめ・月のまとめの欄は、パソコンだけ。スマホは「作品を探す」のリンクから）。
         パソコン: 見出しを横いっぱいに、左に TOP3 → セール → 発売中 → 予約、右の欄（.home-side）に 作品を探す → きょうの話題 → いま人気の女優 → 人気のジャンル → 週のまとめ → おすすめのコーナー → 月のまとめ */}
@@ -146,6 +144,17 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
       )}
 
       <div class="home-side">
+      {/* 推しの棚（2026-10-31。C-016 案B。前の1行のお知らせ「★ お気に入りの新作・予約を見る」の代わり）: ☆の出演者・メーカーがある人（html.has-favs）にだけ、
+          推しごとに名前・予約/新作/セールの本数・小さな表紙4つ（favorites.js）。スマホは TOP3 のすぐ下、パソコンは右の欄のいちばん上（site.css の order）。
+          はじめから場所を取る（あとから出てきて下がずれないように） */}
+      <section id="oshi-shelf" class="oshi-shelf" aria-labelledby="oshi-title" hidden>
+        <div class="oshi-head">
+          <h2 id="oshi-title" class="today-sec-title">推しの棚</h2>
+          <a class="oshi-all" href={FAVORITES_PATH}>お気に入り</a>
+        </div>
+        <p class="section-note">☆を付けた女優・メーカーの新作・予約とセール</p>
+        <div class="oshi-body" data-oshi-body></div>
+      </section>
       {/* 「月ごと」「週のまとめ」のリンク（only-narrow）は、スマホだけ。パソコンは、右の欄に専用の欄がある */}
       <section class="find" aria-labelledby="find-title">
         <h2 id="find-title" class="find-title">作品を探す</h2>
