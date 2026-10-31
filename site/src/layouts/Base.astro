@@ -69,6 +69,9 @@ import { assetUrl } from '../lib/assets.js';
          ページごとに送られる小さなスクリプトなので、説明はここ（Astro のコメント。出力されない）に書く */}
     <script is:inline>document.documentElement.classList.add('js');try{var fv=JSON.parse(localStorage.getItem('fanza-fav-v1')||'null'),fn=function(k){return fv&&fv[k]&&typeof fv[k]==='object'?Object.keys(fv[k]).length:0};if(fn('actress')||fn('maker'))document.documentElement.classList.add('has-favs');if(!fn('actress')&&!fn('maker')&&!fn('work'))document.documentElement.classList.add('fav-none')}catch(e){}try{if(localStorage.getItem('hide-vr')==='1')document.documentElement.classList.add('hide-vr');if(localStorage.getItem('only-solo')==='1')document.documentElement.classList.add('only-solo')}catch(e){}</script>
 
+    {/* 見本の2案（推しの棚。マージしない見本のブランチだけ）: ?look=a|b で html に印を付ける */}
+    <script is:inline>try{var lk=/[?&]look=([ab])\b/.exec(location.search);if(lk)document.documentElement.classList.add('look-'+lk[1])}catch(e){}</script>
+
     {/* アイコンの URL にも、中身から作った印（?v=…。lib/assets.js）を付ける（2026-10-23。運営者の「ファビコンの更新を自動で」）。
          アイコンを変えると URL も変わるので、ブラウザが前のアイコンを覚えていても、次に開いたときに新しいものを取りに行く */}
     <link rel="icon" href={assetUrl('/favicon.ico')} sizes="48x48" />

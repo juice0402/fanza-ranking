@@ -146,6 +146,16 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
       )}
 
       <div class="home-side">
+      {/* 推しの棚（見本の2案。?look=a|b のときだけ。☆の出演者・メーカーがある人に、新作・予約とセール中の作品。favorites.js）。
+          スマホは TOP3 のすぐ下、パソコンは右の欄のいちばん上 */}
+      <section id="oshi-shelf" class="oshi-shelf" aria-labelledby="oshi-title" hidden>
+        <div class="oshi-head">
+          <h2 id="oshi-title" class="today-sec-title">推しの棚</h2>
+          <a class="oshi-all" href="/favorites/">お気に入り</a>
+        </div>
+        <p class="section-note">☆を付けた女優・メーカーの新作・予約とセール</p>
+        <div class="oshi-body" data-oshi-body></div>
+      </section>
       {/* 「月ごと」「週のまとめ」のリンク（only-narrow）は、スマホだけ。パソコンは、右の欄に専用の欄がある */}
       <section class="find" aria-labelledby="find-title">
         <h2 id="find-title" class="find-title">作品を探す</h2>

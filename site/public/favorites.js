@@ -337,6 +337,153 @@
     }
   }
 
+  // ---- 推しの棚（見本の2案。html.look-a か html.look-b のときだけ。トップの #oshi-shelf） ----
+  // A: 「新作・予約」「セール中」の2段の表紙の棚（横にすべらせる）／B: 推しごとの行（名前・本数・小さな表紙4つ）
+  var OSHI_DAYS = 14; // 「新作」に入れる、発売済みの日数
+  var OSHI_STRIP = 10; // A の1段に出す本数
+  var OSHI_PEOPLE = 4; // B に出す推しの人数
+  var salePromise = null;
+  function loadSale() {
+    if (!salePromise) {
+      salePromise = fetch('/data/favorites-sale.json', { cache: 'no-cache' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('status ' + res.status);
+          return res.json();
+        })
+        .then(function (data) { return data && Array.isArray(data.items) ? data.items : []; })
+        .catch(function (error) {
+          salePromise = null;
+          throw error;
+        });
+    }
+    return salePromise;
+  }
+  function jstNowKey(nowMs) {
+    return new Date(nowMs + 9 * 3600 * 1000).toISOString().slice(0, 16).replace('T', ' ');
+  }
+  function shortDate(day) {
+    return typeof day === 'string' && DAY.test(day) ? +day.slice(5, 7) + '月' + +day.slice(8, 10) + '日' : '';
+  }
+  function coverImg(url, cls) {
+    var img = el('img', cls);
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.width = 90;
+    img.height = 122;
+    img.addEventListener('error', function () {
+      if (img.src.indexOf(AWS_IMG) === 0) img.src = unresizedUrl(img.src);
+      else img.style.visibility = 'hidden';
+    });
+    img.src = tinyImageUrl(smallImageUrl(url));
+    return img;
+  }
+  // 表紙の小さなカード（A の棚・B の行で共通）。note は表紙の下の1行、hot はセールの赤い字
+  function oshiCard(item, note, hot, withTitle) {
+    var li = el('li', 'oshi-cell');
+    var a = el('a', 'oshi-card');
+    a.href = '/item/' + item.c + '/';
+    var cover = el('span', 'oshi-cover');
+    if (typeof item.i === 'string' && item.i.indexOf('https://') === 0) cover.appendChild(coverImg(item.i, 'item-img is-small'));
+    a.appendChild(cover);
+    if (withTitle) a.appendChild(el('span', 'oshi-title', item.t));
+    if (note && hot) {
+      // セール: 赤札（「30%OFF」）と、終わりの日
+      var line = el('span', 'oshi-note');
+      if (note[0]) line.appendChild(el('span', 'oshi-off', note[0]));
+      line.appendChild(document.createTextNode(note[1]));
+      a.appendChild(line);
+    } else if (note) a.appendChild(el('span', 'oshi-note', note));
+    li.appendChild(a);
+    return li;
+  }
+  function newNote(item, today) {
+    return item.d > today ? shortDate(item.d) + '発売' : shortDate(item.d) + '発売済み';
+  }
+  function saleNote(item) {
+    var end = String(item.e).slice(0, 10);
+    return [item.o > 0 ? item.o + '%OFF' : '', +end.slice(5, 7) + '/' + +end.slice(8, 10) + 'まで'];
+  }
+  function renderOshiA(body, found, sales, today) {
+    var news = found.upcoming.concat(found.recent);
+    [['新作・予約', news, false], ['セール中', sales, true]].forEach(function (def) {
+      if (!def[1].length) return;
+      var row = el('div', 'oshi-row');
+      row.appendChild(el('h3', 'oshi-row-title', def[0] + '（' + def[1].length + '本）'));
+      var ul = el('ul', 'oshi-strip');
+      def[1].slice(0, OSHI_STRIP).forEach(function (item) {
+        ul.appendChild(oshiCard(item, def[2] ? saleNote(item) : newNote(item, today), def[2], true));
+      });
+      row.appendChild(ul);
+      body.appendChild(row);
+    });
+  }
+  function renderOshiB(body, store, found, sales, today, pages) {
+    // 推しごとに、新作・予約・セール中の本数と、表紙（予約 → 新作 → セールの順）を集める
+    var people = [];
+    ['actress', 'maker'].forEach(function (type) {
+      Object.keys(store[type]).forEach(function (name) {
+        var hit = function (item) { return type === 'actress' ? (Array.isArray(item.a) && item.a.indexOf(name) >= 0) : item.m === name; };
+        var up = found.upcoming.filter(hit);
+        var recent = found.recent.filter(hit);
+        var sale = sales.filter(hit);
+        if (!up.length && !recent.length && !sale.length) return;
+        var slug = store[type][name].slug || (pages && pages[type] && pages[type][name]) || '';
+        people.push({ type: type, name: name, slug: slug, up: up, recent: recent, sale: sale, at: store[type][name].at || 0 });
+      });
+    });
+    // 予約・新作がある人を先に、同じなら☆を付けたのが新しい人から
+    people.sort(function (x, y) { return (y.up.length + y.recent.length > 0) - (x.up.length + x.recent.length > 0) || y.at - x.at; });
+    var list = el('ul', 'oshi-people');
+    people.slice(0, OSHI_PEOPLE).forEach(function (p) {
+      var li = el('li', 'oshi-person');
+      var head = el('div', 'oshi-person-head');
+      var name = el(p.slug ? 'a' : 'span', 'oshi-name', p.name);
+      if (p.slug) name.href = (p.type === 'actress' ? '/actress/' : '/maker/') + p.slug + '/';
+      head.appendChild(name);
+      var counts = [];
+      if (p.up.length) counts.push('予約' + p.up.length);
+      if (p.recent.length) counts.push('新作' + p.recent.length);
+      if (p.sale.length) counts.push('セール' + p.sale.length);
+      head.appendChild(el('span', 'oshi-count', counts.join('・')));
+      li.appendChild(head);
+      var ul = el('ul', 'oshi-covers');
+      p.up.concat(p.recent).slice(0, 4).forEach(function (item) { ul.appendChild(oshiCard(item, newNote(item, today), false, false)); });
+      p.sale.slice(0, Math.max(0, 4 - ul.children.length)).forEach(function (item) { ul.appendChild(oshiCard(item, saleNote(item), true, false)); });
+      li.appendChild(ul);
+      list.appendChild(li);
+    });
+    body.appendChild(list);
+    if (people.length > OSHI_PEOPLE) {
+      var more = el('a', 'oshi-more', 'ほかの推し' + (people.length - OSHI_PEOPLE) + '人');
+      more.href = '/favorites/';
+      body.appendChild(more);
+    }
+  }
+  var oshi = document.getElementById('oshi-shelf');
+  var oshiLook = document.documentElement.classList.contains('look-a') ? 'a' : document.documentElement.classList.contains('look-b') ? 'b' : '';
+  if (oshi && oshiLook) {
+    var os = read();
+    var oshiBody = oshi.querySelector('[data-oshi-body]');
+    if (hasPeople(os) && oshiBody) {
+      oshi.hidden = false;
+      Promise.all([loadIndex(), loadSale()]).then(function (res) {
+        var today = jstToday(Date.now());
+        var nowKey = jstNowKey(Date.now());
+        var found = pickNew(os, res[0].items, today, OSHI_DAYS);
+        var sales = res[1].filter(function (r) { return r && typeof r.c === 'string' && CID.test(r.c) && typeof r.e === 'string' && r.e >= nowKey && matches(os, r); });
+        if (!found.upcoming.length && !found.recent.length && !sales.length) {
+          oshiBody.appendChild(el('p', 'oshi-empty', 'いまは推しの新作・予約・セールはありません'));
+          return;
+        }
+        if (oshiLook === 'a') renderOshiA(oshiBody, found, sales, today);
+        else renderOshiB(oshiBody, os, found, sales, today, res[0].pages);
+      }).catch(function () {
+        oshiBody.appendChild(el('p', 'oshi-empty', '読みこめませんでした。開き直すと出ます'));
+      });
+    }
+  }
+
   // ---- 「お気に入り」ページ ----
   var root = document.getElementById('fav-root');
   if (root) renderPage(root);

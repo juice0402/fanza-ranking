@@ -4446,6 +4446,222 @@ html:not(.js) .work-search,
   display: block;
 }
 
+/* ---------- 推しの棚（見本の2案。?look=a|b のときだけ。index.astro の #oshi-shelf・favorites.js） ----------
+   スマホは TOP3 のすぐ下、パソコンは右の欄のいちばん上。A は2段の表紙の棚（横にすべらせる）、B は推しごとの行 */
+.oshi-shelf[hidden] {
+  display: none;
+}
+
+/* ☆の女優・メーカーがある人（html.has-favs）には、はじめから場所を出す（あとから出てきて、下がずれないように） */
+.has-favs.look-a .oshi-shelf[hidden],
+.has-favs.look-b .oshi-shelf[hidden] {
+  display: block;
+}
+
+.has-favs.look-a .oshi-body:empty {
+  min-height: 420px;
+}
+
+.has-favs.look-b .oshi-body:empty {
+  min-height: 400px;
+}
+
+/* 見本のあいだは、トップの1行のお知らせを出さない（棚に置きかえる） */
+.look-a .fav-banner,
+.look-b .fav-banner,
+.has-favs.look-a .fav-banner[hidden],
+.has-favs.look-b .fav-banner[hidden] {
+  display: none;
+}
+
+.home-side > .oshi-shelf {
+  order: -3;
+}
+
+.oshi-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.oshi-all,
+.oshi-more {
+  color: var(--paper-dim);
+  font-size: 13px;
+  text-underline-offset: 3px;
+}
+
+.oshi-body {
+  margin-top: 12px;
+}
+
+.oshi-empty {
+  margin: 0;
+  color: var(--paper-dim);
+  font-size: 13px;
+}
+
+.oshi-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.oshi-cover {
+  display: block;
+  aspect-ratio: var(--cover-ratio);
+  overflow: hidden;
+  border-radius: var(--r-media);
+  background: var(--board);
+}
+
+.oshi-title {
+  display: -webkit-box;
+  margin-top: 6px;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.oshi-note {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--paper-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* セールの割引は、小さな赤札（赤いボタンと同じ紙の目） */
+.oshi-off {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 4px;
+  border-radius: var(--r-tag);
+  background-color: var(--hot);
+  background-image: var(--grain);
+  color: #fff;
+  font: 400 11px/1.5 var(--font-display);
+}
+
+.oshi-card:hover .oshi-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* A: 「新作・予約」「セール中」の2段。表紙は棚板（下の太い線）の上に立って、横にすべる */
+.oshi-row + .oshi-row {
+  margin-top: 18px;
+}
+
+.oshi-row-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.oshi-strip {
+  display: grid;
+  grid-auto-columns: 96px;
+  grid-auto-flow: column;
+  gap: 10px;
+  margin: 0 calc(var(--gutter) * -1);
+  padding: 0 var(--gutter) 10px;
+  overflow-x: auto;
+  border-bottom: 6px solid var(--board);
+  list-style: none;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.oshi-strip > .oshi-cell {
+  scroll-snap-align: start;
+}
+
+/* B: 推しごとの行（名前と本数 → 小さな表紙4つ） */
+.oshi-people {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oshi-person + .oshi-person {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.oshi-person-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.oshi-name {
+  overflow: hidden;
+  color: var(--paper);
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.oshi-count {
+  flex: none;
+  color: var(--paper-dim);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.oshi-covers {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oshi-more {
+  display: inline-block;
+  margin-top: 12px;
+}
+
+@media (min-width: 960px) {
+  .home-side > .oshi-shelf {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  /* 棚が上にあるときは、作品を探すの上にも細い線 */
+  .has-favs.look-a .home-side > .find,
+  .has-favs.look-b .home-side > .find {
+    margin-top: 28px;
+    padding-top: 26px;
+    border-top: 1px solid var(--line);
+  }
+
+  .oshi-strip {
+    margin: 0;
+    padding: 0 0 10px;
+  }
+}
+
 /* 「お気に入り」ページの「まだお気に入りがありません」: お気に入りが無い人（html.fav-none）にだけ、はじめから出す（あとから出てきて、下がずれないように） */
 [data-fav-empty] {
   display: none;

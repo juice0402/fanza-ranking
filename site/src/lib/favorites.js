@@ -27,6 +27,31 @@ export function buildFavoritesIndex(items, today, days = FAVORITES_INDEX_DAYS, p
   };
 }
 
+export const FAVORITES_SALE_PATH = '/data/favorites-sale.json';
+export const FAVORITES_SALE_LIMIT = 2000; // 人気の順に、この本数まで（毎回ダウンロードされるため）
+
+/**
+ * 「推しの棚」が、お気に入りの出演者・メーカーのセール中の作品を探すための索引。
+ * saleItems は onSaleItems の結果（人気の順・item.sale に price/listPrice/end）。作品ページがある作品だけ・出演者かメーカーの名前がある作品だけ。
+ * 短い名前の項目 {c: 作品ID, t: タイトル, a: 出演者, m: メーカー, i: 画像, o: 割引（%。分からなければ 0）, e: セールの終わり（YYYY-MM-DD HH:MM）}
+ */
+export function buildFavoritesSale(saleItems, today, offPercent, limit = FAVORITES_SALE_LIMIT) {
+  const rows = saleItems.filter((i) => i.actress.length > 0 || (i.maker && i.maker !== '不明')).slice(0, limit);
+  const namesRe = namesPattern(rows.flatMap((i) => [...i.actress, i.maker]).filter((n) => n && n !== '不明'));
+  return {
+    generated: today,
+    items: rows.map((i) => ({
+      c: i.cid,
+      t: phraseZwsp(i.title, namesRe),
+      a: i.actress,
+      m: i.maker === '不明' ? '' : i.maker,
+      i: i.image_url,
+      o: offPercent(i.sale.price, i.sale.listPrice) ?? 0,
+      e: i.sale.end,
+    })),
+  };
+}
+
 /** 出演者・メーカーのまとまり（groupByActress / groupByMaker の結果）→ {名前: 短い名前}（索引の pages 用） */
 export const pageSlugMap = (groups) => Object.fromEntries(groups.map((g) => [g.name, g.slug]));
 
