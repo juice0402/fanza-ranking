@@ -1944,11 +1944,12 @@ check("赤札の見た目: 赤いボタン・10円セールの帯と案内に紙
 # 女優のページと読み物の2列（パソコン 960px〜。連絡 C-017・#205 案A「右に柱」。2026-10-31）: トップと同じ幅の2列・柱は sticky にしない・
 # 読み物は article の箱をなくして並べる・読み物の中身の一覧はスマホでは出さない（スマホの見た目を変えない）
 # ビルドで「clamp(300px, 30%, 380px)」の空白が消えたり、「> 」が「>」になったりするので、ゆるく見る
-check("2列のページ（.page-cols）: トップと同じ幅の2列（左は残り・右は clamp(300px,30%,380px)・すき間48px）で、柱は sticky にしない",
+check("2列のページ（.page-cols）: トップと同じ幅の2列（左は残り・右は clamp(300px,30%,380px)・すき間48px）で、柱は sticky にしない・柱の中の厳選の作品はスマホと同じ小さな形",
       css_has(".page-cols", r"grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s*clamp\(300px,\s*30%,\s*380px\)") and css_has(".page-cols", r"column-gap\s*:\s*48px")
       and not any(re.search(r"position\s*:\s*sticky", b_) for s_, b_ in css_rules if any("col-side" in x_ for x_ in s_))
       and any(re.search(r"\.page-cols\s*>\s*\.yomi$", x_) for s_, b_ in css_rules for x_ in s_ if re.search(r"display\s*:\s*contents", b_))
-      and css_has(".yomi-toc", r"display\s*:\s*none") and css_has(".yomi-toc", r"display\s*:\s*block"))
+      and css_has(".yomi-toc", r"display\s*:\s*none") and css_has(".yomi-toc", r"display\s*:\s*block")
+      and css_has(".page-cols .col-side .pick-card", r"'note note'"))
 # 読み物: 本文（.col-main）→ 柱（中身の一覧 → 厳選の作品）→ 棚 → あわせて読む（柱の続き）の順。中身の一覧は、すべての節へのページ内リンク
 _cols_bad = []
 for _slug, _p in sorted(yomi_pages.items()):

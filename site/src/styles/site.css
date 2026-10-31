@@ -3848,6 +3848,21 @@ a.hist-title {
     align-items: flex-start;
   }
 
+  /* 柱の中の「最初に見るならこの5本」は、柱の幅に合わせてスマホと同じ小さな形（表紙｜題、その下にひとこと → FANZAへ）。
+     パソコンの形（表紙を左に縦に通す）のままだと、ひとことが1行13字ほどに細くなる */
+  .page-cols .col-side .pick-list {
+    gap: 12px;
+  }
+
+  .page-cols .col-side .pick-card {
+    grid-template-columns: 84px minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      'cover head'
+      'note note'
+      'btn btn';
+  }
+
   /* 読み物の中身（節へのページ内リンク）。あわせて読む（.yomi-index）と同じ、罫線で区切った行 */
   .yomi-toc {
     display: block;
