@@ -1,0 +1,37 @@
+[
+ {
+  "path": "/",
+  "width": 390,
+  "issues": [
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 397,
+    "text": "きのう6位から3つ上がった"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 523,
+    "text": "メロディー・雛・マークス、佐久間楓、一場れいか ほか1名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 405,
+    "text": "佐久間楓"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 477,
+    "text": "一場れいか"
+   }
+  ]
+ },
+ {
+  "path": "/",
+  "width": 1280,
+  "issues": []
+ }
+]
