@@ -2,6 +2,8 @@
 // 読み物のページ（/yomimono/<slug>/。2026-10-28 #181。部品は lib/yomimono.js）。
 // パンくず → 見出し → 数えた日の1行 → 導入文 → 節（見出し・段落。年ごとの本数の棒は、その節の1段落目のあと）→ 厳選の作品（ひとことの理由つき）→
 // テーマの作品の棚（人気・評価の高い・いまセール中・新作と予約。毎日のビルドで入れかわる）→ ほかの読み物・関係するジャンルのページ。
+// パソコン（960px〜）は2列（連絡 C-017・#205）: 左に本文（今の幅）、右の柱に この読み物の中身（節へのページ内リンク。パソコンだけ）→ 厳選の作品 → あわせて読む。
+// 棚は下で横いっぱい。スマホの並びは変えない（site.css の .page-cols）。
 // 作品の題は、カードにだけ出す（本文には書かない）。出さない題の作品（未成年を連想させる・無理やりや犯罪を思わせる）は、棚にも厳選にも出さない
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
@@ -57,7 +59,7 @@ const ld = [breadcrumbLd(trail), yomimonoArticleLd(a), yomimonoPicksLd(picks, pa
 
 <Base title={`${a.title}｜${SITE_NAME}`} description={description} path={a.path} ogType="article" jsonLd={ld}>
   {saleShelf && <script is:inline id="sale-early" set:html={inlineScript('/sale.js')} />}
-  <div class="wrap">
+  <div class="wrap page-cols">
     <Breadcrumb trail={trail} />
 
     <article class="yomi">
@@ -66,6 +68,7 @@ const ld = [breadcrumbLd(trail), yomimonoArticleLd(a), yomimonoPicksLd(picks, pa
         <p class="section-note note-source yomi-checked">この読み物の数字は<time datetime={a.checked}>{mdJp(a.checked)}</time>に数えました</p>
       </header>
 
+      <div class="col-main">
       <div class="yomi-lead">
         {a.lead.map((t) => <p class="yomi-text">{t}</p>)}
       </div>
@@ -98,8 +101,17 @@ const ld = [breadcrumbLd(trail), yomimonoArticleLd(a), yomimonoPicksLd(picks, pa
       ))}
 
       <p class="fine">文とひとことは、作品の情報と数字から自動で作成しています（正確さは保証できません。詳細はFANZAの公式ページで）。</p>
+      </div>
 
-      <PickCards picks={picks} id="yomi-picks-title" title={picksTitle} keepVr={a.vr} />
+      <div class="col-side">
+        <nav class="yomi-toc" aria-labelledby="yomi-toc-title">
+          <h2 id="yomi-toc-title" class="section-title">この読み物の中身</h2>
+          <ol class="yomi-toc-list">
+            {a.sections.map((s, n) => <li class="yomi-toc-row"><a class="yomi-toc-link" href={`#yomi-sec-${n + 1}`}>{s.h}</a></li>)}
+          </ol>
+        </nav>
+        <PickCards picks={picks} id="yomi-picks-title" title={picksTitle} keepVr={a.vr} />
+      </div>
     </article>
 
     {a.shelves.map((s) => (
@@ -121,7 +133,7 @@ const ld = [breadcrumbLd(trail), yomimonoArticleLd(a), yomimonoPicksLd(picks, pa
     ))}
 
     {(others.length > 0 || genreLinks.length > 0) && (
-      <section class="section yomi-next" aria-labelledby="yomi-next-title">
+      <section class="section yomi-next col-side-more" aria-labelledby="yomi-next-title">
         <h2 id="yomi-next-title" class="section-title">あわせて読む</h2>
         {others.length > 0 && (
           <ul class="yomi-index">

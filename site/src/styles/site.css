@@ -539,6 +539,19 @@ summary:focus-visible {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
+
+  /* 女優のページ・読み物の左の欄（パソコンの2列。#205）も、トップの左の欄と同じ数 */
+  @media (min-width: 960px) {
+    .page-cols .col-main .shelf {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .page-cols .col-main .shelf {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
 }
 
 /* ---------- 作品カード ---------- */
@@ -3767,6 +3780,117 @@ a.hist-title {
   /* TOP3 は、左の欄の幅いっぱい（大きな画面でも、右にすき間を残さない） */
   .home.has-side .medals {
     max-width: none;
+  }
+}
+
+/* 女優のページと読み物の2列（パソコン 960px〜。連絡 C-017「パソコンの画面でも心地よく」・#205 案A「右に柱」。2026-10-31）:
+   幅と並べ方はトップ（.home.has-side）と同じ。見出し（パンくず・顔と名前・題）は横いっぱい。その下は 左の欄（.col-main）｜右の柱（.col-side → .col-side-more）。
+   左の欄は柱の2つの行をまたぐ（2つめの行は 1fr。柱の2つの欄のあいだに空きができない）。そのあとの出演作品の一覧・読み物の棚は横いっぱい。
+   柱は追いかけてこない（sticky にしない。トップと同じ）。柱の中は「見出し → 中身」で、欄と欄の間は細い線。
+   読み物は <article> が見出しと2つの欄をまたぐので、パソコンでは article の箱をなくして（display: contents）中身を並べる。
+   スマホ（〜959px）は何も変えない（.col-main などは、ただの箱。読み物の中身の一覧 .yomi-toc はパソコンだけ） */
+.yomi-toc {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .page-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(300px, 30%, 380px);
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: 48px;
+    align-items: start;
+  }
+
+  .page-cols > *,
+  .page-cols > .yomi > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  .page-cols > .yomi {
+    display: contents;
+  }
+
+  .page-cols .col-main {
+    grid-column: 1;
+    grid-row: 3 / span 2;
+  }
+
+  .page-cols .col-side {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .page-cols .col-side-more {
+    grid-column: 2;
+    grid-row: 4;
+  }
+
+  /* 左の欄と柱の上の端をそろえる（女優のページ: 柱の「プロフィール」と同じ 28px） */
+  .page-cols .col-main > .section:first-child {
+    margin-top: 28px;
+  }
+
+  /* 柱の欄と欄の間は細い線（トップの .home-side と同じ） */
+  .page-cols .col-side > section.section,
+  .page-cols .col-side-more > section.section,
+  .page-cols > section.section.col-side-more {
+    margin-top: 28px;
+    padding-top: 26px;
+    border-top: 1px solid var(--line);
+  }
+
+  /* 柱の中の見出しの下の注記は、見出しの下の行に（せまい幅で横に並べると、そろわない） */
+  .page-cols .col-side .section-head,
+  .page-cols .col-side-more .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* 柱の中の「最初に見るならこの5本」は、柱の幅に合わせてスマホと同じ小さな形（表紙｜題、その下にひとこと → FANZAへ）。
+     パソコンの形（表紙を左に縦に通す）のままだと、ひとことが1行13字ほどに細くなる */
+  .page-cols .col-side .pick-list {
+    gap: 12px;
+  }
+
+  .page-cols .col-side .pick-card {
+    grid-template-columns: 84px minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      'cover head'
+      'note note'
+      'btn btn';
+  }
+
+  /* 読み物の中身（節へのページ内リンク）。あわせて読む（.yomi-index）と同じ、罫線で区切った行 */
+  .yomi-toc {
+    display: block;
+    margin-top: 18px;
+  }
+
+  .yomi-toc-list {
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--line);
+  }
+
+  .yomi-toc-row {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .yomi-toc-link {
+    display: block;
+    padding: 10px 0;
+    color: var(--paper);
+    font-size: 14px;
+    line-height: 1.6;
+    text-underline-offset: 3px;
+  }
+
+  .yomi-sec .section-title {
+    scroll-margin-top: 16px;
   }
 }
 
