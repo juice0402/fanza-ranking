@@ -1949,7 +1949,7 @@ check("2列のページ（.page-cols）: トップと同じ幅の2列（左は�
       and not any(re.search(r"position\s*:\s*sticky", b_) for s_, b_ in css_rules if any("col-side" in x_ for x_ in s_))
       and any(re.search(r"\.page-cols\s*>\s*\.yomi$", x_) for s_, b_ in css_rules for x_ in s_ if re.search(r"display\s*:\s*contents", b_))
       and css_has(".yomi-toc", r"display\s*:\s*none") and css_has(".yomi-toc", r"display\s*:\s*block")
-      and css_has(".page-cols .col-side .pick-card", r"'note note'"))
+      and css_has(".page-cols .col-side .pick-card", r"[\"']note\s+note[\"']"))  # ビルドで ' が " になる
 # 読み物: 本文（.col-main）→ 柱（中身の一覧 → 厳選の作品）→ 棚 → あわせて読む（柱の続き）の順。中身の一覧は、すべての節へのページ内リンク
 _cols_bad = []
 for _slug, _p in sorted(yomi_pages.items()):
