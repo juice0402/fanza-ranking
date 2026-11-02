@@ -9,6 +9,11 @@ export const SITE_URL = 'https://av-sale-guide.com'; // 末尾にスラッシュ
 // SITE_URL を正式な住所（canonical）にした日（2026-10-27 #148）。それより前のページは canonical が旧 pages.dev を指していたので、
 // sitemap の lastmod はこの日より古くしない（Google に読み直してもらうため。11/2 Search Console で「代替ページ」のまま 10/24 から読まれていなかった）
 export const SITE_URL_SINCE = '2026-10-27';
+// 前の住所（10/27 から Bulk Redirects で SITE_URL へ 301）。/sitemap-pages-dev.xml に、sitemap.xml と同じページを前の住所で並べる
+// （Google の「サイトの移転」の手順の、古い URL のサイトマップ。Google に前の住所を読み直してもらい、転送に気づいてもらう。
+// 11/2 Search Console で、作品ページは前の住所が「正式」のまま、最後に読まれたのが 10/26＝転送の前だった）。
+// Search Console に送るのは1回だけ。前の住所が検索から消えたら（数か月）、この行とページを消してよい
+export const OLD_SITE_URL = 'https://fanza-ranking.pages.dev';
 
 // Google Search Console の所有権の確認用コード（<meta> の content の値）。公開されても問題のないコードです。空にすると出力しません
 export const GOOGLE_SITE_VERIFICATION = 'Sr-kZdXB7gQmvK32Zc6vaSY6Gqdn0m_BI2pCHN3RMPk';

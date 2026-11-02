@@ -8,6 +8,7 @@ import {
   SITE_ALT_NAMES,
   SITE_URL,
   SITE_URL_SINCE,
+  OLD_SITE_URL,
   HOME_RELEASED_LIMIT,
   HOME_UPCOMING_LIMIT,
   HOME_UPCOMING_SHOWN,
@@ -20,7 +21,7 @@ import {
 } from '../config.js';
 
 // ページ側が items.js からまとめて読めるように、そのまま出し直しています
-export { SITE_NAME, SITE_URL, SITE_URL_SINCE, HOME_RELEASED_LIMIT, HOME_UPCOMING_LIMIT, HOME_UPCOMING_SHOWN, ARCHIVE_PAGE_SIZE, NEW_BADGE_DAYS, ENTITY_MIN_ITEMS, RANKING_SHOWN, CAST_LIMIT };
+export { SITE_NAME, SITE_URL, SITE_URL_SINCE, OLD_SITE_URL, HOME_RELEASED_LIMIT, HOME_UPCOMING_LIMIT, HOME_UPCOMING_SHOWN, ARCHIVE_PAGE_SIZE, NEW_BADGE_DAYS, ENTITY_MIN_ITEMS, RANKING_SHOWN, CAST_LIMIT };
 
 import { createHash } from 'node:crypto';
 
@@ -370,6 +371,14 @@ export function buildSitemap(entries, siteUrl = SITE_URL, since = SITE_URL_SINCE
     })
     .join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${rows}\n</urlset>\n`;
+}
+
+/**
+ * 前の住所のサイトマップ（/sitemap-pages-dev.xml。2026-11-02）。sitemap.xml の中身の <loc> の住所だけを、前の住所に置きかえる
+ * （ページの並び・lastmod は同じ。前の住所は 301 で同じパスの今の住所へ飛ぶので、Google が読み直すと転送に気づく）
+ */
+export function buildOldSitemap(xml, siteUrl = SITE_URL, oldUrl = OLD_SITE_URL) {
+  return String(xml).split(`<loc>${escapeXml(siteUrl)}/`).join(`<loc>${escapeXml(oldUrl)}/`);
 }
 
 /** robots.txt の中身（検索エンジン向け。sitemap の場所を教える） */
