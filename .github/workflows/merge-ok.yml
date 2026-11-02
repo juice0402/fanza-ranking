@@ -1,0 +1,54 @@
+name: マージの印
+
+# ラベル merge-ok（しょーくんの OK。司令塔が、しょーくんの「マージして」のあとにだけ付ける）の PR を、
+# 点検（CI）が通ったら GitHub が squash でマージし、公開（deploy.yml）を main で1回動かす（scripts/merge_ok.py。2026-11-02）。
+# GITHUB_TOKEN のマージでは push で動く workflow（Deploy）が動かないため、workflow_dispatch で動かす。公開の結果は見張り（mihari.yml）が見る。
+# merge-ok の付いていない PR はさわらない（予約タスクが自分でマージするデータの PR も）。
+# 手で試すときは Actions の画面の「Run workflow」（dry_run が true ならマージせず、するはずのことをログに出す）
+on:
+  pull_request:
+    types: [labeled]
+  workflow_run:
+    # PR の点検の workflow の name:（ci.yml）。点検が終わったら見直す（name を変えたら、ここも変える）
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'true ならマージせず、するはずのことをログに出すだけ'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+  checks: read
+  statuses: read
+
+jobs:
+  merge-ok:
+    name: merge-ok  # check-run の名前（scripts/merge_ok.py の SELF_CHECK。点検に数えない）
+    # merge-ok が付いたとき・PR の点検が終わったとき・手で動かしたときだけ（ほかのラベルでは動かない）
+    if: >-
+      (github.event_name == 'pull_request' && github.event.label.name == 'merge-ok') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request') ||
+      github.event_name == 'workflow_dispatch'
+    # 同時に2つ動かさない（ジョブに付けるので、ほかのラベルの回は順番待ちに入らない）
+    concurrency:
+      group: merge-ok
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # ふだんは1分かからない。点検のない PR を10分待つときだけ長くなる
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}  # 判定はいつも main のもの（PR の中の書きかえで動きが変わらないように）
+          sparse-checkout: scripts/merge_ok.py  # データは取ってこない（すぐ終わるように）
+          sparse-checkout-cone-mode: false
+      - name: Merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MERGE_OK_DRY_RUN: ${{ inputs.dry_run }}
+        run: python3 scripts/merge_ok.py
