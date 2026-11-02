@@ -7,6 +7,7 @@ import {
   SITE_NAME,
   SITE_ALT_NAMES,
   SITE_URL,
+  SITE_URL_SINCE,
   HOME_RELEASED_LIMIT,
   HOME_UPCOMING_LIMIT,
   HOME_UPCOMING_SHOWN,
@@ -19,7 +20,7 @@ import {
 } from '../config.js';
 
 // ページ側が items.js からまとめて読めるように、そのまま出し直しています
-export { SITE_NAME, SITE_URL, HOME_RELEASED_LIMIT, HOME_UPCOMING_LIMIT, HOME_UPCOMING_SHOWN, ARCHIVE_PAGE_SIZE, NEW_BADGE_DAYS, ENTITY_MIN_ITEMS, RANKING_SHOWN, CAST_LIMIT };
+export { SITE_NAME, SITE_URL, SITE_URL_SINCE, HOME_RELEASED_LIMIT, HOME_UPCOMING_LIMIT, HOME_UPCOMING_SHOWN, ARCHIVE_PAGE_SIZE, NEW_BADGE_DAYS, ENTITY_MIN_ITEMS, RANKING_SHOWN, CAST_LIMIT };
 
 import { createHash } from 'node:crypto';
 
@@ -355,12 +356,16 @@ export function listLastmod(items, today) {
   return latest;
 }
 
-/** sitemap.xml の中身。entries は '/path/' の文字列、または { path, lastmod } （lastmod は YYYY-MM-DD の形のときだけ出す） */
-export function buildSitemap(entries, siteUrl = SITE_URL) {
+/**
+ * sitemap.xml の中身。entries は '/path/' の文字列、または { path, lastmod } （lastmod は YYYY-MM-DD の形のときだけ出す）。
+ * lastmod は since（SITE_URL を正式な住所にした日）より古くしない（その日に全ページの canonical が変わったため。config.js の SITE_URL_SINCE）
+ */
+export function buildSitemap(entries, siteUrl = SITE_URL, since = SITE_URL_SINCE) {
   const rows = entries
     .map((e) => {
       const { path, lastmod } = typeof e === 'string' ? { path: e, lastmod: '' } : e;
-      const mod = isDay(lastmod) ? `<lastmod>${lastmod}</lastmod>` : '';
+      const day = isDay(lastmod) && isDay(since) && lastmod < since ? since : lastmod;
+      const mod = isDay(day) ? `<lastmod>${day}</lastmod>` : '';
       return `  <url><loc>${escapeXml(siteUrl + path)}</loc>${mod}</url>`;
     })
     .join('\n');

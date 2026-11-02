@@ -288,6 +288,17 @@ print("\n■ sitemap.xml")
 sitemap_path = os.path.join(DIST, "sitemap.xml")
 sm_paths = []  # sitemap に載っているURLのパス
 lastmod_of = {}
+# sitemap の lastmod は、正式な住所にした日（config.js の SITE_URL_SINCE）より古くしない（items.js の buildSitemap。2026-11-02）
+SITE_URL_SINCE = re.search(r"export const SITE_URL_SINCE = '(\d{4}-\d{2}-\d{2})';", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1)
+
+
+def sm_day(d):
+    """データの日付を、sitemap の lastmod に出る形にする（SITE_URL_SINCE より古ければその日）"""
+    d = str(d or "")
+    return SITE_URL_SINCE if re.match(r"^\d{4}-\d{2}-\d{2}$", d) and d < SITE_URL_SINCE else d
+
+
+
 check("sitemap.xml がある", os.path.isfile(sitemap_path))
 if os.path.isfile(sitemap_path):
     sitemap_xml = read(sitemap_path)
@@ -299,8 +310,10 @@ if os.path.isfile(sitemap_path):
     lastmod_of = {urlparse(u).path: m for u, m in rows}
     sm_paths = [urlparse(u).path for u in locs]
     indexable_items = {c for c, x in valid.items() if has_comment(x)}
-    wrong = [c for c in indexable_items if lastmod_of.get(f"/item/{c}/") != str(valid[c].get("updated"))]
-    check("sitemap の作品ページの lastmod が、データの updated と同じ", not wrong, wrong[:3])
+    wrong = [c for c in indexable_items if lastmod_of.get(f"/item/{c}/") != sm_day(valid[c].get("updated"))]
+    check("sitemap の作品ページの lastmod が、データの updated と同じ（正式な住所にした日より古ければその日）", not wrong, wrong[:3])
+    old = [p for p, m in lastmod_of.items() if m and m < SITE_URL_SINCE]
+    check(f"sitemap の lastmod に、正式な住所にした日（{SITE_URL_SINCE}）より古い日が無い", not old, old[:3])
     check("sitemap にトップがある", any(urlparse(u).path == "/" for u in locs))
     sm_items = {p[len("/item/"):-1] for p in sm_paths if p.startswith("/item/")}
     check(f"sitemap の作品ページ = 作品ページがあり、コメントのある作品（{len(indexable_items)}本）", sm_items == indexable_items, (sorted(indexable_items - sm_items)[:3], sorted(sm_items - indexable_items)[:3]))
@@ -449,7 +462,7 @@ else:
                 pass
         art = [a for a in arts if isinstance(a, dict) and a.get("@type") == "Article"]
         check(f"{week}: 記事の構造化データ（Article）の公開日がデータの written と同じ", len(art) == 1 and art[0].get("datePublished") == r["written"], art[:1])
-        check(f"{week}: sitemap に入っていて lastmod が公開日", f"/weekly/{week}/" in sm_paths and lastmod_of.get(f"/weekly/{week}/") == r["written"], lastmod_of.get(f"/weekly/{week}/"))
+        check(f"{week}: sitemap に入っていて lastmod が公開日", f"/weekly/{week}/" in sm_paths and lastmod_of.get(f"/weekly/{week}/") == sm_day(r["written"]), lastmod_of.get(f"/weekly/{week}/"))
         check(f"{week}: 本数は「当サイトで紹介した」数と分かる書き方（FANZA全体の発売本数と誤解されない）", html.count("当サイトで紹介した") >= 2 and "FANZA全体の発売本数ではありません" in html, html.count("当サイトで紹介した"))
         # 注目の作品は、こちらから勧める欄なので、未成年を連想させるタイトルの作品は出さない（2026-10-07）
         minor_picks = [q["cid"] for q in (r.get("picks") or []) if isinstance(q, dict) and q.get("cid") in valid and is_minor_title(valid[q["cid"]].get("title"))]
@@ -565,7 +578,7 @@ for _slug, _p in sorted(yomi_pages.items()):
     if str(_a.get("description") or "").strip():
         _d = re.search(r'<meta name="description" content="([^"]*)"', _raw)
         check(f"{_slug}: 説明文（description）はデータの description", bool(_d) and htmllib.unescape(_d.group(1)) == _a["description"].strip()[:300])
-    check(f"{_slug}: sitemap に入っていて lastmod が数えた日", _url in sm_paths and lastmod_of.get(_url) == _ck, lastmod_of.get(_url))
+    check(f"{_slug}: sitemap に入っていて lastmod が数えた日", _url in sm_paths and lastmod_of.get(_url) == sm_day(_ck), lastmod_of.get(_url))
     if "data-sale-end=" in _raw:
         check(f"{_slug}: いまセール中の棚があるときは、終わったら隠すスクリプト（sale.js）が先に入っている", sale_js_ok(_raw))
 # 入口: ジャンルのページ・VRの売り場のトップの1行は、読み物のページがあるものだけ（リンク切れは全ページの点検でも見る）
