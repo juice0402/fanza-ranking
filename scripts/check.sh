@@ -56,6 +56,7 @@ run "トークンを節約する道具（待つ道具・テストの出力・一
 
 run "週1回の見張り番 (Python)" python3 tests/test_health.py
 run "見張り（公開・更新が失敗したら issue） (Python)" python3 tests/test_mihari.py
+run "マージの印（merge-ok の PR を点検が通ったらマージ） (Python)" python3 tests/test_merge_ok.py
 
 run "サイトの部品 (Node.js)" node tests/test_items.mjs
 
