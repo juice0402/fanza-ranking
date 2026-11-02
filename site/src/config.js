@@ -6,6 +6,9 @@ export const SITE_NAME = 'FANZAセール情報'; // 2026-10-22 に「FANZA新作
 // ホーム画面に追加したときの短い名前（site.webmanifest の short_name）と、前の名前を入れる
 export const SITE_ALT_NAMES = ['FANZAセール', 'FANZA新作情報'];
 export const SITE_URL = 'https://av-sale-guide.com'; // 末尾にスラッシュは付けない
+// SITE_URL を正式な住所（canonical）にした日（2026-10-27 #148）。それより前のページは canonical が旧 pages.dev を指していたので、
+// sitemap の lastmod はこの日より古くしない（Google に読み直してもらうため。11/2 Search Console で「代替ページ」のまま 10/24 から読まれていなかった）
+export const SITE_URL_SINCE = '2026-10-27';
 
 // Google Search Console の所有権の確認用コード（<meta> の content の値）。公開されても問題のないコードです。空にすると出力しません
 export const GOOGLE_SITE_VERIFICATION = 'Sr-kZdXB7gQmvK32Zc6vaSY6Gqdn0m_BI2pCHN3RMPk';

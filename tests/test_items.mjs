@@ -95,7 +95,14 @@ const xml2 = L.buildSitemap([
   { path: '/item/y/', lastmod: '昨日' },
   { path: '/item/z/', lastmod: '2026-10-3' },
   { path: '/item/w/' },
+], undefined, '');
+const xml3 = L.buildSitemap([
+  { path: '/old/', lastmod: '2026-10-03' },
+  { path: '/new/', lastmod: '2026-11-01' },
+  { path: '/none/', lastmod: '' },
 ]);
+check('sitemap: 正式な住所にした日（SITE_URL_SINCE）より古い lastmod は、その日にそろえる', xml3.includes(`/old/</loc><lastmod>${L.SITE_URL_SINCE}</lastmod>`) && L.SITE_URL_SINCE === '2026-10-27', xml3);
+check('sitemap: それより新しい lastmod はそのまま・無いものは無いまま', xml3.includes('/new/</loc><lastmod>2026-11-01</lastmod>') && xml3.includes('/none/</loc></url>'), xml3);
 check('sitemap: 正しい日付だけ lastmod を出す', (xml2.match(/<lastmod>/g) || []).length === 1 && xml2.includes('<loc>https://av-sale-guide.com/</loc><lastmod>2026-10-03</lastmod></url>'), xml2);
 check('sitemap: 日付が空・壊れていても、そのページ自体は載せる', ['/item/x/', '/item/y/', '/item/z/', '/item/w/'].every((p) => xml2.includes(`<loc>https://av-sale-guide.com${p}</loc></url>`)), xml2);
 check('isDay: 形の判定', L.isDay('2026-10-03') && !L.isDay('2026-10-3') && !L.isDay('') && !L.isDay(undefined) && !L.isDay('2026-10-03 00:00:00'));
