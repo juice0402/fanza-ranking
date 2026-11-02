@@ -1,0 +1,49 @@
+name: 見張り
+
+# 公開・毎日の更新・セールの読み直し・10円セール・週1回の見張り番が失敗したら、issue（ラベル mihari＝しょーくんに知らせるだけ）を作る。
+# 次に成功したら「直った」とコメントして閉じる。cancelled（あとの公開に含まれた）は無視（scripts/mihari.py。2026-11-02）。
+# Claude を使わない。前は Claude の予約タスク「FANZA 公開の失敗の見張り」（1日2回）が見ていた。毎朝の Claude の「朝の確認」が issue を知らせる。
+# 手で試すときは Actions の画面の「Run workflow」（dry_run が true なら issue を作らず、作るはずの題と本文をログに出す。
+# run_id を入れると、その実行だけを見る。空なら、見張る workflow ごとにいちばん新しい実行）
+on:
+  workflow_run:
+    # 見張る workflow の name:（scripts/mihari.py の WATCH と同じものを並べる。name を変えたら、ここも変える）
+    workflows: [Deploy, Daily FANZA Update, Sale Refresh (daytime), 10-yen Sale Check, Health (weekly)]
+    types: [completed]
+    branches: [main]  # プレビュー（ブランチ）の公開は見ない
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'true なら issue を作らず、ログに出すだけ'
+        type: boolean
+        default: true
+      run_id:
+        description: '見る実行の番号（空なら、見張る workflow ごとにいちばん新しい実行）'
+        type: string
+        required: false
+
+permissions:
+  issues: write
+  contents: read
+  actions: read
+  checks: read  # 失敗の注記（check-runs の annotations）を読むため
+
+concurrency:
+  group: mihari-${{ github.event.workflow_run.workflow_id || 'manual' }}
+  cancel-in-progress: false
+
+jobs:
+  mihari:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/mihari.py  # データは取ってこない（すぐ終わるように）
+          sparse-checkout-cone-mode: false
+      - name: Watch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MIHARI_DRY_RUN: ${{ inputs.dry_run }}
+          MIHARI_RUN_ID: ${{ inputs.run_id }}
+        run: python3 scripts/mihari.py

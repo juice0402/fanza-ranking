@@ -55,6 +55,7 @@ run "保存データの形式" python3 tests/test_data.py
 run "トークンを節約する道具（待つ道具・テストの出力・一覧の出力） (Python)" python3 tests/test_tools.py
 
 run "週1回の見張り番 (Python)" python3 tests/test_health.py
+run "見張り（公開・更新が失敗したら issue） (Python)" python3 tests/test_mihari.py
 
 run "サイトの部品 (Node.js)" node tests/test_items.mjs
 

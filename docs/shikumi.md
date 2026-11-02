@@ -21,6 +21,7 @@ CLAUDE.md の「公開」「仕組み」「どこに何があるか」「コマ�
 | 毎日 10:12・12:12・16:12・20:12 | `ten-yen.yml`: 10円セールが変わったときだけ保存して公開 | `ten_yen.json` |
 | 毎日 4:23 | `actress-history.yml`: 女優の歩み（出演者ごとの全作品を数える。`scripts/actress_history.py`。1回600回まで。公開はしない） | `actress_history.json` |
 | 毎週月曜 0:01 | `health.yml`: 見張り番（この7日の更新・公開・コメント・過去作品の数・リポジトリの大きさ。Claude を使わない。おかしいときだけ ⚠️ と GitHub の知らせ） | なし（読むだけ） |
+| 公開・更新などが終わるたび | `mihari.yml`: 見張り（失敗したら issue。次の成功で閉じる。下の「見張り（mihari.yml）」） | なし（issue だけ） |
 | 毎週月曜 0:50 | Claude の予約タスク: 週のまとめ記事（`docs/claude-roundups.md`）。月が変わって最初の月曜は、月のまとめ記事（`docs/claude-monthly.md`）も同じPRで。読み物を1本（新しいテーマか90日をこえた書き直し。`docs/claude-yomimono.md`）。見張り番の結果も報告 | `roundups.json`・`monthly.json`・`yomimono.json` |
 
 週1回の仕事は、日曜から月曜に日付が変わったあとにそろえる（運営者の希望。2026-10-13）: 所属事務所・読みがなも、月曜 0:05 の毎日の更新で集める（月曜に集められなかったときは7日たった日）。
@@ -49,9 +50,16 @@ CLAUDE.md の「公開」「仕組み」「どこに何があるか」「コマ�
 - `scripts/ten_yen.py` — 10円セール ／ `scripts/readings.py` — 読みがな ／ `scripts/genre_tops.py` — ジャンルの人気TOP20
 - `scripts/agency_links.py`・`agency_events.py` — 所属事務所とSNS・女優のイベント情報（事務所の公式サイトから。守ること9）
 - `scripts/health.py`（`health.yml`）— 週1回の見張り番（毎週月曜 0:01。Claude を使わない。`--last` で結果を1行ずつ）
+- `scripts/mihari.py`（`mihari.yml`）— 見張り（公開・更新が失敗したら issue。下の「見張り（mihari.yml）」）
 - `scripts/screens.mjs`（`screens.yml`）— 画面の写真と形のくずれの点検（GitHub の上で撮る）／ `scripts/probe_api.py`（`probe-api.yml`）— API の応答の形を調べる
-- `.github/workflows/` — update・sale-refresh・ten-yen・ci・deploy（`scripts/deploy_pages.sh`）・health（見張り番）・refresh-data（取り直しだけ。手動）・probe-api・screens
+- `.github/workflows/` — update・sale-refresh・ten-yen・ci・deploy（`scripts/deploy_pages.sh`）・health（見張り番）・mihari（見張り）・refresh-data（取り直しだけ。手動）・probe-api・screens
 - `site/public/` — ブラウザで動く小さなスクリプト（作品検索・女優検索・売り場の検索・VR/単体の絞り込み・お気に入り・運命の作品・セール・拡大表示・サンプル動画）と `_headers`・`_redirects`
+
+## 見張り（mihari.yml）
+
+- 見るもの: main の公開（Deploy）・毎日の更新・セールの読み直し・10円セール・週1回の見張り番。failure・timed_out で issue を作り、次の成功で「直った」とコメントして閉じる（cancelled は無視）。`scripts/mihari.py`（Claude を使わない。2026-11-02 から。前の Claude の予約タスク「FANZA 公開の失敗の見張り」の代わり）
+- issue のラベルは `mihari`（しょーくんに知らせるだけ。毎朝の Claude の「朝の確認」が知らせる）。同じ題の開いた issue があれば作らず、1日1回だけ「まだ続いている」
+- いじるとき: 見張る workflow の name を変えたら、`mihari.yml` の `workflows:` と `scripts/mihari.py` の `WATCH` もそろえる（`tests/test_mihari.py` が見る）。試すのは Actions の「見張り」→「Run workflow」（`dry_run` が true なら書かない）
 
 ## コード・デザインのPRのプレビュー
 
