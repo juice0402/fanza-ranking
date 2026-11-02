@@ -453,6 +453,10 @@ JSON読み込み。`curated`（毎日の更新で載せた作品）/`catalog`（
 
 **週1回の見張り番**（2026-10-13。運営者の希望「週1回の点検にしよう。タイミングは日曜日から月曜日に日付が変わるとき」。前は Claude の予約タスク（過去作品の点検・毎月のまとめの半年ごとのリポジトリの大きさ）が見ていた。Claude を使わない＝トークンの節約）。毎週月曜 0:01（日本時間）に、この7日（前の月曜〜日曜）を見る: 「データ更新: 日付」の記録がそろっているか・main の `deploy.yml`・`update.yml`・`sale-refresh.yml`・`ten-yen.yml` のいちばん新しい実行が失敗していないか／7日の失敗が3回以上ないか（プレビューは数えない）・公開が30分をこえていないか・コメントの仕上げ（`claude/comments-…`）が Merge された日が5日以上あるか・コメントの無い過去作品が `catalog_state.json` の limit の1.3倍をこえて7日前より減っていないか（深さを浅くしたあとは一回りごとに少しずつ外れるので、減っていれば注意しない）・リポジトリが500MB 以上か。注意は `::warning title=見張り番::…` の注釈にして、実行を失敗にする（GitHub から知らせが届く）。問題が無ければ `::notice`。実行の要約に表。サイトのデータには書かない。`python3 scripts/health.py --last` は、いちばん新しい見張りの注釈を1行ずつ出す（毎週月曜 0:50 の Claude の予約タスクが報告に書く）。`tests/test_health.py`
 
+#### `scripts/mihari.py` / `.github/workflows/mihari.yml`
+
+**見張り**（2026-11-02 司令塔「見張りをサイトのプログラムにする」。前は Claude の予約タスク「FANZA 公開の失敗の見張り」が1日2回見ていた。Claude を使わない＝トークンの節約）。main の `deploy.yml`・`update.yml`・`sale-refresh.yml`・`ten-yen.yml`・`health.yml` が終わるたび（`workflow_run`）に動く。failure・timed_out なら issue（題「【見張り】公開が失敗した」など・ラベル `mihari`）を作る。本文は、何が止まったか・いつ・失敗した実行の URL・最後にうまくいった時刻とそのあとの失敗の回数・失敗したジョブとステップ・失敗の注記（はじめの3つ・200字まで）・見張り番のときは `見張り番` の注意（ログの全体は貼らない）。同じ題の開いた issue があれば作らず、その日（日本時間）にまだなら「まだ続いている」を1つだけ。成功なら、同じ題の開いた issue に「直った」とコメントして閉じる。cancelled は無視。見張る workflow を足す・name を変えるときは、`WATCH` と `mihari.yml` の `workflows:` の両方を直す（`tests/test_mihari.py` が突き合わせる）。手で試すときは「Run workflow」（`dry_run`・`run_id`）。権限は issues の書き込みと読むだけ（新しい Secrets は使わない）。サイトのデータには書かない。`tests/test_mihari.py`
+
 #### `scripts/wait_run.py`
 
 **GitHub の実行が終わるまで待って、結果を1行で出す道具**（2026-10-13。トークンの節約）。Claude が「終わった？」と何度も見に行くと、そのたびに会話の全部を読み直すので、待つのはこの中（30秒ごと・1回に540秒まで＝Claude の Bash の上限10分より短く）。`update`（今日のデータ更新の記録が main にあるか＝`already_updated.sh`。まだなら、動いている `update.yml` を待つ。動いていなくて、今日の実行も無ければ、1回だけ動かす。今日の実行が成功で終わっていれば、記録が無くても動かし直さない＝Gemini を二重に使わない。失敗していれば ❌）・`ci <sha>`（そのコミットの check。失敗なら注釈＝失敗の理由を10行まで）・`deploy <sha>`（main の `deploy.yml`。cancelled＝あとの Merge の公開に含まれたときは、いちばん新しい公開の結果。失敗なら失敗した手順の名前）。終わりの印: 0 成功・1 失敗・3 まだ（もう一度）・2 使い方の間違い／GitHub に3回続けて聞けない。予約タスクの手順書（`docs/claude-*.md`）が使う。標準ライブラリだけ。`tests/test_tools.py`（GitHub への問い合わせは、にせものに差しかえる）
