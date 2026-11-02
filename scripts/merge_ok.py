@@ -9,13 +9,15 @@ merge-ok の付いていない PR は絶対にマージしない（予約タス�
   3. head の check-runs と commit statuses: まだ終わっていなければ待つ（次の workflow_run で見直す）。
      失敗があれば、コメントして merge-ok を外し merge-blocked を付ける。check-runs が1つもないときは、ラベルから10分たったらマージしてよい
   4. mergeable: null なら5秒待って2回まで見直す。false（main とぶつかった）ならコメントして merge-blocked
-  5. squash でマージ（題は「<PR の題> (#番号)」・本文は空）
+  5. squash でマージ（題は「<PR の題> (#番号)」・本文は「マージの印（merge-ok）で #番号 をマージ」。
+     本文を空にすると、GitHub がブランチのコミットの一覧で埋めることがあるため）
   6. 1本でもマージしたら、最後に1回だけ公開（deploy.yml）を ref=main で動かす（GITHUB_TOKEN のマージでは push で動く workflow が動かないため）。
      公開の結果は待たない（見張り mihari.yml が見る）
   7. ラベル merge-ok・merge-blocked がなければ作る
 
 使い方（merge-ok.yml から。GitHub の鍵 GH_TOKEN が要る）:
   python3 scripts/merge_ok.py   MERGE_OK_DRY_RUN=true ならマージ・コメント・ラベル・公開をせず、するはずのことを出す
+                                MERGE_OK_PR=番号 なら、その PR だけ見る（空なら merge-ok の付いた PR を全部）
 標準ライブラリだけ。テストは tests/test_merge_ok.py
 """
 import json
@@ -160,6 +162,11 @@ def commit_title(pr):
     return f"{pr.get('title', '')} (#{pr.get('number')})"
 
 
+def commit_message(pr):
+    """squash の本文（空にしない。空だと GitHub がブランチのコミットの一覧で埋めることがあるため）"""
+    return f"マージの印（merge-ok）で #{pr.get('number')} をマージ"
+
+
 def has_label(pr, name):
     return any(lb.get("name") == name for lb in pr.get("labels") or [])
 
@@ -234,7 +241,7 @@ def process(pr, open_prs, dry, now):
     if full.get("mergeable") is False:
         block(n, "main とぶつかったのでマージしなかった。司令塔で main を取りこむ", dry)
         return "blocked", None
-    body = {"merge_method": "squash", "sha": sha, "commit_title": commit_title(pr), "commit_message": ""}
+    body = {"merge_method": "squash", "sha": sha, "commit_title": commit_title(pr), "commit_message": commit_message(pr)}
     if dry:
         out(f"（ためし）#{n} を squash でマージするはず（{text}。題「{body['commit_title']}」）")
         return "merged", None
@@ -253,14 +260,15 @@ def process(pr, open_prs, dry, now):
     return "merged", None
 
 
-def run_once(dry, now=None):
-    """1回ぶん見る → (マージした番号, いちばん早く10分たつまでの秒数 or None, 失敗があったか)"""
+def run_once(dry, now=None, only=None):
+    """1回ぶん見る → (マージした番号, いちばん早く10分たつまでの秒数 or None, 失敗があったか)。
+    only（PR の番号）があれば、その PR だけ見る（それでも merge-ok が無ければマージしない）"""
     now = now or utcnow()
     prs = gh_all(f"repos/{REPO}/pulls?state=open")
-    open_prs = {p["number"]: p for p in prs}
-    marked = sorted((p for p in prs if has_label(p, OK["name"])), key=lambda p: p["number"])
+    open_prs = {p["number"]: p for p in prs}  # 順番の指定は、ほかの開いている PR も見る
+    marked = sorted((p for p in prs if has_label(p, OK["name"]) and only in (None, p["number"])), key=lambda p: p["number"])
     if not marked:
-        out(f"{OK['name']} の付いた PR はない")
+        out(f"{OK['name']} の付いた PR はない" + (f"（#{only} だけ見た）" if only else ""))
     merged, grace, error = [], [], False
     for pr in marked:
         try:
@@ -287,15 +295,20 @@ def publish(dry):
 
 def main():
     dry = os.environ.get("MERGE_OK_DRY_RUN", "").lower() == "true"
+    only = os.environ.get("MERGE_OK_PR", "").strip()
+    if only and not only.isdigit():
+        out("MERGE_OK_PR は数字だけ")
+        return 2
+    only = int(only) if only else None
     if dry:
         out("ためし（dry_run）: マージ・コメント・ラベル・公開はしない")
     else:
         ensure_labels()
-    merged, grace, error = run_once(dry)
+    merged, grace, error = run_once(dry, only=only)
     if grace and not dry:  # 点検のない PR: 10分たつまでここで待って、もう1回だけ見る
         out(f"点検（check-runs）のない PR があるので、{grace} 秒待って見直す")
         sleep(min(grace, GRACE) + 5)
-        more, _, error2 = run_once(dry)
+        more, _, error2 = run_once(dry, only=only)
         merged += more
         error = error or error2
     if merged:

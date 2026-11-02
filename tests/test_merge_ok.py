@@ -142,7 +142,7 @@ def fake(answers):
     return gh, calls
 
 
-def run(answers, dry=False, fn="run_once"):
+def run(answers, dry=False, fn="run_once", only=None):
     global SLEPT
     SLEPT = []
     gh, calls = fake(answers)
@@ -151,9 +151,10 @@ def run(answers, dry=False, fn="run_once"):
     with redirect_stdout(buf):
         if fn == "main":
             os.environ["MERGE_OK_DRY_RUN"] = "true" if dry else ""
+            os.environ["MERGE_OK_PR"] = str(only or "")
             res = M.main()
         else:
-            res = M.run_once(dry, NOW)
+            res = M.run_once(dry, NOW, only)
     return res, calls, buf.getvalue()
 
 
@@ -180,9 +181,23 @@ check("ほかのラベルの PR もマージしない", writes(calls) == [], cal
 
 res, calls, log = run(ans([pr(7, "", "claude/a")]))
 put = [c for c in calls if c[0] == "PUT"]
-check("点検が通った → squash でマージ（sha・題・本文は空）", res[0] == [7] and put == [("PUT", f"{R}/pulls/7/merge", {
-    "merge_method": "squash", "sha": "sha7", "commit_title": "題7 (#7)", "commit_message": ""})], put)
+check("点検が通った → squash でマージ（sha・題・本文は空にしない）", res[0] == [7] and put == [("PUT", f"{R}/pulls/7/merge", {
+    "merge_method": "squash", "sha": "sha7", "commit_title": "題7 (#7)", "commit_message": "マージの印（merge-ok）で #7 をマージ"})], put)
 check("check-runs は filter=latest で全部（100件ずつ）", any(c[1].startswith(f"{R}/commits/sha7/check-runs?filter=latest&per_page=100") for c in calls), calls)
+
+check("本文は空にしない", all(c[2]["commit_message"].strip() for c in put), put)
+
+res, calls, log = run(ans([pr(3), pr(7)]), only=7)
+check("番号を指定 → その PR だけ見る", res[0] == [7] and not any("sha3" in c[1] for c in calls), calls)
+res, calls, log = run(ans([pr(3, labels=()), pr(7)]), only=3)
+check("番号を指定しても、merge-ok が無ければマージしない", res[0] == [] and writes(calls) == [], calls)
+res, calls, log = run(ans([pr(9, "#3 のあとにマージ"), pr(3, labels=())]), only=9)
+check("番号を指定しても、順番の指定はほかの開いている PR で見る", res[0] == [] and "PR #3 がまだ開いている" in log, log)
+res, calls, log = run(ans([pr(3), pr(4)]), fn="main", only=4)
+check("番号を指定（main）→ その PR だけマージして公開1回", [c[1] for c in calls if c[0] == "PUT"] == [f"{R}/pulls/4/merge"]
+      and len([c for c in calls if c[1].endswith("/dispatches")]) == 1, calls)
+res, calls, log = run(ans([pr(3)]), fn="main", only="x")
+check("番号が数字でない → 何もしない", res == 2 and calls == [], calls)
 
 res, calls, log = run(ans([pr(7)]), dry=True)
 check("ためし（dry_run）は書かずに、するはずのことを出す", res[0] == [7] and writes(calls) == [] and "squash でマージするはず" in log, log)
@@ -260,6 +275,8 @@ ci_name = next(line.split(":", 1)[1].strip() for line in open(os.path.join(WF, "
 check("workflow_run は PR の点検（ci.yml の name）を見る", [s.strip() for s in listed.split(",")] == [ci_name], listed)
 check("動くとき: ラベル・点検の終わり・手で（dry_run）。schedule は使わない",
       "types: [labeled]" in wf and "types: [completed]" in wf and "dry_run:" in wf and "schedule" not in wf)
+check("手で動かすとき、PR の番号（pr）を入れられる", re.search(r"\n      pr:\n(?:        .*\n)*?        type: number\n        required: false", wf)
+      and "MERGE_OK_PR: ${{ inputs.pr }}" in wf)
 check("同時に2つ動かさない", re.search(r"concurrency:\s*\n\s*group: merge-ok\s*\n\s*cancel-in-progress: false", wf))
 check("権限", all(p in wf for p in ("contents: write", "pull-requests: write", "issues: write", "actions: write", "checks: read", "statuses: read")))
 check("ジョブの名前が SELF_CHECK と同じ", f"name: {M.SELF_CHECK}" in wf)

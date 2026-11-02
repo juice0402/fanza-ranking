@@ -4,7 +4,7 @@ name: マージの印
 # 点検（CI）が通ったら GitHub が squash でマージし、公開（deploy.yml）を main で1回動かす（scripts/merge_ok.py。2026-11-02）。
 # GITHUB_TOKEN のマージでは push で動く workflow（Deploy）が動かないため、workflow_dispatch で動かす。公開の結果は見張り（mihari.yml）が見る。
 # merge-ok の付いていない PR はさわらない（予約タスクが自分でマージするデータの PR も）。
-# 手で試すときは Actions の画面の「Run workflow」（dry_run が true ならマージせず、するはずのことをログに出す）
+# 手で試すときは Actions の画面の「Run workflow」（dry_run が true ならマージせず、するはずのことをログに出す。pr に番号を入れると、その PR だけ見る）
 on:
   pull_request:
     types: [labeled]
@@ -18,6 +18,10 @@ on:
         description: 'true ならマージせず、するはずのことをログに出すだけ'
         type: boolean
         default: true
+      pr:
+        description: 'PR の番号（空なら merge-ok の付いた PR を全部。その PR も merge-ok が無ければマージしない）'
+        type: number
+        required: false
 
 permissions:
   contents: write
@@ -51,4 +55,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           MERGE_OK_DRY_RUN: ${{ inputs.dry_run }}
+          MERGE_OK_PR: ${{ inputs.pr }}
         run: python3 scripts/merge_ok.py

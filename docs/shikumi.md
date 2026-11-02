@@ -65,9 +65,9 @@ CLAUDE.md の「公開」「仕組み」「どこに何があるか」「コマ�
 
 ## マージの印（merge-ok.yml）
 
-- しょーくんの「マージして」のあと、司令塔が PR にラベル `merge-ok` を付ける → `merge-ok.yml`（`scripts/merge_ok.py`。2026-11-02）が CI の合格を待って squash でマージし、公開（`deploy.yml`）を main で1回動かす（公開の失敗は見張り）。`merge-ok` の無い PR（予約タスクが自分でマージするデータの PR も）はさわらない
+- しょーくんの「マージして」のあと、司令塔が PR にラベル `merge-ok` を付ける → `merge-ok.yml`（`scripts/merge_ok.py`。2026-11-02）が CI の合格を待って squash でマージし（本文は「マージの印（merge-ok）で #番号 をマージ」）、公開（`deploy.yml`）を main で1回動かす（公開の失敗は見張り）。`merge-ok` の無い PR（予約タスクが自分でマージするデータの PR も）はさわらない
 - 本文の「#数字 のあとにマージ」の PR が開いているあいだは待つ。点検の失敗・main とのぶつかりは、PR にコメントして `merge-blocked`（司令塔が見る）
-- 試すのは Actions の「マージの印」→「Run workflow」（`dry_run` が true ならマージしない）。CI の name を変えたら `merge-ok.yml` の `workflows:` も（`tests/test_merge_ok.py` が見る）
+- 試すのは Actions の「マージの印」→「Run workflow」（`dry_run` が true ならマージしない。`pr` に番号を入れると、その PR だけ）。CI の name を変えたら `merge-ok.yml` の `workflows:` も（`tests/test_merge_ok.py` が見る）
 
 ## コード・デザインのPRのプレビュー
 
