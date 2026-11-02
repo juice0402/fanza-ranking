@@ -1,13 +1,15 @@
 """週1回の見張り番（運営者の希望「週1回の点検にしよう。タイミングは日曜日から月曜日に日付が変わるとき」。2026-10-13）。
 
 Claude を使わずに、GitHub Actions（.github/workflows/health.yml。毎週月曜 0:01・日本時間）が、この7日（月曜〜日曜）の
-運用の数字を見て、おかしいときだけ知らせる（注釈 ::warning と、実行の失敗＝GitHub からの知らせ）。前は、Claude の予約タスク
+運用の数字を見て、おかしいときだけ知らせる（注釈 ::warning と実行の失敗。実行の失敗は mihari.yml が issue にする）。前は、Claude の予約タスク
 （過去作品の点検・半年ごとのリポジトリの大きさ）が見ていた。
 
 見ること（どれも、データから数えた事実だけ）:
   1. 毎日の更新: この7日の「データ更新: 日付」の記録がそろっているか
   2. 公開・毎日の更新・セールの読み直し・10円セール（deploy.yml・update.yml・sale-refresh.yml・ten-yen.yml）:
-     main の実行で、いちばん新しい実行が失敗していないか・この7日の失敗が3回以上ないか・公開が30分をこえていないか（上限は40分）
+     main の実行で、いちばん新しい実行が失敗していないか（mihari.yml が動いていなかったときの念のため）・公開が30分をこえていないか（上限は40分）。
+     この7日の失敗の回数は表に書くだけで、注意にしない（失敗はそのたびに mihari.yml が issue にして、次の成功で閉じる。
+     もう直った失敗で毎週知らせない。2026-11-02。前は3回以上で注意にしていて、引っ越しの日の失敗で4週続けて失敗になった）
   3. Claude のコメント（毎日 0:20 の予約タスク）: この7日に Merge された「コメントの仕上げ」の日数（5日に満たなければ注意）
   4. 過去作品の数: コメントの無い過去作品が、決めた深さ（catalog_state.json の limit）の1.3倍をこえていて、7日前より減っていなければ注意
      （深さを浅くしたあとは、3日ごとの一回りで少しずつ外れる。2回続けて見かけなかった作品だけ外す＝scripts の prune_catalog）
@@ -32,7 +34,6 @@ DATA = os.path.join(ROOT, "site", "src", "data")
 JST = timezone(timedelta(hours=9))
 DAYS = 7
 WORKFLOWS = (("deploy.yml", "公開"), ("update.yml", "毎日の更新"), ("sale-refresh.yml", "セールの読み直し"), ("ten-yen.yml", "10円セール"))
-FAILS_MAX = 3            # この7日の失敗がこの回数以上なら注意
 DEPLOY_WARN_MIN = 30     # 公開がこの分数をこえたら注意（deploy.yml の上限は40分）
 COMMENT_DAYS_MIN = 5     # コメントの仕上げが Merge された日が、この日数に満たなければ注意
 CATALOG_SLACK = 1.3      # コメントの無い過去作品が、深さのこの倍をこえていたら（7日前より減っていなければ）注意
@@ -76,15 +77,14 @@ def check_updates(subjects, today):
 
 
 def check_runs(name, label, runs, since):
-    """runs: GitHub の workflow_runs（新しい順）。since: 見る始まり（日本時間の datetime）"""
+    """runs: GitHub の workflow_runs（新しい順）。since: 見る始まり（日本時間の datetime）。
+    失敗の回数は表に書くだけ（注意は、いちばん新しい実行がまだ失敗のときと、公開が長いときだけ。失敗は mihari.yml が知らせる）"""
     done = [r for r in runs if r.get("status") == "completed" and (jst(r.get("created_at")) or since) >= since]
     fails = [r for r in done if r.get("conclusion") == "failure"]
     warn = []
     latest = next((r for r in runs if r.get("status") == "completed" and r.get("conclusion") != "cancelled"), None)
     if latest and latest.get("conclusion") != "success":
         warn.append(f"{label}（{name}）のいちばん新しい実行が {latest.get('conclusion')} です")
-    if len(fails) >= FAILS_MAX:
-        warn.append(f"{label}（{name}）がこの{DAYS}日に {len(fails)} 回失敗しています")
     longest = 0
     if name == "deploy.yml":
         for r in done:
