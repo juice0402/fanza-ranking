@@ -320,6 +320,18 @@ if os.path.isfile(sitemap_path):
     missing = [u for u in locs if not os.path.isfile(page_file(urlparse(u).path))]
     check("sitemap のURLがすべて実在するページ", not missing, missing[:3])
 
+# 前の住所のサイトマップ（/sitemap-pages-dev.xml。2026-11-02）: sitemap.xml と同じページ・同じ lastmod を、前の住所（config.js の OLD_SITE_URL）で。
+# Search Console に送り、Google に前の住所を読み直してもらう（301 に気づいてもらう）。robots.txt には書かない
+OLD_SITE_URL = re.search(r"export const OLD_SITE_URL = '([^']+)';", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1)
+old_sitemap_path = os.path.join(DIST, "sitemap-pages-dev.xml")
+check("sitemap-pages-dev.xml（前の住所のサイトマップ）がある", os.path.isfile(old_sitemap_path))
+if os.path.isfile(old_sitemap_path) and os.path.isfile(sitemap_path):
+    old_rows = re.findall(r"<url><loc>([^<]+)</loc>(?:<lastmod>([^<]*)</lastmod>)?</url>", read(old_sitemap_path))
+    check(f"前の住所のサイトマップのURLは、すべて前の住所（{OLD_SITE_URL}）", old_rows and all(u.startswith(OLD_SITE_URL + "/") for u, _ in old_rows), [u for u, _ in old_rows if not u.startswith(OLD_SITE_URL + "/")][:3])
+    check("前の住所のサイトマップは、sitemap.xml と同じページ・同じ並び・同じ lastmod（住所だけちがう）",
+          [(urlparse(u).path, m) for u, m in old_rows] == [(urlparse(u).path, m) for u, m in rows], (len(old_rows), len(rows)))
+    check("robots.txt に前の住所のサイトマップを書かない（今の住所のサイトマップではないため）", "sitemap-pages-dev" not in read(robots))
+
 print("\n■ 出演者・メーカーのページ")
 check("出演者一覧ページ（/actress/）", os.path.isfile(os.path.join(DIST, "actress", "index.html")))
 # 女優の年表の一覧（/actress/nenpyo/。2026-10-27）: 年表のある女優（ページがある人）が50音の見出しごとに並び、名前から歩みの欄へ。入口は女優検索のページに1行

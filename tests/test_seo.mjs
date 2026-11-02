@@ -161,5 +161,14 @@ check('ジャンルのページを作るジャンルの一覧に、過激な行�
 check('VR作品の名前は、許可したジャンルの一覧と重ならない（VRはいつも別に作る）', !cfg.TAG_PAGE_GENRES.includes(C.VR_TAG_NAME));
 check('設定値が、正しい数字', cfg.MONTH_MIN_ITEMS >= 2 && cfg.TAG_MIN_ITEMS >= 2 && cfg.TAG_PAGE_LIMIT >= 30);
 
+console.log('\n■ 前の住所のサイトマップ（/sitemap-pages-dev.xml）');
+const cur = L.buildSitemap([{ path: '/', lastmod: '2026-11-01' }, { path: '/item/abc00001/', lastmod: '2026-10-20' }, '/about/']);
+const old = L.buildOldSitemap(cur);
+const oldLocs = [...old.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+check('前の住所は pages.dev で、今の住所とちがう', L.OLD_SITE_URL === 'https://fanza-ranking.pages.dev' && L.OLD_SITE_URL !== L.SITE_URL, L.OLD_SITE_URL);
+check('すべての <loc> が前の住所で、パスと並びは同じ', oldLocs.join() === ['/', '/item/abc00001/', '/about/'].map((p) => L.OLD_SITE_URL + p).join(), oldLocs.join());
+check('今の住所は1つも残らない・lastmod はそのまま（10/27 より古い日は 10/27）', !old.includes(L.SITE_URL) && old.includes('<lastmod>2026-11-01</lastmod>') && old.includes(`<lastmod>${L.SITE_URL_SINCE}</lastmod>`) && !old.includes('2026-10-20'));
+check('<loc> 以外は変えない（行の数・xml の頭が同じ）', old.split('\n').length === cur.split('\n').length && old.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<urlset'));
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

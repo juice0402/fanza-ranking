@@ -23,7 +23,7 @@ CLAUDE.md は1万字以内に保つ。経緯・くわしいことは docs/ へ�
 **公開は GitHub Actions が行う**（`deploy.yml`: ビルド → 全ページの点検 `tests/verify_dist.py` → Cloudflare Workers に直接アップロード）。Cloudflare のビルド（月500回を「あそびトーク」と共有）は使わない。
 - main に入ると本番に公開される。毎日の更新・取り直しは、データを保存したあとに `deploy.yml` を動かす（ワークフローが保存したコミットでは、ほかのワークフローが自動では動かないため）。点検に落ちたら公開しない（前の公開のまま）。
 - コード・デザインを変えるPR（`site/` の中。データは除く）は、CI がプレビュー（`<ブランチ名>-av-sale-guide.juice-juice-0402.workers.dev`。URL は check の注釈）を作る。
-- 独自ドメインは `https://av-sale-guide.com`（`site/src/config.js` の `SITE_URL` 1か所で、URL・canonical・sitemap・robots.txt・RSS・構造化データ・IndexNow が切りかわる）。旧 fanza-ranking.pages.dev は Bulk Redirects で 301。くわしくは docs/shikumi.md の「公開（くわしく）」
+- 独自ドメインは `https://av-sale-guide.com`（`site/src/config.js` の `SITE_URL` 1か所で、URL・canonical・sitemap・robots.txt・RSS・構造化データ・IndexNow が切りかわる）。旧 fanza-ranking.pages.dev は Bulk Redirects で 301（前の住所のサイトマップ `/sitemap-pages-dev.xml` は Search Console 用）。くわしくは docs/shikumi.md の「公開（くわしく）」
 - 本番の公開のたびに `deploy.yml` が `scripts/indexnow.py` で、新しいページ・変わったページを IndexNow で知らせる（Google は sitemap と Search Console）。くわしくは docs/shikumi.md
 - 本番もプレビューも Cloudflare Workers（`workers/wrangler.jsonc`・`scripts/deploy_workers.sh`・Secrets の `CLOUDFLARE_WORKERS_TOKEN`）。Pages には出さない。ファイル数の上限 `FILE_BUDGET` は4万。戻し方は docs/architecture.md の「Workers への引っ越し」
 - Cloudflare 側の自動ビルドは止めてある（2026-10-09。ダッシュボードの「ブランチコントロール」。戻すときはそこをオンに）。コミット・Merge のメッセージに `[CI Skip]` は要らない（入れても何も変わらない）。
