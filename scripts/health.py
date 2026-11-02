@@ -11,8 +11,10 @@ Claude を使わずに、GitHub Actions（.github/workflows/health.yml。毎週�
      この7日の失敗の回数は表に書くだけで、注意にしない（失敗はそのたびに mihari.yml が issue にして、次の成功で閉じる。
      もう直った失敗で毎週知らせない。2026-11-02。前は3回以上で注意にしていて、引っ越しの日の失敗で4週続けて失敗になった）
   3. Claude のコメント（毎日 0:20 の予約タスク）: この7日に Merge された「コメントの仕上げ」の日数（5日に満たなければ注意）
-  4. 過去作品の数: コメントの無い過去作品が、決めた深さ（catalog_state.json の limit）の1.3倍をこえていて、7日前より減っていなければ注意
-     （深さを浅くしたあとは、3日ごとの一回りで少しずつ外れる。2回続けて見かけなかった作品だけ外す＝scripts の prune_catalog）
+  4. 過去作品の数: 一回り（3日ほど）の終わりに外し終わったあとの本数で見る。外したあとのコメントの無い過去作品が、決めた深さ
+     （catalog_state.json の limit）の1.5倍をこえて、外したあとの本数が3回続けてふえていたら注意（外すしくみ＝prune_catalog が止まっている形。
+     10/18 にあった）。人気順は毎日入れかわるので、本数は一回りのあいだにふくらみ、外した日にへる（のこぎりの歯）。
+     前は「いま」と「7日前」をくらべていて、山と谷のどちらに当たるかで注意が出たり出なかったりした（2026-11-02 に直した）
   5. リポジトリの大きさ: 500MB をこえたら注意（GitHub のおすすめは1GBまで）
 
 使い方:
@@ -36,7 +38,9 @@ DAYS = 7
 WORKFLOWS = (("deploy.yml", "公開"), ("update.yml", "毎日の更新"), ("sale-refresh.yml", "セールの読み直し"), ("ten-yen.yml", "10円セール"))
 DEPLOY_WARN_MIN = 30     # 公開がこの分数をこえたら注意（deploy.yml の上限は40分）
 COMMENT_DAYS_MIN = 5     # コメントの仕上げが Merge された日が、この日数に満たなければ注意
-CATALOG_SLACK = 1.3      # コメントの無い過去作品が、深さのこの倍をこえていたら（7日前より減っていなければ）注意
+CATALOG_SLACK = 1.5      # 外したあとのコメントの無い過去作品が、深さのこの倍をこえて、
+CATALOG_GROWS = 3        # 外したあとの本数が、この回数続けて
+CATALOG_GROW_MIN = 300   # この本数以上ずつふえていたら注意（コメントの付いた作品は外さないので、少しずつはふえる。1日40件×3日でも120本）
 REPO_WARN_KB = 512000    # 500MB
 TITLE = "見張り番"
 
@@ -106,12 +110,30 @@ def check_comments(prs, today):
     return ([f"コメントの仕上げ（毎日 0:20 の予約タスク）が Merge された日が {n} 日だけです"] if n < COMMENT_DAYS_MIN else []), row
 
 
-def check_catalog(items_now, commented, limit, items_before):
-    """items_now: 過去作品の本数・commented: そのうち Claude のコメントのある本数（外さないので数えない）・items_before: 7日前の本数（分からなければ None）"""
-    plain = items_now - commented
-    row = f"過去作品: {items_now:,}本（コメントの無い作品 {plain:,}本・深さ {limit:,}本" + (f"・7日前 {items_before:,}本）" if items_before is not None else "）")
-    if limit and plain > limit * CATALOG_SLACK and (items_before is None or items_now >= items_before):
-        return [f"コメントの無い過去作品が {plain:,} 本で、深さ（{limit:,}本）の{CATALOG_SLACK}倍をこえたまま減っていません"], row
+def pruned_points(history):
+    """history: catalog_state.json の (一回りの番号 cycle, 本数 items) を、新しいコミットから順に。
+    一回りごとに、その番号になった最初のコミット（外し終わった直後）の本数を、古い順に返す。
+    いちばん古い番号は、記録の途中から始まっているかもしれないので使わない"""
+    first = {}
+    for cycle, items in history:  # 新しい順なので、あとから来たもの（古いコミット）で上書きすると、その番号の最初になる
+        first[cycle] = items
+    cycles = sorted(first)[1:]
+    return [first[c] for c in cycles]
+
+
+def check_catalog(items_now, commented, limit, points):
+    """items_now: いまの過去作品の本数・commented: そのうち Claude のコメントのある本数（外さないので数えない）・
+    points: 外し終わったあとの本数（古い順。pruned_points）"""
+    if not points:
+        return [], f"過去作品: いま {items_now:,}本（外したあとの本数は読めず・深さ {limit:,}本）"
+    plain = points[-1] - commented  # コメントの数は、いまの数で引く（外さないので前の数より多い＝少なめに出る）
+    recent = points[-(CATALOG_GROWS + 1):]
+    growing = len(recent) == CATALOG_GROWS + 1 and all(b - a >= CATALOG_GROW_MIN for a, b in zip(recent, recent[1:]))
+    row = (f"過去作品: 外したあと {points[-1]:,}本（コメントの無い作品 {plain:,}本・深さ {limit:,}本・"
+           f"外したあとの移り {'→'.join(f'{p:,}' for p in recent)}・いま {items_now:,}本）")
+    if limit and plain > limit * CATALOG_SLACK and growing:
+        return [f"外したあとのコメントの無い過去作品が {plain:,} 本で、深さ（{limit:,}本）の{CATALOG_SLACK}倍をこえ、"
+                f"外したあとの本数が{CATALOG_GROWS}回続けてふえています。過去作品を外すしくみ（prune_catalog）が止まっているかもしれません"], row
     return [], row
 
 
@@ -129,14 +151,14 @@ def catalog_numbers():
     for path in glob.glob(os.path.join(DATA, "catalog", "*.json")):
         with open(path, encoding="utf-8") as f:
             commented += sum(1 for x in json.load(f) if isinstance(x, dict) and x.get("comment_kind") == "claude")
-    before = None
-    rev = git("rev-list", "-n", "1", f"--before={DAYS} days ago", "HEAD").strip()
-    if rev:
+    history = []  # (一回りの番号, 本数)。新しいコミットから（health.yml の fetch-depth の中だけ。400 で4週ほど）
+    for rev in git("log", "--first-parent", "--format=%H", "-n", "60", "HEAD", "--", "site/src/data/catalog_state.json").split():
         try:
-            before = int(json.loads(git("show", f"{rev}:site/src/data/catalog_state.json") or "{}").get("items"))
-        except (TypeError, ValueError):
-            before = None
-    return int(state.get("items") or 0), commented, int(state.get("limit") or 0), before
+            s = json.loads(git("show", f"{rev}:site/src/data/catalog_state.json") or "{}")
+            history.append((int(s["cycle"]), int(s["items"])))
+        except (TypeError, ValueError, KeyError):
+            continue
+    return int(state.get("items") or 0), commented, int(state.get("limit") or 0), pruned_points(history)
 
 
 def run_checks(today=None):
