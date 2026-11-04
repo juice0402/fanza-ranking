@@ -2088,6 +2088,34 @@ summary:focus-visible {
   font-size: 13px;
 }
 
+/* 調べた資料（厳選の5本のあと。#220）: 「数えた日」の1行と同じ小さな字と色 */
+.yomi-sources {
+  margin: 20px 0 0;
+  color: var(--paper-dim);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.yomi-sources-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.yomi-sources-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.yomi-sources-row {
+  margin: 0 0 4px;
+}
+
+.yomi-sources-row .spec-link {
+  color: inherit;
+}
+
 .mini-note {
   font-variant-numeric: tabular-nums;
 }

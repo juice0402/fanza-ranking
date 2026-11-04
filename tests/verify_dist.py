@@ -566,6 +566,15 @@ for _slug, _p in sorted(yomi_pages.items()):
     _ck = str(_a.get("checked", ""))
     check(f"{_slug}: 「この読み物の数字は◯月◯日に数えました」の1行（数えた日 {_ck}）",
           bool(DAY.match(_ck)) and f'この読み物の数字は<time datetime="{_ck}">{int(_ck[5:7])}月{int(_ck[8:10])}日</time>に数えました' in _html)
+    # 調べた資料（#220）: データに sources がある読み物は、厳選のあとに「調べた資料」として、どの資料も新しいタブ・nofollow のリンク
+    _srcs = [s_ for s_ in (_a.get("sources") or []) if isinstance(s_, dict) and str(s_.get("url", "")).startswith("https://")]
+    if _srcs:
+        _src_box = re.search(r'<section class="yomi-sources"[^>]*>([\s\S]*?)</section>', _raw)
+        _src_links = tags(_src_box.group(1), "a") if _src_box else []
+        _pick_at = _raw.find('<article class="pick-card">')
+        check(f"{_slug}: 調べた資料（{len(_srcs)}つ）が厳選のあとにあり、どれも新しいタブ・nofollow noopener のリンク",
+              _src_box is not None and _pick_at < _src_box.start() and [htmllib.unescape(t_.get("href", "")) for t_ in _src_links] == [s_["url"] for s_ in _srcs]
+              and all(t_.get("target") == "_blank" and {"nofollow", "noopener"} <= set(t_.get("rel", "").split()) for t_ in _src_links))
     # 出さない題（未成年を連想させる・無理やりや犯罪を思わせる）の作品が、棚にも厳選にも出ていない
     _titles = [htmllib.unescape(re.sub(r"<[^>]+>", "", t_)).replace("​", "") for t_ in re.findall(r'class="(?:mini-title|pick-title)">(.*?)</h3>', _html, re.S)]
     _bad_t = [t_ for t_ in _titles if yomi_excluded(re.sub(r"^\d+", "", t_))]

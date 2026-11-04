@@ -4,6 +4,7 @@
 // テーマの作品の棚（人気・評価の高い・いまセール中・新作と予約。毎日のビルドで入れかわる）→ ほかの読み物・関係するジャンルのページ。
 // パソコン（960px〜）は2列（連絡 C-017・#205）: 左に本文（今の幅）、右の柱に この読み物の中身（節へのページ内リンク。パソコンだけ）→ 厳選の作品 → あわせて読む。
 // 棚は下で横いっぱい。スマホの並びは変えない（site.css の .page-cols）。
+// 厳選のあとに「調べた資料」（題とサイトの名前のリンクを小さく。新しいタブ・nofollow。#220。データに sources がある読み物だけ）。
 // 作品の題は、カードにだけ出す（本文には書かない）。出さない題の作品（未成年を連想させる・無理やりや犯罪を思わせる）は、棚にも厳選にも出さない
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
@@ -17,7 +18,7 @@ import { searchPath } from '../../lib/search.js';
 import { endIso, saleBadge } from '../../lib/sale.js';
 import { inlineScript } from '../../lib/assets.js';
 import {
-  YOMIMONO_PATH, mdJp, picksHeadingFor, yomimonoArticleLd, yomimonoPeak, yomimonoPicksLd, yomimonoYearBars,
+  YOMIMONO_PATH, mdJp, picksHeadingFor, sourceRel, yomimonoArticleLd, yomimonoPeak, yomimonoPicksLd, yomimonoYearBars,
 } from '../../lib/yomimono.js';
 
 export function getStaticPaths() {
@@ -100,7 +101,7 @@ const ld = [breadcrumbLd(trail), yomimonoArticleLd(a), yomimonoPicksLd(picks, pa
         </section>
       ))}
 
-      <p class="fine">文とひとことは、作品の情報と数字から自動で作成しています（正確さは保証できません。詳細はFANZAの公式ページで）。</p>
+      <p class="fine">文とひとことは、{a.sources.length > 0 ? '調べた資料と作品の情報・数字' : '作品の情報と数字'}から自動で作成しています（正確さは保証できません。詳細はFANZAの公式ページで）。</p>
       </div>
 
       <div class="col-side">
@@ -111,6 +112,16 @@ const ld = [breadcrumbLd(trail), yomimonoArticleLd(a), yomimonoPicksLd(picks, pa
           </ol>
         </nav>
         <PickCards picks={picks} id="yomi-picks-title" title={picksTitle} keepVr={a.vr} />
+        {a.sources.length > 0 && (
+          <section class="yomi-sources" aria-labelledby="yomi-sources-title">
+            <h2 id="yomi-sources-title" class="yomi-sources-title">調べた資料</h2>
+            <ul class="yomi-sources-list">
+              {a.sources.map((s) => (
+                <li class="yomi-sources-row"><a class="spec-link" href={s.url} target="_blank" rel={sourceRel(s.url)}>{s.title}</a>（{s.site}）</li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </article>
 
