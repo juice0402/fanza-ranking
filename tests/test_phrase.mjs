@@ -35,6 +35,8 @@ check('うしろの句読点・閉じかっこは長さに数えない・ひら�
   !aru.some((p) => p.endsWith('ことがあ') || p.startsWith('ります')) && splitPhrases('更新することがあります。').join('|') === '更新する|ことがあります。'
   && splitPhrases('発売日がかわることがあります。').every((p) => !p.endsWith('ことがあ') && !p.endsWith('こと')), JSON.stringify([aru, splitPhrases('更新することがあります。')]));
 check('空の文字列は空の配列', splitPhrases('').length === 0);
+const spClose = splitPhrases('【記念の特別企画 】あとに続く題名');
+check('空白のすぐあとの閉じかっこは、行のはじめにしない（「特別企画 】」）', spClose.join('') === '【記念の特別企画 】あとに続く題名' && !spClose.slice(1).some((p) => p.startsWith('】')), JSON.stringify(spClose));
 
 console.log('\n■ 実際のデータ（作品のコメント・題名）で壊れない');
 const data = JSON.parse(fs.readFileSync(new URL('../site/src/data/new_releases.json', import.meta.url), 'utf-8'));

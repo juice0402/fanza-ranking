@@ -146,7 +146,9 @@ export function splitPhrases(text, namesRe = null) {
     // 空白のあとは、もともと改行してよい所（そこで先に分けてから、長いものだけを分ける）
     if (/\s/.test(text[i - 1]) && !/\s/.test(text[i])) found.add(i);
   }
-  const bounds = [...found].sort((x, y) => x - y).filter((i) => (/\s/.test(text[i - 1]) && !keep.has(i)) || canBreakAt(text, i, keep));
+  // 空白のあとでも、閉じかっこ・句読点など行のはじめに来てはいけない文字の前では区切らない（「特別企画 】」の「】」を行のはじめにしない。2026-11-05）
+  const afterSpace = (i) => /\s/.test(text[i - 1]) && !keep.has(i) && !(NO_START.test(text[i]) && text[i] !== '・');
+  const bounds = [...found].sort((x, y) => x - y).filter((i) => afterSpace(i) || canBreakAt(text, i, keep));
   const cuts = [...bounds];
   let start = 0;
   for (const b of [...bounds, text.length]) {
