@@ -54,6 +54,22 @@ check('無い・壊れたデータは空（ビルドが止まらない）', [nul
   && Y.normalizeYomimono(JSON.parse(fs.readFileSync(new URL('../site/src/data/yomimono.json', import.meta.url), 'utf-8'))).articles !== undefined);
 check('URL', ai.path === '/yomimono/ai-remaster/' && Y.YOMIMONO_PATH === '/yomimono/');
 
+const withSrc = Y.normalizeYomimono({ articles: { drama: { theme: { genres: ['ドラマ'] }, title: 'T', lead: 'L', written: '2026-11-02', checked: '2026-11-04',
+  sources: [
+    { title: '資料A', site: 'サイトA', url: 'https://example.com/a', checked: '2026-11-04' },
+    { title: '資料A2', site: 'サイトA', url: 'https://example.com/a', checked: '2026-11-04' },
+    { title: '資料B', site: 'サイトB', url: 'http://example.com/b', checked: '2026-11-04' },
+    { title: '', site: 'サイトC', url: 'https://example.com/c', checked: '2026-11-04' },
+    { title: '資料D', site: 'サイトD', url: 'javascript:alert(1)', checked: '2026-11-04' },
+    { title: '資料E', site: 'サイトE', url: 'https://example.org/e?x=1', checked: 'x' },
+  ] } } }).articles[0];
+check('調べた資料: https の URL・題・サイトの名前のあるものだけ・同じ URL は1回（#220）',
+  withSrc.sources.map((x) => x.title).join() === '資料A,資料E' && withSrc.sources[1].checked === '', JSON.stringify(withSrc.sources));
+check('調べた資料が無い読み物は sources が空', ai.sources.length === 0);
+check('資料のリンクの rel: 外のページは nofollow noopener、FANZA・DMM は広告の印', Y.sourceRel('https://example.com/a') === 'nofollow noopener'
+  && Y.sourceRel('https://www.dmm.co.jp/digital/') === 'sponsored nofollow noopener noreferrer' && Y.sourceRel('https://video.fanza.co.jp/x') === 'sponsored nofollow noopener noreferrer'
+  && Y.sourceRel('https://notdmm.co.jp.example.com/') === 'nofollow noopener');
+
 console.log('\n■ 棚');
 const works = [];
 for (let i = 1; i <= 9; i++) works.push(w(`r${i}`, { title: `【AIリマスター版】作品${i}`, popAll: 100 + i, dateKey: `2026-0${i}-01`, review: { avg: 4 + i / 20, count: 10 + i } }));

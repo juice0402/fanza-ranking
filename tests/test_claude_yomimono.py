@@ -231,7 +231,11 @@ FILL = ["作品ページでは、サンプル動画で画面の様子を確か�
 
 
 def para(head, k):
-    return head + "".join(FILL[(k + i) % len(FILL)] for i in range(4))
+    return head + "".join(FILL[(k + i) % len(FILL)] for i in range(5))
+
+
+SOURCES = [{"title": "AIリマスターの作品について", "site": "メーカーAの公式サイト", "url": "https://example.com/news/1", "checked": "2026-10-27"},
+           {"title": "ジャンルの説明", "site": "FANZAのヘルプ", "url": "https://www.dmm.co.jp/help/x", "checked": TODAY}]
 
 
 def good_article(**override):
@@ -244,7 +248,7 @@ def good_article(**override):
         "sections": [
             {"h": "AIリマスター版ってなに？", "text": para("以前に発売された作品の映像を、見やすい画質に整え直したものです。番号の終わりがaiの作品は9本でした。", 2)
              + "\n" + para("ジャンルにクラシックや復刻が付いた作品もあり、前の時代の作品だと分かります。", 3)},
-            {"h": "2026年は、もう去年の本数をこえた", "chart": "years", "text": para("2024年は2本、2025年は3本でしたが、2026年は7本と、すでに去年をこえています。", 4)
+            {"h": "いつごろから増えた？", "chart": "years", "text": para("2024年は2本、2025年は3本でしたが、2026年は7本と、すでに去年をこえています。", 4)
              + "\n" + para("2026年10月は4本で、毎月少しずつではなく、まとめて出ることが多いテーマです。", 5)},
             {"h": "メーカーAが多い", "text": para("メーカー別では、メーカーAが4本でいちばん多く、4か月に分けて出しています。", 6)
              + "\n" + para("出演者では、花子さんと葵さんが3本ずつで並びます。", 7)},
@@ -260,6 +264,7 @@ def good_article(**override):
             {"cid": "abc00008ai", "why": "メーカーDの245分の作品で、桜さんが出演しています。時間をかけて1本を見たい人に向いています。"},
             {"cid": "xyz00006", "why": "メーカーCの140分のドラマもので、月さんが出演しています。落ち着いた物語を見たい人に向いています。"},
         ],
+        "sources": SOURCES,
     }
     a.update(override)
     return a
@@ -283,8 +288,9 @@ check("正しい記事は書き込める", r.returncode == 0 and "書き込み�
 saved = json.loads(yomi_text())
 art = saved["articles"]["ai-remaster"]
 check("保存の形: updated と articles[slug]", set(saved) == {"updated", "articles"} and saved["updated"] == TODAY)
-check("記事の形: theme・title・description・lead・sections・picks_h（決まった見出し）・picks・years・total・written・checked",
-      list(art) == ["theme", "title", "description", "lead", "sections", "picks_h", "picks", "years", "total", "written", "checked"]
+check("記事の形: theme・title・description・lead・sections・picks_h（決まった見出し）・picks・sources・years・total・written・checked",
+      list(art) == ["theme", "title", "description", "lead", "sections", "picks_h", "picks", "sources", "years", "total", "written", "checked"]
+      and art["sources"] == SOURCES
       and art["picks_h"] == "最初に見るならこの5本" and art["total"] == 12 and art["written"] == TODAY and art["checked"] == TODAY
       and art["theme"] == {"genres": [], "keywords": ["AIリマスター"]}, list(art))
 check("グラフの節には chart: years、記事には years（facts の年ごとの本数）", art["sections"][1]["chart"] == "years" and "chart" not in art["sections"][0]
@@ -345,7 +351,23 @@ def sec(i, **kw):
 
 rejected("facts にない数字（9,999本）", {"ai-remaster": good_article(lead=g["lead"].replace(f"{len(ALL)}本", "9,999本"))}, "facts にない数字")
 rejected("facts にない数字（★の平均 4.9）", {"ai-remaster": good_article(sections=sec(3, text=g["sections"][3]["text"].replace("4.3", "4.9")))}, "facts にない数字")
-rejected("理由に、その作品に無い収録時間（999分）", {"ai-remaster": good_article(picks=[dict(g["picks"][0], why=g["picks"][0]["why"].replace("300分", "999分"))] + g["picks"][1:])}, "facts にない数字")
+rejected("理由に、その作品に無い収録時間（999分）", {"ai-remaster": good_article(picks=[dict(g["picks"][0], why=g["picks"][0]["why"].replace("300分", "999分"))] + g["picks"][1:])}, "理由に書かない数字")
+rejected("理由に順位（カードに出ている）", {"ai-remaster": good_article(picks=[dict(g["picks"][0], why=g["picks"][0]["why"].replace("300分の作品で", "300分の作品で人気は3位、"))] + g["picks"][1:])}, "理由に書かない数字")
+rejected("理由に★（カードに出ている）", {"ai-remaster": good_article(picks=[dict(g["picks"][0], why=g["picks"][0]["why"].replace("300分の作品で", "300分の★の高い作品で"))] + g["picks"][1:])}, "理由に書かない数字")
+rejected("見出しに数字（数字で言い切る見出し）", {"ai-remaster": good_article(sections=sec(2, h="メーカーAが4本でいちばん多い"))}, "見出しに数字")
+rejected("見出しに年の数字", {"ai-remaster": good_article(sections=sec(1, h="2026年は去年をこえた"))}, "見出しに数字")
+many = [dict(s) for s in g["sections"]]
+for i_ in (0, 2, 4):
+    many[i_]["text"] = many[i_]["text"] + "\n" + para(f"このサイトの{len(ALL)}本のうち、収録時間の真ん中は125分、★の平均は4.3です。", i_)
+rejected("本文の数字が合わせて11個以上", {"ai-remaster": good_article(sections=many)}, "合わせて")
+rejected("調べた資料が無い", {"ai-remaster": {k: v for k, v in g.items() if k != "sources"}}, "調べた資料")
+rejected("調べた資料が1つだけ", {"ai-remaster": good_article(sources=SOURCES[:1])}, "調べた資料")
+rejected("資料の URL が https でない", {"ai-remaster": good_article(sources=[dict(SOURCES[0], url="http://example.com/a"), SOURCES[1]])}, "https://")
+rejected("資料が自分のサイト", {"ai-remaster": good_article(sources=[dict(SOURCES[0], url="https://av-sale-guide.com/yomimono/"), SOURCES[1]])}, "このサイトのページ")
+rejected("資料の確かめた日が今日より先", {"ai-remaster": good_article(sources=[dict(SOURCES[0], checked="2026-10-29"), SOURCES[1]])}, "今日まで")
+rejected("資料の同じ URL が2回", {"ai-remaster": good_article(sources=[SOURCES[0], dict(SOURCES[0], title="べつの題")])}, "同じ URL")
+rejected("資料の形が違う（site が無い）", {"ai-remaster": good_article(sources=[{"title": "題", "url": "https://example.com/z", "checked": TODAY}, SOURCES[1]])}, "の形")
+rejected("資料の題に使わない言葉", {"ai-remaster": good_article(sources=[dict(SOURCES[0], title="おすすめの作品"), SOURCES[1]])}, "AIの文章によく出る")
 rejected("1段落に数字が4つ以上", {"ai-remaster": good_article(sections=sec(3, text="収録時間の真ん中の値は125分、★の平均は4.3、件数は40件、サイト全体は" + str(site_avg) + "です。" + FILL[0] + FILL[1]))}, "数字が")
 rejected("AIの文章によく出る言い方（おすすめ）", {"ai-remaster": good_article(lead=g["lead"].replace("見ていきます。", "見ていきます。おすすめです。"))}, "AIの文章によく出る")
 rejected("自分の体験の言い方（私・見てみた）", {"ai-remaster": good_article(sections=sec(0, text=g["sections"][0]["text"] + "私も見てみたところ、きれいでした。"))}, "自分の体験")
@@ -364,7 +386,7 @@ rejected("外す作品（未成年を連想させる題）は選べない", {"ai
 rejected("予約の作品（candidates に無い）は選べない", {"ai-remaster": good_article(picks=g["picks"][:4] + [{"cid": "abc00012ai", "why": "メーカーDの作品で、桜さんが出演しています。新しい作品を待っている人に向いています。"}])}, "candidates にありません")
 rejected("cid の重複", {"ai-remaster": good_article(picks=g["picks"][:4] + [dict(g["picks"][0], why=g["picks"][4]["why"])])}, "重複")
 rejected("理由が短い", {"ai-remaster": good_article(picks=g["picks"][:4] + [dict(g["picks"][4], why="短い理由です。人に向いています。")])}, "文字数")
-rejected("理由が長い", {"ai-remaster": good_article(picks=g["picks"][:4] + [dict(g["picks"][4], why=g["picks"][4]["why"] * 2)])}, "文字数")
+rejected("理由が長い", {"ai-remaster": good_article(picks=g["picks"][:4] + [dict(g["picks"][4], why=g["picks"][4]["why"] * 3)])}, "文字数")
 rejected("理由に、どんな人に向くかが無い", {"ai-remaster": good_article(picks=g["picks"][:4] + [dict(g["picks"][4], why="メーカーCの140分のドラマもので、月さんが出演しています。落ち着いた物語の作品として並べました。")])}, "どんな人に向くか")
 rejected("同じ理由の使い回し", {"ai-remaster": good_article(picks=g["picks"][:4] + [dict(g["picks"][4], why=g["picks"][3]["why"])])}, "同じ文章")
 rejected("題が長すぎる（41文字）", {"ai-remaster": good_article(title="あ" * 41)}, "文字数")
@@ -374,8 +396,8 @@ rejected("導入文が3段落", {"ai-remaster": good_article(lead=g["lead"] + "\
 rejected("節が3つ", {"ai-remaster": good_article(sections=g["sections"][:3])}, "4〜6個")
 rejected("節が7つ", {"ai-remaster": good_article(sections=g["sections"] + [dict(g["sections"][0], text=para("足した節です。", i)) for i in range(2)])}, "4〜6個")
 rejected("節の本文が4段落", {"ai-remaster": good_article(sections=sec(0, text=g["sections"][0]["text"] + "\n" + para("三つめの段落です。", 5) + "\n" + para("四つめの段落です。", 6)))}, "1〜3段落")
-rejected("本文の合計が短い（2,000文字に足りない）", {"ai-remaster": good_article(sections=[dict(s, text=s["text"].split("\n")[0]) for s in g["sections"]])}, "合計が")
-rejected("本文の合計が長い（3,000文字をこえる）", {"ai-remaster": good_article(sections=[dict(s, text=s["text"] + "\n" + para("段落を足しました。", i) + para("さらに足しました。", i + 1)) for i, s in enumerate(g["sections"])])}, "合計が")
+rejected("本文の合計が短い（2,500文字に足りない）", {"ai-remaster": good_article(sections=[dict(s, text=s["text"].split("\n")[0]) for s in g["sections"]])}, "合計が")
+rejected("本文の合計が長い（4,000文字をこえる）", {"ai-remaster": good_article(sections=[dict(s, text=s["text"] + "\n" + para("段落を足しました。", i) + para("さらに足しました。", i + 1)) for i, s in enumerate(g["sections"])])}, "合計が")
 rejected("chart は years だけ", {"ai-remaster": good_article(sections=sec(2, chart="makers"))}, "years")
 rejected("chart: years は1つの節だけ", {"ai-remaster": good_article(sections=sec(2, chart="years"))}, "1つの節だけ")
 rejected("同じ段落が2回", {"ai-remaster": good_article(sections=sec(4, text=g["sections"][3]["text"]))}, "同じ段落")

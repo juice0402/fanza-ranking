@@ -22,6 +22,7 @@ export const YOMIMONO_TITLE_WORDS = Object.freeze((Array.isArray(exclude?.title_
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const SLUG = /^[a-z0-9][a-z0-9-]{0,59}$/;
 const CID = /^[A-Za-z0-9_-]{1,40}$/;
+const SOURCE_URL = /^https:\/\/[^\s/"'<>]+\.[^\s/"'<>]+(\/[^\s"'<>]*)?$/; // 調べた資料の URL（https だけ）
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const strList = (v, max) => (Array.isArray(v) ? [...new Set(v.map((x) => str(x, 40)).filter(Boolean))].slice(0, max) : []);
 /** "1段落目\n2段落目" → ['1段落目', '2段落目']（空の段落は捨てる） */
@@ -54,7 +55,7 @@ export function themeTagNames(theme) {
 /**
  * yomimono.json → { updated, articles: [...] }（新しく書いた順）。形の違う読み物は捨てる（無い・壊れていても空）。
  * 読み物の形: { slug, path, theme: { genres, keywords, floor }, title, description, lead: [段落], sections: [{ h, paras: [段落], chart: 'years'|'' }],
- *   picksHeading, picks: [{ cid, why }], years: [{ y, n }]（古い順）, total, written, checked }
+ *   picksHeading, picks: [{ cid, why }], sources: [{ title, site, url, checked }]（調べた資料。#220）, years: [{ y, n }]（古い順）, total, written, checked }
  */
 export function normalizeYomimono(raw) {
   const ok = raw && typeof raw === 'object' && !Array.isArray(raw);
@@ -73,6 +74,10 @@ export function normalizeYomimono(raw) {
     const picks = (Array.isArray(a.picks) ? a.picks : [])
       .map((p) => ({ cid: str(p?.cid, 40), why: str(p?.why, 200) }))
       .filter((p) => CID.test(p.cid) && p.why && !seen.has(p.cid) && seen.add(p.cid));
+    const urls = new Set();
+    const sources = (Array.isArray(a.sources) ? a.sources : [])
+      .map((x) => ({ title: str(x?.title, 120), site: str(x?.site, 60), url: str(x?.url, 400), checked: DAY.test(String(x?.checked ?? '')) ? x.checked : '' }))
+      .filter((x) => x.title && x.site && SOURCE_URL.test(x.url) && !urls.has(x.url) && urls.add(x.url));
     const years = [...new Map((Array.isArray(a.years) ? a.years : [])
       .filter((y) => Number.isInteger(y?.y) && y.y >= 1970 && y.y <= 2100 && Number.isInteger(y?.n) && y.n >= 0)
       .map((y) => [y.y, { y: y.y, n: y.n }])).values()].sort((x, y) => x.y - y.y);
@@ -86,6 +91,7 @@ export function normalizeYomimono(raw) {
       sections,
       picksHeading: str(a.picks_h, 40) || YOMIMONO_PICKS_HEADING,
       picks,
+      sources,
       years,
       total: Number.isInteger(a.total) && a.total >= 0 ? a.total : 0,
       written: a.written,
@@ -94,6 +100,17 @@ export function normalizeYomimono(raw) {
   }
   articles.sort((x, y) => y.written.localeCompare(x.written) || (x.slug < y.slug ? -1 : x.slug > y.slug ? 1 : 0));
   return { updated: ok && DAY.test(String(raw.updated ?? '')) ? raw.updated : '', articles };
+}
+
+/**
+ * 調べた資料のリンクの rel（#220）: 外のページは nofollow noopener。FANZA・DMM のページは、サイトのほかの FANZA へのリンクと同じ広告の印
+ * （sponsored nofollow noopener noreferrer。tests/verify_dist.py が全ページで見る）
+ */
+const FANZA_HOSTS = ['fanza.co.jp', 'dmm.co.jp'];
+export function sourceRel(url) {
+  let host = '';
+  try { host = new URL(url).hostname.toLowerCase(); } catch { host = ''; }
+  return FANZA_HOSTS.some((h) => host === h || host.endsWith(`.${h}`)) ? 'sponsored nofollow noopener noreferrer' : 'nofollow noopener';
 }
 
 /** テーマの作品（出さない題の作品は除く） */

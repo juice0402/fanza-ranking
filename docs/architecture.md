@@ -299,12 +299,12 @@ Claude が**月のまとめ記事**を書くための道具（2026-10-07 から�
 
 #### 読み物（`/yomimono/`）: `scripts/claude_yomimono.py` / `site/src/lib/yomimono.js` / `site/src/pages/yomimono/` / `site/src/data/yomimono.json`
 
-2026-10-28 #181（運営者「ちょっとした調べ物はAIがすぐ答えるので、読み物で情報の価値を増やしたい」）。ジャンル・テーマごとのブログ調の記事＋厳選5本＋自動の棚（読み物兼セールスページ）。芯は、このサイトが毎日集めている数字（本数・人気の順位・レビュー・セール）。
+2026-10-28 #181（運営者「ちょっとした調べ物はAIがすぐ答えるので、読み物で情報の価値を増やしたい」）。ジャンル・テーマごとのブログ調の記事＋厳選5本＋自動の棚（読み物兼セールスページ）。2026-11-04 #220 から「調べてまとめる記事」: 芯は WebSearch で調べて確かめた情報（公式・ニュース・事典で2つ以上一致した事実）で、このサイトが毎日集めている数字（本数・人気の順位・レビュー・セール）は話を支える材料。
 - **テーマ**＝`{genres, keywords}`。作品のジャンルに1つでも入っているか、題に言葉が入っていれば、そのテーマ（Python と JS で同じ決まり）。最初の4本は `hard`（淫乱・ハード系）・`gensaku`（原作コラボ＋題に「実写」）・`ai-remaster`（題に「AIリマスター」）・`vr`（VR専用）
 - **出さない作品**: `isMinorTitle` と、`site/src/lib/yomimono-exclude.json` の題の言葉（無理やり・犯罪を思わせる言葉。伏せ字の ●○〇◯× の形も）。言葉の一覧はこのファイルだけに置き、道具とサイトの両方が読む。数には入れてよいが、棚・厳選・道具の候補には出さない
-- **道具** `claude_yomimono.py`: `themes`（書き直し＝`checked` から90日・まだ書いていない最初の4本・100本以上のジャンル。未成年や無理やりを思わせるジャンルは出さない）→ `list --slug`（`facts` と選べる作品 `candidates` 30本。作品の題は出さない）→ Claude が書く → `apply`（facts に無い数字・1段落に数字4つ以上・使わない言葉・体験談・題の写し・候補に無い作品・長さ 全角2,000〜3,000文字を断る）。手順と書き方の決まり（ブログ調・見出しの例・「こんな人に向いています」「選ぶ前に知っておきたいこと」）は `docs/claude-yomimono.md`。毎週月曜 0:50 の予約タスクが1本ずつ。テストは `tests/test_claude_yomimono.py`
-- **データ** `yomimono.json` = `{updated, articles: {slug: {theme, title, description, lead, sections[{h, text, chart?}], picks_h, picks[{cid, why}], years?, total, written, checked}}}`。`apply` だけが書く（書き直しでも `written` はそのまま）
-- **ページ**: `normalizeYomimono` で読み、`buildYomimonoPages` が棚（人気・評価の高い・いまセール中・新作と予約。各6本）を1つ以上持つ読み物だけページにする。見出し → 「この読み物の数字は◯月◯日に数えました」→ 導入 → 節（`chart: "years"` の節に年ごとの本数の棒。女優の歩みと同じ `.hist-*`）→ 厳選 → 棚（下に続きへの1行）→ ほかの読み物・ジャンル。構造化データは Article・ItemList（厳選）・BreadcrumbList。0本のあいだ、一覧は noindex でサイトマップにも入れない
+- **道具** `claude_yomimono.py`: `themes`（書き直し＝`checked` から90日・まだ書いていない最初の4本・100本以上のジャンル。未成年や無理やりを思わせるジャンルは出さない）→ `list --slug`（`facts` と選べる作品 `candidates` 30本。作品の題は出さない）→ Claude が書く → `apply`（facts に無い数字・1段落に数字4つ以上・本文の数字が合わせて11個以上・見出しの数字・5本の理由の順位/★/件数/割引・資料 `sources` が2つ未満や形の違い・使わない言葉・体験談・題の写し・候補に無い作品・長さ 全角2,500〜4,000文字を断る）。手順・調べ方・書き方の決まり（「## 調べ方」の節・流れ・「こんな人に向いています」「選ぶ前に知っておきたいこと」）は `docs/claude-yomimono.md`。毎週月曜 0:50 の予約タスクが1本ずつ。テストは `tests/test_claude_yomimono.py`
+- **データ** `yomimono.json` = `{updated, articles: {slug: {theme, title, description, lead, sections[{h, text, chart?}], picks_h, picks[{cid, why}], sources[{title, site, url, checked}], years?, total, written, checked}}}`（`sources` は #220 から。無い古い記事は資料の欄を出さない）。`apply` だけが書く（書き直しでも `written` はそのまま）
+- **ページ**: `normalizeYomimono` で読み、`buildYomimonoPages` が棚（人気・評価の高い・いまセール中・新作と予約。各6本）を1つ以上持つ読み物だけページにする。見出し → 「この読み物の数字は◯月◯日に数えました」→ 導入 → 節（`chart: "years"` の節に年ごとの本数の棒。女優の歩みと同じ `.hist-*`）→ 厳選 → 調べた資料（題とサイトの名前のリンクを小さく。新しいタブ・nofollow noopener。FANZA・DMM のページは広告の印 `sourceRel`）→ 棚（下に続きへの1行）→ ほかの読み物・ジャンル。構造化データは Article・ItemList（厳選）・BreadcrumbList。0本のあいだ、一覧は noindex でサイトマップにも入れない
 - **入口**: フッターの「読み物」（`Base.astro`。記事があるときだけ）・テーマのジャンルのページ（/tag/…）と VR見放題の売り場のトップ（/vr/）の見出しの下の1行
 - ファイル数は `plan.js` の `yomimono`（記事＋一覧）。点検は `tests/test_yomimono.mjs` と `verify_dist.py` の「■ 読み物」（棚がある・数えた日の行・未成年を思わせる題が出ない・構造化データ）
 

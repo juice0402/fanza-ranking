@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Claude が「読み物」（/yomimono/）の記事を書くための道具（Python標準ライブラリだけ）
 
-読み物は、ジャンル・テーマごとの、ブログのような記事です（導入文・見出しのある節・最初に見る5本）。
-本数・年ごとの本数・メーカー・評価などの数字は、この道具がサイトの全作品から数えます。
-Claude は数字を「話を支える材料」として使い、文章を書きます。手順と書き方は docs/claude-yomimono.md を見てください。
+読み物は、ジャンル・テーマごとの「調べてまとめる記事」です（導入文・見出しのある節・最初に見る5本・調べた資料）。
+芯は WebSearch で調べて確かめた情報（2026-11-04 #220）。本数・年ごとの本数・メーカー・評価などの数字は、この道具がサイトの全作品から数え、
+Claude はその数字を「話を支える材料」として少しだけ使います。手順と書き方は docs/claude-yomimono.md を見てください。
 
   python3 scripts/claude_yomimono.py themes [--today YYYY-MM-DD]
       （別名 candidates）書き直す記事（確かめた日 checked から90日をすぎたもの）と、まだ書いていないテーマの候補を出す
@@ -11,7 +11,7 @@ Claude は数字を「話を支える材料」として使い、文章を書き�
   python3 scripts/claude_yomimono.py list --slug jukujo --genres 熟女 [--keywords 語,語]
       テーマの数字（facts）と、選べる作品（candidates。作品タイトルは出さない）を出す
   python3 scripts/claude_yomimono.py apply 記事.json [--dry-run] [--today YYYY-MM-DD]
-      {"<slug>": {title, description, lead, sections, picks_h?, picks, theme?}} を点検して、
+      {"<slug>": {title, description, lead, sections, picks_h?, picks, sources, theme?}} を点検して、
       問題が無ければ site/src/data/yomimono.json に書き込む（1件でも問題があれば何も書き込まない）
 
 テーマ: {"genres": [...], "keywords": [...]}。作品のジャンルにテーマのジャンルが1つでもあるか、
@@ -81,11 +81,17 @@ TITLE_MIN, TITLE_MAX = 8, 40
 DESC_MIN, DESC_MAX = 80, 120
 HEAD_MIN, HEAD_MAX = 2, 30
 PARA_MIN, PARA_MAX = 30, 600
-BODY_MIN, BODY_MAX = 2000, 3000   # 導入文と節の本文の合計（改行は数えない）
+BODY_MIN, BODY_MAX = 2500, 4000   # 導入文と節の本文の合計（改行は数えない。#220 で 2,000〜3,000 から）
 SECTIONS_MIN, SECTIONS_MAX = 4, 6
 PARAS_MAX = 3                # 1つの節の段落の数（1〜3）
-WHY_MIN, WHY_MAX = 40, 80
-NUMBERS_PER_PARA = 3         # 1段落の数字（日付と「1」は数えない）。数字のレポートにしないため
+WHY_MIN, WHY_MAX = 40, 100
+NUMBERS_PER_PARA = 3         # 1段落の数字（日付と1〜10は数えない）。数字のレポートにしないため
+NUMBERS_TOTAL = 10           # 導入文と節の本文の数字の合計（日付と1〜10は数えない。表・グラフ・5本のカードの外。#220）
+SOURCES_MIN, SOURCES_MAX = 2, 12   # 調べた資料の数
+SOURCE_TITLE_MAX, SOURCE_SITE_MAX, SOURCE_URL_MAX = 80, 40, 400
+OWN_HOSTS = ("av-sale-guide.com", "fanza-ranking.pages.dev", "workers.dev")  # 自分のサイトは資料にしない
+# 5本の理由に書かない数字（カードに出ている順位・★・件数・割引）。収録時間と年は書いてよい
+WHY_CARD_NUM_RE = re.compile(r"\d+(?:\.\d+)?\s*(?:位|件|%|％|割|点|円)|★|☆")
 DEFAULT_PICKS_H = "最初に見るならこの5本"
 
 # いっしょに付いているジャンル・新しいテーマの候補から外す、作品の中身を表さないジャンル
@@ -676,6 +682,36 @@ def style_problems(text):
     return problems
 
 
+def source_problems(sources, today, add):
+    """調べた資料 [{title, site, url, checked}] を点検して、書き込む形を返す（問題は add で足す）。
+    2つ以上・URL は https・確かめた日は今日まで・同じ URL は1回・自分のサイトは資料にしない"""
+    if not isinstance(sources, list) or not (SOURCES_MIN <= len(sources) <= SOURCES_MAX):
+        add("sources", f"調べた資料を{SOURCES_MIN}〜{SOURCES_MAX}個のリストにしてください（[{{\"title\", \"site\", \"url\", \"checked\"}}]。開いて確かめたページだけ）")
+        sources = sources if isinstance(sources, list) else []
+    out, seen = [], set()
+    for i, src in enumerate(sources, 1):
+        where = f"sources[{i}]"
+        if not isinstance(src, dict) or set(src) != {"title", "site", "url", "checked"} or not all(isinstance(src[k], str) for k in src):
+            add(where, '{"title": 題, "site": サイトの名前, "url": URL, "checked": 開いて確かめた日} の形（どれも文字列）にしてください')
+            continue
+        title, site, url, checked = (src[k].strip() for k in ("title", "site", "url", "checked"))
+        for why in cc.text_problems(title, 2, SOURCE_TITLE_MAX):
+            add(f"{where} の title", why)
+        for why in cc.text_problems(site, 1, SOURCE_SITE_MAX):
+            add(f"{where} の site", why)
+        if not re.match(r"^https://[^\s/]+\.[^\s/]+(/\S*)?$", url) or len(url) > SOURCE_URL_MAX or any(c in url for c in "\"'<> "):
+            add(f"{where} の url", "https:// で始まる URL を1つ書いてください")
+        elif any(h in url.split("/")[2] for h in OWN_HOSTS):
+            add(f"{where} の url", "このサイトのページは資料にしません（調べた外のページを書いてください）")
+        if not DAY_RE.match(checked) or checked > today:
+            add(f"{where} の checked", "開いて確かめた日を YYYY-MM-DD で書いてください（今日まで）")
+        if url in seen:
+            add(where, "同じ URL が2回あります")
+        seen.add(url)
+        out.append({"title": title, "site": site, "url": url, "checked": checked})
+    return out
+
+
 def paragraphs_of(text):
     return [p.strip() for p in text.split("\n")]
 
@@ -691,7 +727,7 @@ def check_article(slug, art, ctx, existing, grams):
         return [(slug, f"slug は英小文字・数字・ハイフンで{SLUG_MAX}文字まで（例: ai-remaster）")], None
     if not isinstance(art, dict):
         return [(slug, "記事は {title, description, lead, sections, picks} の形にしてください")], None
-    unknown = sorted(set(art) - {"title", "description", "lead", "sections", "picks_h", "picks", "theme"})
+    unknown = sorted(set(art) - {"title", "description", "lead", "sections", "picks_h", "picks", "sources", "theme"})
     if unknown:
         add("全体", "知らない項目があります: " + "、".join(unknown))
     if "theme" in art:
@@ -760,7 +796,7 @@ def check_article(slug, art, ctx, existing, grams):
         h = s["h"].strip()
         for why in common_problems(h, HEAD_MIN, HEAD_MAX):
             add(f"{where} の見出し", why)
-        texts.append((f"{where} の見出し", h, False))
+        texts.append((f"{where} の見出し", h, "head"))
         paras = paragraphs_of(s["text"].strip())
         if not (1 <= len(paras) <= PARAS_MAX) or not all(paras):
             add(where, f"本文は1〜{PARAS_MAX}段落にしてください（段落の区切りは改行1つ。空の段落は入れない）")
@@ -830,12 +866,14 @@ def check_article(slug, art, ctx, existing, grams):
             if name and why.count(name) > 1:
                 add(where, f"出演者名「{name}」が2回以上入っています（1回まで）")
         seen_whys.setdefault(why, []).append(where)
-        texts.append((where, why, False, cid))
+        texts.append((where, why, "why", cid))
         clean_picks.append({"cid": cid, "why": why})
     for why, wheres in seen_whys.items():
         if len(wheres) > 1:
             for w in wheres:
                 add(w, "同じ文章が他の作品にも使われています")
+
+    clean_sources = source_problems(art.get("sources"), ctx["today"], add)
 
     # 名前（数字・題の写しを調べるときは除く）: facts と候補の名前・テーマの作品のジャンル・テーマの言葉
     rows = [x for x in ctx["works"] if matches(x, theme)]
@@ -851,22 +889,36 @@ def check_article(slug, art, ctx, existing, grams):
     allowed = fact_numbers(facts)
     body_allowed = allowed | {n for c in picked for n in candidate_numbers(c)}
     this_year = int(ctx["today"][:4])
-    for where, text, is_para, *pick in texts:
-        # 選んだ作品の理由は、facts とその作品の数字だけ。本文は、facts と選んだ5本の数字
-        ok = allowed | candidate_numbers(cands[pick[0]]) if pick else body_allowed
+    total_counted = 0
+    for where, text, kind, *pick in texts:
         toks = number_tokens(text, names)
-        rounded = rounded_forms(ok)
-        bad = sorted({t for t, nxt, about in toks if not number_ok(t, nxt, about, ok, rounded, this_year)}, key=float)
-        if bad:
-            add(where, "facts にない数字があります（list の facts・candidates の数字と、日付・1〜10の小さな数だけを使ってください）: " + "、".join(bad))
-        if is_para:
-            # 日付と、1〜10の小さな数（「5本」「4時間」など）は数えない
-            counted = [t for t, nxt, _ in toks if not is_date_token(t, nxt, this_year) and not (t.isdigit() and int(t) <= 10)]
+        if kind == "why":
+            # 5本の理由: 順位・★・件数・割引はカードに出ているので書かない。書いてよい数字は、その作品の収録時間・年・1〜10だけ
+            c = cands[pick[0]]
+            ok = {str(c["minutes"])} if isinstance(c.get("minutes"), int) else set()
+            bad = sorted({t for t, nxt, _ in toks if not (t in ok or is_date_token(t, nxt, this_year) or (t.isdigit() and 1 <= int(t) <= 10))}, key=float)
+            if bad or WHY_CARD_NUM_RE.search(unicodedata.normalize("NFKC", text)):
+                add(where, "理由に書かない数字があります（順位・★・件数・割引はカードに出ています。数字は収録時間と年だけ）" + (": " + "、".join(bad) if bad else ""))
+        else:
+            # 本文は、facts と選んだ5本の数字
+            rounded = rounded_forms(body_allowed)
+            bad = sorted({t for t, nxt, about in toks if not number_ok(t, nxt, about, body_allowed, rounded, this_year)}, key=float)
+            if bad:
+                add(where, "facts にない数字があります（list の facts・candidates の数字と、日付・1〜10の小さな数だけを使ってください）: " + "、".join(bad))
+        # 日付と、1〜10の小さな数（「5本」「4時間」など）は数えない
+        counted = [t for t, nxt, _ in toks if not is_date_token(t, nxt, this_year) and not (t.isdigit() and int(t) <= 10)]
+        if kind == "head" and toks:
+            add(where, "見出しに数字を入れません（数字で言い切る見出しにしない。読む人の問いか、中身の言葉で）")
+        if kind is True:
+            total_counted += len(counted)
             if len(counted) > NUMBERS_PER_PARA:
                 add(where, f"数字が{len(counted)}つあります（1段落に{NUMBERS_PER_PARA}つまで。数字は話を支える材料として、しぼって使ってください）")
         piece = copied_piece(text, grams, names)
         if piece:
             add(where, f"作品の題の言葉をそのまま写しています（「{piece}」。題は本文に書きません）")
+    if total_counted > NUMBERS_TOTAL:
+        add("本文", f"導入文と節の本文の数字が合わせて{total_counted}個あります（{NUMBERS_TOTAL}個まで。日付と1〜10は数えない。"
+                  "数字は「数字で見る」の節とグラフにまとめ、ほかの節は調べた情報で書いてください）")
 
     if problems:
         return problems, None
@@ -878,6 +930,7 @@ def check_article(slug, art, ctx, existing, grams):
         "sections": clean_sections,
         "picks_h": picks_h,
         "picks": clean_picks,
+        "sources": clean_sources,
     }
     if charts:
         entry["years"] = facts["years"]
