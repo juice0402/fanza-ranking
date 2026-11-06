@@ -1136,6 +1136,17 @@ summary:focus-visible {
   object-fit: contain;
 }
 
+/* 同人の行は表紙の列が広い（.ws-row:has(.item-cover.is-wide) .item）ので、この棚では縦長の行と同じ幅にもどす */
+.floor-picks .ws-row:has(.item-cover.is-wide) .item {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+
+@media (min-width: 1200px) {
+  .floor-picks .ws-row:has(.item-cover.is-wide) .item {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+}
+
 .floor-picks .ws-row .item-title {
   min-height: 3em; /* 2行ぶん（.ws-row の line-height 1.5 × 2。.ws-row .item-title の min-height: 0 より強く） */
 }
