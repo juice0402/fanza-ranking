@@ -324,6 +324,23 @@ check('assetUrl: public のファイルの中身から作った8文字の印を�
 check('assetUrl: 見つからなければ、そのまま（ビルドは止めない）', assetUrl('/nothing.js', [tmp]) === '/nothing.js');
 check('assetUrl: 本物の public の vr-filter.js にも付く', /^\/vr-filter\.js\?v=[0-9a-f]{8}$/.test(assetUrl('/vr-filter.js', [path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'site', 'public')])));
 check('inlineScript: public のスクリプトの中身を、ページにそのまま入れる形で返す（無ければ空。</script を含まない）', (() => { const t = A.inlineScript('/sale.js', [new URL('../site/public', import.meta.url).pathname]); return t.includes('MutationObserver') && t.includes('shownSlots') && !/<\/script/i.test(t) && A.inlineScript('/nothing.js', [new URL('../site/public', import.meta.url).pathname]) === ''; })());
+// サンプル画像の保存の形（#235）: 枚数だけ（sample_count）は決まった形の住所に戻す・住所の一覧はそのまま（DMMの https だけ）
+const cntItem = L.normalizeItems([{ cid: 'abc00123', title: 't', date: '2026-10-01', sample_count: 15 }])[0];
+check('サンプル画像: 枚数だけ（sample_count）の作品は、決まった形の住所 1〜N枚目に戻す',
+  cntItem.sample_images.length === 15 && cntItem.sample_images[0] === 'https://pics.dmm.co.jp/digital/video/abc00123/abc00123jp-1.jpg'
+  && cntItem.sample_images[14] === 'https://pics.dmm.co.jp/digital/video/abc00123/abc00123jp-15.jpg', cntItem.sample_images.slice(0, 2));
+check('サンプル画像: 枚数が変な値（0・負・小数・文字・true・大きすぎ）や、品番に決まった字以外があれば無し',
+  [0, -1, 2.5, '5', true, 100000].every((n) => L.normalizeItems([{ cid: 'a1', title: 't', date: '2026-10-01', sample_count: n }])[0].sample_images.length === 0)
+  && L.normalizeItems([{ cid: 'A/1', title: 't', date: '2026-10-01', sample_count: 3 }])[0].sample_images.length === 0);
+const sp20 = L.splitSamples(Array.from({ length: 20 }, (_, i) => `https://pics.dmm.co.jp/x/${i + 1}.jpg`));
+check('作品ページのサンプル画像: はじめは8枚・残りは9枚目から全部・ラベルは通し番号',
+  L.SAMPLES_SHOWN === 8 && sp20.first.length === 8 && sp20.rest.length === 12 && sp20.first[0].label === 'サンプル画像 1'
+  && sp20.rest[0].label === 'サンプル画像 9' && sp20.rest[11].label === 'サンプル画像 20' && sp20.rest[0].src.endsWith('/9.jpg'));
+const sp8 = L.splitSamples(Array.from({ length: 8 }, (_, i) => `u${i}`));
+check('作品ページのサンプル画像: 8枚以下は今と同じ（残りは無し）・空でもこわれない',
+  sp8.first.length === 8 && sp8.rest.length === 0 && L.splitSamples([]).first.length === 0 && L.splitSamples(null).rest.length === 0
+  && L.splitSamples(['a', 'b', 'c'], 2).rest.length === 1);
+
 fs.rmSync(tmp, { recursive: true, force: true });
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);

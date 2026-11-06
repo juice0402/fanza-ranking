@@ -85,9 +85,9 @@ check("大人どうしの言葉（幼なじみ・処女・姉妹）や、ふつ�
 
 print("\n■ 1件の読み方")
 it = D.parse_floor_item(raw(10), "doujin")
-check("同人: 品番・タイトル・アフィリエイトのURL・大きい表紙・サンプル画像は6枚まで・サークル（id つき）",
+check("同人: 品番・タイトル・アフィリエイトのURL・大きい表紙・サンプル画像は全部（前は6枚まで。#235）・サークル（id つき）",
       it["cid"] == "d_100010" and it["url"].startswith("https://al.fanza.co.jp/") and it["image_url"].endswith("d_100010pl.jpg")
-      and len(it["sample_images"]) == 6 and it["maker"] == "サークル3" and it["maker_id"] == 200003, it)
+      and len(it["sample_images"]) == 10 and it["maker"] == "サークル3" and it["maker_id"] == 200003, it)
 check("同人: 画像は、同じ場所の pics.dmm.co.jp にする（doujin-assets は、運営者のiPhoneでページの中に出なかったため。2026-10-09）",
       it["image_url"] == "https://pics.dmm.co.jp/digital/comic/d_100010/d_100010pl.jpg" and all(u.startswith("https://pics.dmm.co.jp/digital/comic/d_100010/") for u in it["sample_images"])
       and D.pics_url("https://doujin-assets.dmm.co.jp/a/b.jpg") == "https://pics.dmm.co.jp/a/b.jpg" and D.pics_url("https://pics.dmm.co.jp/x.jpg") == "https://pics.dmm.co.jp/x.jpg", it["image_url"])
@@ -100,8 +100,11 @@ g = D.parse_floor_item(raw(12, kind="game", genres=("恋愛", "最大90%OFFセ�
 check("ゲーム: セールの札・形式・中身のジャンルに分け、評価の札（○○がいい・○○に定評）は持たない",
       g["genres"] == ["恋愛"] and g["sales"] == ["最大90%OFFセール【感謝祭オータム2026】", "3点以上で5%OFFクーポン／感謝祭オータム2026対象"]
       and g["formats"] == ["Windows11対応作品", "DL版独占販売"], g)
-check("ゲーム: サンプル画像は大きい版（js- → jp-）を8枚まで・作家・定価が空なら null",
-      len(g["sample_images"]) == 8 and all("jp-" in u and "js-" not in u for u in g["sample_images"]) and g["authors"] == ["作った原画家"] and g["price"] == 8800 and g["list_price"] is None, g)
+check("ゲーム: サンプル画像は大きい版（js- → jp-）を全部（前は8枚まで。#235）・作家・定価が空なら null",
+      len(g["sample_images"]) == 24 and all("jp-" in u and "js-" not in u for u in g["sample_images"]) and g["authors"] == ["作った原画家"] and g["price"] == 8800 and g["list_price"] is None, g)
+check("売り場ごとのサンプル画像の枚数: 動画・同人・ゲームの売り場は全部（None）・コミック・写真集は持たない（0）。上限を渡したときだけ切る",
+      all(F.FLOORS[k]["samples"] is None for k in ("doujin", "game", "anime", "amateur", "cinema", "vr")) and F.FLOORS["comic"]["samples"] == 0 and F.FLOORS["photo"]["samples"] == 0
+      and len(D.sample_images(raw(12, kind="game"), 5)) == 5 and len(D.sample_images(raw(12, kind="game"), None)) == 24)
 check("URL・画像が FANZA(DMM) の https でなければ使わない（作品ごと入れない・画像は空）",
       D.parse_floor_item(dict(raw(13), affiliateURL="https://evil.example/x"), "doujin") is None
       and D.parse_floor_item(dict(raw(14), imageURL={"large": "https://evil.example/a.jpg"}), "doujin")["image_url"] == "")

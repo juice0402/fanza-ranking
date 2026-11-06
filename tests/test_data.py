@@ -55,6 +55,19 @@ def _ok_movie(x):
     return bool(m) and (m.group(1) == "dmm.co.jp" or m.group(1).endswith(".dmm.co.jp"))
 
 
+def _samples_ok(x):
+    """サンプル画像の保存の形（#235）: 決まった形の作品は枚数だけ（sample_count・1以上の整数・sample_images は無し）、
+    ほかは住所の一覧（sample_images・FANZA(DMM)の https）。一覧のほうに、枚数だけにできる形が残っていない（データを移しきった）こと"""
+    cid = str(x.get("cid") or "")
+    if "sample_count" in x:
+        n = x["sample_count"]
+        return "sample_images" not in x and isinstance(n, int) and not isinstance(n, bool) and 1 <= n <= 500 and re.fullmatch(r"[0-9a-z_]+", cid) is not None
+    urls = x.get("sample_images")
+    if not isinstance(urls, list) or not all(_fanza_https(u, ["dmm.co.jp"]) for u in urls):
+        return False
+    return not urls or urls != [f"https://pics.dmm.co.jp/digital/video/{cid}/{cid}jp-{i}.jpg" for i in range(1, len(urls) + 1)]
+
+
 check("サンプル動画(sample_movie)は、空かFANZA(DMM)のhttps", all(_ok_movie(x) for x in items), [x.get("cid") for x in items if not _ok_movie(x)][:5])
 check("動画の取り直し回数(movie_tries)は 0 以上の整数", all(isinstance(x.get("movie_tries"), int) and not isinstance(x.get("movie_tries"), bool) and x.get("movie_tries") >= 0 for x in items),
       [x.get("cid") for x in items if not isinstance(x.get("movie_tries"), int)][:5])
@@ -90,6 +103,9 @@ def _fanza_https(v, hosts):
 
 def _num_ok(v, lo, hi):
     return v is None or (isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi)
+
+
+check("サンプル画像は、枚数だけ（sample_count）か住所の一覧（sample_images）の形", all(_samples_ok(x) for x in items), [x.get("cid") for x in items if not _samples_ok(x)][:5])
 
 
 if not os.path.exists(ACTRESSES):
@@ -226,7 +242,7 @@ else:
     check("過去作品: リンクは FANZA の https・サンプル動画は空かFANZA(DMM)のhttps・動画の取り直し回数は 0 以上の整数",
           all(_fanza_https(x.get("url"), ["fanza.co.jp", "dmm.co.jp"]) and _ok_movie(x) and isinstance(x.get("movie_tries"), int) and not isinstance(x.get("movie_tries"), bool) and x["movie_tries"] >= 0 for x in cat_items),
           [x.get("cid") for x in cat_items if not (_fanza_https(x.get("url"), ["fanza.co.jp", "dmm.co.jp"]) and _ok_movie(x))][:5])
-    check("過去作品: サンプル画像は8枚まで", all(isinstance(x.get("sample_images"), list) and len(x["sample_images"]) <= 8 for x in cat_items))
+    check("過去作品: サンプル画像は、枚数だけ（sample_count）か住所の一覧（sample_images）の形", all(_samples_ok(x) for x in cat_items), [x.get("cid") for x in cat_items if not _samples_ok(x)][:5])
     check("過去作品: シリーズ・レーベルの項目がある（無いときは 0 と空）", all(_entry_ok(x, "series") and _entry_ok(x, "label") for x in cat_items),
           [x.get("cid") for x in cat_items if not (_entry_ok(x, "series") and _entry_ok(x, "label"))][:5])
     check("過去作品のファイルに、APIキーらしき文字列が入っていない", not any(re.search(r"AIza[0-9A-Za-z_\-]{20,}", open(os.path.join(CATALOG_DIR, n), encoding="utf-8").read()) for n in names))

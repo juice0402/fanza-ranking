@@ -228,6 +228,24 @@ export function entryOf(id, name) {
   return { id: num, name: text };
 }
 
+// サンプル画像（2026-11-06 #235）。保存の形は2つ: 住所がぜんぶ決まった形（…/digital/video/<cid>/<cid>jp-1.jpg 〜 jp-N.jpg）の作品は
+// 枚数だけ（sample_count: N）、ほかは住所の一覧（sample_images）。どちらも住所の一覧にして返す（FANZA(DMM)の https だけ）
+export const SAMPLE_COUNT_MAX = 500;
+export function sampleImagesOf(cid, r) {
+  const n = r?.sample_count;
+  if (Number.isInteger(n) && n >= 1 && n <= SAMPLE_COUNT_MAX && /^[0-9a-z_]+$/.test(cid)) {
+    return Array.from({ length: n }, (_, i) => `https://pics.dmm.co.jp/digital/video/${cid}/${cid}jp-${i + 1}.jpg`);
+  }
+  return Array.isArray(r?.sample_images) ? r.sample_images.map((u) => safeHttpsUrl(u, FANZA_HOSTS)).filter(Boolean) : [];
+}
+
+// 作品ページで、はじめから並べるサンプル画像の枚数。9枚目からは「残り◯枚を見る」の中（押すまで読みこまない）
+export const SAMPLES_SHOWN = 8;
+export function splitSamples(urls, shown = SAMPLES_SHOWN) {
+  const gallery = (Array.isArray(urls) ? urls : []).map((src, i) => ({ src, label: `サンプル画像 ${i + 1}` }));
+  return { first: gallery.slice(0, shown), rest: gallery.slice(shown) };
+}
+
 export function normalizeItems(raw) {
   const list = Array.isArray(raw) ? raw : [];
   const seen = new Set();
@@ -249,7 +267,7 @@ export function normalizeItems(raw) {
       // URLは、FANZA(DMM)のhttpsだけ通す（javascript: や他のサイトのURLがデータに紛れても、画面に出さない）
       url: safeHttpsUrl(r.url, FANZA_LINK_HOSTS),
       image_url: safeHttpsUrl(r.image_url, FANZA_HOSTS),
-      sample_images: Array.isArray(r.sample_images) ? r.sample_images.map((u) => safeHttpsUrl(u, FANZA_HOSTS)).filter(Boolean) : [],
+      sample_images: sampleImagesOf(cid, r),
       date,
       dateKey: date.slice(0, 10),
       maker: String(r.maker ?? '') || '不明',

@@ -11,6 +11,7 @@ import FloorMiniShelf from '../../../components/FloorMiniShelf.astro';
 import RankTrend from '../../../components/RankTrend.astro';
 import GachaCorner from '../../../components/GachaCorner.astro';
 import SampleMovie from '../../../components/SampleMovie.astro';
+import SampleGallery from '../../../components/SampleGallery.astro';
 import { actressByName, activeFloors, floorHasSale, floorCollectionGroups, floorMakerById, floorRankHistory, floorSalePageBySlug, floorSalePageGroups, floors, tenYenInfo, floorReviewRankOf } from '../../../lib/data.js';
 import { floorReviewRankingPath } from '../../../lib/reviews.js';
 import { tenYenPath } from '../../../lib/ten-yen.js';
@@ -33,8 +34,6 @@ const items = floors[key].items;
 const makerGroup = item.maker ? floorMakerById[key].get(item.maker.id) : null;
 const same = sameMaker(item, floorMakerById[key]);
 const genrePop = popularInFloorGenre(item, items, new Set(same.map((i) => i.cid)));
-const samples = item.sample_images.slice(0, FLOOR_SAMPLES);
-const gallery = samples.map((src, i) => ({ src, label: `サンプル画像 ${i + 1}` }));
 // 大きな表紙の形（lib/floors.js の FLOORS の detail）: 同人＝横長 560×420・素人＝正方形・アニメ/成人映画/VR＝見開き 800×538・ゲーム/ブックス＝縦長
 const shape = f.detail ?? 'tall';
 const coverSize = { wide: [560, 420], square: [600, 600], spread: [800, 538], tall: [411, 560] }[shape];
@@ -42,7 +41,7 @@ const doujinImg = key === 'doujin';
 // サンプル動画のある作品は、動画の作品ページと同じ並び: 上に動画、表紙はサンプル画像の下の「パッケージ写真」へ（運営者の希望「動画のほうが先に見たい」。2026-10-30）
 const hasMovie = Boolean(item.sampleMovie);
 const coverBelow = hasMovie && Boolean(item.image_url);
-const zoomable = gallery.length > 0 || coverBelow; // 拡大表示（lightbox）を使う画像がある
+const zoomable = item.sample_images.length > 0 || coverBelow; // 拡大表示（lightbox）を使う画像がある
 const noindex = !item.comment;
 const trail = [
   { name: 'トップ', path: '/' },
@@ -223,20 +222,7 @@ const tenNow = tenYenInfo(key, item.cid);
       </div>
     </article>
 
-    {gallery.length > 0 && (
-      <section class="subsection" aria-labelledby="samples-title">
-        <h2 id="samples-title" class="subsection-title">サンプル画像</h2>
-        <ul class="samples">
-          {gallery.map((g) => (
-            <li>
-              <a class="sample-link" href={g.src} data-label={g.label} target="_blank" rel="noopener noreferrer" aria-label={`${g.label} を拡大して見る`}>
-                <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={doujinImg ? DOUJIN_IMG_ONERROR : undefined} />
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    )}
+    <SampleGallery urls={item.sample_images} shown={FLOOR_SAMPLES} noReferrer onerror={doujinImg ? DOUJIN_IMG_ONERROR : undefined} />
 
     {coverBelow && (
       <section class:list={['subsection', 'package', `is-${shape}`]} aria-labelledby="package-title">

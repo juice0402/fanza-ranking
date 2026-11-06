@@ -123,6 +123,8 @@ Claude の予約タスク（月が変わって最初の月曜 0:50 JST。毎週�
 
 毎日の更新スクリプト。Python標準ライブラリだけ（pip不要）
 
+**サンプル画像は全部**（2026-11-06 #235 運営者「全てちゃんと掲載してほしい」。前は新作・予約12枚・過去作品8枚まで）: `parse_api_item` は API の `sampleImageURL`（sample_l、なければ sample_s）を全部入れる。`apply_fresh` は、取り直しのほうが枚数が多ければ入れかえる（ほかの項目は空のときだけ補う）。過去作品は、ふだんの一回りで見かけた作品から順に全部の枚数になる（まとめて取り直さない）。**保存の形**: 住所がぜんぶ決まった形（`https://pics.dmm.co.jp/digital/video/<cid>/<cid>jp-1.jpg` 〜 `jp-N.jpg`・すき間なし・品番は小文字と数字と `_`）の作品は、`packed` が `sample_images` の代わりに枚数だけ `"sample_count": N` を書き（`save_archive`・`save_catalog`）、`normalize_loaded` の `loaded_samples` が住所の一覧に戻す（サイトは `items.js` の `sampleImagesOf`、点検は `verify_dist.py` の `samples_of`）。形がちがう作品・空は `sample_images` の一覧のまま。データの大きさは `new_releases.json`＋`catalog/` で 30.3MB → 19.3MB（移した日）
+
 #### `scripts/claude_comments.py`
 
 Claude がコメントを書き上げるための道具（`list` で対象と下書き・使える事実を出し、`apply` で点検して書き込む。書いたものは `comment_kind: "claude"`。確かめられない評価・古くなる言い方・下書きと同じ文は断る）。毎日の更新の作品を先に、枠（1日40件）が余ったら、コメントがまだ無い過去作品（`catalog/`）を人気順の順位が上の作品から出し（順位そのものは出さない）、そのファイルに書き込む。標準ライブラリだけ **1日の上限（40件）の数え方**（2026-10-13）: Claude のコメントで更新日が今日の作品のうち、今日の0時（日本時間）より前の最後の記録（git）とコメントがちがう作品だけを数える（`claude_done_today`。毎日の更新は、出演者などを補った作品の更新日を今日にするので、更新日だけで数えると前の日のコメントまで数えていた。git が使えない・浅い clone なら更新日だけで数える）。**同じ品番が動画にもある売り場の作品**（VR見放題の `13dsvr01627` など）は、`list` が `cid` を「売り場:品番」で出し、`apply` はそれを売り場のほうに書く（前は過去作品のほうに書いていた）
@@ -138,6 +140,8 @@ Claude がコメントを書き上げるための道具（`list` で対象と下
 #### `scripts/doujin_game.py` / `scripts/floor_data.py`
 
 **FANZA同人・FANZAゲーム**（運営者の希望「『FANZA セール』で上に来る、同人・ゲームのセール情報のページも」→「同人1,000本・ゲーム500本」。2026-10-09）。**新しい売り場**（2026-10-10。運営者の希望「アニメ動画・素人・成人映画・FANZAブックス（コミック・写真集）・VR見放題も。各100、素人は500」）: `FLOORS` に anime・amateur（500本）・cinema・comic・photo・vr（各100本）。service/floor・floor_id は 2026-10-10 に本物で確かめたもの（`scripts/probe_api.py` の 11・12）。作品の項目に `actress`（出演者・8人まで）・`sample_movie`（サンプル動画のページ）・`trial_url`（立ち読みのページ）を足した（同人・ゲームのデータも移行済み）。**`label`・`label_id`（レーベル。素人は「電影シロウト-バズ-」のようなメーカーの中の名前）・`duration`（収録時間の分。動画の売り場＝`FLOORS` の `duration` だけ。APIの volume は「120」か「1:03:00」の形＝`volume_minutes`）**も（2026-10-12。全部の売り場のデータを移行済み）。表紙は大きい版、無ければ小さい版（素人は 1200×1200 の四角・成人映画の一部は表紙だけ）。ブックスはメーカーの代わりに出版社（`manufacture`）。「ハイビジョン」「4K」「単体作品」などは形式（`formats`）。未成年を連想させる名前の調べ先に、レーベル・出版社・出演者・監督も。**同人・素人は各3,000本**（2026-10-28 #190。運営者「同人とか素人も人気コンテンツってこともわかった」。`max_calls` は80。10/29 の割合で同人は約6,300本・素人は約5,700本読む＝1回の更新で数分ふえるだけなので分けない。サイトのファイルは約2.7万 → 約3.3万の見込みで、FILE_BUDGET 4万の中なので動画の作品ページは減らない。売り場の人気の動き floor_rank_history は上位300本のまま）。`doujin_game.py --update` が、人気順（sort=rank・発売済み）を上から100本ずつ読み、未成年を連想させる作品を飛ばして決めた本数まで集める（`FLOORS` の `target`・1日 `max_calls` 回まで。ゲームは予約の人気順も30本）。ジャンルの札は、中身（`genres`）・形式（`formats`。男性向け・Windows11対応作品 など）・セールの札（`sales`。ゲームの「最大90%OFFセール【…】」「3点以上で5%OFFクーポン」など）に分け、「CGがいい」のような評価の札は持たない。ゲームのサンプル画像は、APIが小さい版（js-）しか返さないので大きい版（jp-。640×360）にする。前の日にあって今日の上位に無い作品は外す（Claude のコメントがある作品は残す）。最後まで読めなかった日・本数が前の半分より少ない日は、前の作品を外さない。読み書きは `floor_data.py`（`claude_comments.py` も使う。読んで書き直しても1文字も変わらない）。`tests/test_doujin_game.py`
+
+サンプル画像（2026-11-06 #235）: `FLOORS` の `samples` が `None` の売り場（同人・ゲーム・アニメ・素人・成人映画・VR見放題）は、API の枚数ぶん全部（住所の一覧のまま）。`0` のコミック・写真集は持たない
 
 #### `scripts/floor_sales.py`
 
@@ -281,6 +285,8 @@ Claude が**月のまとめ記事**を書くための道具（2026-10-07 から�
 
 並べ替え・日付・sitemap/robots・出演者/メーカーのまとめ・構造化データ（JSON-LD）など、テストできる部品（画面に依存しない）。**出演者のページ**（運営者の希望「SEOを上位に」→ ②女優のページを強く。2026-10-06）: タイトル `actressPageTitle(g, today)`＝「○○の新作・予約・出演作品一覧【2026年10月】（42本）」（予約があるときだけ「予約」）、説明文 `actressDescription`＝「次の新作は○月○日発売。いまセール中の作品が○本（最大○%OFF）。」＋紹介文（作品タイトルは入れない）、ページの中に「○月○日更新」（sitemap の lastmod と同じ `listLastmod`）・**次の新作**（予約受付中を近い順に3本）・**セール中の作品**（`sale.js` の `onSaleItems`。人気の高い順に6本・価格といつまで）・`ProfilePage`（Person・顔写真・公式SNSの `sameAs`）の構造化データ。次の新作・セール中の作品はメーカーのページと共通の部品（`NextWorks.astro`・`OnSaleWorks.astro`。小さな行の一覧は `WorkRows.astro`）。**小さな表紙** `smallImage`（FANZAの …pl.jpg → 表紙だけの …ps.jpg。きょうの話題・セール中の特集・今週のデビュー作・運命の作品・作品検索の結果に使う。無ければ `SMALL_IMG_ONERROR` でパッケージ画像に戻す）。**スマホのサムネは、さらに軽い画像**（運営者の希望「スマホの低速な回線だと画像が重い。サムネだけ画素数を落として最高速化。開いたときは元のまま」。2026-10-07）: 画面の幅が `THUMB_MEDIA`（`(max-width: 480px)`）のときだけ、`components/Thumb.astro` の `<picture>` の `<source>` で小さい版を読む（`thumbSources`）。**小さい版は、FANZA の「縮めて返す版」**（`awsimgsrc.dmm.co.jp/pics_dig/`＋pics.dmm.co.jp と同じ道すじ＋`?w=幅&q=75`。`resizedImage`。運営者の「さすがに少し粗すぎた。もう少しだけ画質を上げて。同じしくみを同人とゲームにも」。2026-10-09。前は …ps.jpg 147×200・…pt.jpg 90×122 で、スマホのカード（約170px）より画像の点が少なかった）: 動画のカード・TOP3 は表紙（ps。そこでは元が 1032×1467 ほど）を幅300（約25KB）＝`cardImage`、小さな表紙・人気のジャンルは幅200（約13KB）＝`tinyImage`、ゲームのカードはパッケージ（pl）を幅300（表紙だけの版が125×200と小さいため。切り出しはパソコンと同じで、印 `has-small` を付けない＝`thumbSources` の `cover`）、ゲームの小さな表紙は ps（125×200）。同人は `floors.js` の `doujinThumb`（カード幅300・小さな棚幅240）。パソコン・タブレットは今までどおり。読めなければ `<source>` を外して元の画像に戻す（`THUMB_ONERROR`）。印 `has-small` は CSS が、スマホのときだけ切り出しを変える目印。ブラウザで作るサムネ（作品検索の結果・運命の作品・お気に入り）も同じ幅で切りかえる（`search.js`・`gacha.js`・`favorites.js` の `tinyImageUrl`。縮めた版が読めなければ、もとの置き場所の ps に戻す `unresizedUrl`。テストで `items.js` と突き合わせ）。**作品ページの大きな表紙・パッケージ写真・サンプル画像・拡大表示は、スマホでも元の画像のまま**（サンプル画像の小さい版 …-N.jpg は、縦長・横長の写真に白い余白を足して 120×90 にしてあり、暗い背景で白い帯が目立つので使わない）。新しく一覧のサムネを足すときも `Thumb.astro` を通す（`tests/verify_dist.py` が、一覧のパッケージ画像が `<picture>` の外に無いかを検査）。`assets.js` の `assetUrl` は、`public/` のスクリプトのURLに中身から作った印（`/vr-filter.js?v=1a2b3c4d`）を付ける（`_headers` で1年キャッシュにするため。スクリプトを読むときは必ずこれを通す。`tests/verify_dist.py` が全ページで印と中身を突き合わせる）。
 
+**サンプル画像**（2026-11-06 #235）: `sampleImagesOf` が保存の2つの形（`sample_count`・`sample_images`）を住所の一覧に。`splitSamples` が作品ページのはじめの8枚（`SAMPLES_SHOWN`）と残りに分ける。並べるのは `components/SampleGallery.astro`（動画の作品ページと売り場の作品ページ。売り場は `FLOOR_SAMPLES`）: 9枚以上の作品だけ、8枚の下に `<details class="samples-more">` の帯「残り◯枚を見る」（`.btn-quiet` の枠と地）。押すと帯は消えて残りが同じ並び（スマホ2列・パソコン4列）で続く。JS なしでも開け、閉じているあいだ残りの画像は読みこまない（`loading="lazy"`）。`verify_dist.py` が、拡大表示のリンクが全部の枚数ぶんあること・帯が9枚以上の作品だけにあることを見る
+
 **作品ページの品番と出演者**（issue #174。運営者「世界一を目指す。できる限りSEO上位に」。2026-10-28）: 品番で調べて出演者を知りたい人に、作品ページがすぐ答えるための作り。名前は FANZA のデータにあるものだけ（守ること9）で、**出演者がいない作品には何も足さない**。①説明文の頭（`castLead`。describe.js の節）②見出しのすぐ下の1行「MKMP-761｜出演 ○○さん・△△さん」（`castHead`＝3人までは全員・4人以上は先頭の2人と「ほか○人」。名前は女優のページがあればリンク。`.detail-code`）。基本情報の「出演」（顔の写真・女優のページ・☆）は、いちばん上の行に。「品番」の行には FANZA の品番（作品ID。例 mkmp00761）も「（FANZAの品番 mkmp00761）」で出す ③構造化データ `movieLd`（schema.org の Movie。name・identifier＝品番（作れなければ作品ID）・datePublished・image・url・actor＝Person（`MOVIE_ACTOR_LIMIT` 10人まで。女優のページがあれば url）・productionCompany＝メーカー（「不明」なら無し））。パンくず（BreadcrumbList）はそのまま。未成年を連想させるタイトル（`gacha.js` の `isMinorTitle`）の作品は、題名を新しい場所に出さないよう Movie を付けない ④OGP: 作品ページの og:type は `video.movie`（`Base.astro` の `ogType`・`ogMeta`。ほかのページは website のまま）・`itemOgMeta` が video:actor（出演者。いなければ出さない）・video:release_date（発売日）・video:tag（おだやかなジャンルだけ・ジャンルのページがあるものを先に・`OG_TAG_LIMIT` 4つまで）。og:description は説明文と同じ。品番のゆれ（mkmp761・MKMP761・MKMP-761・mkmp00761）は、作品検索の索引の p（品番）と c（作品ID）で、もとから全部見つかる（`tests/test_search.mjs` で確かめている）。テストは `tests/test_seo.mjs`。`tests/verify_dist.py` が、出演者のいる作品ページで説明文・og:description の頭・見出しの下の1行・Movie の actor・video:actor がそろっていること、いない作品に出演の話が無いこと、Movie と OGP の項目を検査
 
 #### `site/src/lib/describe.js`（検索結果に出る説明文）
@@ -316,7 +322,7 @@ Claude が**月のまとめ記事**を書くための道具（2026-10-07 から�
 
 #### `site/public/favorites.js` / `site/public/lightbox.js`
 
-ブラウザで動く小さなスクリプト（ビルドを通さずそのまま配信）。`lightbox.js` はサンプル画像・パッケージ写真の拡大表示（前・次のボタンと枚数は、画像に重ならないよう、画像の下の帯 `.lightbox-bar` に。運営者の希望。2026-10-05）。`favorites.js` は ☆ の付け外しと「お気に入り」ページ・トップの推しの棚（`pickOshi`。2026-10-31。docs/design.md の「トップの推しの棚」）（**保存先は端末の localStorage だけ。サーバーには送らない**）。部品は node でテストできる（`tests/test_favorites.mjs`）。DOM は `textContent` で作り、保存データの HTML は実行しない
+ブラウザで動く小さなスクリプト（ビルドを通さずそのまま配信）。`lightbox.js` はサンプル画像・パッケージ写真の拡大表示（ページの `a.sample-link` を全部拾うので、「残り◯枚を見る」が閉じたままでも全部の画像を順に送れる。#235。前・次のボタンと枚数は、画像に重ならないよう、画像の下の帯 `.lightbox-bar` に。運営者の希望。2026-10-05）。`favorites.js` は ☆ の付け外しと「お気に入り」ページ・トップの推しの棚（`pickOshi`。2026-10-31。docs/design.md の「トップの推しの棚」）（**保存先は端末の localStorage だけ。サーバーには送らない**）。部品は node でテストできる（`tests/test_favorites.mjs`）。DOM は `textContent` で作り、保存データの HTML は実行しない
 
 #### `site/src/lib/search.js` / `site/public/search.js`
 
@@ -364,6 +370,8 @@ JSON読み込み。`curated`（毎日の更新で載せた作品）/`catalog`（
 
 **自動更新のデータ。手で編集しない**（作品IDごとに蓄積。`updated` は、その作品のコメントを最後に変えた日で、sitemap の `lastmod` に使う。**シリーズ・レーベル**は `series_id`・`series`・`label_id`・`label`（APIの iteminfo の先頭。無ければ 0 と空。レーベルの「----」（id 99999）は無し。`get_new_releases.py` の `clean_entry`・JS の `items.js` の `entryOf` が同じ決まり。2026-10-07 から。過去作品も同じ形））
 
+サンプル画像は `sample_count`（枚数だけ。決まった形の住所）か `sample_images`（住所の一覧）のどちらか（#235。`get_new_releases.py` の節。`tests/test_data.py` が、一覧のほうに枚数だけにできる形が残っていないことも見る）
+
 #### `site/src/data/doujin.json` / `site/src/data/game.json`
 
 **自動更新のデータ。手で編集しない**（FANZA同人・FANZAゲーム。`scripts/doujin_game.py` が毎日集め直し、コメントは `claude_comments.py apply` だけが書く。形は `scripts/floor_data.py`: `{updated, scanned, skipped, ranks: {cid: 順位}, items: [{cid, title, url, image_url, sample_images, date, maker, maker_id, authors, series, series_id, genres, formats, sales, price, list_price, campaign, comment, comment_kind, updated}]}`・1作品1行・品番の順。`tests/test_data.py` が形・未成年を連想させる作品が無いことを見張る）
@@ -407,6 +415,8 @@ JSON読み込み。`curated`（毎日の更新で載せた作品）/`catalog`（
 #### `site/src/data/catalog/YYYY-MM.json`
 
 **過去作品（カタログ）。自動更新のデータ。手で編集しない**（`get_new_releases.py` の `update_catalog`。発売月ごとのファイル・1作品1行。作品の形は `new_releases.json` と同じで、コメントは無し（`comment_kind: "none"`・空）か、あとから Claude が書いたもの（`"claude"`）だけ。サンプル画像は8枚まで。まだ無くてもビルドは止まらない。同じ作品が `new_releases.json` にあれば、そちらを使う（毎日の更新が、過去作品から外す）。続きの場所は `catalog_state.json`（`{cursor, cycle, cycle_done, limit, items}`）。作品ごとの人気順の順位は `catalog_rank.json`（`{cid: [順位, 最後に見かけた一回りの番号]}`・1作品1行。毎日書きかわるのは、こちらの小さな行だけ））
+
+サンプル画像は `new_releases.json` と同じ形（`sample_count` か `sample_images`。8枚で切るのは 2026-11-06 #235 でやめた）
 
 #### `site/src/data/popularity.json` / `site/src/data/sale.json`
 

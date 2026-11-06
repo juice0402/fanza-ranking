@@ -124,7 +124,10 @@ TODAY_STATS = os.environ.get("TODAY_STATS", "1") != "0"
 DAILY_COUNT_DAYS = 7     # 発売本数を数える日数（きょうを含めて、さかのぼる）
 UPCOMING_POPULAR = 30    # 予約の人気順を、上位何本まで残すか
 CATALOG_PRUNE_MAX_SHARE = 0.2  # 一回りで外す作品が、過去作品のこの割合をこえたら、念のため外さない（APIの答えがおかしかったときに、まとめて消さないため）
-CATALOG_SAMPLE_IMAGES = 8   # 過去作品のサンプル画像は8枚まで（作品ページに出すのは8枚まで。ファイルを小さくする）
+# サンプル画像は FANZA が出している枚数ぶん全部を持つ（2026-11-06 issue #235。前は新作・予約12枚・過去作品8枚まで）。
+# 住所がぜんぶ決まった形（…/digital/video/<cid>/<cid>jp-1.jpg 〜 jp-N.jpg・すき間なし）の作品は、保存するときに住所の一覧の代わりに
+# 枚数だけ（"sample_count": N）を書き、読むときに住所へ戻す（ファイルを小さくする）。形がちがう作品は住所の一覧（"sample_images"）のまま
+SAMPLE_COUNT_MAX = 500  # 枚数だけの保存で受けつける上限（壊れたデータで大きな一覧を作らない）
 CATALOG_FILE = re.compile(r"^\d{4}-\d{2}\.json$")
 # 人気の動き（運営者の希望「独自の価値を足す」→ 発売後の人気の動きを毎日ためる。2026-10-07）。
 # 新着の人気順（上位500本）に出てきた作品について、毎日の順位をためる。作品ページのグラフ・ランキングの最高順位・週と月のまとめの材料
@@ -493,6 +496,28 @@ class CommentMaker:
 # ------------------------------------------------------------------
 # データの読み書き
 # ------------------------------------------------------------------
+def sample_urls(cid, count):
+    """決まった形のサンプル画像の住所（1〜count 枚目）"""
+    return [f"https://pics.dmm.co.jp/digital/video/{cid}/{cid}jp-{i}.jpg" for i in range(1, count + 1)]
+
+
+def loaded_samples(cid, item):
+    """保存済みの1件から、サンプル画像の住所の一覧を作る（"sample_count" なら決まった形に戻す・ほかは "sample_images" の一覧）"""
+    count = item.get("sample_count")
+    if isinstance(count, int) and not isinstance(count, bool) and 1 <= count <= SAMPLE_COUNT_MAX:
+        return sample_urls(cid, count)
+    return [u for u in (item.get("sample_images") or []) if isinstance(u, str) and u]
+
+
+def packed(item):
+    """保存する形の1件（サンプル画像の住所がぜんぶ決まった形なら、"sample_images" の代わりに "sample_count"。項目の並びは変えない）"""
+    urls = item.get("sample_images") or []
+    cid = str(item.get("cid") or "")
+    if not urls or len(urls) > SAMPLE_COUNT_MAX or not re.fullmatch(r"[0-9a-z_]+", cid) or urls != sample_urls(cid, len(urls)):
+        return item
+    return {("sample_count" if k == "sample_images" else k): (len(urls) if k == "sample_images" else v) for k, v in item.items()}
+
+
 def normalize_loaded(item):
     """保存済みデータの1件を今の形に揃える（足りない項目は既定値で補う）。読めない場合は None"""
     cid = str(item.get("cid") or "").strip()
@@ -507,7 +532,7 @@ def normalize_loaded(item):
         "title": title,
         "url": item.get("url") or "",
         "image_url": item.get("image_url") or "",
-        "sample_images": item.get("sample_images") or [],
+        "sample_images": loaded_samples(cid, item),
         "date": item.get("date") or "",
         "maker": item.get("maker") or "不明",
         "actress": actress,
@@ -564,7 +589,7 @@ def save_archive(archive):
         os.makedirs(folder, exist_ok=True)
     tmp_path = DATA_PATH + ".tmp"
     with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(items, f, ensure_ascii=False, indent=1)
+        json.dump([packed(x) for x in items], f, ensure_ascii=False, indent=1)
         f.write("\n")
     os.replace(tmp_path, DATA_PATH)  # 書き込み途中で止まってもデータが壊れないように
 
@@ -770,7 +795,7 @@ def parse_api_item(raw):
         "title": title,
         "url": raw.get("affiliateURL") or "",
         "image_url": images.get("large") or images.get("list") or images.get("small") or "",
-        "sample_images": [u for u in sample_list if u][:12],
+        "sample_images": [u for u in sample_list if isinstance(u, str) and u],  # 全部（2026-11-06 #235。前は12枚まで）
         "date": date,
         "maker": (makers[0].get("name") if makers else None) or "不明",
         "actress": [a.get("name") for a in (info.get("actress") or []) if a.get("name")],
@@ -794,7 +819,8 @@ def apply_fresh(old, fresh, today_str):
     """保存済みの作品 old に、取り直した fresh から、空だった項目（出演者・ジャンル・サンプル動画・サンプル画像・
     収録時間・パッケージ画像）を補い、発売日が変わっていれば直す。
 
-    ・すでに入っている項目は書き換えない（空欄を埋めるだけ）。発売日だけは、FANZAで延期・前倒しされたら合わせる
+    ・すでに入っている項目は書き換えない（空欄を埋めるだけ）。発売日だけは、FANZAで延期・前倒しされたら合わせる。
+      サンプル画像だけは、取り直しのほうが枚数が多ければ入れかえる
     ・補ったら更新日（updated）を進める（sitemap の lastmod に使う）
     ・ジャンル（商品タグ）・サンプル画像・収録時間は、予約の作品には、発売が近づいてからFANZAに載ることが多い
     補った項目名のリスト（"actress" / "genres" / "sample_movie" / "sample_images" / "duration_min" / "image_url" / "series" / "label" / "date"）を返す
@@ -815,7 +841,8 @@ def apply_fresh(old, fresh, today_str):
             old["comment"] = template_comment(old)
             old["comment_kind"] = "template"
             changed.append("comment")
-    if not old.get("sample_images") and fresh.get("sample_images"):
+    # サンプル画像は、取り直しのほうが多ければ入れかえる（前は12枚・8枚で切っていたので、見かけた作品から全部の枚数に増える。#235）
+    if len(fresh.get("sample_images") or []) > len(old.get("sample_images") or []):
         old["sample_images"] = list(fresh["sample_images"])
         changed.append("sample_images")
     if not old.get("duration_min") and fresh.get("duration_min"):
@@ -1295,7 +1322,6 @@ def catalog_item(item):
     else:
         norm["comment"] = ""
         norm["comment_kind"] = "none"
-    norm["sample_images"] = [u for u in norm["sample_images"] if u][:CATALOG_SAMPLE_IMAGES]
     norm["updated"] = norm["updated"] or day_key(norm.get("date"))
     return norm
 
@@ -1899,7 +1925,7 @@ def save_catalog(state):
         by_month.setdefault(day_key(item["date"])[:7], []).append(item)
     for month, rows in by_month.items():
         rows.sort(key=lambda x: (x.get("date") or "", x["cid"]), reverse=True)
-        body = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in rows)
+        body = ",\n".join(json.dumps(packed(r), ensure_ascii=False, separators=(",", ":")) for r in rows)
         path = os.path.join(CATALOG_DIR, f"{month}.json")
         with open(path + ".tmp", "w", encoding="utf-8") as f:
             f.write("[\n" + body + "\n]\n")

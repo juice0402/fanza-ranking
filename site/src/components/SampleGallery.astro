@@ -1,0 +1,46 @@
+---
+// 作品ページのサンプル画像（動画の作品ページと売り場の作品ページで共通。2026-11-06 #235）。
+// はじめは shown 枚（スマホ2列・パソコン4列）。それより多い作品は、下に「残り◯枚を見る」の帯を1つ出し、押すと残りが同じ並びで開く。
+// JS なしでも開ける <details>。閉じているあいだは残りの画像を読みこまない（loading="lazy"）。開くと帯は消え、並びがそのまま続く。
+// 拡大表示（public/lightbox.js）は a.sample-link を全部拾うので、閉じたままでも全部の画像を順に送って見られる。ラベルは通し番号
+import { splitSamples, SAMPLES_SHOWN } from '../lib/items.js';
+
+interface Props {
+  urls: string[];
+  shown?: number;
+  noReferrer?: boolean; // 同人・ゲームなど、どのページから読んだかを送らない画像
+  onerror?: string;
+}
+
+const { urls, shown = SAMPLES_SHOWN, noReferrer = false, onerror } = Astro.props;
+const { first, rest } = splitSamples(urls, shown);
+const imgAttrs = { ...(noReferrer ? { referrerpolicy: 'no-referrer' } : {}), ...(onerror ? { onerror } : {}) };
+---
+{first.length > 0 && (
+  <section class="subsection" aria-labelledby="samples-title">
+    <h2 id="samples-title" class="subsection-title">サンプル画像</h2>
+    <ul class="samples">
+      {first.map((g) => (
+        <li>
+          <a class="sample-link" href={g.src} data-label={g.label} target="_blank" rel="noopener noreferrer" aria-label={`${g.label} を拡大して見る`}>
+            <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" {...imgAttrs} />
+          </a>
+        </li>
+      ))}
+    </ul>
+    {rest.length > 0 && (
+      <details class="samples-more">
+        <summary class="samples-more-toggle btn btn-quiet btn-block">残り{rest.length}枚を見る</summary>
+        <ul class="samples samples-rest">
+          {rest.map((g) => (
+            <li>
+              <a class="sample-link" href={g.src} data-label={g.label} target="_blank" rel="noopener noreferrer" aria-label={`${g.label} を拡大して見る`}>
+                <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" {...imgAttrs} />
+              </a>
+            </li>
+          ))}
+        </ul>
+      </details>
+    )}
+  </section>
+)}
