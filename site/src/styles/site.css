@@ -1124,67 +1124,7 @@ summary:focus-visible {
   text-underline-offset: 3px;
 }
 
-/* ほかの売り場から（作品ページ。同じ出演者の写真集・VR見放題・成人映画、同じジャンルの同人・コミック・アニメを1本ずつ。lib/stay.js の floorPicksFor）: スマホ2列・広い画面4列 */
-.floor-picks {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.floor-pick {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 100%;
-  min-width: 0;
-  padding: 8px;
-  border: 1px solid var(--edge);
-  border-radius: var(--r-panel);
-  background: var(--fill);
-  color: inherit;
-  text-decoration: none;
-}
-
-.floor-pick-cover {
-  flex: none;
-  width: 52px;
-}
-
-.floor-pick-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.5;
-}
-
-.floor-pick-floor {
-  color: var(--pop);
-  font-size: 11px;
-}
-
-.floor-pick-reason {
-  font-size: 13px;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-.floor-pick:hover {
-  border-color: var(--paper);
-}
-
-.floor-pick:hover .floor-pick-reason {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-@media (min-width: 960px) {
-  .floor-picks {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
+/* ほかの売り場から（作品ページ）は、売り場の作品検索と同じ横長の行（.ws-row。components/FloorRow.astro）。2026-11-06 夕方まで使っていた2列の箱（.floor-pick）はやめた */
 
 /* 小さな表紙の棚（作品ページの「同じ出演者・メーカーの作品」。components/MiniShelf.astro）: スマホ3列・広い画面6列 */
 .mini-shelf {

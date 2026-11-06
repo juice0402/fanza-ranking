@@ -4,7 +4,7 @@
 // どちらも、こちらから案内する欄なので、未成年を連想させるタイトルの作品は入れない（運命の作品・きょうの話題と同じ）
 import { relatedItems } from './items.js';
 import { isMinorTitle } from './gacha.js';
-import { FLOORS, FLOOR_GENRE_OK } from './floors.js';
+import { FLOORS, FLOOR_GENRE_OK, floorItemPath } from './floors.js';
 
 export const NEXT_WORKS_SHOWN = 3; // 作品ページの「次の新作」の本数
 export const NEXT_WORKS_MAX_CAST = 4; // 出演者がこの人数までの作品だけ（オムニバス・総集編で、関係の薄い作品が並ばないように）
@@ -87,4 +87,27 @@ export function floorPicksFor(item, floors, { limit = FLOOR_PICKS_SHOWN, maxCast
     if (genre) picks.push({ floor: key, label: FLOORS[key].short, reason: `「${genre}」で人気`, item: index[key].byGenre.get(genre) });
   }
   return picks.slice(0, limit);
+}
+
+const comma = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+export const FLOOR_PICK_NAMES = 3; // 「ほかの売り場から」の行に出す作家・出演者の人数（それより多いときは「ほか」）
+
+/**
+ * 「ほかの売り場から」の1行（components/FloorRow.astro の row。売り場の作品検索の行と同じ横長の形）:
+ * 選んだ理由は出さず、題名・作り手（サークル/出版社/メーカーと作家・出演者）・売り場と値段を出す
+ * （2026-11-06 運営者「選定理由は書かなくていいから、しっかりタイトルとか表示させて」「タイルじゃなくて、横広で紹介」）
+ */
+export function floorPickRow({ floor, label, item }) {
+  const names = [...(item.authors ?? []), ...(item.actress ?? [])];
+  const who = names.length > FLOOR_PICK_NAMES ? `${names.slice(0, FLOOR_PICK_NAMES).join('、')}ほか` : names.join('、');
+  const yen = item.price ? `${comma(item.price)}円${item.off ? `（${item.off}%OFF）` : ''}` : '';
+  return {
+    c: item.cid,
+    href: floorItemPath(floor, item.cid),
+    title: item.title,
+    img: item.image_url,
+    line: [item.maker?.name, who].filter(Boolean).join('｜'),
+    meta: [label, item.upcoming ? '予約' : '', yen].filter(Boolean).join('・'),
+    upcoming: false,
+  };
 }
