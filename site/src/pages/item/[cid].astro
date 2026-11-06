@@ -299,6 +299,10 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
           {next.names.length === 1 && (
             <FavButton type="actress" favKey={next.names[0]} slug={actressByName.get(next.names[0])?.slug ?? ''} off="お気に入りに追加" on="お気に入り済み" />
           )}
+        </div>
+        <WorkRows items={next.items} note={(i) => `${md(i.dateKey)}発売（予約受付中）`} />
+      </section>
+    )}
 
     {/* ほかの売り場から（2026-11-06 運営者「動画好きな人は同人とかブックスでも絶対に釣れる」。lib/stay.js の floorPicksFor。押すとこのサイトの売り場の作品ページへ） */}
     {floorPicks.length > 0 && (
@@ -381,11 +385,6 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
           <button type="button" class="lightbox-btn lightbox-close" data-lightbox="close" aria-label="閉じる"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5l14 14M19 5L5 19" /></svg></button>
         </div>
       </dialog>
-    )}
-
-        </div>
-        <WorkRows items={next.items} note={(i) => `${md(i.dateKey)}発売（予約受付中）`} />
-      </section>
     )}
 
     {seriesWorks.length > 0 && (
