@@ -9,13 +9,15 @@ import WorkRows from '../../components/WorkRows.astro';
 import GachaCorner from '../../components/GachaCorner.astro';
 import RankTrend from '../../components/RankTrend.astro';
 import PriceRecord from '../../components/PriceRecord.astro';
-import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, today, rankHistory, seriesById, labelById, roundups, genreTops, contentGenres, tenYenInfo, campaignHrefOf, reviewRankOf, reviews } from '../../lib/data.js';
+import FloorImg from '../../components/FloorImg.astro';
+import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, today, rankHistory, seriesById, labelById, roundups, genreTops, contentGenres, tenYenInfo, campaignHrefOf, reviewRankOf, reviews, floors } from '../../lib/data.js';
 import { REVIEW_RANKING_PATH } from '../../lib/reviews.js';
 import { TEN_YEN_PATH } from '../../lib/ten-yen.js';
 import { popularInGenre, roundupFor, sameSeries } from '../../lib/insights.js';
 import { weekRangeShort, weeklyPath } from '../../lib/roundups.js';
 import { endIso, endLabel, offPercent, onSaleItems } from '../../lib/sale.js';
-import { nextWorksOf, relatedForPage } from '../../lib/stay.js';
+import { NEXT_WORKS_SHOWN, floorPicksFor, nextWorksOf, relatedForPage } from '../../lib/stay.js';
+import { floorItemPath, frameClass } from '../../lib/floors.js';
 import {
   breadcrumbLd,
   castHead,
@@ -59,13 +61,22 @@ const genrePop = popularInGenre(item, genreTops, contentGenres, shownCids);
 const hist = rankHistory.get(item.cid) ?? null;
 // その作品の発売週の「週のまとめ」（あれば、この作品のデータの欄にリンク）
 const weekly = roundupFor(item, roundups);
-const next = nextWorksOf(item, actressByName, today);
+// 次の新作は、近い順に3本を出す。名前のすぐ下の1行（下の showReason）には、予約の本数を全部数えて出す
+const nextAll = nextWorksOf(item, actressByName, today, { limit: Infinity });
+const next = { names: nextAll.names, items: nextAll.items.slice(0, NEXT_WORKS_SHOWN) };
+// ほかの売り場から（同じ出演者の写真集・VR見放題・成人映画、同じジャンルで人気の同人・コミック・アニメ。各1本・4本まで。lib/stay.js）
+const floorPicks = floorPicksFor(item, floors);
 const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 // 10円セールの対象なら、ふつうのセールの札の代わりに、10円セールの札（2026-10-09）
 const tenNow = tenYenInfo('video', item.cid);
 const saleNow = tenNow ? null : onSaleItems([item], sale, today)[0]?.sale ?? null;
 const saleOff = saleNow ? offPercent(saleNow.price, saleNow.listPrice) : null;
 const yen = (n) => n.toLocaleString('ja-JP');
+// 名前のすぐ下の「いま買う理由」の1行（2026-11-06 運営者「品番で来た人に、同じ女優の作品やセールを見せて、サイトに迷い込ませる」。連絡 C-025）:
+// セール中の札といつまで・出演者の予約の本数と、いちばん近い発売日（下の「次の新作」へ）。セールだけの行は、終わったら行ごとブラウザで隠す（/sale.js）
+const saleEndIso = tenNow ? (tenNow.end ? endIso(tenNow.end) : undefined) : saleNow ? endIso(saleNow.end) : undefined;
+const nextWho = nextAll.names.length === 1 ? nextAll.names[0] : '出演者';
+const showReason = Boolean(tenNow || saleNow || nextAll.items.length);
 const saleCampHref = saleNow ? campaignHrefOf(saleNow) : '';
 const samples = item.sample_images.slice(0, 8);
 // サンプル動画がある作品は、動画を表紙の場所に出し、パッケージ写真は、サンプル画像の下に別の欄で大きく出す
@@ -142,6 +153,13 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
         {head.names.length > 0 && (
           <p class="detail-code">
             {code && <span class="detail-code-num">{code}</span>}{code && '｜'}出演 {head.names.map((name, i) => <>{i > 0 && '・'}{actressPathOf(name) ? <a class="spec-link" href={actressPathOf(name)}>{name}</a> : name}さん</>)}{head.more > 0 && `ほか${head.more}人`}
+          </p>
+        )}
+        {showReason && (
+          <p class="buy-reason" data-sale-end={nextAll.items.length ? undefined : saleEndIso}>
+            {tenNow && <span class="buy-reason-sale" data-sale-end={saleEndIso}><span class="buy-reason-off">10円</span>{tenNow.end ? `${endLabel(tenNow.end)}まで` : '10円セール中'}</span>}
+            {saleNow && <span class="buy-reason-sale" data-sale-end={saleEndIso}><span class="buy-reason-off">{saleOff ? `${saleOff}%OFF` : 'セール中'}</span>{endLabel(saleNow.end)}まで</span>}
+            {nextAll.items.length > 0 && <a class="buy-reason-next" href="#next-title">{nextWho}の予約{nextAll.items.length}本・{md(nextAll.items[0].dateKey)}から</a>}
           </p>
         )}
 
@@ -273,6 +291,41 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
       </div>
     </article>
 
+    {/* 次の新作は、FANZAへのボタンのすぐ下に（名前で来た人の次の行き先。2026-11-06。前はページの下のほう） */}
+    {next.items.length > 0 && (
+      <section class="subsection" aria-labelledby="next-title">
+        <div class="subsection-head">
+          <h2 id="next-title" class="subsection-title">{next.names.length === 1 ? `${next.names[0]}の次の新作` : '出演者の次の新作'}</h2>
+          {next.names.length === 1 && (
+            <FavButton type="actress" favKey={next.names[0]} slug={actressByName.get(next.names[0])?.slug ?? ''} off="お気に入りに追加" on="お気に入り済み" />
+          )}
+        </div>
+        <WorkRows items={next.items} note={(i) => `${md(i.dateKey)}発売（予約受付中）`} />
+      </section>
+    )}
+
+    {/* ほかの売り場から（2026-11-06 運営者「動画好きな人は同人とかブックスでも絶対に釣れる」。lib/stay.js の floorPicksFor。押すとこのサイトの売り場の作品ページへ） */}
+    {floorPicks.length > 0 && (
+      <section class="subsection" aria-labelledby="floor-picks-title">
+        <h2 id="floor-picks-title" class="subsection-title">ほかの売り場から</h2>
+        <ul class="floor-picks">
+          {floorPicks.map((p) => (
+            <li>
+              <a class="floor-pick" href={floorItemPath(p.floor, p.item.cid)}>
+                <span class:list={['mini-cover', 'floor-pick-cover', frameClass(p.floor)]}>
+                  <FloorImg floor={p.floor} url={p.item.image_url} kind="tiny" />
+                </span>
+                <span class="floor-pick-text">
+                  <span class="floor-pick-floor">{p.label}</span>
+                  <span class="floor-pick-reason">{p.reason}</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
     {gallery.length > 0 && (
       <section class="subsection" aria-labelledby="samples-title">
         <h2 id="samples-title" class="subsection-title">サンプル画像</h2>
@@ -332,18 +385,6 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
           <button type="button" class="lightbox-btn lightbox-close" data-lightbox="close" aria-label="閉じる"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5l14 14M19 5L5 19" /></svg></button>
         </div>
       </dialog>
-    )}
-
-    {next.items.length > 0 && (
-      <section class="subsection" aria-labelledby="next-title">
-        <div class="subsection-head">
-          <h2 id="next-title" class="subsection-title">{next.names.length === 1 ? `${next.names[0]}の次の新作` : '出演者の次の新作'}</h2>
-          {next.names.length === 1 && (
-            <FavButton type="actress" favKey={next.names[0]} slug={actressByName.get(next.names[0])?.slug ?? ''} off="お気に入りに追加" on="お気に入り済み" />
-          )}
-        </div>
-        <WorkRows items={next.items} note={(i) => `${md(i.dateKey)}発売（予約受付中）`} />
-      </section>
     )}
 
     {seriesWorks.length > 0 && (

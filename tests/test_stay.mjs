@@ -29,5 +29,28 @@ const rel = T.relatedForPage(a1, all, 4);
 check('同じ出演者 → 同じメーカーの順・この作品は入れない・未成年を連想させるタイトルは入れない・本数の上限', rel.map((i) => i.cid).join() === 'a2,a3,a4,m1' && !rel.some((i) => i.cid === 'a1' || i.cid === 'a5' || i.cid === 'm2'), rel.map((i) => i.cid).join());
 check('決まった本数（スマホで3列×2段）', T.RELATED_SHOWN === 6 && T.NEXT_WORKS_SHOWN === 3);
 
+console.log('\n■ ほかの売り場から（floorPicksFor）');
+const f = (floor, cid, extra = {}) => ({ floor, cid, title: `作品${cid}`, actress: [], genres: [], ...extra });
+const floors = {
+  // 売り場の作品は人気の高い順に並んでいる（lib/floors.js の byRank）
+  photo: { items: [f('photo', 'p1', { actress: ['月子'] }), f('photo', 'p2', { actress: ['花子'] }), f('photo', 'p3', { actress: ['花子'] })] },
+  vr: { items: [f('vr', 'v1', { actress: ['花子'], title: '女子校生の作品' }), f('vr', 'v2', { actress: ['花子'] })] },
+  cinema: { items: [] },
+  doujin: { items: [f('doujin', 'd1', { genres: ['中出し', '人妻・主婦'] }), f('doujin', 'd2', { genres: ['熟女'] })] },
+  comic: { items: [f('comic', 'c1', { genres: ['熟女'] })] },
+  anime: { items: [f('anime', 'n1', { genres: ['人妻・主婦'] })] },
+};
+const v = w('x1', '2026-10-01', ['花子'], { genres: ['ハイビジョン', '中出し', '熟女', '人妻・主婦'] });
+const picks = T.floorPicksFor(v, floors);
+check('出演者の売り場（写真集・VR見放題）が先に、同じ出演者のいちばん人気の1本（未成年を連想させるタイトルは入れない）',
+  picks.slice(0, 2).map((p) => `${p.floor}:${p.item.cid}:${p.reason}`).join() === 'photo:p2:花子の写真集,vr:v2:花子のVR', JSON.stringify(picks.slice(0, 2).map((p) => [p.floor, p.item.cid, p.reason])));
+check('出演者のいない売り場は、作品のジャンルの順に、おだやかなジャンル名だけで選ぶ（「中出し」では選ばない）',
+  picks.slice(2).map((p) => `${p.floor}:${p.item.cid}:${p.reason}`).join() === 'doujin:d2:「熟女」で人気,comic:c1:「熟女」で人気', JSON.stringify(picks.slice(2).map((p) => [p.floor, p.item.cid, p.reason])));
+check('全部で4本まで・売り場の短い名前', picks.length === 4 && T.FLOOR_PICKS_SHOWN === 4 && picks[0].label === '写真集' && picks[1].label === 'VR見放題', picks.map((p) => p.label).join());
+const many = w('x2', '2026-10-01', ['花子', 'あ', 'い', 'う', 'え'], { genres: ['人妻・主婦'] });
+const pm = T.floorPicksFor(many, floors);
+check('出演者が多い作品（総集編など）は、出演者では選ばない（ジャンルだけ）', pm.every((p) => T.FLOOR_PICKS_BY_GENRE.includes(p.floor)) && pm.map((p) => p.item.cid).join() === 'd1,n1', pm.map((p) => p.item.cid).join());
+check('当てはまるものが無ければ空・売り場のデータが無くても止まらない', T.floorPicksFor(w('x3', '2026-10-01', [], { genres: [] }), floors).length === 0 && T.floorPicksFor(v, {}).length === 0);
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);
