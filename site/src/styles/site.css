@@ -1124,7 +1124,22 @@ summary:focus-visible {
   text-underline-offset: 3px;
 }
 
-/* ほかの売り場から（作品ページ）は、売り場の作品検索と同じ横長の行（.ws-row。components/FloorRow.astro）。2026-11-06 夕方まで使っていた2列の箱（.floor-pick）はやめた */
+/* ほかの売り場から（作品ページ）は、売り場の作品検索と同じ横長の行（.ws-row。components/FloorRow.astro）。2026-11-06 夕方まで使っていた2列の箱（.floor-pick）はやめた。
+   横長の表紙（同人）・正方形の表紙（素人）も、縦長の表紙と同じ大きさの枠に、まるごと小さく入れる。題名は2行ぶんの高さをとって、どの行も同じ高さにする
+   （運営者 11/6 夕方「縦と横のパッケージで表示ずれちゃう」「横パッケージはすごく小さくなってもらって、縦に合わせよう」「枠自体の高さは揃えて」） */
+.floor-picks .item-cover.is-wide {
+  aspect-ratio: var(--cover-ratio);
+  overflow: hidden;
+}
+
+.floor-picks .item-cover.is-wide .floor-img {
+  object-fit: contain;
+  border-radius: 0;
+}
+
+.floor-picks .ws-row .item-title {
+  min-height: 3em; /* 2行ぶん（.ws-row の line-height 1.5 × 2。.ws-row .item-title の min-height: 0 より強く） */
+}
 
 /* 小さな表紙の棚（作品ページの「同じ出演者・メーカーの作品」。components/MiniShelf.astro）: スマホ3列・広い画面6列 */
 .mini-shelf {

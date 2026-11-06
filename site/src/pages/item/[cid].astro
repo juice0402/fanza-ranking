@@ -308,7 +308,7 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
     {floorPicks.length > 0 && (
       <section class="subsection" aria-labelledby="floor-picks-title">
         <h2 id="floor-picks-title" class="subsection-title">ほかの売り場から</h2>
-        <ul class="ws-list work-rows">
+        <ul class="ws-list work-rows floor-picks">
           {floorPicks.map((p) => <FloorRow row={floorPickRow(p)} floor={p.floor} titleJs={false} />)}
         </ul>
       </section>
