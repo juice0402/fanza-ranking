@@ -13,8 +13,8 @@ Gemini が書けなかった作品は、定型文（comment_kind: template）の
         ・発売日をすぎたのに、コメントに「予約」「発売予定」「発売前」などの言い方が残っている作品（reason: 予約の言い方が残っている）
         ・枠が余ったら、過去作品（site/src/data/catalog/YYYY-MM.json）のコメントがまだ無い作品を、FANZAの人気順の順位が上の作品から（reason: 過去作品・catalog: true）
         ・FANZA同人（site/src/data/doujin.json）・FANZAゲーム（game.json）などの売り場のコメントがまだ無い作品を、人気順の順位が上の作品から（reason: 同人 / ゲーム…・floor: doujin / game…）。
-          1日40件のうち、同人4件・ゲーム1件・アニメ・素人・成人映画・コミック・写真集・VR見放題は各1件（運営者の希望。2026-10-09・2026-10-10。FLOOR_QUOTA。
-          対象が足りない日は、残りを動画に回す）
+          1日60件のうち40件の中で、同人8件・素人5件・ゲーム・アニメ・成人映画・コミック・写真集・VR見放題は各1件（運営者の希望。FLOOR_QUOTA。
+          対象が足りない日は、残りを動画に回す）。残りの20件は過去作品だけの枠（CATALOG_SLOT。2026-11-06）
   python3 scripts/claude_comments.py apply コメント.json [--dry-run]
       {"cid": "コメント", ...} を点検して、問題が無ければ new_releases.json（過去作品なら、その発売月のファイル。同人・ゲームなら doujin.json・game.json）に書き込む
       （1件でも問題があれば何も書き込まない）
@@ -49,9 +49,12 @@ MIN_LEN = 100           # コメントの文字数の下限（目安は100〜160
 MIN_LEN_SPARSE = 80     # 書ける事実が少ない作品（タイトルを見せない・収録時間もジャンルもまだ無い予約）の下限。100文字に届かせるための水増しをさせないため
 MAX_LEN = 200           # 上限
 DEFAULT_LIMIT = 30      # list で一度に出す件数
-DAILY_LIMIT = 40        # 1日に仕上げる件数の上限（試運転で、1回の予約タスクが40件を2回続けて書いたため。--rewrite は数えない）
+BASE_LIMIT = 40         # 毎日の更新の作品・売り場・（余れば）過去作品に回す件数（試運転で、1回の予約タスクが40件を2回続けて書いたため。2026-10-04〜）
+CATALOG_SLOT = 20       # それに足して、過去作品だけに回す件数（運営者の判断「1日60件・ふえた20件は過去作品。検索に出ていない女優の作品が先」。2026-11-06）
+DAILY_LIMIT = BASE_LIMIT + CATALOG_SLOT  # 1日に仕上げる件数の上限（60件。--rewrite は数えない）
+ENTITY_MIN_ITEMS = 2    # この本数以上ある人に女優のページがある（site/src/config.js の ENTITY_MIN_ITEMS と同じ。テストが見張る）
 # 1日40件のうち、FANZA同人・FANZAゲームに回す件数（運営者の希望「動画35本・同人4本・ゲーム1本」。2026-10-09）。
-# list の --limit が40でないときは、同じ割合（四捨五入）。対象が足りない日は、残りを動画（毎日の更新の作品・過去作品）に回す
+# list の --limit が40より少ないときは、同じ割合（四捨五入）。40をこえた分は過去作品だけの枠で、売り場はふえない（split_limit）。対象が足りない日は、残りを動画（毎日の更新の作品・過去作品）に回す
 # 1日40件のうち、売り場に回す件数（運営者の希望「動画35・同人4・ゲーム1」。2026-10-09。
 # 新しい売り場（アニメ・素人・成人映画・コミック・写真集・VR見放題）は、運営者の判断「上限は40のまま、1件ずつ」で各1件＝動画は29件。2026-10-10。
 # 対象が足りない日は、残りを動画に回す）
@@ -335,7 +338,51 @@ def floor_pending(data, today):
 
 def floor_quota(limit):
     """--limit の数のうち、同人・ゲームに回す件数（FLOOR_QUOTA と同じ割合。四捨五入）"""
-    return {k: int(q * max(limit, 0) / DAILY_LIMIT + 0.5) for k, q in FLOOR_QUOTA.items()}
+    return {k: int(q * max(limit, 0) / BASE_LIMIT + 0.5) for k, q in FLOOR_QUOTA.items()}
+
+
+def split_limit(limit):
+    """--limit の数を (いつもの枠, 過去作品だけの枠) に分ける。40件まではこれまでどおり（全部がいつもの枠）。
+    40件をこえた分が過去作品だけの枠（60件なら 40＋20。売り場の件数は40件のときと同じ。2026-11-06）"""
+    limit = max(limit, 0)
+    return min(limit, BASE_LIMIT), max(limit - BASE_LIMIT, 0)
+
+
+def _name_key(name):
+    return unicodedata.normalize("NFC", str(name))
+
+
+def has_comment(item):
+    return str(item.get("comment") or "").strip() != ""
+
+
+def hidden_actresses(items):
+    """まだ検索に出られない女優の名前の集まり: 女優のページがある人（このサイトの作品が ENTITY_MIN_ITEMS＝2本以上。
+    サイトの groupByActress と同じ数え方）のうち、出演作にコメントのある作品が1本も無い人（site/src/lib/plan.js の listIndexable）。
+    items は、サイトの all と同じ作品（毎日の更新の作品と、それと重ならない・FANZAのURLがある過去作品）"""
+    count, commented = {}, set()
+    for x in items:
+        for name in {_name_key(n) for n in (x.get("actress") or []) if n}:
+            count[name] = count.get(name, 0) + 1
+            if has_comment(x):
+                commented.add(name)
+    return {n for n, c in count.items() if c >= ENTITY_MIN_ITEMS and n not in commented}
+
+
+def order_catalog(rows, hidden, limit):
+    """過去作品を出す順（rows は人気順）: まだ検索に出られない女優が出ている作品を先に、その中は人気順。
+    選んだ作品の女優は「出られる」に数え、同じ女優の作品を続けて先にしない（1件で1人ずつ出られるように）。
+    そういう作品がなくなったら、残りを人気順のまま。2026-11-06"""
+    left = set(hidden)
+    first, rest = [], []
+    for x in rows:
+        names = {_name_key(n) for n in (x.get("actress") or []) if n}
+        if len(first) < limit and x.get("url") and names & left:
+            first.append(x)
+            left -= names
+        else:
+            rest.append(x)
+    return (first + rest)[: max(limit, 0)]
 
 
 def catalog_index(shards, curated_cids):
@@ -412,22 +459,27 @@ def cmd_list(args):
         return released + upcoming
     urgent = [x for x in todo if pending_reason(x, today) != "下書きを仕上げる"]
     drafts = [x for x in todo if pending_reason(x, today) == "下書きを仕上げる"]
-    # FANZA同人・FANZAゲームの分（1日40件のうち、同人4件・ゲーム1件。対象が足りない日は、残りを動画に回す）
+    # いつもの枠（40件まで）と、過去作品だけの枠（40件をこえた分。60件なら20件。2026-11-06）
+    base_limit, catalog_slot = split_limit(args.limit)
+    # 売り場の分（いつもの枠40件のうち、同人8件・素人5件・ほかは各1件。対象が足りない日は、残りを動画に回す）
     floors = load_floors()
     floor_todo = {k: floor_pending(d, today) for k, d in floors.items()}
-    quota = floor_quota(args.limit)
+    quota = floor_quota(base_limit)
     floor_shown = [(k, x) for k in F.FLOORS for x in floor_todo.get(k, [])[: quota.get(k, 0)]]
-    video_limit = max(args.limit, 0) - len(floor_shown)
+    video_limit = base_limit - len(floor_shown)
     shown = (ordered(urgent) + ordered(drafts))[: video_limit]
     # 毎日の更新で載せた作品を先に。枠が余ったら、過去作品（コメントがまだ無いもの）を、FANZAの人気順の順位が上の作品から
     # （順位が分からない作品は、そのあとに発売日の新しい順。サイトも、過去作品の作品ページを同じ順に作る。コメントが付くと、検索エンジンにも出る）
     catalog = catalog_index(load_catalog_raw(), {x["cid"] for x in items})
     catalog_todo = pending_items([x for _, x in catalog.values()], today)
     ranks = load_catalog_ranks()
-    room = video_limit - len(shown)
+    # 過去作品の枠: いつもの枠の残り＋過去作品だけの枠。まだ検索に出られない女優の作品を先に（その中は人気順）
+    room = video_limit - len(shown) + catalog_slot
     if room > 0:
         by_date = sorted(catalog_todo, key=lambda x: (x.get("date") or "", x["cid"]), reverse=True)
-        shown += sorted(by_date, key=lambda x: ranks.get(x["cid"], float("inf")))[:room]  # 安定した並べ替えなので、同じ順位の中は新しい順のまま
+        by_rank = sorted(by_date, key=lambda x: ranks.get(x["cid"], float("inf")))  # 安定した並べ替えなので、同じ順位の中は新しい順のまま
+        site_items = items + [x for _, x in catalog.values() if x.get("url")]  # サイトの all と同じ（URLの無い過去作品は載らない）
+        shown += order_catalog(by_rank, hidden_actresses(site_items), room)
 
     allowed = set(safe_genres_from_config()) | set(COMMENT_EXTRA_GENRES)
     rows = []

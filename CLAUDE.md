@@ -33,7 +33,7 @@ CLAUDE.md は1万字以内に保つ。経緯・くわしいことは docs/ へ�
 | いつ | 何が動く（くわしい表は docs/shikumi.md） |
 |---|---|
 | 毎日 0:05 | `update.yml`: `get_new_releases.py`（新作・予約・Gemini の下書き・出演者・過去作品・人気・セール・レビュー）と売り場など → main に commit → `deploy.yml` |
-| 毎日 0:20 | Claude の予約タスク: コメント（1日40件。`docs/claude-comments.md`）＋女優の歩みの紹介文5人（`docs/claude-history.md`） |
+| 毎日 0:20 | Claude の予約タスク: コメント（1日60件。ふえた20件は過去作品。`docs/claude-comments.md`）＋女優の歩みの紹介文5人（`docs/claude-history.md`） |
 | 毎日 0:35・10:17 | `sale-refresh.yml`: セールと売り場の読み直し |
 | 毎日 10:12・12:12・16:12・20:12 | `ten-yen.yml`: 10円セールが変わったときだけ保存して公開 |
 | 毎日 4:23 | `actress-history.yml`: 女優の歩み（公開はしない） |
