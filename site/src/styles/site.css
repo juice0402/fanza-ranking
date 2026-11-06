@@ -1098,7 +1098,7 @@ summary:focus-visible {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 12px;
-  margin: 8px 0 0;
+  margin: -8px 0 16px; /* 「品番｜出演」の行に寄せ、ひとことの紙との間はあける */
   font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
