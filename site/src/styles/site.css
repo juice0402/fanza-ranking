@@ -1134,7 +1134,6 @@ summary:focus-visible {
 
 .floor-picks .item-cover.is-wide .floor-img {
   object-fit: contain;
-  border-radius: 0;
 }
 
 .floor-picks .ws-row .item-title {
