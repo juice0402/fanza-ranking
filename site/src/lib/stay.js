@@ -4,6 +4,7 @@
 // どちらも、こちらから案内する欄なので、未成年を連想させるタイトルの作品は入れない（運命の作品・きょうの話題と同じ）
 import { relatedItems } from './items.js';
 import { isMinorTitle } from './gacha.js';
+import { FLOORS, FLOOR_GENRE_OK } from './floors.js';
 
 export const NEXT_WORKS_SHOWN = 3; // 作品ページの「次の新作」の本数
 export const NEXT_WORKS_MAX_CAST = 4; // 出演者がこの人数までの作品だけ（オムニバス・総集編で、関係の薄い作品が並ばないように）
@@ -33,4 +34,57 @@ export function nextWorksOf(item, byName, today, { limit = NEXT_WORKS_SHOWN, max
 /** 同じ出演者・メーカーの作品（relatedItems と同じ選び方で、未成年を連想させるタイトルの作品を除いて limit 本） */
 export function relatedForPage(item, all, limit = RELATED_SHOWN) {
   return relatedItems(item, all, limit * 3).filter((w) => !isMinorTitle(w.title)).slice(0, limit);
+}
+
+// ---------- 作品ページの「ほかの売り場から」（2026-11-06 運営者「動画好きな人は同人とかブックスでも絶対に釣れる。売り場のリンクも1個ずつくらい」。連絡 C-025 の「買いに来る理由」） ----------
+// 品番で来た人が、名前を知ったあとに、ほかの売り場（写真集・VR見放題・成人映画・同人・コミック・アニメ）へも迷い込めるように。
+//   出演者が出ている売り場（写真集・VR見放題・成人映画）は、同じ出演者の、いちばん人気の1本
+//   出演者のいない売り場（同人・コミック・アニメ）は、同じジャンル（おだやかなジャンル名 FLOOR_GENRE_OK だけ）でいちばん人気の1本
+// どの売り場も1本まで・全部で FLOOR_PICKS_SHOWN 本まで。出演者の売り場が先。リンクはこのサイトの売り場の作品ページへ
+export const FLOOR_PICKS_SHOWN = 4;
+export const FLOOR_PICKS_BY_CAST = ['photo', 'vr', 'cinema'];
+export const FLOOR_PICKS_BY_GENRE = ['doujin', 'comic', 'anime'];
+const CAST_WORD = { photo: '写真集', vr: 'VR', cinema: '成人映画' };
+const pickIndexes = new WeakMap();
+
+/** 売り場ごとに、出演者 → いちばん人気の作品・ジャンル → いちばん人気の作品（作品ページごとに売り場の全作品を見直さないよう、1回だけ作る） */
+function pickIndex(floors) {
+  if (pickIndexes.has(floors)) return pickIndexes.get(floors);
+  const ok = new Set(FLOOR_GENRE_OK);
+  const index = {};
+  for (const key of [...FLOOR_PICKS_BY_CAST, ...FLOOR_PICKS_BY_GENRE]) {
+    const byName = new Map();
+    const byGenre = new Map();
+    // 売り場の作品は人気の高い順（lib/floors.js の byRank）なので、最初に見つかったものがいちばん人気
+    for (const it of floors?.[key]?.items ?? []) {
+      if (isMinorTitle(it.title)) continue;
+      if (FLOOR_PICKS_BY_CAST.includes(key)) {
+        for (const name of it.actress ?? []) if (!byName.has(name)) byName.set(name, it);
+      } else {
+        for (const g of it.genres ?? []) if (ok.has(g) && !byGenre.has(g)) byGenre.set(g, it);
+      }
+    }
+    index[key] = { byName, byGenre };
+  }
+  pickIndexes.set(floors, index);
+  return index;
+}
+
+/**
+ * 動画の作品ページの「ほかの売り場から」: [{ floor, label（売り場の短い名前）, reason（「○○の写真集」「「人妻・主婦」で人気」）, item }]
+ * floors: lib/data.js の floors（{ 売り場: { items } }）。出演者が maxCast 人より多い作品（総集編など）は、出演者で選ばない
+ */
+export function floorPicksFor(item, floors, { limit = FLOOR_PICKS_SHOWN, maxCast = NEXT_WORKS_MAX_CAST } = {}) {
+  const index = pickIndex(floors);
+  const picks = [];
+  const cast = (item.actress ?? []).length <= maxCast ? item.actress ?? [] : [];
+  for (const key of FLOOR_PICKS_BY_CAST) {
+    const name = cast.find((n) => index[key].byName.has(n));
+    if (name) picks.push({ floor: key, label: FLOORS[key].short, reason: `${name}の${CAST_WORD[key]}`, item: index[key].byName.get(name) });
+  }
+  for (const key of FLOOR_PICKS_BY_GENRE) {
+    const genre = (item.genres ?? []).find((g) => index[key].byGenre.has(g));
+    if (genre) picks.push({ floor: key, label: FLOORS[key].short, reason: `「${genre}」で人気`, item: index[key].byGenre.get(genre) });
+  }
+  return picks.slice(0, limit);
 }

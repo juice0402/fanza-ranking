@@ -1092,6 +1092,100 @@ summary:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* 名前のすぐ下の「いま買う理由」の1行（作品ページ。セール中といつまで・出演者の予約の本数。2026-11-06 連絡 C-025）。札は .sale-strip-off を小さくした形 */
+.buy-reason {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.buy-reason-sale {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pop);
+}
+
+.buy-reason-off {
+  padding: 2px 7px 1px;
+  border-radius: var(--r-media);
+  background: var(--hot);
+  color: #fff;
+  font: 400 12px/1.3 var(--font-display);
+}
+
+.buy-reason-next {
+  color: var(--paper);
+  text-underline-offset: 3px;
+}
+
+/* ほかの売り場から（作品ページ。同じ出演者の写真集・VR見放題・成人映画、同じジャンルの同人・コミック・アニメを1本ずつ。lib/stay.js の floorPicksFor）: スマホ2列・広い画面4列 */
+.floor-picks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.floor-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-panel);
+  background: var(--fill);
+  color: inherit;
+  text-decoration: none;
+}
+
+.floor-pick-cover {
+  flex: none;
+  width: 52px;
+}
+
+.floor-pick-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.floor-pick-floor {
+  color: var(--pop);
+  font-size: 11px;
+}
+
+.floor-pick-reason {
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.floor-pick:hover {
+  border-color: var(--paper);
+}
+
+.floor-pick:hover .floor-pick-reason {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (min-width: 960px) {
+  .floor-picks {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 /* 小さな表紙の棚（作品ページの「同じ出演者・メーカーの作品」。components/MiniShelf.astro）: スマホ3列・広い画面6列 */
 .mini-shelf {
   display: grid;
