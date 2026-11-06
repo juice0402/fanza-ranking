@@ -10,15 +10,14 @@ import WorkRows from '../../components/WorkRows.astro';
 import GachaCorner from '../../components/GachaCorner.astro';
 import RankTrend from '../../components/RankTrend.astro';
 import PriceRecord from '../../components/PriceRecord.astro';
-import FloorImg from '../../components/FloorImg.astro';
+import FloorRow from '../../components/FloorRow.astro';
 import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, today, rankHistory, seriesById, labelById, roundups, genreTops, contentGenres, tenYenInfo, campaignHrefOf, reviewRankOf, reviews, floors } from '../../lib/data.js';
 import { REVIEW_RANKING_PATH } from '../../lib/reviews.js';
 import { TEN_YEN_PATH } from '../../lib/ten-yen.js';
 import { popularInGenre, roundupFor, sameSeries } from '../../lib/insights.js';
 import { weekRangeShort, weeklyPath } from '../../lib/roundups.js';
 import { endIso, endLabel, offPercent, onSaleItems } from '../../lib/sale.js';
-import { NEXT_WORKS_SHOWN, floorPicksFor, nextWorksOf, relatedForPage } from '../../lib/stay.js';
-import { floorItemPath, frameClass } from '../../lib/floors.js';
+import { NEXT_WORKS_SHOWN, floorPickRow, floorPicksFor, nextWorksOf, relatedForPage } from '../../lib/stay.js';
 import {
   breadcrumbLd,
   castHead,
@@ -303,24 +302,13 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
       </section>
     )}
 
-    {/* ほかの売り場から（2026-11-06 運営者「動画好きな人は同人とかブックスでも絶対に釣れる」。lib/stay.js の floorPicksFor。押すとこのサイトの売り場の作品ページへ） */}
+    {/* ほかの売り場から（2026-11-06 運営者「動画好きな人は同人とかブックスでも絶対に釣れる」。lib/stay.js の floorPicksFor。押すとこのサイトの売り場の作品ページへ。
+        同じ日の夕方「選定理由は書かなくていいから、しっかりタイトルとか表示させて」「横広で」で、売り場の作品検索と同じ横長の行（FloorRow・floorPickRow）に） */}
     {floorPicks.length > 0 && (
       <section class="subsection" aria-labelledby="floor-picks-title">
         <h2 id="floor-picks-title" class="subsection-title">ほかの売り場から</h2>
-        <ul class="floor-picks">
-          {floorPicks.map((p) => (
-            <li>
-              <a class="floor-pick" href={floorItemPath(p.floor, p.item.cid)}>
-                <span class:list={['mini-cover', 'floor-pick-cover', frameClass(p.floor)]}>
-                  <FloorImg floor={p.floor} url={p.item.image_url} kind="tiny" />
-                </span>
-                <span class="floor-pick-text">
-                  <span class="floor-pick-floor">{p.label}</span>
-                  <span class="floor-pick-reason">{p.reason}</span>
-                </span>
-              </a>
-            </li>
-          ))}
+        <ul class="ws-list work-rows floor-picks">
+          {floorPicks.map((p) => <FloorRow row={floorPickRow(p)} floor={p.floor} titleJs={false} />)}
         </ul>
       </section>
     )}
