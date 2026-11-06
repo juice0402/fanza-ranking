@@ -365,7 +365,7 @@ check("--rewrite なら書き直せる（点検は同じ・更新日も進む）
 r = run("apply", write_comments("fix_bad.json", {final["cid"]: "短い文です。"}), "--rewrite", "--dry-run")
 check("--rewrite でも、点検に通らない文は書き込まない", r.returncode == 1 and "文字数" in r.stdout, r.stdout)
 
-print("\n■ 1日に仕上げるのは40件まで（試運転で、1回の予約タスクが40件を2回続けて書いたため）")
+print("\n■ 1日に仕上げる件数の上限（試運転で、1回の予約タスクが40件を2回続けて書いたため。2026-11-06 から60件）")
 fresh_data()
 first = {x["cid"]: good_comment(x, i) for i, x in enumerate(pending[:4])}
 r = run("apply", write_comments("day1.json", first), "--today", "2026-11-05")
@@ -711,6 +711,65 @@ r = run("apply", write_comments("all.json", everything))
 check("定型文と下書きを全部まとめて書き換えられる", r.returncode == 0 and "残り0件" in r.stdout, r.stdout + r.stderr)
 check("そのあと list は空になる", json.loads(run("list").stdout)["items"] == [])
 check("全件が comment_kind claude になる", all(x["comment_kind"] == "claude" for x in read_data()))
+
+print("\n■ 1日60件: ふえた20件は過去作品の枠・検索に出ていない女優の作品が先（2026-11-06 しょーくん）")
+T60 = tempfile.mkdtemp(dir=tmp)
+D60 = os.path.join(T60, "data.json")
+with open(FIXTURE, encoding="utf-8") as f:
+    proto = json.load(f)[1]
+mk = lambda cid, actress, **kw: dict(proto, cid=cid, actress=actress, date="2024-05-01 10:00:00", url=f"https://al.fanza.co.jp/?lurl={cid}&af_id=x-990", **kw)
+
+
+def put60(n_cur):
+    """毎日の更新の作品（定型文のまま。出演者は「既出A」＝コメントのある女優）を n_cur 件・同人10件・過去作品を作る"""
+    with open(D60, "w", encoding="utf-8") as f:
+        json.dump([mk(f"cur{i:03d}", ["既出A"], comment="定型文のコメントです。", comment_kind="template") for i in range(n_cur)], f, ensure_ascii=False)
+    dj60 = {"updated": "2026-11-03", "scanned": 100, "skipped": 0, "ranks": {}, "items": {}}
+    for i in range(10):
+        it = floor_item(f"d_95{i:04d}", 60 + i)
+        dj60["items"][it["cid"]] = it
+        dj60["ranks"][it["cid"]] = i + 1
+    FD.save_floor(os.path.join(T60, "doujin.json"), dj60)
+    os.makedirs(os.path.join(T60, "catalog"), exist_ok=True)
+    none = dict(comment="", comment_kind="none")
+    cat = [mk(f"pop{i:03d}", ["既出A"], **none) for i in range(50)]       # 人気の上の作品（コメントのある女優だけ）
+    cat += [mk("hidB1", ["隠れB"], **none), mk("hidB2", ["隠れB"], **none),  # 隠れB: 2本・コメントなし＝まだ検索に出られない
+            mk("hidC1", ["隠れC", "既出A"], **none), mk("hidC2", ["隠れC"], **none),
+            mk("solo1", ["一本だけD"], **none)]                               # 1本だけの人は女優のページが無い
+    with open(os.path.join(T60, "catalog", "2024-05.json"), "w", encoding="utf-8") as f:
+        json.dump(cat, f, ensure_ascii=False)
+    rank = {f"pop{i:03d}": [i + 1, 1] for i in range(50)} | {"hidB1": [60, 1], "hidB2": [61, 1], "hidC1": [70, 1], "hidC2": [71, 1], "solo1": [65, 1]}
+    with open(os.path.join(T60, "catalog_rank.json"), "w", encoding="utf-8") as f:
+        json.dump(rank, f)
+
+
+def list60(limit):
+    env = dict(os.environ, DATA_PATH=D60)
+    r = subprocess.run([sys.executable, SCRIPT, "list", "--today", "2026-11-03", "--limit", str(limit)], capture_output=True, text=True, env=env, encoding="utf-8")
+    return json.loads(r.stdout)["items"]
+
+
+check("1日の上限は60件（いつもの40件＋過去作品の20件）・女優のページの本数は config.js の ENTITY_MIN_ITEMS と同じ",
+      cc_mod.DAILY_LIMIT == 60 and cc_mod.BASE_LIMIT == 40 and cc_mod.CATALOG_SLOT == 20 and cc_mod.split_limit(60) == (40, 20) and cc_mod.split_limit(40) == (40, 0)
+      and cc_mod.split_limit(30) == (30, 0)
+      and re.search(r"ENTITY_MIN_ITEMS = (\d+)", open(os.path.join(ROOT, "site", "src", "config.js"), encoding="utf-8").read()).group(1) == str(cc_mod.ENTITY_MIN_ITEMS))
+put60(45)
+full60, full40 = list60(60), list60(40)
+cat60 = [r["cid"] for r in full60 if r.get("catalog")]
+check("① ほかが40件いっぱいの日でも、過去作品が20件出る（合計60件）", len(full60) == 60 and len(cat60) == 20 and not any(r.get("catalog") for r in full40) and len(full40) == 40,
+      (len(full60), len(cat60)))
+check("③ 売り場の件数は40件のときと同じ（60件でもふえない）",
+      [r["cid"] for r in full60 if r.get("floor")] == [r["cid"] for r in full40 if r.get("floor")] and sum(1 for r in full60 if r.get("floor")) == 8)
+check("③ いつもの40件の中身は、60件のときも同じ（過去作品はそのあと）",
+      [r["cid"] for r in full60 if not r.get("catalog")] == [r["cid"] for r in full40])
+check("④ まだ検索に出られない女優の作品が先（その中は人気順）・同じ女優の作品を続けて先にしない・1本だけの人は先にしない",
+      cat60[:2] == ["hidB1", "hidC1"] and cat60[2:] == [f"pop{i:03d}" for i in range(18)], cat60[:4])
+put60(5)
+few60 = list60(60)
+cat_few = [r["cid"] for r in few60 if r.get("catalog")]
+check("② ほかが少ない日は、合計60件まで過去作品で埋まる", len(few60) == 60 and len(cat_few) == 60 - 5 - 8 and cat_few[:2] == ["hidB1", "hidC1"], (len(few60), len(cat_few)))
+check("④ 女優の数え方: 2本以上・コメントのある出演作が無い人だけ",
+      cc_mod.hidden_actresses([mk("a", ["X"]) | {"comment": ""}, mk("b", ["X", "Y"]) | {"comment": ""}, mk("c", ["Y"]) | {"comment": "ある"}, mk("d", ["Z"]) | {"comment": ""}]) == {"X"})
 
 print("\n■ ソースの安全チェック")
 src = open(SCRIPT, encoding="utf-8").read()

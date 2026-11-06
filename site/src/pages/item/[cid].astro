@@ -4,6 +4,7 @@ import Breadcrumb from '../../components/Breadcrumb.astro';
 import FavButton from '../../components/FavButton.astro';
 import Face from '../../components/Face.astro';
 import SampleMovie from '../../components/SampleMovie.astro';
+import SampleGallery from '../../components/SampleGallery.astro';
 import MiniShelf from '../../components/MiniShelf.astro';
 import WorkRows from '../../components/WorkRows.astro';
 import GachaCorner from '../../components/GachaCorner.astro';
@@ -77,14 +78,12 @@ const saleEndIso = tenNow ? (tenNow.end ? endIso(tenNow.end) : undefined) : sale
 const nextWho = nextAll.names.length === 1 ? nextAll.names[0] : '出演者';
 const showReason = Boolean(tenNow || saleNow || nextAll.items.length);
 const saleCampHref = saleNow ? campaignHrefOf(saleNow) : '';
-const samples = item.sample_images.slice(0, 8);
 // サンプル動画がある作品は、動画を表紙の場所に出し、パッケージ写真は、サンプル画像の下に別の欄で大きく出す
 // （サンプル画像の並びに混ぜると、枚数が増えて並びが崩れやすいため）。
 // 動画が無い作品は、これまでどおり表紙を上に出す
 const hasMovie = Boolean(item.sample_movie);
 const coverBelow = hasMovie && Boolean(item.image_url);
-const gallery = samples.map((src, i) => ({ src, label: `サンプル画像 ${i + 1}` }));
-const zoomable = gallery.length > 0 || coverBelow; // 拡大表示（lightbox）を使う画像がある
+const zoomable = item.sample_images.length > 0 || coverBelow; // 拡大表示（lightbox）を使う画像がある
 const trail = [
   { name: 'トップ', path: '/' },
   { name: truncate(item.title, 30), path: itemPath(item.cid) },
@@ -314,20 +313,7 @@ import { assetUrl, inlineScript } from '../../lib/assets.js';
       </section>
     )}
 
-    {gallery.length > 0 && (
-      <section class="subsection" aria-labelledby="samples-title">
-        <h2 id="samples-title" class="subsection-title">サンプル画像</h2>
-        <ul class="samples">
-          {gallery.map((g) => (
-            <li>
-              <a class="sample-link" href={g.src} data-label={g.label} target="_blank" rel="noopener noreferrer" aria-label={`${g.label} を拡大して見る`}>
-                <img class="sample-img" src={g.src} alt={g.label} loading="lazy" decoding="async" />
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    )}
+    <SampleGallery urls={item.sample_images} />
 
     {coverBelow && (
       <section class="subsection package" aria-labelledby="package-title">

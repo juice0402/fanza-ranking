@@ -182,8 +182,16 @@ def usable_rows(rows):
             continue
         cid = str(x.get("cid", "")).strip()
         if cid and str(x.get("title", "")).strip() and re.match(r"^\d{4}-\d{2}-\d{2}", str(x.get("date", ""))):
-            out.setdefault(cid, x)
+            out.setdefault(cid, {**x, "sample_images": samples_of(cid, x)})
     return out
+
+
+def samples_of(cid, x):
+    """サンプル画像の住所の一覧（サイト側の items.js の sampleImagesOf と同じ。枚数だけの保存 sample_count は決まった形に戻す。#235）"""
+    n = x.get("sample_count")
+    if isinstance(n, int) and not isinstance(n, bool) and 1 <= n <= 500 and re.fullmatch(r"[0-9a-z_]+", cid):
+        return [f"https://pics.dmm.co.jp/digital/video/{cid}/{cid}jp-{i}.jpg" for i in range(1, n + 1)]
+    return [u for u in (x.get("sample_images") or []) if isinstance(u, str) and u]
 
 
 # 毎日の更新で載せた作品（新作・予約）
@@ -621,18 +629,23 @@ for cid, x in valid.items():
     if not os.path.isfile(page):
         continue
     html = read(page)
-    shown = min(len([u for u in (x.get("sample_images") or []) if u]), 8)  # 画面に出すのは最大8枚
+    n_samples = len([u for u in (x.get("sample_images") or []) if u])
+    shown = n_samples  # サンプル画像は全部（9枚目からは「残り◯枚を見る」の中。拡大表示のリンクは全部ある。#235）
     if fanza_https(x.get("sample_movie"), ["dmm.co.jp"]) and str(x.get("image_url") or "").strip():
         shown += 1  # サンプル動画がある作品は、サンプル画像の下に、パッケージ写真の欄が別にある（拡大表示のリンクはその1つぶん増える）
     links = len(re.findall(r'class="sample-link"', html))
     has_dialog = 'id="lightbox"' in html
     has_script = 'src="/lightbox.js?v=' in html
+    # 9枚以上の作品だけ、8枚の下に「残り◯枚を見る」の帯（details）が1つ。中に残りの全部
+    more = re.findall(r'<details class="samples-more">\s*<summary class="[^"]*samples-more-toggle[^"]*">残り(\d+)枚を見る</summary>([\s\S]*?)</details>', html)
+    if (n_samples > 8) != bool(more) or len(more) > 1 or (more and (int(more[0][0]) != n_samples - 8 or len(re.findall(r'class="sample-link"', more[0][1])) != n_samples - 8)):
+        bad_samples.append((cid, "残りの帯", n_samples, [m[0] for m in more]))
     if shown:
         if not (links == shown and has_dialog and has_script):
             bad_samples.append((cid, shown, links, has_dialog, has_script))
     elif links or has_dialog:
         bad_samples.append((cid, 0, links, has_dialog, has_script))
-check("サンプル画像のある作品ページに、拡大表示の部品（リンク・ダイアログ・スクリプト）が揃っている", not bad_samples, bad_samples[:3])
+check("サンプル画像のある作品ページに、拡大表示の部品（リンク・ダイアログ・スクリプト）が揃い、9枚以上の作品だけ「残り◯枚を見る」の帯がある", not bad_samples, bad_samples[:3])
 bad_actions = []
 for p_ in sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))[:400]:
     h_ = read_raw(p_)
@@ -745,7 +758,7 @@ for cid, x in valid.items():
         pkg_link_ok = len(cover_links) == 1 and sample_links[-1] is cover_links[0] and cover_links[0].get("href") == cover
         if cover and not (has_pkg_section and after_samples and pkg_link_ok and any(has_class(t, "package-img") for t in tags(text, "img"))):
             problems_here.append("パッケージ写真の欄（サンプル画像の下・大きな画像）がない")
-        if cover and len(sample_links) - len(cover_links) != min(len([u for u in (x.get("sample_images") or []) if u]), 8):
+        if cover and len(sample_links) - len(cover_links) != len([u for u in (x.get("sample_images") or []) if u]):
             problems_here.append("サンプル画像の並びに、パッケージ画像が混ざっている（サンプル画像の枚数と合わない）")
         if not cover and "パッケージ写真" in text:
             problems_here.append("パッケージ画像が無いのに、パッケージ写真の欄がある")

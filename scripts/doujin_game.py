@@ -86,13 +86,14 @@ def pics_url(url):
 
 
 def sample_images(raw, limit):
-    """サンプル画像。大きい版（sample_l）を先に。ゲームは小さい版（…js-N.jpg・120×90）しか返らないので、
+    """サンプル画像（limit 枚まで。None なら全部）。大きい版（sample_l）を先に。ゲームは小さい版（…js-N.jpg・120×90）しか返らないので、
     同じ場所の大きい版（…jp-N.jpg・640×360。2026-10-09 に本物で確かめた）にする"""
     smp = raw.get("sampleImageURL") or {}
     big = (smp.get("sample_l") or {}).get("image") or []
     if not big:
         big = [re.sub(r"js-(\d+)\.jpg$", r"jp-\1.jpg", u) for u in ((smp.get("sample_s") or {}).get("image") or []) if isinstance(u, str)]
-    return [u for u in (G.safe_https_url(pics_url(x), G.IMAGE_HOSTS) for x in big) if u][:limit]
+    urls = [u for u in (G.safe_https_url(pics_url(x), G.IMAGE_HOSTS) for x in big) if u]
+    return urls if limit is None else urls[:limit]  # limit が None なら全部（#235）
 
 
 def volume_minutes(volume):

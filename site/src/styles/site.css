@@ -1477,6 +1477,23 @@ summary:focus-visible {
   }
 }
 
+/* サンプル画像の9枚目から（#235）: 下に「残り◯枚を見る」の帯（details）。押すと帯は消え、残りが同じ並びで続く（押したときだけ開くので、あとから画面はずれない） */
+.samples-more {
+  margin-top: 8px;
+}
+
+.samples-more-toggle {
+  list-style: none;
+}
+
+.samples-more-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.samples-more[open] > .samples-more-toggle {
+  display: none;
+}
+
 .sample-img {
   width: 100%;
   aspect-ratio: 3 / 2;

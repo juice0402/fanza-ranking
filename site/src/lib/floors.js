@@ -51,7 +51,7 @@ export const FLOOR_SALE_GROUP_LIMIT = 24; // セールのページの、セー�
 export const FLOOR_NEW_DAYS = 30; // 「新作で人気」に入れる、発売からの日数
 export const FLOOR_MAKER_MIN = 2; // サークル・ブランドのページを作る、作品の数
 export const FLOOR_MAKER_LIST = 60; // サークル・ブランドのページに並べる本数
-export const FLOOR_SAMPLES = 8; // 作品ページのサンプル画像の枚数
+export const FLOOR_SAMPLES = 8; // 作品ページで、はじめから並べるサンプル画像の枚数（残りは「残り◯枚を見る」の中。#235）
 
 const CID = /^[A-Za-z0-9_-]{1,40}$/;
 
