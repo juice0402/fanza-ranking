@@ -34,30 +34,32 @@ DATA_DIR = os.path.join(ROOT, "site", "src", "data")
 # campaign_quick: はじめに読む回数（顔ぶれが前と同じなら、ここでやめる。無ければ floor_sales.py の QUICK_CALLS＝上位1万本。アニメ・成人映画は全部で4千・6千本ほどなので上位1千本）
 # 同人・素人は各3,000本に（運営者「同人とか素人も人気コンテンツってこともわかった」。2026-10-28 #190）。10/29 の本物の割合（同人は上位2,100本で1,000本・
 #   素人は1,900本で1,000本）から、3,000本には6,300本・5,700本ほど読むので、1日 80回まで（1回の更新で数分ふえるだけ。分けない）
+# samples: サンプル画像の枚数（None は FANZA が出している枚数ぶん全部。2026-11-06 #235 運営者「全てちゃんと掲載してほしい」。前は同人6枚・ほか8枚。
+#   0 はサンプル画像を持たない＝コミック・写真集）
 FLOORS = {
     "doujin": {
         "label": "FANZA同人", "service": "doujin", "floor": "digital_doujin", "floor_id": 81, "target": 3000, "max_calls": 80, "upcoming": 0,
-        "env": "DOUJIN_PATH", "file": "doujin.json", "samples": 6,
+        "env": "DOUJIN_PATH", "file": "doujin.json", "samples": None,
     },
     "game": {
         "label": "FANZAゲーム", "service": "pcgame", "floor": "digital_pcgame", "floor_id": 80, "author_search": True, "target": 500, "max_calls": 40, "upcoming": 30,
-        "env": "GAME_PATH", "file": "game.json", "samples": 8,
+        "env": "GAME_PATH", "file": "game.json", "samples": None,
     },
     "anime": {
         "label": "FANZAアニメ", "service": "digital", "floor": "anime", "floor_id": 46, "target": 100, "max_calls": 8, "upcoming": 12, "duration": True,
         "campaign_calls": 100, "campaign_quick": 10,
-        "env": "ANIME_PATH", "file": "anime.json", "samples": 8,
+        "env": "ANIME_PATH", "file": "anime.json", "samples": None,
     },
     # 素人は 1,000本（運営者の希望「素人のページを1,000本ほどに拡充」。2026-10-12。未成年を連想させる作品を外すと、1,000本目は人気順の約1,800本目＝probe_api.py の 17）
     "amateur": {
         "label": "FANZA素人", "service": "digital", "floor": "videoc", "floor_id": 44, "target": 3000, "max_calls": 80, "upcoming": 0, "duration": True,
         "campaign_calls": 500,
-        "env": "AMATEUR_PATH", "file": "amateur.json", "samples": 8,
+        "env": "AMATEUR_PATH", "file": "amateur.json", "samples": None,
     },
     "cinema": {
         "label": "FANZA成人映画", "service": "digital", "floor": "nikkatsu", "floor_id": 45, "target": 100, "max_calls": 6, "upcoming": 0, "duration": True,
         "campaign_calls": 100, "campaign_quick": 10,
-        "env": "CINEMA_PATH", "file": "cinema.json", "samples": 8,
+        "env": "CINEMA_PATH", "file": "cinema.json", "samples": None,
     },
     "comic": {
         "label": "FANZAコミック", "service": "ebook", "floor": "comic", "floor_id": 82, "author_search": True, "target": 100, "max_calls": 10, "upcoming": 0,
@@ -69,7 +71,7 @@ FLOORS = {
     },
     "vr": {
         "label": "FANZA VR見放題", "service": "monthly", "floor": "vr", "floor_id": 91, "target": 100, "max_calls": 6, "upcoming": 0, "duration": True,
-        "env": "VR_PATH", "file": "vr.json", "samples": 8,
+        "env": "VR_PATH", "file": "vr.json", "samples": None,
     },
 }
 
@@ -144,7 +146,7 @@ def clean_item(row):
         "title": title,
         "url": str(row.get("url") or ""),
         "image_url": str(row.get("image_url") or ""),
-        "sample_images": [str(u) for u in (row.get("sample_images") or []) if isinstance(u, str) and u][:12],
+        "sample_images": [str(u) for u in (row.get("sample_images") or []) if isinstance(u, str) and u],
         "sample_movie": _url(row.get("sample_movie")),
         "trial_url": _url(row.get("trial_url")),
         "date": date[:19],

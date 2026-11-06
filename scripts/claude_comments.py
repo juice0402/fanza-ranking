@@ -158,6 +158,14 @@ def dumps_lines(obj, depth=0):
     return flat(obj)
 
 
+def sample_count(x):
+    """サンプル画像の枚数（保存の形は、枚数だけの "sample_count" か、住所の一覧の "sample_images"。#235）"""
+    n = x.get("sample_count")
+    if isinstance(n, int) and not isinstance(n, bool) and n > 0:
+        return n
+    return len(x.get("sample_images") or [])
+
+
 def jst_today():
     return datetime.now(JST).strftime("%Y-%m-%d")
 
@@ -447,7 +455,7 @@ def cmd_list(args):
             # ジャンルは、決めた一覧（ジャンルのページの一覧＋COMMENT_EXTRA_GENRES）にあるものだけ
             "genres": genres_for_comment(x, allowed),
             "sample_movie": bool(x.get("sample_movie")),
-            "sample_images": len(x.get("sample_images") or []),
+            "sample_images": sample_count(x),
         }
         if x["cid"] in catalog:
             row["catalog"] = True  # 過去作品（data/catalog/）。書き方は同じ（人気順の順位は、日がたつと変わる・評価になるので出さない）
@@ -496,7 +504,7 @@ def floor_row(key, x, today):
         "date": (x.get("date") or "")[:10],
         FLOOR_MAKER_FIELD.get(key, "maker"): x.get("maker") or None,
         "genres": genres,
-        "sample_images": len(x.get("sample_images") or []),
+        "sample_images": sample_count(x),
         "min_len": min_length_for(x, key),
     }
     if key in ("game", "comic", "photo") and x.get("authors"):

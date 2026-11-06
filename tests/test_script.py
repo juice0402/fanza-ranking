@@ -71,7 +71,7 @@ def make_api_item(cid, days_from_today, actress=("テスト花子",), maker="テ
         "date": d,
         "affiliateURL": f"https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3D{cid}&af_id=x-990",
         "imageURL": {"large": f"https://pics.dmm.co.jp/digital/video/{cid}/{cid}pl.jpg"},
-        "sampleImageURL": {"sample_l": {"image": [f"https://pics.dmm.co.jp/digital/video/{cid}/{cid}jp-{i}.jpg" for i in range(1, 4)]}},
+        "sampleImageURL": {"sample_l": {"image": [f"https://pics.dmm.co.jp/digital/video/{cid}/{cid}jp-{i}.jpg" for i in range(1, 15)]}},  # 14枚（12枚・8枚で切らないことを見る。#235）
         "volume": "120",
         "iteminfo": {
             "maker": [{"id": 1, "name": maker}],
@@ -381,7 +381,8 @@ check("AIに作品タイトルを渡していない", all("テスト作品" not 
 check("プロンプトに形式タグ(VR / 8K)を渡す", any("VR / 8K" in p for p in env.prompts))
 check("429のあと再挑戦して成功した", env.gemini_calls > 1)
 sample = by_cid["rel001"]
-check("サンプル画像・ジャンル・収録時間を保存", len(sample["sample_images"]) == 3 and sample["genres"] == ["テストジャンル"] and sample["duration_min"] == 120)
+check("サンプル画像・ジャンル・収録時間を保存（住所が決まった形のサンプル画像は、枚数だけ sample_count で。#235）",
+      sample.get("sample_count") == 14 and "sample_images" not in sample and sample["genres"] == ["テストジャンル"] and sample["duration_min"] == 120, sample)
 check("出演者なしの作品も保存できる", by_cid["rel004"]["actress"] == [])
 check("タグ抽出", sample["tags"] == ["VR", "8K"], sample["tags"])
 check("APIキーなどの秘密情報が保存データに入っていない", "fake" not in open(path, encoding="utf-8").read().lower().replace("fake_", ""))
@@ -629,7 +630,7 @@ def seeded(cid, days, actress, kind="ai", genres=("保存済みのジャンル",
     """保存済みの作品（APIの偽の応答にも出てくる cid を使う）。更新日は昔の日付にしておく"""
     api = make_api_item(cid, days, actress=tuple(actress))
     return {"cid": cid, "title": api["title"], "url": api["affiliateURL"], "image_url": api["imageURL"]["large"],
-            "sample_images": [f"https://pics.dmm.co.jp/digital/video/{cid}/{cid}jp-{i}.jpg" for i in (1, 2, 3)],
+            "sample_images": [u for u in api["sampleImageURL"]["sample_l"]["image"]],  # APIと同じ枚数（サンプル画像の入れかえが起きないように）
             "date": api["date"], "maker": "テストメーカー", "actress": list(actress), "genres": list(genres),
             "tags": ["VR", "8K"], "duration_min": 120, "sample_movie": make_movie(cid)["size_476_306"], "movie_tries": 0,
             "comment": "保存済みのコメントです。" * 5, "comment_kind": kind,
@@ -677,7 +678,37 @@ check("補ったら更新日が今日になる", it["updated"] == TODAY_STR)
 it2 = json.loads(json.dumps(base_item))
 it2["sample_images"] = ["https://pics.dmm.co.jp/a/old.jpg"]
 af(it2, dict(fresh_item, sample_images=["https://pics.dmm.co.jp/a/new.jpg"]), TODAY_STR)
-check("すでに入っているサンプル画像は書き換えない", it2["sample_images"] == ["https://pics.dmm.co.jp/a/old.jpg"])
+check("すでに入っているサンプル画像は、取り直しの枚数が多くなければ書き換えない", it2["sample_images"] == ["https://pics.dmm.co.jp/a/old.jpg"])
+it2b = json.loads(json.dumps(base_item))
+it2b["sample_images"] = mod.sample_urls("x1", 8)
+ch2b = af(it2b, dict(fresh_item, sample_images=mod.sample_urls("x1", 20), duration_min=None, image_url=""), TODAY_STR)
+check("取り直しのほうがサンプル画像が多ければ入れかえる（前に8枚・12枚で切っていた作品が全部になる。#235）・更新日が今日",
+      it2b["sample_images"] == mod.sample_urls("x1", 20) and ch2b == ["sample_images"] and it2b["updated"] == TODAY_STR, (ch2b, len(it2b["sample_images"])))
+it2c = json.loads(json.dumps(base_item))
+it2c["sample_images"] = mod.sample_urls("x1", 12)
+check("取り直しのほうが少ないときは減らさない", not af(it2c, dict(fresh_item, sample_images=mod.sample_urls("x1", 5), duration_min=None, image_url=""), TODAY_STR)
+      and len(it2c["sample_images"]) == 12)
+
+print("\n■ サンプル画像の保存の形（#235。決まった形は枚数だけ・ほかは住所の一覧）")
+full = mod.sample_urls("abc00123", 15)
+check("決まった形の住所", full[0] == "https://pics.dmm.co.jp/digital/video/abc00123/abc00123jp-1.jpg" and full[-1].endswith("/abc00123jp-15.jpg") and len(full) == 15)
+row_p = mod.packed({"cid": "abc00123", "title": "t", "sample_images": full, "date": "2026-01-01"})
+check("住所がぜんぶ決まった形なら、枚数だけにする（項目の並びは同じ場所）", row_p == {"cid": "abc00123", "title": "t", "sample_count": 15, "date": "2026-01-01"}
+      and list(row_p) == ["cid", "title", "sample_count", "date"], row_p)
+odd_lists = [full[:3] + full[4:6], full[1:5], [u.replace("jp-", "-") for u in full[:3]], mod.sample_urls("other", 3), ["http" + full[0][5:]] + full[1:3], []]
+check("すき間がある・1枚目からでない・形がちがう・別の品番・http・空 の一覧は、住所の一覧のまま",
+      all(mod.packed({"cid": "abc00123", "sample_images": u}) == {"cid": "abc00123", "sample_images": u} for u in odd_lists))
+check("品番に決まった字（小文字・数字・_）以外があれば、住所の一覧のまま", "sample_images" in mod.packed({"cid": "ABC/1", "sample_images": mod.sample_urls("ABC/1", 2)}))
+back = mod.normalize_loaded({"cid": "abc00123", "title": "t", "sample_count": 15, "date": "2026-01-01"})
+check("読むときは枚数から住所の一覧に戻す（保存→読み直しで同じ）", back["sample_images"] == full and "sample_count" not in back)
+check("枚数が変な値（0・負・文字・true・大きすぎ）なら、サンプル画像は無しとして読む",
+      all(mod.normalize_loaded({"cid": "a1", "title": "t", "sample_count": v})["sample_images"] == [] for v in (0, -3, "5", True, 10**6)))
+check("住所の一覧の作品は、そのまま読む（空の文字・文字でないものは除く）",
+      mod.normalize_loaded({"cid": "a1", "title": "t", "sample_images": ["https://pics.dmm.co.jp/x/a.jpg", "", None, 3]})["sample_images"] == ["https://pics.dmm.co.jp/x/a.jpg"])
+raw_api = {"content_id": "abc00123", "title": "t", "date": "2026-01-01 10:00:00", "sampleImageURL": {"sample_l": {"image": full + mod.sample_urls("abc00123", 30)[15:]}}}
+check("集めるときは、APIのサンプル画像を全部入れる（前は12枚まで）", len(mod.parse_api_item(raw_api)["sample_images"]) == 30)
+raw_s = {"content_id": "abc00123", "title": "t", "date": "2026-01-01 10:00:00", "sampleImageURL": {"sample_s": {"image": full}}}
+check("大きい版が無ければ小さい版を全部", mod.parse_api_item(raw_s)["sample_images"] == full)
 it3 = json.loads(json.dumps(base_item))
 ch3 = af(it3, dict(fresh_item, date="2026-11-21 10:00:00", sample_images=[], duration_min=None, image_url=""), TODAY_STR)
 check("発売日が延期されたら、発売日を直す", it3["date"] == "2026-11-21 10:00:00" and "date" in ch3, (ch3, it3["date"]))
@@ -1239,10 +1270,12 @@ check("正常終了(0)・まずその日の人気順の上位（1本目から）
 crow = catalog_rows()
 check("過去作品: 200本のうち、毎日の更新で載せた作品と同じ1本を除いた199本", len(crow) == 199 and "bibivr00176" not in crow, len(crow))
 check("過去作品は、発売月ごとのファイル（YYYY-MM.json）に入る", all(name_ == r_["date"][:7] + ".json" for name_, r_ in crow.values()) and len(os.listdir(cat_dir)) > 3, sorted(os.listdir(cat_dir))[:3])
-check("過去作品の形: コメントは無し（comment_kind: none）・更新日は今日・サンプル画像は8枚まで",
-      all(r_["comment"] == "" and r_["comment_kind"] == "none" and r_["updated"] == TODAY_STR and len(r_["sample_images"]) <= 8 for _, r_ in crow.values()))
+check("過去作品の形: コメントは無し（comment_kind: none）・更新日は今日・サンプル画像は全部（8枚で切らない。#235）",
+      all(r_["comment"] == "" and r_["comment_kind"] == "none" and r_["updated"] == TODAY_STR for _, r_ in crow.values())
+      and all(r_.get("sample_count") == 14 and "sample_images" not in r_ for _, r_ in crow.values()), [r_.get("sample_count") for _, r_ in list(crow.values())[:3]])
 same_keys = set(m_c.normalize_loaded(c_seed[0]))
-check("過去作品の作品の形（項目）は、毎日の更新の作品と同じ（順位は作品に入れず、別のファイルに）", all(set(r_) == same_keys for _, r_ in crow.values()), sorted(set(next(iter(crow.values()))[1]) ^ same_keys))
+_keys_of = lambda r_: {("sample_images" if k_ == "sample_count" else k_) for k_ in r_}  # noqa: E731  枚数だけの保存は sample_images の代わり
+check("過去作品の作品の形（項目）は、毎日の更新の作品と同じ（順位は作品に入れず、別のファイルに）", all(_keys_of(r_) == same_keys for _, r_ in crow.values()), sorted(_keys_of(next(iter(crow.values()))[1]) ^ same_keys))
 some_file = os.path.join(cat_dir, sorted(os.listdir(cat_dir))[0])
 check("ファイルは1作品1行（毎日の差分が、変わった作品の行だけになるように）", open(some_file, encoding="utf-8").read().count("\n") == len(json.load(open(some_file, encoding="utf-8"))) + 2)
 rk = json.load(open(cat_rank, encoding="utf-8"))
