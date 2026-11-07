@@ -9,7 +9,7 @@ import { buildFactsContext } from './facts.js';
 import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay, ACTRESS_IMAGE_BASE, faceUrl, listTemplateOf } from './profiles.js';
 import { hasCalendar, planPages } from './plan.js';
 import { bestRank, catalogAllRank, normalizePopularity, normalizeRankHistory } from './popularity.js';
-import { campaignPages, campaignSlug, isTenYenCampaign, normalizeSale, normalizeSaleHistory, saleHref } from './sale.js';
+import { SALE_PATH, campaignPages, campaignSlug, isTenYenCampaign, normalizeSale, normalizeSaleHistory, saleGroups, saleHref } from './sale.js';
 import { normalizePriceHistory } from './price-history.js';
 import { normalizeAgencies, withAgencies } from './agencies.js';
 import { eventsByName, normalizeEvents, upcomingEvents } from './events.js';
@@ -23,7 +23,7 @@ import { normalizeReadings } from './kana.js';
 import { nenkanGroups, normalizeHistory, normalizeStories } from './history.js';
 import { isMinorTitle } from './gacha.js';
 import { buildYomimonoPages, normalizeYomimono } from './yomimono.js';
-import { FLOOR_KEYS, FLOOR_PERIODS, FLOORS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorPeriodRanking, floorSaleItems, floorSalePages, floorSearchIndex, normalizeFloor, normalizeFloorGenreTops, normalizeFloorSale, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
+import { FLOOR_KEYS, FLOOR_PERIODS, FLOORS, floorCollections, floorEntityRanking, floorFileCount, floorGachaPool, floorMakers, floorPeriodRanking, floorSaleItems, floorSalePages, floorSalePath, floorSearchIndex, normalizeFloor, normalizeFloorGenreTops, normalizeFloorSale, normalizeFloorRankHistory, normalizeFloorSaleHistory } from './floors.js';
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
@@ -231,6 +231,21 @@ export const tenYenInfo = (key, cid) => tenYenInfoMap.get(`${key}:${cid}`) ?? nu
  * 10円セールを集めている売り場（ten_yen.py の FLOOR_KEYS と同じ）のうち、売り場のページがあり、
  * 同人・ゲームはいつも、ほかの売り場は10円の作品を見かけたことがあるときだけ（空のページを作らない） */
 export const tenYenFloors = activeFloors.filter((k) => TEN_YEN_KEYS.includes(k) && (TEN_YEN_ALWAYS.includes(k) || tenYenIndexable(tenYen, k)));
+
+/**
+ * セールのカレンダー（/calendar/sale.ics）と、新しく始まったセールの RSS（/sale/feed.xml）の材料（issue #239）。
+ * 動画のセール特集（sale.json。10円セールの特集も）・売り場のセール（floor_sale.json の名前のあるもの）。
+ * ten_yen.json だけにある10円セールは、始まりの時刻が分からないので入れない（issue のとおり）。
+ * 並べ方・期間の分からないものや終わったものを外すのは lib/calendar.js の saleEvents
+ */
+const videoSaleTotals = new Map(saleGroups(saleWorks, sale, today, 0).map((g) => [g.k, g.total]));
+export const saleCalendarSources = [
+  ...sale.campaigns.map((c, k) => ({ key: 'video', floor: 'FANZA動画', title: c.title, begin: c.begin, end: c.end, path: c.title ? campaignHrefOf({ title: c.title, k }) : SALE_PATH, count: videoSaleTotals.get(k) ?? 0 })),
+  ...FLOOR_KEYS.filter((k) => FLOORS[k].campaigns).flatMap((k) => floorSale[k].campaigns.map((c) => {
+    const page = activeFloors.includes(k) ? floorSalePageBySlug[k].get(entitySlug(c.title)) : null;
+    return { key: k, floor: FLOORS[k].label, title: c.title, begin: c.begin, end: c.end, path: page?.path ?? (activeFloors.includes(k) && floorHasSale(k) ? floorSalePath(k) : SALE_PATH), count: page?.total ?? 0 };
+  })),
+];
 
 // 作品ページを作る作品（サイト全体を FILE_BUDGET 以内に収める。lib/plan.js）
 export const pagePlan = planPages(all, {

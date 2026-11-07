@@ -2,7 +2,8 @@
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import { SITE_NAME, SITE_URL, breadcrumbLd } from '../../lib/items.js';
-import { CALENDAR_PATH, UPCOMING_ICS_PATH, webcalUrl } from '../../lib/calendar.js';
+import { CALENDAR_PATH, SALE_ICS_PATH, UPCOMING_ICS_PATH, webcalUrl } from '../../lib/calendar.js';
+import { SALE_FEED_PATH } from '../../lib/feed.js';
 import { FAVORITES_PATH } from '../../lib/favorites.js';
 
 const trail = [
@@ -38,6 +39,17 @@ const trail = [
       </div>
     </section>
 
+    <section class="section" aria-labelledby="cal-sale-title">
+      <h2 id="cal-sale-title" class="section-title">セールの始まりと終わり</h2>
+      <p class="summary">動画と売り場のセールが、始まりから終わりまでの予定で入ります。</p>
+      <p><a class="btn btn-hot cal-btn" href={webcalUrl(SALE_ICS_PATH)}>カレンダーに追加する</a></p>
+      <div class="cal-url-row">
+        <code class="cal-url">{SITE_URL + SALE_ICS_PATH}</code>
+        <button type="button" class="btn btn-quiet cal-copy" data-copy={SITE_URL + SALE_ICS_PATH} hidden>アドレスをコピー</button>
+      </div>
+      <p class="fine"><a class="spec-link" href={SALE_FEED_PATH}>新しく始まったセールのRSS</a></p>
+    </section>
+
     <section class="section" aria-labelledby="cal-fav-title">
       <h2 id="cal-fav-title" class="section-title">お気に入りの出演者・メーカーだけ</h2>
       <p class="summary">出演者・メーカーのページ（と<a class="spec-link" href={FAVORITES_PATH}>お気に入り</a>）の「発売日をカレンダーで受け取る」から入れられます。</p>
@@ -46,7 +58,7 @@ const trail = [
     <section class="section" aria-labelledby="cal-how-title">
       <h2 id="cal-how-title" class="section-title">使い方（iPad・iPhone）</h2>
       <ol class="steps">
-        <li>上の「カレンダーに追加する」を押します。</li>
+        <li>上の「カレンダーに追加する」を押します（セールのカレンダーも同じです）。</li>
         <li>「カレンダーを購読しますか？」と出たら、「購読」を押します。</li>
         <li>「追加」を押すと、カレンダーに発売日が入ります。</li>
       </ol>
@@ -67,6 +79,7 @@ const trail = [
       <h2 id="cal-note-title" class="section-title">知っておいてほしいこと</h2>
       <ul class="notes">
         <li>予定の題名は「【発売】○○の新作」です（作品のタイトルは、予定の詳細に入っています）。</li>
+        <li>セールの予定の題名は「セールの名前（FANZA動画）」のように、売り場を付けています。</li>
         <li>発売日の朝9時に通知します（鳴るかどうかは、アプリの設定しだい）。</li>
         <li>新しい作品が入るまで、時間がかかることがあります。</li>
         <li>やめるときは、カレンダーアプリで、このカレンダーを削除します。</li>
