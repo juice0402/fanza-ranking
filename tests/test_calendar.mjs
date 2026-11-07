@@ -126,6 +126,8 @@ console.log('\n■ セールのカレンダー（/calendar/sale.ics。issue #239
   const uids = [...u.matchAll(/^UID:(.+)$/gm)].map((m) => m[1]);
   check('UID はセールごとにちがう', uids.length === 3 && new Set(uids).size === 3 && uids.every((x) => x.startsWith('sale-') && x.endsWith('@example.com')));
   check('セールが無くても壊れない', C.buildSaleIcs({ calName: 'T', events: [], today: '2026-11-07' }).endsWith('END:VTIMEZONE\r\nEND:VCALENDAR\r\n'));
+  const esc = unfold(C.buildSaleIcs({ calName: 'T', events: C.saleEvents([src({ title: 'A,B;C\\D' })], now), today: '2026-11-07', siteUrl: 'https://example.com' }));
+  check('セール名の , ; \\ を書きかえる', esc.includes('SUMMARY:A\\,B\\;C\\\\D（FANZA動画）'), esc.match(/^SUMMARY:.*$/m)?.[0]);
   check('日本時間のいま', C.jstNow(Date.UTC(2026, 10, 6, 15, 5)) === '2026-11-07 00:05');
 }
 

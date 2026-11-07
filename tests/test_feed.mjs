@@ -40,6 +40,8 @@ console.log('\n■ 新しく始まったセールの配信（/sale/feed.xml。is
     got[1].title === 'セールa（FANZA動画）' && got[1].description === '11月10日 23:59まで ／ このサイトの作品12本' && got[1].link === `${SITE_URL}/sale/a/` && got[1].pubDate === 'Wed, 04 Nov 2026 00:10:00 +0900' && got[0].description === '11月10日 23:59まで', JSON.stringify(got[1]));
   const sx = F.rssXml({ title: F.SALE_FEED_TITLE, path: F.SALE_FEED_PATH, description: 'D', items: got });
   check('guid はセールごと（リンクが同じでも重ならない）', sx.includes('<guid isPermaLink="false">sale-a@') && sx.includes(`<atom:link href="${SITE_URL}/sale/feed.xml" rel="self"`));
+  const ex = F.rssXml({ title: 'T', path: F.SALE_FEED_PATH, description: 'D', items: F.saleFeedItems([ev('x', '2026-11-04 00:10', { title: '<A&B>"C\'' })], '2026-11-07 12:00') });
+  check('セール名の記号は XML で書きかえる', ex.includes('<title>&lt;A&amp;B&gt;&quot;C&apos;（FANZA動画）</title>') && !ex.includes('<A&B>'));
   check('時刻の形が違えば空', F.rssDateTime('2026-11-04') === '' && F.rssDateTime('2026-11-04 09:05') === 'Wed, 04 Nov 2026 09:05:00 +0900');
 }
 

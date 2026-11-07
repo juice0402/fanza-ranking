@@ -17,7 +17,7 @@ import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
 import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG_PAGE_GENRES } from '../config.js';
 import { genreTopLists, groupByEntry, normalizeGenreTops } from './insights.js';
 import { SEARCH_MORE_SIZE, buildSearchIndexes } from './search.js';
-import { TEN_YEN_ALWAYS, TEN_YEN_KEYS, TEN_YEN_NAMES, TEN_YEN_PATH, latestRun, normalizeTenYen, tenYenIndexable, tenYenPath, tenYenState } from './ten-yen.js';
+import { TEN_YEN_ALWAYS, TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenIndexable, tenYenState } from './ten-yen.js';
 import { FLOOR_REVIEW_MIN, REVIEW_RANKING_MIN_ITEMS, normalizeReviews, topRated } from './reviews.js';
 import { normalizeReadings } from './kana.js';
 import { nenkanGroups, normalizeHistory, normalizeStories } from './history.js';
@@ -234,24 +234,17 @@ export const tenYenFloors = activeFloors.filter((k) => TEN_YEN_KEYS.includes(k) 
 
 /**
  * セールのカレンダー（/calendar/sale.ics）と、新しく始まったセールの RSS（/sale/feed.xml）の材料（issue #239）。
- * 動画のセール特集（sale.json）・売り場のセール（floor_sale.json の名前のあるもの）・10円セール（ten_yen.json の、終わりが分かる売り場）。
+ * 動画のセール特集（sale.json。10円セールの特集も）・売り場のセール（floor_sale.json の名前のあるもの）。
+ * ten_yen.json だけにある10円セールは、始まりの時刻が分からないので入れない（issue のとおり）。
  * 並べ方・期間の分からないものや終わったものを外すのは lib/calendar.js の saleEvents
  */
 const videoSaleTotals = new Map(saleGroups(saleWorks, sale, today, 0).map((g) => [g.k, g.total]));
-const hasVideoTenYenCampaign = sale.campaigns.some((c) => c.title && isTenYenCampaign(c.title));
 export const saleCalendarSources = [
   ...sale.campaigns.map((c, k) => ({ key: 'video', floor: 'FANZA動画', title: c.title, begin: c.begin, end: c.end, path: c.title ? campaignHrefOf({ title: c.title, k }) : SALE_PATH, count: videoSaleTotals.get(k) ?? 0 })),
   ...FLOOR_KEYS.filter((k) => FLOORS[k].campaigns).flatMap((k) => floorSale[k].campaigns.map((c) => {
     const page = activeFloors.includes(k) ? floorSalePageBySlug[k].get(entitySlug(c.title)) : null;
     return { key: k, floor: FLOORS[k].label, title: c.title, begin: c.begin, end: c.end, path: page?.path ?? (activeFloors.includes(k) && floorHasSale(k) ? floorSalePath(k) : SALE_PATH), count: page?.total ?? 0 };
   })),
-  // 10円セール: ten_yen.json には始まりの時刻が無いので、このサイトが最初に見かけた日（runs の first）の0時を始まりにする。終わりが分からない売り場は入れない
-  ...TEN_YEN_KEYS.filter((k) => !(k === 'video' && hasVideoTenYenCampaign)).flatMap((k) => {
-    const st = tenYenState(tenYen, [k]);
-    const run = latestRun(tenYen, k);
-    if (!st.total || !st.end || !run || run.last < tenYen.checked.slice(0, 10)) return [];
-    return [{ key: k, floor: TEN_YEN_NAMES[k], title: '10円セール', begin: `${run.first} 00:00`, end: st.end, path: k === 'video' || tenYenFloors.includes(k) ? tenYenPath(k) : TEN_YEN_PATH, count: st.total }];
-  }),
 ];
 
 // 作品ページを作る作品（サイト全体を FILE_BUDGET 以内に収める。lib/plan.js）
