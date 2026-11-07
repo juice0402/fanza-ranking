@@ -29,6 +29,7 @@ const {
   jsonLd = [], // 検索エンジン向けの構造化データ（オブジェクトの配列）
   ogType = 'website', // OGP の種類（作品ページは video.movie。issue #174）
   ogMeta = [], // OGP に足す項目 [property, content] の配列（作品ページの video:actor・video:release_date・video:tag。lib/items.js の itemOgMeta）
+  feeds = [], // このページだけの RSS（[{ title, href }]。/sale/ の「始まったセール」。issue #239）
   tenYenBar = true, // 10円セールの帯（開催中だけ出る）。10円セールの大きな案内があるページ（トップ・売り場のトップ・セールのページ・10円セールのページ）では出さない
 } = Astro.props;
 
@@ -82,6 +83,7 @@ import { assetUrl } from '../lib/assets.js';
     {/* 新着のお知らせ（RSS） */}
     <link rel="alternate" type="application/rss+xml" title={FEED_TITLE} href={FEED_PATH} />
     {roundups.length > 0 && <link rel="alternate" type="application/rss+xml" title={WEEKLY_FEED_TITLE} href={WEEKLY_FEED_PATH} />}
+    {feeds.map((f) => <link rel="alternate" type="application/rss+xml" title={f.title} href={f.href} />)}
     <link rel="sitemap" href="/sitemap.xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

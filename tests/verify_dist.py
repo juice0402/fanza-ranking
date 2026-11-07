@@ -1655,6 +1655,45 @@ if os.path.isfile(upcoming_ics):
     probs = ics_problems(upcoming_ics)
     check("upcoming.ics の形が正しい（行の長さ・題名にタイトルが入らない・予定の数・日付）", not probs, probs)
     warn("upcoming.ics に予定が1件以上ある", "BEGIN:VEVENT" in read(upcoming_ics))
+# セールのカレンダー（/calendar/sale.ics）と、新しく始まったセールの RSS（/sale/feed.xml）・購読の入口（issue #239）
+sale_ics = os.path.join(DIST, "calendar", "sale.ics")
+check("セールのカレンダー（/calendar/sale.ics）がある", os.path.isfile(sale_ics))
+if os.path.isfile(sale_ics):
+    _st = open(sale_ics, "rb").read().decode("utf-8")
+    _sb = unfold_ics(_st).replace("\r\n", "\n")
+    _sp = []
+    if not (_st.startswith("BEGIN:VCALENDAR\r\n") and _st.endswith("END:VCALENDAR\r\n")) or "\n" in _st.replace("\r\n", ""):
+        _sp.append("先頭・末尾・改行の形")
+    if [l for l in _st.split("\r\n") if len(l.encode("utf-8")) > 75]:
+        _sp.append("75バイトを超える行")
+    _sn = _sb.count("BEGIN:VEVENT")
+    if _sn != _sb.count("END:VEVENT") or _sn > 50:
+        _sp.append(f"予定の数（{_sn}）")
+    _su = re.findall(r"^UID:(.+)$", _sb, re.M)
+    if len(_su) != _sn or len(set(_su)) != _sn:
+        _sp.append("UID の数・重複")
+    if len(re.findall(r"^DTSTART;TZID=Asia/Tokyo:\d{8}T\d{6}$", _sb, re.M)) != _sn or len(re.findall(r"^DTEND;TZID=Asia/Tokyo:\d{8}T\d{6}$", _sb, re.M)) != _sn:
+        _sp.append("始まり・終わりの時刻（日本時間）のない予定")
+    if not all(re.match(r"^.+（FANZA[^（）]+）$", t) for t in re.findall(r"^SUMMARY:(.*)$", _sb, re.M)):
+        _sp.append("予定の名前に売り場が付いていない")
+    _bad_url = [u for u in re.findall(r"^URL:(.+)$", _sb, re.M) if not os.path.isfile(page_file(re.sub(r"^https?://[^/]+", "", u).split("#")[0]))]
+    if _bad_url:
+        _sp.append(f"このサイトに無いページへの URL {_bad_url[:2]}")
+    check(f"sale.ics の形が正しい（予定{_sn}件・50件まで・日本時間の期間・売り場つきの名前・このサイトのページ）", not _sp, _sp)
+sale_feed = os.path.join(DIST, "sale", "feed.xml")
+check("新しく始まったセールの RSS（/sale/feed.xml）がある", os.path.isfile(sale_feed))
+if os.path.isfile(sale_feed):
+    _sf = read_raw(sale_feed)
+    check("sale/feed.xml が RSS 2.0 の形", _sf.startswith('<?xml version="1.0" encoding="UTF-8"?>') and '<rss version="2.0"' in _sf and _sf.rstrip().endswith("</rss>"))
+for _path, _label in (("/sale/", "セールのページ"), ("/calendar/", "発売日カレンダーの説明")):
+    _f = page_file(_path)
+    if os.path.isfile(_f):
+        _h = read_raw(_f)
+        check(f"{_label}（{_path}）に、セールのカレンダーの購読（webcal://…/calendar/sale.ics）と RSS（/sale/feed.xml）のリンクがある",
+              re.search(r'href="webcal://[^"]+/calendar/sale\.ics"', _h) is not None and 'href="/sale/feed.xml"' in _h)
+_sale_page = page_file("/sale/")
+if os.path.isfile(_sale_page):
+    check("セールのページの head に、始まったセールの RSS（link rel=alternate）がある", re.search(r'<link rel="alternate" type="application/rss\+xml"[^>]*href="/sale/feed\.xml"', read_raw(_sale_page)) is not None)
 page_host = None
 m = re.search(r'<link rel="canonical" href="https?://([^/"]+)', home_html)
 if m:
