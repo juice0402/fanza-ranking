@@ -30,5 +30,18 @@ check('RSS 2.0 の形・自分の場所（atom:link）・記号は書きかえ�
   && xml.includes('<title>T&amp;&lt;&gt;</title>') && xml.includes('<title>&lt;b&gt;&quot;A&quot;&amp;B&lt;/b&gt;</title>') && !xml.includes('\u0001') && xml.includes('<lastBuildDate>Tue, 06 Oct 2026'));
 check('記事が無くても、中身の無い配信として壊れない', F.rssXml({ title: 'T', path: F.WEEKLY_FEED_PATH, description: 'D', items: [] }).includes('</channel>'));
 
+
+console.log('\n■ 新しく始まったセールの配信（/sale/feed.xml。issue #239）');
+{
+  const ev = (id, begin, extra = {}) => ({ id, key: 'video', floor: 'FANZA動画', title: `セール${id}`, begin, end: '2026-11-10 23:59', path: `/sale/${id}/`, count: 12, ...extra });
+  const got = F.saleFeedItems([ev('a', '2026-11-04 00:10'), ev('b', '2026-11-06 00:00', { floor: 'FANZAアニメ', count: 0 }), ev('c', '2026-11-20 00:00')], '2026-11-07 12:00');
+  check('いま開いているセールを、始まりの新しい順に（これから始まるものは入れない）', got.map((x) => x.link.split('/').at(-2)).join() === 'b,a', got.map((x) => x.link).join());
+  check('題はセールの名前と売り場・説明は終わりの日時と本数・リンクはそのセールのページ・日付は始まりの時刻',
+    got[1].title === 'セールa（FANZA動画）' && got[1].description === '11月10日 23:59まで ／ このサイトの作品12本' && got[1].link === `${SITE_URL}/sale/a/` && got[1].pubDate === 'Wed, 04 Nov 2026 00:10:00 +0900' && got[0].description === '11月10日 23:59まで', JSON.stringify(got[1]));
+  const sx = F.rssXml({ title: F.SALE_FEED_TITLE, path: F.SALE_FEED_PATH, description: 'D', items: got });
+  check('guid はセールごと（リンクが同じでも重ならない）', sx.includes('<guid isPermaLink="false">sale-a@') && sx.includes(`<atom:link href="${SITE_URL}/sale/feed.xml" rel="self"`));
+  check('時刻の形が違えば空', F.rssDateTime('2026-11-04') === '' && F.rssDateTime('2026-11-04 09:05') === 'Wed, 04 Nov 2026 09:05:00 +0900');
+}
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

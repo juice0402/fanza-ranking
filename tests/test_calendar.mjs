@@ -98,5 +98,36 @@ console.log('\n■ 推しの棚のセールの索引（buildFavoritesSale。2026
   check('決まった形の画像', F.standardImage('abc00123') === 'https://pics.dmm.co.jp/digital/video/abc00123/abc00123pl.jpg' && F.FAVORITES_SALE_PATH === '/data/favorites-sale.json');
 }
 
+
+console.log('\n■ セールのカレンダー（/calendar/sale.ics。issue #239）');
+{
+  const src = (extra) => ({ key: 'video', floor: 'FANZA動画', title: 'メーカーA30％OFF', begin: '2026-11-04 00:10', end: '2026-11-10 23:59', path: '/sale/a/', count: 120, ...extra });
+  const now = '2026-11-07 12:00';
+  const evs = C.saleEvents([
+    src(),
+    src({ key: 'anime', floor: 'FANZAアニメ', path: '/anime/sale/a/' }), // 同じ名前でも売り場がちがえば別
+    src({ end: '2026-11-12 23:59' }), // 同じ売り場・同じ名前 → 早く終わるほうだけ
+    src({ title: 'これから', begin: '2026-11-20 00:00', end: '2026-11-30 23:59' }), // これから始まる
+    src({ title: '終わった', begin: '2026-11-01 00:00', end: '2026-11-07 09:59' }),
+    src({ title: '始まり不明', begin: '' }),
+    src({ title: '終わり不明', end: '2026-11-10' }),
+    src({ title: '女子校生セール' }),
+    src({ title: '' }),
+  ], now);
+  check('始まりと終わりの時刻があり、終わっていないものだけ・売り場ごとに1つ・終わりの近い順',
+    evs.map((e) => `${e.key}:${e.title}`).join() === 'anime:メーカーA30％OFF,video:メーカーA30％OFF,video:これから' && evs[0].end === '2026-11-10 23:59', evs.map((e) => `${e.key}:${e.title}:${e.end}`).join());
+  check('予定の数の上限（終わりの近い順に残す）', C.saleEvents(Array.from({ length: 60 }, (_, n) => src({ title: `S${n}`, end: `2026-12-${String(1 + (59 - n) % 28).padStart(2, '0')} 23:59` })), now).length === C.SALE_CALENDAR_MAX && C.SALE_CALENDAR_MAX === 50);
+  const ics = C.buildSaleIcs({ calName: 'テスト｜セール', events: evs, today: '2026-11-07', siteUrl: 'https://example.com' });
+  const u = unfold(ics);
+  check('VCALENDAR と日本時間のタイムゾーン・改行は CRLF・75バイトで折り返し', ics.startsWith('BEGIN:VCALENDAR\r\n') && ics.endsWith('END:VCALENDAR\r\n') && u.includes('BEGIN:VTIMEZONE\r\nTZID:Asia/Tokyo') && !ics.replace(/\r\n/g, '').includes('\n') && ics.split('\r\n').every((l) => new TextEncoder().encode(l).length <= 75));
+  check('始まり〜終わりの時刻つきの期間（TZID=Asia/Tokyo）', u.includes('DTSTART;TZID=Asia/Tokyo:20261104T001000\r\nDTEND;TZID=Asia/Tokyo:20261110T235900'));
+  check('予定の名前に売り場を付ける', u.includes('SUMMARY:メーカーA30％OFF（FANZA動画）') && u.includes('SUMMARY:メーカーA30％OFF（FANZAアニメ）'));
+  check('メモに終わりの日時と本数とページ・URL はこのサイトのそのセールのページ', u.includes('DESCRIPTION:11月10日 23:59まで\\nこのサイトの作品: 120本\\nhttps://example.com/sale/a/') && u.includes('URL:https://example.com/anime/sale/a/'));
+  const uids = [...u.matchAll(/^UID:(.+)$/gm)].map((m) => m[1]);
+  check('UID はセールごとにちがう', uids.length === 3 && new Set(uids).size === 3 && uids.every((x) => x.startsWith('sale-') && x.endsWith('@example.com')));
+  check('セールが無くても壊れない', C.buildSaleIcs({ calName: 'T', events: [], today: '2026-11-07' }).endsWith('END:VTIMEZONE\r\nEND:VCALENDAR\r\n'));
+  check('日本時間のいま', C.jstNow(Date.UTC(2026, 10, 6, 15, 5)) === '2026-11-07 00:05');
+}
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

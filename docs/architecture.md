@@ -320,6 +320,8 @@ Claude が**月のまとめ記事**を書くための道具（2026-10-07 から�
 
 お気に入りの索引（`/data/favorites-index.json`）・推しの棚のセールの索引（`/data/favorites-sale.json`。`buildFavoritesSale`。セール中で作品ページがある作品を、☆を付けられる名前から番号で引く形。決まった形の画像は省く。300KB 以内を `verify_dist.py` が見る）と、発売日カレンダー（`.ics`）の部品（画面に依存しない。`tests/test_calendar.mjs`）。カレンダーの予定の**題名に作品タイトルを入れない**（「【発売】○○の新作」。タイトル・品番・リンクは説明に入れる）。`escapeIcsText` は `;` `,` `\` 改行を書き換える
 
+**セールのカレンダー**（`/calendar/sale.ics`。issue #239）: 材料は `data.js` の `saleCalendarSources`（動画のセール特集・売り場の名前のあるセール・10円セール）、並べ方は `saleEvents`（始まりと終わりの時刻があり終わっていないもの・同じ売り場の同じ名前は1つ・終わりの近い順に50まで）、中身は `buildSaleIcs`（`TZID=Asia/Tokyo` の時刻つき。予定の名前は「セールの名前（FANZA動画）」）。10円セールは ten_yen.json に始まりの時刻が無いので、このサイトが最初に見かけた日（runs の first）の0時を始まりにする。新しく始まったセールの RSS（`/sale/feed.xml`）は `feed.js` の `saleFeedItems`（いま開いているものを始まりの新しい順。guid はセールごと）。購読の入口は /sale/ と /calendar/、/sale/ の head に RSS の link（`Base.astro` の `feeds`）。`verify_dist.py` が形と入口を見る
+
 #### `site/public/favorites.js` / `site/public/lightbox.js`
 
 ブラウザで動く小さなスクリプト（ビルドを通さずそのまま配信）。`lightbox.js` はサンプル画像・パッケージ写真の拡大表示（ページの `a.sample-link` を全部拾うので、「残り◯枚を見る」が閉じたままでも全部の画像を順に送れる。#235。前・次のボタンと枚数は、画像に重ならないよう、画像の下の帯 `.lightbox-bar` に。運営者の希望。2026-10-05）。`favorites.js` は ☆ の付け外しと「お気に入り」ページ・トップの推しの棚（`pickOshi`。2026-10-31。docs/design.md の「トップの推しの棚」）（**保存先は端末の localStorage だけ。サーバーには送らない**）。部品は node でテストできる（`tests/test_favorites.mjs`）。DOM は `textContent` で作り、保存データの HTML は実行しない
