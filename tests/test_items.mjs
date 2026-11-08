@@ -118,6 +118,7 @@ check('sitemap: 絶対URL', xml.includes('<loc>https://av-sale-guide.com/</loc>'
 check('sitemap: 宣言とurlset', xml.startsWith('<?xml version="1.0"') && xml.includes('<urlset'));
 const robotsTxt = L.buildRobots();
 check('robots.txt: 全体を許可し、sitemapの場所を案内', robotsTxt.includes('User-agent: *') && robotsTxt.includes('Allow: /') && robotsTxt.includes('Sitemap: https://av-sale-guide.com/sitemap.xml'), robotsTxt);
+check('robots.txt: 作品検索の画面（/search/・売り場の /○○/search/）だけ止める', robotsTxt.includes('Disallow: /search/') && robotsTxt.includes('Disallow: /*/search/') && robotsTxt.split('\n').filter((l) => l.startsWith('Disallow')).length === 2, robotsTxt);
 check('robots.txt: 指定したURLを使う', L.buildRobots('https://example.com').includes('Sitemap: https://example.com/sitemap.xml'));
 const long = { ...base, title: 'あ'.repeat(200) };
 check('タイトルを切り詰める', L.itemPageTitle(long).length < 80, L.itemPageTitle(long).length);

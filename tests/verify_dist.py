@@ -291,6 +291,11 @@ check("過去の作品の一覧から、作品ページの無い作品へは、�
 valid = {c: everything[c] for c in sorted(paged) if c in everything}
 robots = os.path.join(DIST, "robots.txt")
 check("robots.txt に Sitemap の行がある", os.path.isfile(robots) and "Sitemap:" in read(robots))
+# 作品検索の画面（noindex・条件で住所がいくらでも増える）は読みに来ないよう止める（items.js の buildRobots。2026-11-08）
+check("robots.txt で作品検索の画面（/search/・売り場の /○○/search/）を止め、ほかは止めない", os.path.isfile(robots)
+      and "Disallow: /search/" in read(robots) and "Disallow: /*/search/" in read(robots)
+      and all(ln.strip() in ("Disallow: /search/", "Disallow: /*/search/") for ln in read(robots).splitlines() if ln.startswith("Disallow")),
+      read(robots) if os.path.isfile(robots) else "")
 
 print("\n■ sitemap.xml")
 sitemap_path = os.path.join(DIST, "sitemap.xml")
@@ -298,12 +303,30 @@ sm_paths = []  # sitemap に載っているURLのパス
 lastmod_of = {}
 # sitemap の lastmod は、正式な住所にした日（config.js の SITE_URL_SINCE）より古くしない（items.js の buildSitemap。2026-11-02）
 SITE_URL_SINCE = re.search(r"export const SITE_URL_SINCE = '(\d{4}-\d{2}-\d{2})';", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1)
+# 作品ページのタイトルを「品番 ○○出演｜題名」にした日（C-018。items.js の itemTitleCast・itemLastmod。2026-11-08）
+ITEM_TITLE_SINCE = re.search(r"export const ITEM_TITLE_SINCE = '(\d{4}-\d{2}-\d{2})';", read(os.path.join(ROOT, "site", "src", "config.js"))).group(1)
 
 
 def sm_day(d):
     """データの日付を、sitemap の lastmod に出る形にする（SITE_URL_SINCE より古ければその日）"""
     d = str(d or "")
     return SITE_URL_SINCE if re.match(r"^\d{4}-\d{2}-\d{2}$", d) and d < SITE_URL_SINCE else d
+
+
+def title_cast(x):
+    """タイトルの前に出す出演者（items.js の itemTitleCast と同じ。題名のはじめ20字に名前がある人は除く・2人まで）"""
+    seen = str(x.get("title") or "").strip()[:20]
+    raw = x.get("actress") if isinstance(x.get("actress"), list) else []
+    names = [n for n in dict.fromkeys(a for a in raw if isinstance(a, str) and a) if n not in seen]
+    return names[:2]
+
+
+def item_lastmod(x):
+    """作品ページの sitemap の lastmod（出演者を前に出した作品は ITEM_TITLE_SINCE より古くしない）"""
+    d = sm_day(x.get("updated"))
+    if not title_cast(x):
+        return d
+    return d if re.match(r"^\d{4}-\d{2}-\d{2}$", d) and d > ITEM_TITLE_SINCE else ITEM_TITLE_SINCE
 
 
 
@@ -318,8 +341,18 @@ if os.path.isfile(sitemap_path):
     lastmod_of = {urlparse(u).path: m for u, m in rows}
     sm_paths = [urlparse(u).path for u in locs]
     indexable_items = {c for c, x in valid.items() if has_comment(x)}
-    wrong = [c for c in indexable_items if lastmod_of.get(f"/item/{c}/") != sm_day(valid[c].get("updated"))]
-    check("sitemap の作品ページの lastmod が、データの updated と同じ（正式な住所にした日より古ければその日）", not wrong, wrong[:3])
+    wrong = [c for c in indexable_items if lastmod_of.get(f"/item/{c}/") != item_lastmod(valid[c])]
+    check("sitemap の作品ページの lastmod が、データの updated と同じ（正式な住所にした日より古ければその日・出演者をタイトルの前に出した作品はタイトルを変えた日より古くしない）", not wrong, wrong[:3])
+    # 作品ページのタイトル（C-018）: 出演者を前に出す作品は「○○出演｜」が最初の「｜」の前にある（出演者がいない作品は tests/test_seo.mjs で見る。題名そのものに「出演」がある作品で誤って落ちないように）
+    bad_title = []
+    for c in sorted(indexable_items):
+        tm_ = re.search(r"<title>(.*?)</title>", read_raw(os.path.join(DIST, "item", c, "index.html")), re.S)
+        t_ = htmllib.unescape(tm_.group(1)) if tm_ else ""
+        names_ = title_cast(valid[c])
+        head_ = t_.split("｜", 1)[0]
+        if names_ and not (head_.endswith("出演") and names_[0] in head_):
+            bad_title.append((c, t_[:40]))
+    check(f"作品ページのタイトル（{len(indexable_items)}ページ）: 出演者は品番のすぐあとに「○○出演｜」", not bad_title, bad_title[:3])
     old = [p for p, m in lastmod_of.items() if m and m < SITE_URL_SINCE]
     check(f"sitemap の lastmod に、正式な住所にした日（{SITE_URL_SINCE}）より古い日が無い", not old, old[:3])
     check("sitemap にトップがある", any(urlparse(u).path == "/" for u in locs))

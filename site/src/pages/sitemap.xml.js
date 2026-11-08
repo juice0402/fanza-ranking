@@ -1,5 +1,6 @@
 // 検索エンジンに教えるための地図（/sitemap.xml）を、ビルド時に自動で作ります。
 // lastmod（最後に変わった日）は、データにある updated（コメントを変えた日）から付けます。分からないページには付けません。
+// 作品ページは、出演者をタイトルの前に出した作品だけ、config.js の ITEM_TITLE_SINCE（タイトルの形を変えた日）より古くしません（items.js の itemLastmod）。
 // ただし config.js の SITE_URL_SINCE（2026-10-27。正式な住所にした日）より古い日は、その日にそろえます（buildSitemap）。
 // 検索エンジンに出さない（noindex の）ページ（コメントの無い作品ページ・過去作品だけの一覧）は、地図にも入れません。
 import { actressByName, historyByName, storiesByName, nenkanActressGroups, all, allReleased, events, paged, popularity, sale, saleWorks, saleCampaignPages, saleHistory, released, today, upcoming, upcomingEventList, actressGroups, makerGroups, roundups, yomimonoPages, monthGroups, monthlyByMonth, tagGroups, seriesGroups, labelGroups, activeFloors, floors, floorMakerGroups, floorCollectionGroups, floorEntityRankings, floorHasSale, floorSale, floorSaleHistory, floorSalePageGroups, tenYen, tenYenFloors, reviewRanking, reviews, floorReviewRankings, floorPeriodRankings, floorSearchIndexes } from '../lib/data.js';
@@ -25,6 +26,7 @@ import {
   archivePageCount,
   buildSitemap,
   itemPath,
+  itemLastmod,
   listLastmod,
 } from '../lib/items.js';
 import { WEEKLY_INDEX_PATH, weeklyPath } from '../lib/roundups.js';
@@ -124,7 +126,7 @@ export function GET() {
         })]
       : []),
     ...(tagGroups.length > 0 ? [{ path: TAG_INDEX_PATH, lastmod: listLastmod(tagGroups.flatMap((g) => g.items), today) }, ...groupPages(tagGroups)] : []),
-    ...all.filter((item) => itemIndexable(item, paged)).map((item) => ({ path: itemPath(item.cid), lastmod: item.updated })),
+    ...all.filter((item) => itemIndexable(item, paged)).map((item) => ({ path: itemPath(item.cid), lastmod: itemLastmod(item) })),
     ...floorPages,
     // このサイトについて（lastmod は、中身を最後に変えた日）
     { path: ABOUT_PATH, lastmod: ABOUT_UPDATED },
