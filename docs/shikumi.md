@@ -33,7 +33,7 @@ CLAUDE.md の「公開」「仕組み」「どこに何があるか」「コマ�
 - 名簿の人の女優のページ（FANZAで50本以上・このサイトに作品が無くても。年表と紹介文がそろうまで noindex）— 2026-10-27 #173。docs/architecture.md の「名簿の人のページ」
 - `/sale/ending/`（今週終わるセール）・`/hinban/`（品番の見方。`lib/hinban.js`）— 2026-10-27。くわしくは docs/architecture.md の「セール・キャンペーン」の下
 - `/actress/nenpyo/`（女優の年表の一覧。年表のある女優を50音順に・入口は女優検索のページだけ）— 2026-10-27。くわしくは docs/architecture.md の「女優の歩み」
-- 作品ページの品番と出演者（説明文の頭・見出しの下の1行・構造化データ Movie・OGP video.movie。出演者がいない作品には何も足さない）— 2026-10-28 #174。docs/architecture.md の `items.js` の節
+- 作品ページの品番と出演者（説明文の頭・見出しの下の1行・構造化データ Movie・OGP video.movie・タイトル「品番 ○○出演｜題名」〔2026-11-08 C-018〕。出演者がいない作品には何も足さない）— 2026-10-28 #174。docs/architecture.md の `items.js` の節
 
 ## site/src/lib（くわしく）
 

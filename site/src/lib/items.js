@@ -8,6 +8,7 @@ import {
   SITE_ALT_NAMES,
   SITE_URL,
   SITE_URL_SINCE,
+  ITEM_TITLE_SINCE,
   OLD_SITE_URL,
   HOME_RELEASED_LIMIT,
   HOME_UPCOMING_LIMIT,
@@ -21,7 +22,7 @@ import {
 } from '../config.js';
 
 // ページ側が items.js からまとめて読めるように、そのまま出し直しています
-export { SITE_NAME, SITE_URL, SITE_URL_SINCE, OLD_SITE_URL, HOME_RELEASED_LIMIT, HOME_UPCOMING_LIMIT, HOME_UPCOMING_SHOWN, ARCHIVE_PAGE_SIZE, NEW_BADGE_DAYS, ENTITY_MIN_ITEMS, RANKING_SHOWN, CAST_LIMIT };
+export { SITE_NAME, SITE_URL, SITE_URL_SINCE, ITEM_TITLE_SINCE, OLD_SITE_URL, HOME_RELEASED_LIMIT, HOME_UPCOMING_LIMIT, HOME_UPCOMING_SHOWN, ARCHIVE_PAGE_SIZE, NEW_BADGE_DAYS, ENTITY_MIN_ITEMS, RANKING_SHOWN, CAST_LIMIT };
 
 import { createHash } from 'node:crypto';
 
@@ -399,20 +400,49 @@ export function buildOldSitemap(xml, siteUrl = SITE_URL, oldUrl = OLD_SITE_URL) 
   return String(xml).split(`<loc>${escapeXml(siteUrl)}/`).join(`<loc>${escapeXml(oldUrl)}/`);
 }
 
-/** robots.txt の中身（検索エンジン向け。sitemap の場所を教える） */
+/**
+ * robots.txt の中身（検索エンジン向け。sitemap の場所を教える）。
+ * 作品検索の画面（/search/・売り場の /doujin/search/ など）は noindex で、条件の組み合わせで住所がいくらでも増えるので、
+ * 読みに来ないよう止める（2026-11-08。Google が新しい住所を読みに来る回数が1日10回まで減り、11/1 は228回のうち84回が /search/ だった）
+ */
 export function buildRobots(siteUrl = SITE_URL) {
-  return `User-agent: *\nAllow: /\n\nSitemap: ${siteUrl}/sitemap.xml\n`;
+  return `User-agent: *\nAllow: /\nDisallow: /search/\nDisallow: /*/search/\n\nSitemap: ${siteUrl}/sitemap.xml\n`;
 }
 
 /**
- * 作品ページのタイトル（検索結果に出る部分）。品番（facts.js の productCode）が分かるときは、先頭に付ける
- * （品番で探す人が多いため。タイトルは長いので、品番・出演者を先に見せて、題名は途中で切る）
+ * 作品ページのタイトルの前に出す出演者（C-018。運営者「タイトルAにしよう」。2026-11-08）。
+ * 前は「品番 題名（出演者）」の順で、名前が48字めからになり、検索結果（PCで30字ほど）で切れて見えなかった。
+ * 題名のはじめ TITLE_NAME_SEEN 字に名前が入っている人は、もう見えるのでくり返さない。2人まで・それより多ければ「ほか」。
+ * 名前は FANZA のデータにあるものだけ（守ること9）。出演者がいない作品は names が空
+ */
+export const TITLE_CAST_MAX = 2;
+export const TITLE_NAME_SEEN = 20;
+export function itemTitleCast(item) {
+  const seen = Array.from(String(item.title ?? '')).slice(0, TITLE_NAME_SEEN).join('');
+  const list = [...new Set(Array.isArray(item.actress) ? item.actress.filter(Boolean) : [])].filter((name) => !seen.includes(name));
+  const names = list.slice(0, TITLE_CAST_MAX);
+  return { names, more: list.length > names.length };
+}
+
+/**
+ * 作品ページのタイトル（検索結果に出る部分）。品番（facts.js の productCode）が分かるときは、先頭に付ける（品番で探す人が多いため）。
+ * 出演者がいれば、品番のすぐあとに「○○・△△出演」（itemTitleCast）。題名は長いので途中で切る
  */
 export function itemPageTitle(item, code = '') {
-  const shown = truncate(item.title, code ? 38 : 44);
-  // タイトルに名前が入っている出演者は、かっこの中にくり返さない（同じ言葉の重ねすぎを避ける）
-  const cast = item.actress.filter((name) => !shown.includes(name)).slice(0, 2).join('・');
-  return `${code ? `${code} ` : ''}${shown}${cast ? `（${cast}）` : ''}｜${SITE_NAME}`;
+  const { names, more } = itemTitleCast(item);
+  const lead = code ? `${code} ` : '';
+  if (names.length === 0) return `${lead}${truncate(item.title, code ? 38 : 44)}｜${SITE_NAME}`;
+  return `${lead}${names.join('・')}${more ? 'ほか' : ''}出演｜${truncate(item.title, code ? 32 : 38)}｜${SITE_NAME}`;
+}
+
+/**
+ * 作品ページの sitemap の lastmod。タイトルの形を変えた日（config.js の ITEM_TITLE_SINCE）より前のものは、その日にそろえる
+ * （タイトルが変わった作品だけ＝出演者を前に出した作品。Google に読み直してもらい、新しいタイトルで検索に出すため。前の住所のサイトマップにも同じ日が入る）
+ */
+export function itemLastmod(item, since = ITEM_TITLE_SINCE) {
+  const day = String(item.updated ?? '');
+  if (itemTitleCast(item).names.length === 0 || !isDay(since)) return day;
+  return isDay(day) && day > since ? day : since;
 }
 
 /**

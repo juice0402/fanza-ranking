@@ -9,6 +9,8 @@ export const SITE_URL = 'https://av-sale-guide.com'; // 末尾にスラッシュ
 // SITE_URL を正式な住所（canonical）にした日（2026-10-27 #148）。それより前のページは canonical が旧 pages.dev を指していたので、
 // sitemap の lastmod はこの日より古くしない（Google に読み直してもらうため。11/2 Search Console で「代替ページ」のまま 10/24 から読まれていなかった）
 export const SITE_URL_SINCE = '2026-10-27';
+// 作品ページのタイトルを「品番 ○○出演｜題名」の形にした日（C-018。2026-11-08）。出演者を前に出した作品の sitemap の lastmod は、この日より古くしない（items.js の itemLastmod）
+export const ITEM_TITLE_SINCE = '2026-11-08';
 // 前の住所（10/27 から Bulk Redirects で SITE_URL へ 301）。/sitemap-pages-dev.xml に、sitemap.xml と同じページを前の住所で並べる
 // （Google の「サイトの移転」の手順の、古い URL のサイトマップ。Google に前の住所を読み直してもらい、転送に気づいてもらう。
 // 11/2 Search Console で、作品ページは前の住所が「正式」のまま、最後に読まれたのが 10/26＝転送の前だった）。

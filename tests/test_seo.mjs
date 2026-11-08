@@ -25,11 +25,18 @@ check('空・数字だけ・変な値でも落ちずに ""', code('') === '' && 
 check('品番にURLや記号は入らない（英大文字・ハイフン・数字だけ）', /^[A-Z]+-\d{3,5}$/.test(code('1dldss00566')) && code('dss/../00123') === '');
 
 const mk = (o) => L.normalizeItems([{ title: 'テスト', date: '2026-11-01', maker: 'メーカーA', ...o }])[0];
-check('タイトルの先頭に品番が付く。無いときは従来どおり', L.itemPageTitle(mk({ cid: 'a1', actress: ['花子'] }), 'DLDSS-566').startsWith('DLDSS-566 テスト（花子）') && L.itemPageTitle(mk({ cid: 'a1', actress: ['花子'] })) === 'テスト（花子）｜' + L.SITE_NAME);
+check('タイトルの先頭に品番、すぐあとに出演者（C-018 の案A）。品番が無いときは出演者から', L.itemPageTitle(mk({ cid: 'a1', actress: ['花子'] }), 'DLDSS-566') === `DLDSS-566 花子出演｜テスト｜${L.SITE_NAME}` && L.itemPageTitle(mk({ cid: 'a1', actress: ['花子'] })) === `花子出演｜テスト｜${L.SITE_NAME}`, L.itemPageTitle(mk({ cid: 'a1', actress: ['花子'] }), 'DLDSS-566'));
+check('出演者がいない作品は、品番と題名だけ（「出演」を書かない）', L.itemPageTitle(mk({ cid: 'a1', actress: [] }), 'DLDSS-566') === `DLDSS-566 テスト｜${L.SITE_NAME}` && L.itemTitleCast(mk({ cid: 'a1', actress: [] })).names.length === 0);
 const longTitle = mk({ cid: 'a1', title: 'あ'.repeat(80), actress: ['花子', '月子', '星子'] });
-check('長いタイトルは、品番があっても、切って「…」にする（出演者は2人まで）', [...L.itemPageTitle(longTitle, 'ABC-123')].length <= 12 + 38 + 8 + L.SITE_NAME.length + 2 && L.itemPageTitle(longTitle, 'ABC-123').includes('（花子・月子）') && L.itemPageTitle(longTitle, 'ABC-123').includes('…'), L.itemPageTitle(longTitle, 'ABC-123'));
+const longT = L.itemPageTitle(longTitle, 'ABC-123');
+check('長い題名は切って「…」にする。出演者は2人まで・それより多ければ「ほか」。名前は品番のすぐあと（検索結果で切れない）', longT.startsWith('ABC-123 花子・月子ほか出演｜') && longT.includes('…') && !longT.includes('星子') && [...longT].length <= 8 + 12 + 1 + 32 + 1 + L.SITE_NAME.length, longT);
 const named = mk({ cid: 'a1', title: '新作 小泉玖美 デビュー', actress: ['小泉玖美', '月子'] });
-check('タイトルに名前が入っている出演者は、かっこの中にくり返さない', L.itemPageTitle(named, 'ABC-123') === `ABC-123 新作 小泉玖美 デビュー（月子）｜${L.SITE_NAME}` && L.itemPageTitle(mk({ cid: 'a1', title: '小泉玖美 新作', actress: ['小泉玖美'] })) === `小泉玖美 新作｜${L.SITE_NAME}`, L.itemPageTitle(named, 'ABC-123'));
+check('題名のはじめ20字に名前が入っている出演者は、前にくり返さない', L.itemPageTitle(named, 'ABC-123') === `ABC-123 月子出演｜新作 小泉玖美 デビュー｜${L.SITE_NAME}` && L.itemPageTitle(mk({ cid: 'a1', title: '小泉玖美 新作', actress: ['小泉玖美'] })) === `小泉玖美 新作｜${L.SITE_NAME}`, L.itemPageTitle(named, 'ABC-123'));
+const lateName = mk({ cid: 'a1', title: 'い'.repeat(25) + '小泉玖美', actress: ['小泉玖美'] });
+check('題名の21字めより後ろにしか名前が無ければ、前にも出す（検索結果で見えないため）', L.itemPageTitle(lateName, 'ABC-123').startsWith('ABC-123 小泉玖美出演｜'), L.itemPageTitle(lateName, 'ABC-123'));
+check('同じ名前が2回あっても1回だけ', L.itemTitleCast(mk({ cid: 'a1', actress: ['花子', '花子', '月子'] })).names.join('・') === '花子・月子' && !L.itemTitleCast(mk({ cid: 'a1', actress: ['花子', '花子', '月子'] })).more);
+check('sitemap の lastmod: 出演者を前に出した作品は、タイトルを変えた日より古くしない（新しい日はそのまま）', L.itemLastmod(mk({ cid: 'a1', actress: ['花子'], updated: '2026-10-28' })) === L.ITEM_TITLE_SINCE && L.itemLastmod(mk({ cid: 'a1', actress: ['花子'], updated: '2099-01-02' })) === '2099-01-02' && L.itemLastmod(mk({ cid: 'a1', actress: ['花子'] })) === L.ITEM_TITLE_SINCE);
+check('sitemap の lastmod: タイトルが変わらない作品（出演者なし・名前が題名のはじめにある）は、データの updated のまま', L.itemLastmod(mk({ cid: 'a1', actress: [], updated: '2026-10-28' })) === '2026-10-28' && L.itemLastmod(mk({ cid: 'a1', title: '小泉玖美 新作', actress: ['小泉玖美'], updated: '2026-10-28' })) === '2026-10-28');
 const desc = L.itemPageDescription(mk({ cid: 'a1', comment: 'コメントです。' }), 'DLDSS-566');
 check('説明文に品番が入り、120文字を超えない', desc.includes('品番 DLDSS-566') && [...desc].length <= 120 && !L.itemPageDescription(mk({ cid: 'a1', comment: 'コメント' })).includes('品番'), desc);
 // コメントが長くても（Claude の仕上げは100〜160文字）、品番・発売日は切れずに残り、コメントのほうが「…」で縮む
