@@ -316,7 +316,8 @@ def sm_day(d):
 def title_cast(x):
     """タイトルの前に出す出演者（items.js の itemTitleCast と同じ。題名のはじめ20字に名前がある人は除く・2人まで）"""
     seen = str(x.get("title") or "").strip()[:20]
-    names = [n for n in dict.fromkeys(a for a in (x.get("actress") or []) if a) if n not in seen]
+    raw = x.get("actress") if isinstance(x.get("actress"), list) else []
+    names = [n for n in dict.fromkeys(a for a in raw if isinstance(a, str) and a) if n not in seen]
     return names[:2]
 
 
@@ -342,16 +343,16 @@ if os.path.isfile(sitemap_path):
     indexable_items = {c for c, x in valid.items() if has_comment(x)}
     wrong = [c for c in indexable_items if lastmod_of.get(f"/item/{c}/") != item_lastmod(valid[c])]
     check("sitemap の作品ページの lastmod が、データの updated と同じ（正式な住所にした日より古ければその日・出演者をタイトルの前に出した作品はタイトルを変えた日より古くしない）", not wrong, wrong[:3])
-    # 作品ページのタイトル（C-018）: 出演者を前に出す作品は「○○出演｜」が最初の「｜」の前にある。出演者がいない作品に「出演｜」は無い
+    # 作品ページのタイトル（C-018）: 出演者を前に出す作品は「○○出演｜」が最初の「｜」の前にある（出演者がいない作品は tests/test_seo.mjs で見る。題名そのものに「出演」がある作品で誤って落ちないように）
     bad_title = []
     for c in sorted(indexable_items):
         tm_ = re.search(r"<title>(.*?)</title>", read_raw(os.path.join(DIST, "item", c, "index.html")), re.S)
         t_ = htmllib.unescape(tm_.group(1)) if tm_ else ""
         names_ = title_cast(valid[c])
         head_ = t_.split("｜", 1)[0]
-        if (names_ and not (head_.endswith("出演") and names_[0] in head_)) or (not valid[c].get("actress") and "出演｜" in t_):
+        if names_ and not (head_.endswith("出演") and names_[0] in head_):
             bad_title.append((c, t_[:40]))
-    check(f"作品ページのタイトル（{len(indexable_items)}ページ）: 出演者は品番のすぐあとに「○○出演｜」・出演者のいない作品には無い", not bad_title, bad_title[:3])
+    check(f"作品ページのタイトル（{len(indexable_items)}ページ）: 出演者は品番のすぐあとに「○○出演｜」", not bad_title, bad_title[:3])
     old = [p for p, m in lastmod_of.items() if m and m < SITE_URL_SINCE]
     check(f"sitemap の lastmod に、正式な住所にした日（{SITE_URL_SINCE}）より古い日が無い", not old, old[:3])
     check("sitemap にトップがある", any(urlparse(u).path == "/" for u in locs))
