@@ -3130,8 +3130,11 @@ if os.path.isfile(ii):
     if ok_shape:
         irows, igenres = iidx["items"], iidx["genres"]
         # s・sc は FANZAのレビューの評価（平均×100・件数。評価が高い順の並べ替え。2026-10-10）
-        ikeys = set("cptdamgivorn") | {"s", "sc"}
-        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v,o,r,n,s,sc）だけで、データにある作品・長い文やURLは入っていない（i は、決まった形の画像なら省く）", all(isinstance(r, dict) and set(r) <= ikeys and {"c", "t", "d", "a", "m", "g"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= ikeys)][:1])
+        # k はコメントのある作品（作品ページが /item/。無い作品は /w/。2026-11-10）
+        ikeys = set("cptdamgivornk") | {"s", "sc"}
+        _bad_k = [r.get("c") for r in irows if isinstance(r, dict) and (r.get("k") == 1) != (r.get("c") in everything and has_comment(everything[r["c"]]))]
+        check("索引の k: コメントのある作品の行だけ k: 1（作品ページの住所 /item/ と /w/ を選ぶ印）", not _bad_k and all(r.get("k", 1) == 1 for r in irows if isinstance(r, dict)), _bad_k[:3])
+        check("索引の項目が、短い名前（c,p,t,d,a,m,g,i,v,o,r,n,k,s,sc）だけで、データにある作品・長い文やURLは入っていない（i は、決まった形の画像なら省く）", all(isinstance(r, dict) and set(r) <= ikeys and {"c", "t", "d", "a", "m", "g"} <= set(r) and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) and isinstance(r["g"], list) for r in irows) and "al.fanza.co.jp" not in read(ii), [r for r in irows if not (isinstance(r, dict) and set(r) <= ikeys)][:1])
         bad_rv = [r["c"] for r in irows if ("s" in r) != ("sc" in r) or ("s" in r and not (isinstance(r["s"], int) and 100 <= r["s"] <= 500 and isinstance(r["sc"], int) and r["sc"] > 0))]
         check("索引の評価（s: 平均×100・sc: 件数）は、両方あるか両方無い・s は 100〜500 の整数・sc は1以上", not bad_rv, bad_rv[:3])
         bad_rn = [r["c"] for r in irows if r.get("r") != all_rank_of(r["c"]) or r.get("n") != pop_new.get(r["c"])]

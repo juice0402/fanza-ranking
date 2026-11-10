@@ -36,7 +36,8 @@ export function planPages(items, counts, total = FILE_BUDGET, fixed = FIXED_FILE
 
 /** 作品へのリンク: 作品ページがあれば作品ページ（コメントがあれば /item/、無ければ /w/。items.js の itemPagePath）、無ければFANZAの作品ページ（外部リンクの印 external: true） */
 export function itemHref(item, paged) {
-  if (paged.has(item.cid)) return { href: itemPagePath(item), external: false };
+  // data.js の paged は、作品IDから正しい住所を引ける（pathOf。today.json の予約などコメントを持たない形でも /item/ か /w/ を正しく）
+  if (paged.has(item.cid)) return { href: (typeof paged.pathOf === 'function' && paged.pathOf(item.cid)) || itemPagePath(item), external: false };
   return { href: item.url || itemPagePath(item), external: Boolean(item.url) };
 }
 
