@@ -241,7 +241,7 @@ check("トップページ", os.path.isfile(index_path))
 check("404ページ", os.path.isfile(os.path.join(DIST, "404.html")))
 check("過去の作品 1ページ目", os.path.isfile(os.path.join(DIST, "archive", "1", "index.html")))
 # 案A（2026-11-10）: 作品ページは、コメントのある作品が /item/<作品ID>/、コメントの無い作品が /w/<作品ID>/（noindex で、robots.txt で読ませない）
-_item_names = {os.path.basename(os.path.dirname(p)) for p in all_item_pages()}
+_item_names = {os.path.basename(os.path.dirname(p)) for p in glob.glob(os.path.join(DIST, "item", "*", "index.html"))}
 _wait_names = {os.path.basename(os.path.dirname(p)) for p in glob.glob(os.path.join(DIST, "w", "*", "index.html"))}
 
 
@@ -328,7 +328,7 @@ check("robots.txt で作品検索の画面（/search/・売り場の /○○/sea
       and all(x in read(robots).splitlines() for x in _robots_ok)
       and all(ln.strip() in _robots_ok for ln in read(robots).splitlines() if ln.startswith("Disallow")),
       read(robots) if os.path.isfile(robots) else "")
-_wait_all = all_item_pages()[len(glob.glob(os.path.join(DIST, "item", "*", "index.html"))):] + glob.glob(os.path.join(DIST, "*", "w", "*", "index.html"))
+_wait_all = glob.glob(os.path.join(DIST, "w", "*", "index.html")) + glob.glob(os.path.join(DIST, "*", "w", "*", "index.html"))
 _wait_indexable = [rel(p_) for p_ in _wait_all if 'name="robots" content="noindex' not in read_raw(p_)]
 check(f"/w/・/○○/w/ のページ（{len(_wait_all)}）は、どれも noindex（robots.txt で止めるページ）", not _wait_indexable, _wait_indexable[:3])
 _lost = read_raw(os.path.join(DIST, "404.html"))
@@ -3379,9 +3379,9 @@ for _fk in _FD.FLOORS:
         continue
     # コメントのある作品は /<売り場>/item/、無い作品は /<売り場>/w/（2026-11-10。案A。lib/floors.js の floorItemPagePath）
     _commented = {x["cid"] for x in _fshow if x["comment_kind"] == "claude" and str(x["comment"] or "").strip()}
-    _fitem = {os.path.basename(os.path.dirname(p_)) for p_ in glob.glob(floor_item_file(_fk, "*"))}
+    _fitem = {os.path.basename(os.path.dirname(p_)) for p_ in glob.glob(os.path.join(DIST, _fk, "item", "*", "index.html"))}
     _fwait = {os.path.basename(os.path.dirname(p_)) for p_ in glob.glob(os.path.join(DIST, _fk, "w", "*", "index.html"))}
-    _item_pages = glob.glob(floor_item_file(_fk, "*")) + glob.glob(os.path.join(DIST, _fk, "w", "*", "index.html"))
+    _item_pages = glob.glob(os.path.join(DIST, _fk, "item", "*", "index.html")) + glob.glob(os.path.join(DIST, _fk, "w", "*", "index.html"))
     check(f"{_flabel}: コメントのある作品は /{_fk}/item/（{len(_fitem)}）・無い作品は /{_fk}/w/（{len(_fwait)}）",
           _fitem == _commented and _fwait == {x["cid"] for x in _fshow} - _commented, (sorted(_fitem ^ _commented)[:3], len(_fwait)))
     check(f"{_flabel}: トップ・人気ランキング・作品ページ（{len(_item_pages)}/{len(_fshow)}）がある",
