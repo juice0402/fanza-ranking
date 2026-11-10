@@ -52,6 +52,7 @@ Gemini を使うのは `get_new_releases.py` のコメントの下書きだけ�
 - Claude が書く道具 `scripts/claude_*.py`（コメント・まとめ・紹介文・読み物。`list` → 書く → `apply` が点検して書き込む）・売り場 `scripts/doujin_game.py`・`floor_*.py`・10円セール `ten_yen.py`・読みがな `readings.py`・所属事務所 `agency_*.py`（守ること9）・見張り番 `health.py`・画面の点検 `screens.mjs`・`.github/workflows/`・`site/public/`（ブラウザの小さなスクリプト）は docs/shikumi.md の「ファイル（くわしく）」
 - ページのくわしいこと（トップの推しの棚は docs/design.md・読み物 `/yomimono/`・名簿の人の女優のページ・`/sale/ending/`・`/hinban/`・`/actress/nenpyo/`・作品ページの品番と出演者）は docs/shikumi.md の「ページ（くわしく）」
 - `scripts/indexnow.py` — 検索エンジンへのお知らせ（IndexNow。本番の公開のときだけ）
+- 作品ページの住所は、コメントのある作品が `/item/`・無い作品が `/w/`（robots.txt で止める。`itemPagePath`・`floorItemPagePath`。2026-11-10。docs/architecture.md の `plan.js`）
 - `scripts/check.sh`（`quiet_step.sh`）— テスト一式 ／ `scripts/wait_run.py` — GitHub の実行を待つ ／ `scripts/already_updated.sh` — 今日の更新が済んだか
 - `site/` — サイト本体（Astro 7・静的出力）。`src/config.js` がサイト名・URL・件数・ファイル数の上限（`FILE_BUDGET`＝4万。Workers の静的ファイルは10万まで）の設定
 - `site/src/lib/` — 画面に依存しない部品（テストは `tests/test_*.mjs`）。`data.js`（読み込み）・`items.js`（並べ替え・構造化データ・規約の表記）など。一覧は docs/shikumi.md の「site/src/lib（くわしく）」

@@ -3,10 +3,10 @@
 // 見せるもの: 紹介文（Claude が数字だけで書いたもの。あれば）・本数の1行・年ごとの本数の棒・年譜（いちばん古い作品・メーカーごと・VR・節目・いちばん新しい作品）・
 // よく共演している人・多いジャンル・内訳。数字はどれも FANZA の作品から数えたもの（scripts/actress_history.py）。私生活・うわさは扱わない。
 // 作品のタイトルは、このサイトに作品ページがあればリンクにする。未成年を連想させるタイトルは出さない（isMinorTitle）
-import { paged, actressByName, contentGenres } from '../lib/data.js';
+import { pagePathOf, actressByName, contentGenres } from '../lib/data.js';
 import { historyGenres, historyLine, historyTimeline, peakYear, yearBars, yearTicks } from '../lib/history.js';
 import { isMinorTitle } from '../lib/gacha.js';
-import { itemPath, truncate } from '../lib/items.js';
+import { truncate } from '../lib/items.js';
 
 interface Props {
   name: string;
@@ -59,7 +59,7 @@ const barsLabel = bars.map((b) => `${b.year}年${b.n}本`).join('、');
           <dt class="hist-when">{row.when}</dt>
           <dd class="hist-what">
             <span class="hist-label">{row.label}</span>
-            {titleOf(row) && (paged.has(row.c) ? <a class="hist-title" href={itemPath(row.c)}>{titleOf(row)}</a> : <span class="hist-title">{titleOf(row)}</span>)}
+            {titleOf(row) && (pagePathOf(row.c) ? <a class="hist-title" href={pagePathOf(row.c)}>{titleOf(row)}</a> : <span class="hist-title">{titleOf(row)}</span>)}
             {!titleOf(row) && row.m && !row.label.startsWith(row.m) && <span class="hist-title">{row.m}</span>}
           </dd>
         </>

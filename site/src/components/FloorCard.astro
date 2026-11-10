@@ -7,7 +7,7 @@
 // 同人の画像は pics.dmm.co.jp から読む（lib/floors.js の picsUrl。doujin-assets.dmm.co.jp は、運営者のiPhoneで、ページの中では出なかった。2026-10-09）。
 // スマホ版が読めなければ元の画像に、元の画像も読めなければ doujin-assets に1回だけ戻す（DOUJIN_THUMB_ONERROR）。どのページから読んだかも送らない（referrerpolicy="no-referrer"）
 import FloorImg from './FloorImg.astro';
-import { floorItemPath, frameClass, makerLine } from '../lib/floors.js';
+import { floorItemPagePath, frameClass, makerLine } from '../lib/floors.js';
 import { OUTBOUND_ATTRS } from '../lib/plan.js';
 
 // level: 見出しの階層 / eager: 最初の画面に入る作品だけ、画像をすぐ読む / badge: 表紙の左上の札（順位・割引）/ note: 価格などの1行
@@ -15,7 +15,7 @@ import { OUTBOUND_ATTRS } from '../lib/plan.js';
 // external: このサイトに作品ページが無い作品（10円セールの作品で、人気の上位に入っていないもの）。表紙・タイトルからFANZAの作品ページへ直接
 const { item, level = 'h3', eager = false, badge = '', note = '', rankNote = '', external = false } = Astro.props;
 const Heading = level;
-const href = external ? item.url : floorItemPath(item.floor, item.cid);
+const href = external ? item.url : floorItemPagePath(item);
 const outbound = external ? OUTBOUND_ATTRS : {};
 const line = makerLine(item);
 ---

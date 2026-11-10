@@ -2,7 +2,7 @@
 // いま人気のサークル/ブランド・作家（売り場のトップの右の欄。動画の「人気のジャンル」と同じ見た目・同じ CSS。2026-10-09）。
 // 1つずつ、いちばん人気の作品の表紙（四角く切り出す）・順位・名前。タップで、そのサークル/ブランド・作家のページ（無ければ、いちばん人気の作品のページ）
 import { SMALL_IMG_ONERROR, THUMB_MEDIA, smallImage } from '../lib/items.js';
-import { floorItemPath, framedThumb, isFramed } from '../lib/floors.js';
+import { floorItemPagePath, framedThumb, isFramed } from '../lib/floors.js';
 
 // rows: lib/floors.js の floorEntityRanking の上から3つ
 const { rows } = Astro.props;
@@ -13,7 +13,7 @@ const { rows } = Astro.props;
     const top = r.items[0];
     return (
       <li class="genre-cell">
-        <a class="genre-link" href={r.path || floorItemPath(top.floor, top.cid)}>
+        <a class="genre-link" href={r.path || floorItemPagePath(top)}>
           <span class="genre-thumb">
             <span class="genre-pic">
               {top.image_url && (isFramed(top.floor)

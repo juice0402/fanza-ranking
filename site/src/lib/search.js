@@ -3,6 +3,7 @@
 import { NEW_BADGE_DAYS } from '../config.js';
 import { namesPattern, phraseZwsp } from './phrase.js';
 import { productCode } from './facts.js';
+import { hasComment, itemPath, waitPath } from './items.js';
 
 export const SEARCH_PATH = '/search/';
 export const ITEMS_INDEX_PATH = '/data/items-index.json';
@@ -81,6 +82,8 @@ function rowOf(item, numberOf, namesRe) {
   }
   const code = productCode(item.cid);
   if (code) row.p = code;
+  // コメントのある作品は /item/、無い作品は /w/（items.js の itemPagePath。2026-11-10）
+  if (hasComment(item)) row.k = 1;
   return row;
 }
 
@@ -224,7 +227,7 @@ export function searchCardView(row, today, newDays) {
   const cast = row.a.filter((n) => typeof n === 'string' && n);
   return {
     c: row.c,
-    href: `/item/${row.c}/`,
+    href: row.k === 1 ? itemPath(row.c) : waitPath(row.c),
     img: searchSmallImage(searchRowImage(row)),
     status: searchStatus(row.d, today, newDays),
     title: row.t,

@@ -3,7 +3,7 @@
 // データは data/ten_yen.json（scripts/ten_yen.py。毎日の更新と、開催中の入れかわりに合わせて1日に数回）。
 // 書くのはデータから数えた事実だけ（いま10円の作品の本数・終わりの日時・このサイトが見かけた開催の日）。次の開催の予想は書かない。
 import { isDay, normalizeItems } from './items.js';
-import { floorItemPath, normalizeFloor } from './floors.js';
+import { floorItemPagePath, normalizeFloor } from './floors.js';
 import { itemHref } from './plan.js';
 import { isMinorTitle } from './gacha.js';
 import { bestRank } from './popularity.js';
@@ -214,5 +214,5 @@ export function heroCovers(ty, keys = TEN_YEN_KEYS, n = TEN_YEN_HERO_COVERS) {
 /** 作品のリンク先: 作品ページがあれば作品ページ、無ければFANZAの作品ページ（動画は lib/plan.js の itemHref と同じ） */
 export function tenYenHref(item, paged) {
   if (!item.floor) return itemHref(item, paged);
-  return item.hasPage ? { href: floorItemPath(item.floor, item.cid), external: false } : { href: item.url, external: true };
+  return item.hasPage ? { href: floorItemPagePath(item), external: false } : { href: item.url, external: true };
 }

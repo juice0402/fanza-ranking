@@ -1,9 +1,12 @@
 ---
 import Base from '../layouts/Base.astro';
 import { SITE_NAME } from '../lib/items.js';
+import { inlineScript } from '../lib/assets.js';
+// 作品ページの住所が /item/ と /w/ のあいだで変わったとき（コメントが付いた・前の住所を開いた）、人は新しい住所へ送る（public/lost.js。2026-11-10）
 ---
 
 <Base title={`ページが見つかりません｜${SITE_NAME}`} path="/404.html" noindex={true}>
+  <script is:inline id="lost-forward" set:html={inlineScript('/lost.js')} />
   <div class="wrap">
     <section class="lost">
       <h1 class="lost-title">ページが見つかりません</h1>

@@ -240,8 +240,38 @@ index_path = os.path.join(DIST, "index.html")
 check("トップページ", os.path.isfile(index_path))
 check("404ページ", os.path.isfile(os.path.join(DIST, "404.html")))
 check("過去の作品 1ページ目", os.path.isfile(os.path.join(DIST, "archive", "1", "index.html")))
-item_pages = glob.glob(os.path.join(DIST, "item", "*", "index.html"))
-paged = {os.path.basename(os.path.dirname(p)) for p in item_pages}
+# 案A（2026-11-10）: 作品ページは、コメントのある作品が /item/<作品ID>/、コメントの無い作品が /w/<作品ID>/（noindex で、robots.txt で読ませない）
+_item_names = {os.path.basename(os.path.dirname(p)) for p in all_item_pages()}
+_wait_names = {os.path.basename(os.path.dirname(p)) for p in glob.glob(os.path.join(DIST, "w", "*", "index.html"))}
+
+
+def item_href(cid):
+    """作品ページの住所（コメントがあれば /item/、無ければ /w/。site/src/lib/items.js の itemPagePath と同じ）"""
+    return f"/item/{cid}/" if has_comment(everything.get(cid, {})) else f"/w/{cid}/"
+
+
+def item_file(cid):
+    """作品ページのファイル（item_href の住所）"""
+    return page_file(item_href(cid))
+
+
+def floor_item_file(fk, cid):
+    """売り場の作品ページのファイル（/<売り場>/item/ か /<売り場>/w/ の、あるほう）"""
+    p_ = os.path.join(DIST, fk, "item", cid, "index.html")
+    return p_ if os.path.isfile(p_) else os.path.join(DIST, fk, "w", cid, "index.html")
+
+
+def all_item_pages():
+    """作品ページのファイル全部（/item/ と /w/）"""
+    return glob.glob(os.path.join(DIST, "item", "*", "index.html")) + glob.glob(os.path.join(DIST, "w", "*", "index.html"))
+
+
+item_pages = all_item_pages()
+paged = _item_names | _wait_names
+check("作品ページは /item/ か /w/ のどちらか1つだけ（同じ作品が両方に無い）", not (_item_names & _wait_names), sorted(_item_names & _wait_names)[:3])
+check(f"/item/ の作品ページ（{len(_item_names)}）はコメントのある作品だけ・/w/ の作品ページ（{len(_wait_names)}）はコメントの無い作品だけ",
+      all(has_comment(everything[c]) for c in _item_names if c in everything) and not any(has_comment(everything[c]) for c in _wait_names if c in everything),
+      ([c for c in _item_names if c in everything and not has_comment(everything[c])][:3], [c for c in _wait_names if c in everything and has_comment(everything[c])][:3]))
 check("作品ページは、データにある作品のものだけ", paged <= set(everything), sorted(paged - set(everything))[:3])
 check(f"毎日の更新で載せた作品（{len(curated)}本）は、すべて作品ページがある", set(curated) <= paged, sorted(set(curated) - paged)[:3])
 
@@ -278,12 +308,12 @@ if unpaged:
     check(f"作品ページの無い作品（{len(unpaged)}本）は、優先順があとのものだけ（毎日の更新で載せた作品→コメントのある過去作品→人気順の順位が上の作品）", worst_paged <= best_unpaged, (worst_paged, best_unpaged))
     # 作品ページ以外のファイルは見積もり（FIXED_FILES）より少ないので、そのぶん上限より少し下になる。大きく余らせていないことだけを見る
     check("あふれた作品があるときは、上限近くまで作品ページを作っている（枠を大きく余らせていない）", dist_files >= budget - 2 * fixed, (dist_files, budget - 2 * fixed))
-bad_noindex = [c for c in paged if c in everything and (('name="robots" content="noindex' in read_raw(os.path.join(DIST, "item", c, "index.html"))) == has_comment(everything[c]))]
+bad_noindex = [c for c in paged if c in everything and (('name="robots" content="noindex' in read_raw(item_file(c))) == has_comment(everything[c]))]
 check("作品ページ: コメントの無い作品（過去作品）だけ noindex（コメントのある作品は検索エンジンに出す）", not bad_noindex, bad_noindex[:3])
 links_out = []
 for lp in sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html")))[:50]:
     for t in tags(read_raw(lp), "a"):
-        m_ = re.match(r"^/item/([^/]+)/$", t.get("href", ""))
+        m_ = re.match(r"^/(?:item|w)/([^/]+)/$", t.get("href", ""))
         if m_ and m_.group(1) not in paged:
             links_out.append((os.path.relpath(lp, DIST), m_.group(1)))
 check("過去の作品の一覧から、作品ページの無い作品へは、サイトの中のリンクを張らない（FANZAへ直接）", not links_out, links_out[:3])
@@ -291,11 +321,18 @@ check("過去の作品の一覧から、作品ページの無い作品へは、�
 valid = {c: everything[c] for c in sorted(paged) if c in everything}
 robots = os.path.join(DIST, "robots.txt")
 check("robots.txt に Sitemap の行がある", os.path.isfile(robots) and "Sitemap:" in read(robots))
-# 作品検索の画面（noindex・条件で住所がいくらでも増える）は読みに来ないよう止める（items.js の buildRobots。2026-11-08）
-check("robots.txt で作品検索の画面（/search/・売り場の /○○/search/）を止め、ほかは止めない", os.path.isfile(robots)
-      and "Disallow: /search/" in read(robots) and "Disallow: /*/search/" in read(robots)
-      and all(ln.strip() in ("Disallow: /search/", "Disallow: /*/search/") for ln in read(robots).splitlines() if ln.startswith("Disallow")),
+# 作品検索の画面（noindex・条件で住所がいくらでも増える）は読みに来ないよう止める（items.js の buildRobots。2026-11-08）。
+# コメントの無い作品ページ（/w/・売り場の /○○/w/。noindex）も止める（案A。2026-11-10）
+_robots_ok = ("Disallow: /search/", "Disallow: /*/search/", "Disallow: /w/", "Disallow: /*/w/")
+check("robots.txt で作品検索の画面（/search/・売り場の /○○/search/）とコメントの無い作品ページ（/w/・/○○/w/）を止め、ほかは止めない", os.path.isfile(robots)
+      and all(x in read(robots).splitlines() for x in _robots_ok)
+      and all(ln.strip() in _robots_ok for ln in read(robots).splitlines() if ln.startswith("Disallow")),
       read(robots) if os.path.isfile(robots) else "")
+_wait_all = all_item_pages()[len(glob.glob(os.path.join(DIST, "item", "*", "index.html"))):] + glob.glob(os.path.join(DIST, "*", "w", "*", "index.html"))
+_wait_indexable = [rel(p_) for p_ in _wait_all if 'name="robots" content="noindex' not in read_raw(p_)]
+check(f"/w/・/○○/w/ のページ（{len(_wait_all)}）は、どれも noindex（robots.txt で止めるページ）", not _wait_indexable, _wait_indexable[:3])
+_lost = read_raw(os.path.join(DIST, "404.html"))
+check("404ページ: 作品ページの /item/ と /w/ を入れかえて送るスクリプト（public/lost.js をページの中に）がある", 'id="lost-forward"' in _lost and "lostForward" in _lost and "location.replace" in _lost)
 
 print("\n■ sitemap.xml")
 sitemap_path = os.path.join(DIST, "sitemap.xml")
@@ -346,7 +383,7 @@ if os.path.isfile(sitemap_path):
     # 作品ページのタイトル（C-018）: 出演者を前に出す作品は「○○出演｜」が最初の「｜」の前にある（出演者がいない作品は tests/test_seo.mjs で見る。題名そのものに「出演」がある作品で誤って落ちないように）
     bad_title = []
     for c in sorted(indexable_items):
-        tm_ = re.search(r"<title>(.*?)</title>", read_raw(os.path.join(DIST, "item", c, "index.html")), re.S)
+        tm_ = re.search(r"<title>(.*?)</title>", read_raw(item_file(c)), re.S)
         t_ = htmllib.unescape(tm_.group(1)) if tm_ else ""
         names_ = title_cast(valid[c])
         head_ = t_.split("｜", 1)[0]
@@ -424,7 +461,7 @@ for kind, word, about in (("series", "シリーズ", "CreativeWorkSeries"), ("la
 check("シリーズ・レーベルのページ: URLは FANZA の id・タイトル「○○（シリーズ）の新作・作品一覧【年月】（○本）」・CollectionPage（CreativeWorkSeries / Brand）・パンくず・未成年を連想させる名前のページは無い",
       not bad_entry, bad_entry[:3])
 bad_links, bad_trend, n_trend, n_chart = [], [], 0, 0
-for pth in sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html"))):
+for pth in sorted(all_item_pages()):
     raw_ = read_raw(pth)
     cid_ = os.path.basename(os.path.dirname(pth))
     # 作品ページのシリーズ・レーベル・人気のジャンル・週のまとめへのリンクは、すべて実在するページ
@@ -446,8 +483,8 @@ check(f"作品ページの「発売後の人気の動き」（{n_trend}ページ
 _rh_path = os.path.join(ROOT, "site", "src", "data", "rank_history.json")
 if os.path.isfile(_rh_path):
     _rh = json.load(open(_rh_path, encoding="utf-8")).get("items", {})
-    _want_trend = {c for c, r in _rh.items() if any(isinstance(v, int) and v > 0 for v in r.get("n", [])) and os.path.isfile(os.path.join(DIST, "item", c, "index.html"))}
-    _got_trend = {os.path.basename(os.path.dirname(p_)) for p_ in glob.glob(os.path.join(DIST, "item", "*", "index.html")) if 'aria-labelledby="trend-title"' in read_raw(p_)}
+    _want_trend = {c for c, r in _rh.items() if any(isinstance(v, int) and v > 0 for v in r.get("n", [])) and os.path.isfile(item_file(c))}
+    _got_trend = {os.path.basename(os.path.dirname(p_)) for p_ in all_item_pages() if 'aria-labelledby="trend-title"' in read_raw(p_)}
     check("人気の動きの記録があり、新着の人気順に入った作品のページには、すべて「発売後の人気の動き」がある（無い作品には出さない）", _want_trend == _got_trend, (sorted(_want_trend - _got_trend)[:3], sorted(_got_trend - _want_trend)[:3]))
 _rk = read_raw(os.path.join(DIST, "ranking", "index.html")) if os.path.isfile(os.path.join(DIST, "ranking", "index.html")) else ""
 check("新着の人気ランキング: 前日からの動き・最高順位の1行は、セールの価格と別の見た目（item-note is-rank）", 'class="item-note is-rank"' in _rk or "item-note" not in _rk, re.findall(r'class="item-note[^"]*"', _rk)[:2])
@@ -520,8 +557,8 @@ else:
         # 注目の作品は、こちらから勧める欄なので、未成年を連想させるタイトルの作品は出さない（2026-10-07）
         minor_picks = [q["cid"] for q in (r.get("picks") or []) if isinstance(q, dict) and q.get("cid") in valid and is_minor_title(valid[q["cid"]].get("title"))]
         picked = [q["cid"] for q in (r.get("picks") or []) if isinstance(q, dict) and q.get("cid") in valid and q["cid"] not in minor_picks]
-        check(f"{week}: 未成年を連想させるタイトルの作品は、注目の作品のカードに出さない", all(f'href="/item/{c}/"' not in re.sub(r'<section class="section" aria-labelledby="week-list-title">[\s\S]*', "", html) for c in minor_picks), minor_picks)
-        check(f"{week}: 注目の作品（{len(picked)}件）へのリンクが記事にある", all(f'href="/item/{c}/"' in html for c in picked), [c for c in picked if f'href="/item/{c}/"' not in html][:3])
+        check(f"{week}: 未成年を連想させるタイトルの作品は、注目の作品のカードに出さない", all(f'href="{item_href(c)}"' not in re.sub(r'<section class="section" aria-labelledby="week-list-title">[\s\S]*', "", html) for c in minor_picks), minor_picks)
+        check(f"{week}: 注目の作品（{len(picked)}件）へのリンクが記事にある", all(f'href="{item_href(c)}"' in html for c in picked), [c for c in picked if f'href="{item_href(c)}"' not in html][:3])
         if picked:
             notes_ = [str(q.get("note", "")).strip() for q in r["picks"] if isinstance(q, dict) and q.get("cid") in picked]
             check(f"{week}: 注目の作品は、横長のカード（表紙・タイトル・出演者/メーカー/発売日・ひとこと）で読みやすく（運営者の指摘。2026-10-05）",
@@ -564,7 +601,7 @@ for r in months_raw if isinstance(months_raw, list) else []:
     check(f"{ym}: 説明文(description)は記事の導入文から", r["lead"].strip()[:20] in htmllib.unescape(re.search(r'<meta name="description" content="([^"]*)"', html).group(1)))
     picked = [q["cid"] for q in (r.get("picks") or []) if isinstance(q, dict) and q.get("cid") in valid and str(everything.get(q["cid"], {}).get("date", ""))[:7] == ym
               and not is_minor_title(valid[q["cid"]].get("title"))]
-    check(f"{ym}: 注目の作品（{len(picked)}件）のカード", body_.count('<article class="pick-card">') == len(picked) and all(f'href="/item/{c}/"' in body_ for c in picked),
+    check(f"{ym}: 注目の作品（{len(picked)}件）のカード", body_.count('<article class="pick-card">') == len(picked) and all(f'href="{item_href(c)}"' in body_ for c in picked),
           body_.count('<article class="pick-card">'))
     trend_ = str(r.get("trend") or "").strip()
     if trend_:
@@ -658,7 +695,7 @@ print("\n■ 作品ページの表示（サンプル画像の拡大・カード�
 check("拡大表示のスクリプト（lightbox.js）が公開されている", os.path.isfile(os.path.join(DIST, "lightbox.js")))
 bad_samples = []
 for cid, x in valid.items():
-    page = os.path.join(DIST, "item", cid, "index.html")
+    page = item_file(cid)
     if not os.path.isfile(page):
         continue
     html = read(page)
@@ -680,7 +717,7 @@ for cid, x in valid.items():
         bad_samples.append((cid, 0, links, has_dialog, has_script))
 check("サンプル画像のある作品ページに、拡大表示の部品（リンク・ダイアログ・スクリプト）が揃い、9枚以上の作品だけ「残り◯枚を見る」の帯がある", not bad_samples, bad_samples[:3])
 bad_actions = []
-for p_ in sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))[:400]:
+for p_ in sorted(all_item_pages())[:400]:
     h_ = read_raw(p_)
     m_ = re.search(r'<div class="detail-actions">([\s\S]*?)</div>', h_)
     if not m_ or 'class="fav-btn' not in m_.group(1) or ('detail-cta' in h_ and 'detail-cta' not in m_.group(1)):
@@ -689,7 +726,7 @@ check("作品ページの「FANZAで詳細を見る」と「お気に入りに�
 # 拡大表示を開いた直後のフォーカスは、枠そのもの（前へボタンに黄色い輪が付いて見えないように）。枠に tabindex="-1"、輪を消す CSS、lightbox.js の dialog.focus が揃っている
 bad_lb_focus = []
 for cid, x in valid.items():
-    page = os.path.join(DIST, "item", cid, "index.html")
+    page = item_file(cid)
     if os.path.isfile(page) and 'id="lightbox"' in read(page):
         dlg = next((t for t in tags(read(page), "dialog") if t.get("id") == "lightbox"), None)
         if not dlg or dlg.get("tabindex") != "-1":
@@ -699,7 +736,7 @@ check("拡大表示: 枠に tabindex=-1・開いた直後は枠にフォーカ�
 # 拡大表示の矢印（前・次）と×は、文字（‹ › ×）ではなく図形（SVG）。文字だと、丸の中心より下にずれて見える（本物のフォントで4〜5px）
 bad_lb_icon = []
 for cid, x in valid.items():
-    page = os.path.join(DIST, "item", cid, "index.html")
+    page = item_file(cid)
     if os.path.isfile(page) and 'id="lightbox"' in read(page):
         btns = re.findall(r'<button\b[^>]*class="[^"]*lightbox-btn[^"]*"[^>]*>(.*?)</button>', read(page), re.S)
         if len(btns) != 3 or any('<svg' not in b or re.search(r'[‹›×]', re.sub(r'<svg.*?</svg>', '', b, flags=re.S)) for b in btns):
@@ -708,7 +745,7 @@ check("拡大表示: 前・次・閉じるのボタンは、図形（SVG）の�
 # 前・次のボタンは、画像に重ならないよう、画像の下の帯（.lightbox-bar）に置く（運営者の希望。2026-10-05）
 bad_lb_bar = []
 for cid, x in valid.items():
-    page = os.path.join(DIST, "item", cid, "index.html")
+    page = item_file(cid)
     if os.path.isfile(page) and 'id="lightbox"' in read(page):
         bar = re.search(r'<div class="lightbox-bar">(.*?)</div>', read(page), re.S)
         if not bar or 'lightbox-prev' not in bar.group(1) or 'lightbox-next' not in bar.group(1) or 'lightbox-count' not in bar.group(1) or 'class="lightbox-view"' not in read(page):
@@ -764,7 +801,7 @@ check("動画の枠の縮小スクリプト（movie.js）が公開されてい�
 bad_movie = []
 movie_count = 0
 for cid, x in valid.items():
-    page = os.path.join(DIST, "item", cid, "index.html")
+    page = item_file(cid)
     if not os.path.isfile(page):
         continue
     text = read(page)
@@ -814,7 +851,7 @@ for cid, x in valid.items():
 # 表示の速さ: 動画が無い作品の、最初の画面の表紙は、優先して読む（fetchpriority="high"）
 slow_lcp = []
 for cid, x in valid.items():
-    page = os.path.join(DIST, "item", cid, "index.html")
+    page = item_file(cid)
     if not os.path.isfile(page) or not str(x.get("image_url") or "").strip() or fanza_https(str(x.get("sample_movie") or ""), DMM):
         continue
     main_img = next((t for t in tags(read(page), "img") if has_class(t, "detail-cover")), None)
@@ -1180,7 +1217,7 @@ if top_rows:
         a_ = next((t for t in tags(inner, "a") if has_class(t, "medal-card")), {})
         href = a_.get("href", "")
         top_hrefs.append(href)
-        if href == f"/item/{row['cid']}/":
+        if href == item_href(row["cid"]):
             if row["cid"] not in paged:
                 bad_link.append((row["cid"], href))
         elif href != row["url"] or not SPONSORED <= set(a_.get("rel", "").split()) or a_.get("target") != "_blank":
@@ -1228,7 +1265,7 @@ for kind, attrs, inner in [(k, a, inner) for k, _, a, inner in topic_all]:
     if kind not in TOPIC_LABELS or not label or label.group(1) != TOPIC_LABELS[kind]:
         bad_topic.append((kind, "札"))
     elif href.startswith("/"):
-        if not os.path.isfile(page_file(href)) or (kind not in ("actress", "weekly", "sale", "salenew", "event") and not href.startswith("/item/")):
+        if not os.path.isfile(page_file(href)) or (kind not in ("actress", "weekly", "sale", "salenew", "event") and not re.match(r"/(?:item|w)/", href)):
             bad_topic.append((kind, href))
         elif kind in ("sale", "salenew") and not re.fullmatch(r"/sale/#sale-\d+|/sale/[0-9a-f]{10}/", href):  # セールの話題は、その特集のページ（無ければ、セールのページの、その特集の見出し）へ
             bad_topic.append((kind, href))
@@ -1523,7 +1560,7 @@ if want_debut:
     for cls, attrs, inner in debut_cells:
         a_ = next((t for t in tags(inner, "a") if has_class(t, "debut-card")), {})
         h = a_.get("href", "")
-        m_ = re.match(r"/item/([^/]+)/$", h)
+        m_ = re.match(r"/(?:item|w)/([^/]+)/$", h)
         got_debut.append(m_.group(1) if m_ else next((c for c in want_debut if everything[c].get("url") == h), h))
     check(f"今週のデビュー作: {len(want_debut)}本が人気順に並び、出すのは3本（残りは rank-off）・VR・単体作品の印が合う", got_debut == want_debut and [" rank-off" in cls for cls, _, _ in debut_cells] == [i >= 3 for i in range(len(debut_cells))]
           and all(('data-vr="true"' in attrs) == is_vr_raw(everything[c]) and ('data-solo="true"' in attrs) == is_solo_raw(everything[c]) for (cls, attrs, _), c in zip(debut_cells, want_debut)), (got_debut, want_debut))
@@ -1612,7 +1649,7 @@ if os.path.isfile(fav_index_path):
     check("索引が正しいJSONで、generated（日付）と items（配列）がある", isinstance(fav_index, dict) and DAY.match(str(fav_index.get("generated", ""))) and isinstance(fav_index.get("items"), list), str(fav_index)[:80])
     if isinstance(fav_index, dict) and isinstance(fav_index.get("items"), list):
         rows = fav_index["items"]
-        check("索引のすべての項目が、短い名前（c,t,d,a,m,i）だけで、データにある作品", all(isinstance(r, dict) and set(r) == {"c", "t", "d", "a", "m", "i"} and r["c"] in valid and DAY.match(str(r["d"])) and isinstance(r["a"], list) for r in rows), [r for r in rows if not (isinstance(r, dict) and set(r) == {"c", "t", "d", "a", "m", "i"})][:1])
+        check("索引のすべての項目が、短い名前（c,t,d,a,m,i と、コメントの無い作品だけ w）だけで、データにある作品", all(isinstance(r, dict) and set(r) == ({"c", "t", "d", "a", "m", "i"} | (set() if r.get("c") in valid and has_comment(valid[r["c"]]) else {"w"})) and r["c"] in valid and r.get("w", 1) == 1 and DAY.match(str(r["d"])) and isinstance(r["a"], list) for r in rows), [r for r in rows if not (isinstance(r, dict) and set(r) == {"c", "t", "d", "a", "m", "i"})][:1])
         check("索引は発売日の新しい順", [r["d"] for r in rows] == sorted((r["d"] for r in rows), reverse=True))
         warn("索引に作品が1件以上ある", bool(rows))
         check("索引の大きさが 300KB 以内（毎回ダウンロードされるため）", os.path.getsize(fav_index_path) <= 300 * 1024, os.path.getsize(fav_index_path))
@@ -1639,6 +1676,8 @@ if os.path.isfile(fav_sale_path):
         _names = [(t, n, v) for t in ("actress", "maker") for n, v in fav_sale[t].items()
                   if not (isinstance(v, list) and v and all(isinstance(x, int) and 0 <= x < len(_rows) for x in v) and v == sorted(set(v)))]
         check("名前から引く作品の番号が、items の中を指していて、人気の順（小さい順・重なりなし）", not _names, _names[:2])
+        # コメントの無い作品（作品ページが /w/）の番号（2026-11-10）
+        check("セールの索引の w が、コメントの無い作品の番号（小さい順）", fav_sale.get("w") == [n_ for n_, r in enumerate(_rows) if not has_comment(valid[r[0]])], str(fav_sale.get("w"))[:80])
         _minor = [r[0] for r in _rows if is_minor_title(valid[r[0]].get("title", ""))]
         check("セールの索引に、未成年を連想させるタイトルの作品が入っていない", not _minor, _minor[:3])
         warn("セールの索引に作品が1件以上ある", bool(_rows))
@@ -1753,7 +1792,7 @@ for kind, label in (("actress", "出演者"), ("maker", "メーカー")):
         if 'data-fav-type="%s"' % kind not in html or (link in html) != (slug in ics_files) or ('class="cal-link"' in html) != (slug in ics_files):
             no_btn.append(slug)
     check(f"{label}ページに、☆ボタンがあり、カレンダーがある{label}だけに、そのページ専用のカレンダーのリンクがある", not no_btn, no_btn[:3])
-no_work_btn = [cid for cid in valid if os.path.isfile(os.path.join(DIST, "item", cid, "index.html")) and 'data-fav-type="work"' not in read(os.path.join(DIST, "item", cid, "index.html"))]
+no_work_btn = [cid for cid in valid if os.path.isfile(item_file(cid)) and 'data-fav-type="work"' not in read(item_file(cid))]
 check("すべての作品ページに、作品の☆ボタンがある", not no_work_btn, no_work_btn[:3])
 cal_page = page_file("/calendar/")
 if os.path.isfile(cal_page):
@@ -2150,7 +2189,7 @@ check("CSS: TOP3は、メダルの色（data-place 1〜3）があり、全部が
 vr_tag = next((g for g in glob.glob(os.path.join(DIST, "tag", "*", "index.html")) if "<h1" in read(g) and "VR作品の新作・予約作品" in read(g)), None)
 if vr_tag:
     check("VR作品のページでは、「VR作品を隠す」を選んでいても作品を隠さない（data-vr を付けない。全部が消えて空になるため）", "data-vr" not in re.sub(r"data-vr-(toggle|group)", "", read(vr_tag)), os.path.relpath(vr_tag, DIST))
-related_pages = [p for p in glob.glob(os.path.join(DIST, "item", "*", "index.html")) if 'id="related-title"' in read(p)]
+related_pages = [p for p in all_item_pages() if 'id="related-title"' in read(p)]
 check("作品ページの「同じ出演者・メーカーの作品」は、VRを隠して全部が消えたら見出しごと隠せる（data-vr-group）", related_pages and all(re.search(r'<section[^>]*aria-labelledby="related-title"[^>]*data-vr-group', read(p)) for p in related_pages), len(related_pages))
 # 見た目の統一: 角の丸みは3つの決まった値（--r-tag / --r-panel / --r-media）だけ。丸（50%）は顔写真・丸ボタン用
 css_src = read(os.path.join(ROOT, "site", "src", "styles", "site.css"))
@@ -2211,12 +2250,12 @@ check("出演者検索の「FANZAで全作品を見る」に（広告）が付�
 # 一覧の1マス（li）の目印: VR作品にだけ data-vr が付く
 def shelf_cells(html_):
     for m in re.finditer(r'<li class="shelf-cell([^"]*)"([^>]*)>(.*?)</li>', html_, re.S):
-        link = re.search(r'href="/item/([^/"]+)/"', m.group(3))
+        link = re.search(r'href="/(?:item|w)/([^/"]+)/"', m.group(3))
         yield m.group(1), m.group(2), (link.group(1) if link else None), m.group(3)
 
 
 wrong_mark, marked_total, vr_total = [], 0, 0
-list_pages = [index_path] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html"))) + sorted(entity_glob("actress")) + sorted(glob.glob(os.path.join(DIST, "maker", "*", "index.html"))) + sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))
+list_pages = [index_path] + sorted(glob.glob(os.path.join(DIST, "archive", "*", "index.html"))) + sorted(entity_glob("actress")) + sorted(glob.glob(os.path.join(DIST, "maker", "*", "index.html"))) + sorted(all_item_pages())
 for lp in list_pages:
     for cls, attrs, cid, inner in shelf_cells(read(lp)):
         if cid is None or cid not in valid or "rank-cell" in cls:
@@ -2264,7 +2303,7 @@ for x in curated.values():  # ジャンルのページ・月ごとのページ�
 tag_pages_expected = {g for g in TAG_GENRES if genre_counts.get(g, 0) >= TAG_MIN}
 bad_chip, chip_pages = [], 0
 for cid, x in valid.items():
-    fp = os.path.join(DIST, "item", cid, "index.html")
+    fp = item_file(cid)
     genres_ = [g for g in (x.get("genres") or []) if g]
     if not genres_ or not os.path.isfile(fp):
         continue
@@ -2295,7 +2334,7 @@ for x in everything.values():  # 「この作品のデータ」欄は、過去�
 bad_code, bad_facts, with_code = [], [], 0
 bad_cast, bad_nocast, bad_movie, with_cast, with_movie = [], [], [], 0, 0
 for cid, x in valid.items():
-    fp = os.path.join(DIST, "item", cid, "index.html")
+    fp = item_file(cid)
     if not os.path.isfile(fp):
         continue
     html_ = read(fp)
@@ -2334,7 +2373,7 @@ for cid, x in valid.items():
         mv_ = movies_[0]
         pc_ = mv_.get("productionCompany")
         if mv_.get("name") != str(x.get("title", "")).strip() or mv_.get("identifier") != (code_ or cid) or mv_.get("datePublished") != x["date"][:10] \
-                or mv_.get("url") != f"{SITE_URL_V}/item/{cid}/" or (x.get("maker") not in (None, "", "不明") and not (isinstance(pc_, dict) and pc_.get("name") == x["maker"])):
+                or mv_.get("url") != f"{SITE_URL_V}{item_href(cid)}" or (x.get("maker") not in (None, "", "不明") and not (isinstance(pc_, dict) and pc_.get("name") == x["maker"])):
             bad_movie.append((cid, "Movie の name・identifier・datePublished・url・productionCompany", {k: mv_.get(k) for k in ("name", "identifier", "datePublished", "url")}))
         for a_ in mv_.get("actor") or []:
             u_ = str(a_.get("url", ""))
@@ -2436,7 +2475,7 @@ for path_, want, label in (("ranking/index.html", want_new, "新着の人気順"
     badges = [re.search(r'<span class="rank-badge">(\d+)位</span>', c) for c in cells]
     order = []
     for c in cells:
-        m_ = re.search(r'href="/item/([^/"]+)/"', c) or re.search(r'cid%3D([A-Za-z0-9_]+)|id%3D([A-Za-z0-9_]+)', c)
+        m_ = re.search(r'href="/(?:item|w)/([^/"]+)/"', c) or re.search(r'cid%3D([A-Za-z0-9_]+)|id%3D([A-Za-z0-9_]+)', c)
         order.append(next((g for g in (m_.groups() if m_ else ()) if g), None))
     check(f"{label}: 作品の数（{len(cells)}）と並び（順位の順）が、順位のファイルから決めたものと同じ・札は1位から順に", len(cells) == len(want) and [b.group(1) if b else None for b in badges] == [str(n) for n in range(1, len(cells) + 1)]
           and all(o is None or o == w for o, w in zip(order, want)), (len(cells), len(want), order[:3], want[:3]))
@@ -2898,7 +2937,7 @@ for pth in maker_pages:
 check(f"メーカーのページ（{len(maker_pages)}ページ）: タイトルに年月・予約・本数・次の新作・セール中の作品と入っているセール（あるときだけ）・よく出ている女優（出演者4人までの作品で2本以上・6人まで）・多いジャンル・更新日・CollectionPage",
       not bad_mk, bad_mk[:2])
 # 作品ページの「次に見るもの」（運営者の希望「サイト滞在時間を伸ばしたい」。2026-10-06）: セール中の札・次の新作・小さな表紙の棚・運命の作品
-_item_pages = sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))
+_item_pages = sorted(all_item_pages())
 # 動画の10円セールの作品（ten_yen.json の video）。作品ページは、ふつうのセールの札の代わりに「10円」の札（class="sale-strip ten-strip"）を出す（2026-10-24。
 # 前は、ここが「10円」の札をセールの札と数えず、動画の10円セールが始まった日に点検に落ちて、公開が止まった）
 _ty_item_path = os.path.join(ROOT, "site", "src", "data", "ten_yen.json")
@@ -2930,7 +2969,7 @@ for pth in _item_pages:
     shelf_links = [h_ for sh_ in shelves_ for h_ in re.findall(r'<a class="mini-card" href="([^"]+)"', sh_)]
     if any(len(re.findall(r'class="shelf-cell mini-cell"', sh_)) > 6 for sh_ in shelves_) or len(shelves_) > 3:
         here.append("小さな表紙の棚の本数")
-    if len(set(shelf_links)) != len(shelf_links) or f"/item/{cid_}/" in shelf_links:
+    if len(set(shelf_links)) != len(shelf_links) or item_href(cid_) in shelf_links:
         here.append("棚の重なり・その作品自身")
     if here:
         bad_stay.append((cid_, here))
@@ -2943,7 +2982,7 @@ except (OSError, ValueError):
     _gacha_rows = None
 check("運命の作品の候補のファイル（/data/gacha.json）: 3〜80本・作品ページのある発売済みの作品・未成年を連想させるタイトルは無い",
       isinstance(_gacha_rows, list) and 3 <= len(_gacha_rows) <= 80 and all(r.get("c") in everything and str(everything[r["c"]].get("date", ""))[:10] <= JST_TODAY
-                                                                         and os.path.isfile(os.path.join(DIST, "item", r["c"], "index.html")) and not is_minor_title(everything[r["c"]].get("title")) for r in _gacha_rows),
+                                                                         and os.path.isfile(item_file(r["c"])) and not is_minor_title(everything[r["c"]].get("title")) for r in _gacha_rows),
       (len(_gacha_rows) if isinstance(_gacha_rows, list) else _gacha_rows))
 # お気に入りを目立たせる（運営者の希望「リピーターをつけたい」。2026-10-06）: 出演者・メーカーのページの見出しの下に、黄色のお気に入りのボタン
 _lead_missing = [os.path.relpath(p_, DIST) for p_ in (actress_pages + maker_pages) if not re.search(r'<button[^>]*class="fav-btn fav-btn-lead"[^>]*data-off="お気に入り（新作をお知らせ）"', read_raw(p_))]
@@ -2996,7 +3035,7 @@ for p_ in [page_file("/ranking/review/")] + glob.glob(os.path.join(DIST, "*", "r
     if ('name="robots" content="noindex' in h_) == (path_ in sm_paths) or (n_ < 10 and path_ in sm_paths):
         _rv_bad.append((path_, n_))
 check("高評価ランキング: sitemap に入っている ⇔ noindex でない・10本に満たなければ検索エンジンに出さない", not _rv_bad, _rv_bad[:3])
-_ar_pages = [p_ for p_ in (glob.glob(os.path.join(DIST, "item", "*", "index.html"))[:400] + glob.glob(os.path.join(DIST, "*", "item", "*", "index.html"))[:400]
+_ar_pages = [p_ for p_ in (all_item_pages()[:400] + (glob.glob(os.path.join(DIST, "*", "item", "*", "index.html")) + glob.glob(os.path.join(DIST, "*", "w", "*", "index.html")))[:400]
                            + [page_file("/ranking/review/")]) if os.path.isfile(p_) and "AggregateRating" in read_raw(p_)]
 check("レビューの評価を、構造化データの星マーク（AggregateRating）に使っていない", not _ar_pages, [rel(p_) for p_ in _ar_pages[:3]])
 
@@ -3338,7 +3377,13 @@ for _fk in _FD.FLOORS:
         check(f"{_flabel}: データが無いあいだは、ページを作らない・フッターにもリンクを出さない",
               not os.path.exists(os.path.join(DIST, _fk)) and f'href="/{_fk}/"' not in read_raw(os.path.join(DIST, "index.html")))
         continue
-    _item_pages = glob.glob(os.path.join(DIST, _fk, "item", "*", "index.html"))
+    # コメントのある作品は /<売り場>/item/、無い作品は /<売り場>/w/（2026-11-10。案A。lib/floors.js の floorItemPagePath）
+    _commented = {x["cid"] for x in _fshow if x["comment_kind"] == "claude" and str(x["comment"] or "").strip()}
+    _fitem = {os.path.basename(os.path.dirname(p_)) for p_ in glob.glob(floor_item_file(_fk, "*"))}
+    _fwait = {os.path.basename(os.path.dirname(p_)) for p_ in glob.glob(os.path.join(DIST, _fk, "w", "*", "index.html"))}
+    _item_pages = glob.glob(floor_item_file(_fk, "*")) + glob.glob(os.path.join(DIST, _fk, "w", "*", "index.html"))
+    check(f"{_flabel}: コメントのある作品は /{_fk}/item/（{len(_fitem)}）・無い作品は /{_fk}/w/（{len(_fwait)}）",
+          _fitem == _commented and _fwait == {x["cid"] for x in _fshow} - _commented, (sorted(_fitem ^ _commented)[:3], len(_fwait)))
     check(f"{_flabel}: トップ・人気ランキング・作品ページ（{len(_item_pages)}/{len(_fshow)}）がある",
           os.path.isfile(os.path.join(DIST, _fk, "index.html")) and os.path.isfile(os.path.join(DIST, _fk, "ranking", "index.html")) and len(_item_pages) == len(_fshow),
           (len(_item_pages), len(_fshow)))
@@ -3377,15 +3422,14 @@ for _fk in _FD.FLOORS:
               and any(any(re.search(r"^\.shelf:has\(\.item-cover\.is-wide \.rank-badge\) \.item-cover\.is-wide ?\+ ?\.item-title$", x_) for x_ in sels_) and re.search(r"margin-top\s*:\s*1\dpx", body_) for sels_, body_ in css_rules)
               and 'rank-badge' in _hub)
     check(f"{_flabel}: トップに「○日の時点」と「FANZAで確かめて」の注記がある（価格・セールは変わるため）", "の時点の情報です" in _hub and "FANZAで確かめて" in _hub)
-    _commented = {x["cid"] for x in _fshow if x["comment_kind"] == "claude" and x["comment"]}
     _sm_floor_items = {p_[len(f"/{_fk}/item/"):-1] for p_ in sm_paths if p_.startswith(f"/{_fk}/item/")}
     check(f"{_flabel}: sitemap の作品ページ = コメントのある作品（{len(_commented)}本）・コメントの無い作品ページは noindex",
-          _sm_floor_items == _commented and all(('name="robots" content="noindex' in read_raw(os.path.join(DIST, _fk, "item", c_, "index.html"))) != (c_ in _commented) for c_ in list(_fdata["items"])[:200] if c_ in {x["cid"] for x in _fshow}),
+          _sm_floor_items == _commented and all(('name="robots" content="noindex' in read_raw(floor_item_file(_fk, c_))) != (c_ in _commented) for c_ in list(_fdata["items"])[:200] if c_ in {x["cid"] for x in _fshow}),
           (sorted(_commented - _sm_floor_items)[:3], sorted(_sm_floor_items - _commented)[:3]))
     # サンプル動画のある作品は、動画の作品ページと同じ並び: 上に動画（表紙は上に出さない）・表紙はサンプル画像の下の「パッケージ写真」（運営者の希望。2026-10-30）
     _bad_mv, _n_mv = [], 0
     for x_ in _fshow:
-        _pg = os.path.join(DIST, _fk, "item", x_["cid"], "index.html")
+        _pg = floor_item_file(_fk, x_["cid"])
         if not fanza_https(str(x_.get("sample_movie") or ""), DMM) or not os.path.isfile(_pg):
             continue
         _n_mv += 1
@@ -3510,7 +3554,7 @@ for _fk in _FD.FLOORS:
     _gpool = json.load(open(_gj, encoding="utf-8")) if os.path.isfile(_gj) else []
     _hub_raw = read_raw(os.path.join(DIST, _fk, "index.html"))
     check(f"{_flabel}: 運命の作品の候補（{len(_gpool)}本）は、この売り場の作品ページへ・トップと作品ページに運命の作品の欄（VR・単体の絞り込みを使わない）",
-          len(_gpool) >= 3 and all(re.match(rf"^/{_fk}/item/[A-Za-z0-9_-]+/$", r_["h"]) and r_["c"] in _show_cids for r_ in _gpool)
+          len(_gpool) >= 3 and all(re.match(rf"^/{_fk}/(?:item|w)/[A-Za-z0-9_-]+/$", r_["h"]) and r_["c"] in _show_cids for r_ in _gpool)
           and 'id="gacha-data"' in _hub_raw and "data-nofilter" in _hub_raw
           and all(f'data-src="/data/{_fk}-gacha.json"' in read_raw(p_) for p_ in _item_pages[:20]))
     # 動画のトップと同じ形・同じ CSS（運営者の希望「動画のページと、ほぼ同じ要領で」。2026-10-09）。ボタンを並べた案内（タブ）は、どのページにも出さない（運営者の指摘「ボタンが大量に並んで見づらい」）
@@ -3521,11 +3565,11 @@ for _fk in _FD.FLOORS:
     # 素人の「女の子のタイプから探す」・女の子ランキング（日刊・週間・月間）・レーベルと収録時間（運営者の希望。2026-10-12）
     _dur = [x for x in _fshow if x.get("duration")][:30]
     if _dur:
-        _bad_dur = [x["cid"] for x in _dur if f'{x["duration"]}分' not in read(os.path.join(DIST, _fk, "item", x["cid"], "index.html")) or "収録時間" not in read(os.path.join(DIST, _fk, "item", x["cid"], "index.html"))]
+        _bad_dur = [x["cid"] for x in _dur if f'{x["duration"]}分' not in read(floor_item_file(_fk, x["cid"])) or "収録時間" not in read(floor_item_file(_fk, x["cid"]))]
         check(f"{_flabel}: 作品ページに収録時間（○分）", not _bad_dur, _bad_dur[:3])
     _lab = [x for x in _fshow if x.get("label") and x["label"] != x["maker"]][:30]
     if _lab:
-        _bad_lab = [x["cid"] for x in _lab if "レーベル" not in read(os.path.join(DIST, _fk, "item", x["cid"], "index.html")) or x["label"] not in read(os.path.join(DIST, _fk, "item", x["cid"], "index.html"))]
+        _bad_lab = [x["cid"] for x in _lab if "レーベル" not in read(floor_item_file(_fk, x["cid"])) or x["label"] not in read(floor_item_file(_fk, x["cid"]))]
         check(f"{_flabel}: 作品ページにレーベル（メーカーと違う名前のときだけ）", not _bad_lab, _bad_lab[:3])
     if _fk in _FD.GIRL_TYPE_FLOORS:
         _types_all = [g_ for _, n_ in _FD.GIRL_TYPES for g_ in n_]

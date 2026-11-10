@@ -4,7 +4,7 @@
 // 未成年を連想させる作品は、集めるときに入れていない。ここでも、タイトル・ジャンル・シリーズ・サークル/ブランド・作家の名前を調べて、念のため外す（二重の備え）。
 import { DESC_MAX, calmName, cut, descLength, fit, priceBand } from './describe.js';
 import { reviewOf } from './reviews.js';
-import { FANZA_HOSTS, FANZA_LINK_HOSTS, addDays, daysBetween, entitySlug, isDay, resizedImage, safeHttpsUrl, smallImage } from './items.js';
+import { FANZA_HOSTS, FANZA_LINK_HOSTS, WAIT_DIR, addDays, daysBetween, entitySlug, hasComment, isDay, resizedImage, safeHttpsUrl, smallImage } from './items.js';
 import { isMinorTitle } from './gacha.js';
 import { bestOf } from './popularity.js';
 import { phraseZwsp } from './phrase.js';
@@ -41,6 +41,10 @@ export const floorPath = (key) => `/${key}/`;
 export const floorRankingPath = (key) => `/${key}/ranking/`;
 export const floorSalePath = (key) => `/${key}/sale/`;
 export const floorItemPath = (key, cid) => `/${key}/item/${cid}/`;
+/** コメントの無い売り場の作品のページ（/doujin/w/<作品ID>/ など。robots.txt で検索エンジンに読ませない。items.js の waitPath と同じ。2026-11-10） */
+export const floorWaitPath = (key, cid) => `/${key}/${WAIT_DIR}/${cid}/`;
+/** 売り場の作品ページの住所: コメントがあれば /<売り場>/item/、無ければ /<売り場>/w/ */
+export const floorItemPagePath = (item, key = item.floor) => (hasComment(item) ? floorItemPath(key, item.cid) : floorWaitPath(key, item.cid));
 export const floorMakerIndexPath = (key) => `/${key}/maker/`;
 export const floorMakerPath = (key, id) => `/${key}/maker/${id}/`;
 
@@ -601,7 +605,7 @@ export function floorItemListLd(list, siteUrl, limit = 20) {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     numberOfItems: Math.min(items.length, limit),
-    itemListElement: items.slice(0, limit).map((i, n) => ({ '@type': 'ListItem', position: n + 1, url: siteUrl + floorItemPath(i.floor, i.cid), name: i.title.slice(0, 100) })),
+    itemListElement: items.slice(0, limit).map((i, n) => ({ '@type': 'ListItem', position: n + 1, url: siteUrl + floorItemPagePath(i), name: i.title.slice(0, 100) })),
   };
 }
 
@@ -1088,7 +1092,7 @@ export const FLOOR_GACHA_POOL = 80;
 export function floorGachaPool(items, limit = FLOOR_GACHA_POOL) {
   return floorRanking(items, Infinity).filter((i) => i.image_url).slice(0, limit).map((i) => ({
     c: i.cid,
-    h: floorItemPath(i.floor, i.cid),
+    h: floorItemPagePath(i),
     t: phraseZwsp(i.title),
     i: isFramed(i.floor) ? doujinThumb(i.image_url, 'tiny').small : smallImage(i.image_url),
     a: makerLine(i),
@@ -1175,6 +1179,8 @@ export function floorSearchIndex(items, key, groups, readingOf = () => '') {
         ...(i.upcoming ? { u: 1 } : {}),
         ...(onSale(i) && !i.upcoming ? { s: 1 } : {}),
         ...(i.image_url && i.image_url !== floorImageOf(key, i.cid, i.type) ? { i: i.image_url } : {}),
+        // コメントのある作品は /<売り場>/item/、無い作品は /<売り場>/w/（floorItemPagePath。2026-11-10）
+        ...(hasComment(i) ? { k: 1 } : {}),
       };
     }),
   };
@@ -1186,7 +1192,7 @@ export function floorSearchRow(row, key) {
   const yen = row.p ? `${comma(row.p)}円${row.o ? `（${row.o}%OFF）` : ''}` : '';
   return {
     c: row.c,
-    href: floorItemPath(key, row.c),
+    href: row.k === 1 ? floorItemPath(key, row.c) : floorWaitPath(key, row.c),
     title: row.t,
     img,
     wide: isFramed(key),

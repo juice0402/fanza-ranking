@@ -4,7 +4,7 @@
 //   同じ中では、過去作品は FANZAの人気順の順位が上の作品から（質の高い作品のページを先に作る。運営者の希望。2026-10-04）、そのあとは発売日の新しい順
 // 作品ページの無い作品は、一覧・出演者/メーカーのページから、FANZAの作品ページへ直接リンクする（itemHref）。
 import { ARCHIVE_PAGE_SIZE, FILE_BUDGET, FIXED_FILES } from '../config.js';
-import { itemPath } from './items.js';
+import { itemPagePath } from './items.js';
 
 /** 作品ページ以外のファイルの数（見積もり）。counts: 出演者・メーカー・シリーズ・レーベル・月・ジャンル・まとめ記事・セール（特集ごと・履歴）のページの数、カレンダー（.ics）の数、過去の作品の一覧に並ぶ本数、
  * FANZA同人・FANZAゲームのページの数（floors。作品ページ・サークル/ブランドのページも全部入れる。動画の作品ページより先に枠を取る。2026-10-09。lib/floors.js の floorFileCount）、
@@ -34,10 +34,10 @@ export function planPages(items, counts, total = FILE_BUDGET, fixed = FIXED_FILE
   return { paged: pagedCids(items, itemBudget), itemBudget, nonItem };
 }
 
-/** 作品へのリンク: 作品ページがあれば作品ページ、無ければFANZAの作品ページ（外部リンクの印 external: true） */
+/** 作品へのリンク: 作品ページがあれば作品ページ（コメントがあれば /item/、無ければ /w/。items.js の itemPagePath）、無ければFANZAの作品ページ（外部リンクの印 external: true） */
 export function itemHref(item, paged) {
-  if (paged.has(item.cid)) return { href: itemPath(item.cid), external: false };
-  return { href: item.url || itemPath(item.cid), external: Boolean(item.url) };
+  if (paged.has(item.cid)) return { href: itemPagePath(item), external: false };
+  return { href: item.url || itemPagePath(item), external: Boolean(item.url) };
 }
 
 /** 外部（FANZA）へのリンクに付ける属性（サイトのほかの「FANZAで見る」と同じ） */

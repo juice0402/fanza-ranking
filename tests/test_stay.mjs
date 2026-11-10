@@ -55,7 +55,10 @@ check('当てはまるものが無ければ空・売り場のデータが無く�
 console.log('\n■ ほかの売り場からの1行（floorPickRow）');
 const row = T.floorPickRow({ floor: 'doujin', label: '同人', reason: '「熟女」で人気', item: f('doujin', 'd9', { title: '作品の題名', image_url: 'https://example.com/d9.jpg', maker: { name: 'サークルA' }, authors: ['作家1', '作家2'], price: 1320, off: 30 }) });
 check('題名・作り手・売り場と値段を出し、選んだ理由は出さない（売り場の作品検索と同じ横長の行の形）',
-  row.title === '作品の題名' && row.href === '/doujin/item/d9/' && row.img === 'https://example.com/d9.jpg' && row.line === 'サークルA｜作家1、作家2' && row.meta === '同人・1,320円（30%OFF）' && !JSON.stringify(row).includes('熟女'), JSON.stringify(row));
+  row.title === '作品の題名' && row.href === '/doujin/w/d9/' && row.img === 'https://example.com/d9.jpg' && row.line === 'サークルA｜作家1、作家2' && row.meta === '同人・1,320円（30%OFF）' && !JSON.stringify(row).includes('熟女'), JSON.stringify(row));
+// コメントのある作品は /<売り場>/item/、無い作品は /<売り場>/w/（2026-11-10。案A）
+const rowC = T.floorPickRow({ floor: 'doujin', label: '同人', item: f('doujin', 'd8', { comment: 'ひとこと。' }) });
+check('リンク先: コメントのある作品は /doujin/item/・無い作品は /doujin/w/', rowC.href === '/doujin/item/d8/' && row.href === '/doujin/w/d9/', rowC.href);
 const crowd = T.floorPickRow({ floor: 'anime', label: 'アニメ', item: f('anime', 'n9', { actress: ['あ', 'い', 'う', 'え'], upcoming: true }) });
 check('作家・出演者は3人まで（多いときは「ほか」）・予約は売り場の名前のあと・値段が無ければ出さない・作り手が無くても止まらない',
   crowd.line === 'あ、い、うほか' && crowd.meta === 'アニメ・予約' && crowd.upcoming === false && T.FLOOR_PICK_NAMES === 3, JSON.stringify(crowd));

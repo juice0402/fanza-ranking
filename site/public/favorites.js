@@ -174,6 +174,9 @@
     var s = sale && typeof sale === 'object' ? sale : {};
     var rows = Array.isArray(s.items) ? s.items : [];
     var ends = Array.isArray(s.ends) ? s.ends : [];
+    // コメントの無い作品（作品ページが /w/）の番号（2026-11-10）
+    var waitRows = {};
+    (Array.isArray(s.w) ? s.w : []).forEach(function (n) { if (typeof n === 'number') waitRows[n] = true; });
     var people = [];
     ['actress', 'maker'].forEach(function (type) {
       var byName = s[type] && typeof s[type] === 'object' && !Array.isArray(s[type]) ? s[type] : {};
@@ -188,7 +191,9 @@
           if (!Array.isArray(r) || typeof r[0] !== 'string' || !CID.test(r[0])) return;
           var end = ends[r[2]];
           if (typeof end !== 'string' || end < nowKey) return;
-          onSale.push({ c: r[0], o: typeof r[1] === 'number' && r[1] > 0 ? Math.round(r[1]) : 0, e: end, i: typeof r[3] === 'string' ? r[3] : oshiImage(r[0]) });
+          var row = { c: r[0], o: typeof r[1] === 'number' && r[1] > 0 ? Math.round(r[1]) : 0, e: end, i: typeof r[3] === 'string' ? r[3] : oshiImage(r[0]) };
+          if (waitRows[n]) row.w = 1;
+          onSale.push(row);
         });
         if (!up.length && !recent.length && !onSale.length) return;
         var entry = store[type][name];
@@ -244,7 +249,7 @@
     module.exports = {
       castShown: castShown, CAST_LIMIT: CAST_LIMIT, THUMB_MEDIA: THUMB_MEDIA, smallImageUrl: smallImageUrl, tinyImageUrl: tinyImageUrl, unresizedUrl: unresizedUrl,
       emptyStore: emptyStore, parseStore: parseStore, isOn: isOn, toggle: toggle, remove: remove,
-      hasPeople: hasPeople, matches: matches, pickNew: pickNew, pickOshi: pickOshi, shortDay: shortDay, jstNowKey: jstNowKey, OSHI_DAYS: OSHI_DAYS, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT,
+      hasPeople: hasPeople, matches: matches, pickNew: pickNew, pickOshi: pickOshi, shortDay: shortDay, jstNowKey: jstNowKey, OSHI_DAYS: OSHI_DAYS, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT, workHref: workHref,
     };
     return;
   }
@@ -414,10 +419,15 @@
     }
   }
 
+  // 作品ページの住所: コメントの無い作品（索引の w: 1）は /w/、ほかは /item/（2026-11-10。古い保存で印が無くても、404 のページの lost.js が送り直す）
+  function workHref(item) {
+    return (item && item.w === 1 ? '/w/' : '/item/') + item.c + '/';
+  }
+
   function oshiCover(item, note, off) {
     var li = el('li', 'oshi-cell');
     var a = el('a', 'oshi-card');
-    a.href = '/item/' + item.c + '/';
+    a.href = workHref(item);
     var cover = el('span', 'oshi-cover');
     if (typeof item.i === 'string' && item.i.indexOf('https://') === 0) {
       var img = el('img', 'item-img is-small');
@@ -481,7 +491,7 @@
   function workRow(item, onRemove) {
     var row = el('li', 'fav-row');
     var link = el('a', 'fav-row-link');
-    link.href = '/item/' + item.c + '/';
+    link.href = workHref(item);
     if (item.i && item.i.indexOf('https://') === 0) {
       // サムネは小さいので、表紙だけの軽い画像（…ps.jpg。スマホは縮めた版）。
       // 読めなければ、ps → パッケージ画像（…pl.jpg）の順に戻し、それも読めなければ隠す（運営者の希望「スマホのサムネは最高速化」。2026-10-07）

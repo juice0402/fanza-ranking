@@ -107,7 +107,8 @@
       : row.d.slice(0, 4) + '年' + +row.d.slice(5, 7) + '月' + +row.d.slice(8, 10) + '日発売';
     return {
       c: row.c,
-      href: '/' + key + '/item/' + row.c + '/',
+      // コメントのある作品（k: 1）は /<売り場>/item/、無い作品は /<売り場>/w/（lib/floors.js の floorItemPagePath。2026-11-10）
+      href: '/' + key + (row.k === 1 ? '/item/' : '/w/') + row.c + '/',
       title: row.t,
       img: imageOf(key, row),
       wide: framed(frame),

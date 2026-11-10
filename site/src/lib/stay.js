@@ -4,7 +4,7 @@
 // どちらも、こちらから案内する欄なので、未成年を連想させるタイトルの作品は入れない（運命の作品・きょうの話題と同じ）
 import { relatedItems } from './items.js';
 import { isMinorTitle } from './gacha.js';
-import { FLOORS, FLOOR_GENRE_OK, floorItemPath } from './floors.js';
+import { FLOORS, FLOOR_GENRE_OK, floorItemPagePath } from './floors.js';
 
 export const NEXT_WORKS_SHOWN = 3; // 作品ページの「次の新作」の本数
 export const NEXT_WORKS_MAX_CAST = 4; // 出演者がこの人数までの作品だけ（オムニバス・総集編で、関係の薄い作品が並ばないように）
@@ -103,7 +103,7 @@ export function floorPickRow({ floor, label, item }) {
   const yen = item.price ? `${comma(item.price)}円${item.off ? `（${item.off}%OFF）` : ''}` : '';
   return {
     c: item.cid,
-    href: floorItemPath(floor, item.cid),
+    href: floorItemPagePath(item, floor),
     title: item.title,
     img: item.image_url,
     line: [item.maker?.name, who].filter(Boolean).join('｜'),

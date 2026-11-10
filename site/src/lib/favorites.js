@@ -1,6 +1,6 @@
 // お気に入り機能のための、サイト側の部品（画面に依存しない）。
 // ブラウザ側の動き（☆の付け外し・保存）は site/public/favorites.js。
-import { addDays } from './items.js';
+import { addDays, hasComment } from './items.js';
 import { namesPattern, phraseZwsp } from './phrase.js';
 export const FAVORITES_PATH = '/favorites/';
 export const FAVORITES_INDEX_PATH = '/data/favorites-index.json';
@@ -23,7 +23,8 @@ export function buildFavoritesIndex(items, today, days = FAVORITES_INDEX_DAYS, p
     items: items
       .filter((i) => i.dateKey >= from)
       .sort((a, b) => b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid))
-      .map((i) => ({ c: i.cid, t: phraseZwsp(i.title, namesRe), d: i.dateKey, a: i.actress, m: i.maker === '不明' ? '' : i.maker, i: i.image_url })),
+      // コメントの無い作品は w: 1（作品ページが /w/。public/favorites.js がリンクを /w/ にする。2026-11-10）
+      .map((i) => ({ c: i.cid, t: phraseZwsp(i.title, namesRe), d: i.dateKey, a: i.actress, m: i.maker === '不明' ? '' : i.maker, i: i.image_url, ...(hasComment(i) ? {} : { w: 1 }) })),
   };
 }
 
@@ -37,10 +38,10 @@ export const standardImage = (cid) => `https://pics.dmm.co.jp/digital/video/${ci
  * saleItems: sale.js の onSaleItems の結果（人気の順）。names: { actress: Set, maker: Set } ☆を付けられる名前（専用ページがある人だけ）。
  * 小さくするため、作品は配列で持ち、名前から作品の番号を引く形にする:
  * { generated, ends: [セールの終わり 'YYYY-MM-DD HH:MM'], items: [[作品ID, 割引（%。分からなければ 0）, ends の番号, 画像（決まった形でないときだけ）]],
- *   actress: {名前: [items の番号（人気の順）]}, maker: {名前: [...]} }
+ *   actress: {名前: [items の番号（人気の順）]}, maker: {名前: [...]}, w: [コメントの無い作品（作品ページが /w/）の items の番号] }（w は 2026-11-10）
  */
 export function buildFavoritesSale(saleItems, today, offPercent, names) {
-  const out = { generated: today, ends: [], items: [], actress: {}, maker: {} };
+  const out = { generated: today, ends: [], items: [], actress: {}, maker: {}, w: [] };
   const endIndex = new Map();
   for (const i of saleItems) {
     const cast = [...new Set(i.actress)].filter((n) => names.actress.has(n));
@@ -54,6 +55,7 @@ export function buildFavoritesSale(saleItems, today, offPercent, names) {
     if (i.image_url !== standardImage(i.cid)) row.push(i.image_url || '');
     const n = out.items.length;
     out.items.push(row);
+    if (!hasComment(i)) out.w.push(n);
     for (const a of cast) (out.actress[a] ??= []).push(n);
     if (maker) (out.maker[maker] ??= []).push(n);
   }
