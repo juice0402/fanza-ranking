@@ -67,6 +67,17 @@ export function addDays(dateKey, n) {
 }
 
 export const itemPath = (cid) => `/item/${cid}/`;
+/**
+ * コメントの無い作品のページの住所（案A。2026-11-10）。コメントの無い作品ページは noindex なので、robots.txt（buildRobots）で
+ * 検索エンジンに読ませない（Google の「クロールの予算」の説明: noindex のページも読みに来てから捨てるので、読む時間がむだになる）。
+ * コメントが付くと /item/ に移る（古い住所は 404。人が開いたら public/lost.js が新しい住所へ送る）
+ */
+export const WAIT_DIR = 'w';
+export const waitPath = (cid) => `/${WAIT_DIR}/${cid}/`;
+/** コメント（ひとこと）がある作品か。作品ページを検索エンジンに出すか（noindex でないか）と同じ決め方 */
+export const hasComment = (item) => String(item?.comment ?? '').trim() !== '';
+/** 作品ページの住所: コメントがあれば /item/、無ければ /w/ */
+export const itemPagePath = (item) => (hasComment(item) ? itemPath(item.cid) : waitPath(item.cid));
 export const archivePath = (n) => `/archive/${n}/`;
 
 /**
@@ -403,10 +414,12 @@ export function buildOldSitemap(xml, siteUrl = SITE_URL, oldUrl = OLD_SITE_URL) 
 /**
  * robots.txt の中身（検索エンジン向け。sitemap の場所を教える）。
  * 作品検索の画面（/search/・売り場の /doujin/search/ など）は noindex で、条件の組み合わせで住所がいくらでも増えるので、
- * 読みに来ないよう止める（2026-11-08。Google が新しい住所を読みに来る回数が1日10回まで減り、11/1 は228回のうち84回が /search/ だった）
+ * 読みに来ないよう止める（2026-11-08。Google が新しい住所を読みに来る回数が1日10回まで減り、11/1 は228回のうち84回が /search/ だった）。
+ * コメントの無い作品ページ（/w/・売り場の /doujin/w/ など。waitPath・floors.js の floorWaitPath）も止める（2026-11-10。案A。
+ * 10/28〜11/3 に Google が読みに来た1,223回のうち、少なくとも593回が noindex のページだった）
  */
 export function buildRobots(siteUrl = SITE_URL) {
-  return `User-agent: *\nAllow: /\nDisallow: /search/\nDisallow: /*/search/\n\nSitemap: ${siteUrl}/sitemap.xml\n`;
+  return `User-agent: *\nAllow: /\nDisallow: /search/\nDisallow: /*/search/\nDisallow: /${WAIT_DIR}/\nDisallow: /*/${WAIT_DIR}/\n\nSitemap: ${siteUrl}/sitemap.xml\n`;
 }
 
 /**
@@ -715,7 +728,7 @@ export function movieLd(item, code = '', pages = {}, siteUrl = SITE_URL) {
     '@context': 'https://schema.org',
     '@type': 'Movie',
     name: item.title,
-    url: absoluteUrl(itemPath(item.cid), siteUrl),
+    url: absoluteUrl(itemPagePath(item), siteUrl),
     identifier: code || item.cid,
     datePublished: item.dateKey,
   };

@@ -338,7 +338,8 @@
       var u = safeUrl(row.u, FANZA_HOSTS);
       return u ? { href: u, external: true } : null;
     }
-    return { href: '/item/' + row.c + '/', external: false };
+    // コメントのある作品（k: 1）は /item/、無い作品は /w/（lib/items.js の itemPagePath。2026-11-10）
+    return { href: (row.k === 1 ? '/item/' : '/w/') + row.c + '/', external: false };
   }
 
   // 続きのファイル → 足してよい行（形が正しく、リンクが作れて、まだ無い作品だけ）。have: すでにある作品IDの { cid: true }。
@@ -463,7 +464,7 @@
     li.setAttribute('data-c', row.c);
     var article = el('article', 'item');
     // 作品ページが無い作品（続きの x・u）は、FANZAの作品ページへ直接（サイトのほかの「FANZAで見る」と同じ属性）
-    var to = rowLink(row, row._f) || { href: '/item/' + row.c + '/', external: false };
+    var to = rowLink(row, row._f) || { href: (row.k === 1 ? '/item/' : '/w/') + row.c + '/', external: false };
     var href = to.href;
     function outbound(a) {
       if (!to.external) return;

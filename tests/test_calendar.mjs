@@ -56,9 +56,9 @@ check('DTSTAMP は、その日の0時（同じ日なら同じ値）', text.inclu
 check('予定の題名に、作品タイトルを入れない', !/SUMMARY:[^\r\n]*(古い作品|最近の作品|今日の作品|月またぎ|年またぎ)/.test(text));
 check('題名: 出演者がいれば出演者名・いなければメーカー名・どちらもなければ「FANZAの新作」', text.includes('SUMMARY:【発売】Aの新作') && text.includes('SUMMARY:【発売】メーカーXの新作') && text.includes('SUMMARY:【発売】FANZAの新作'));
 check('題名: subject を指定すれば、それが入る', C.buildIcs({ calName: 'x', items, today, subject: '花子' }).includes('SUMMARY:【発売】花子の新作'));
-check('説明には、タイトル・作品ID（品番を作れないとき）・リンクが入る（記号は書き換え済み）', text.includes('DESCRIPTION:最近の作品\\, セミコロン\\; あり\\n作品ID: recent1\\nhttps://av-sale-guide.com/item/recent1/'));
+check('説明には、タイトル・作品ID（品番を作れないとき）・リンクが入る（記号は書き換え済み）', text.includes('DESCRIPTION:最近の作品\\, セミコロン\\; あり\\n作品ID: recent1\\nhttps://av-sale-guide.com/w/recent1/'));
 check('説明の品番は、作品ページと同じ形（1dldss00566 → DLDSS-566）', unfold(C.buildIcs({ calName: 'x', items: normalizeItems([{ cid: '1dldss00566', title: 'テスト', date: today }]), today })).includes('\\n品番: DLDSS-566\\n'));
-check('URL の行に、作品ページのURLが入る', text.includes('URL:https://av-sale-guide.com/item/soon1/'));
+check('URL の行に、作品ページのURLが入る（コメントの無い作品は /w/。2026-11-10）', text.includes('URL:https://av-sale-guide.com/w/soon1/'));
 const alarms = (text.match(/BEGIN:VALARM/g) || []).length;
 check('通知（朝9時）は、今日以降に発売の予定だけ（3件）・発売済みの予定には付けない', alarms === 3 && text.includes('TRIGGER:PT9H'), String(alarms));
 check('1行が75バイトを超えない（折り返し済み）', ics.split('\r\n').every((r) => new TextEncoder().encode(r).length <= 75));
@@ -76,6 +76,9 @@ check('索引: グループ → {名前: 短い名前}', JSON.stringify(F.pageSl
 const one = idx.items.find((i) => i.c === 'recent1');
 check('索引: 短い名前の項目（c,t,d,a,m,i）。タイトルは、幅のない空白（文節の区切り）を除くと元どおり', one && one.t.replace(/\u200b/g, '') === items.find((i) => i.cid === 'recent1').title && one.d === '2026-09-25' && one.a.join() === 'A' && one.m === 'M' && 'i' in one, JSON.stringify(one));
 check('索引: メーカー「不明」は空文字にする', idx.items.find((i) => i.c === 'today1').m === '');
+// コメントの無い作品は w: 1（作品ページが /w/。2026-11-10）
+check('索引: コメントの無い作品だけ w: 1', idx.items.every((r) => (r.w === 1) === !items.find((i) => i.cid === r.c).comment.trim())
+  && F.buildFavoritesIndex(normalizeItems([{ cid: 'cm', title: 't', date: '2026-09-30', comment: 'ひとこと' }]), today).items[0].w === undefined);
 const attrs = F.workFavoriteAttrs(items[1]);
 check('作品の☆ボタンの情報', attrs['data-fav-type'] === 'work' && attrs['data-fav-key'] === 'recent1' && attrs['data-actress'] === 'A' && attrs['data-date'] === '2026-09-25' && attrs['data-maker'] === 'M');
 check('ページのパス', F.FAVORITES_PATH === '/favorites/' && F.FAVORITES_INDEX_PATH === '/data/favorites-index.json');
@@ -95,6 +98,8 @@ console.log('\n■ 推しの棚のセールの索引（buildFavoritesSale。2026
   check('☆を付けられない名前だけの作品（a2）は入れない・終わりは番号で持つ', JSON.stringify(out.items.map((r) => r[0])) === '["a1","a3","a4"]' && JSON.stringify(out.ends) === '["2026-11-03 23:59","2026-11-05 23:59"]', JSON.stringify(out));
   check('割引（分からなければ 0）・決まった形の画像は省く・ほかの画像は持つ', JSON.stringify(out.items) === JSON.stringify([['a1', 30, 0], ['a3', 0, 1, 'https://example.net/a3.jpg'], ['a4', 30, 1]]), JSON.stringify(out.items));
   check('名前から作品の番号を引ける（同じ名前が2回あっても1つ・人気の順）', JSON.stringify(out.actress) === '{"A":[0,2],"B":[1]}' && JSON.stringify(out.maker) === '{"M":[0]}', JSON.stringify([out.actress, out.maker]));
+  check('コメントの無い作品の番号（w）: 作品ページが /w/ の作品', JSON.stringify(out.w) === '[0,1,2]'
+    && JSON.stringify(F.buildFavoritesSale([{ ...saleItems[0], comment: 'ひとこと' }, saleItems[2]], '2026-10-31', off, { actress: new Set(['A', 'B']), maker: new Set() }).w) === '[1]');
   check('決まった形の画像', F.standardImage('abc00123') === 'https://pics.dmm.co.jp/digital/video/abc00123/abc00123pl.jpg' && F.FAVORITES_SALE_PATH === '/data/favorites-sale.json');
 }
 

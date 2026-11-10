@@ -1,0 +1,16 @@
+---
+// コメントの無い作品のページ（/w/<作品ID>/。案A。2026-11-10）。中身は /item/<作品ID>/ と同じ components/ItemPage.astro（noindex）。
+// robots.txt（lib/items.js の buildRobots）で検索エンジンに読ませない。コメントが付くと、次のビルドから /item/<作品ID>/ に移る
+// （/w/ の住所は 404 になり、人が開いたら public/lost.js が /item/ へ送る）
+import ItemPage from '../../components/ItemPage.astro';
+import { all, paged } from '../../lib/data.js';
+import { hasComment } from '../../lib/items.js';
+
+export function getStaticPaths() {
+  return all.filter((item) => paged.has(item.cid) && !hasComment(item)).map((item) => ({ params: { cid: item.cid }, props: { item } }));
+}
+
+const { item } = Astro.props;
+---
+
+<ItemPage item={item} />

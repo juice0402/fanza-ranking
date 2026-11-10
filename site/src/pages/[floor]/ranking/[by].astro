@@ -8,7 +8,7 @@ import Breadcrumb from '../../../components/Breadcrumb.astro';
 import FloorRow from '../../../components/FloorRow.astro';
 import FloorMoreNav from '../../../components/FloorMoreNav.astro';
 import { activeFloors, floorEntityRankings, floors } from '../../../lib/data.js';
-import { FLOORS, FLOOR_ENTITY_TOP, floorEntityIndexable, floorEntityLabel, floorEntityRankingPath, floorPath, floorRankingPath, moveLabel } from '../../../lib/floors.js';
+import { FLOORS, FLOOR_ENTITY_TOP, floorEntityIndexable, floorEntityLabel, floorEntityRankingPath, floorItemPagePath, floorPath, floorRankingPath, moveLabel } from '../../../lib/floors.js';
 import { SITE_NAME, SITE_URL, breadcrumbLd, dateParts, formatDateJp } from '../../../lib/items.js';
 
 export function getStaticPaths() {
@@ -36,7 +36,7 @@ const rows = list.map((r) => {
     r,
     row: {
       c: r.key,
-      href: r.path || `/${key}/item/${top.cid}/`,
+      href: r.path || floorItemPagePath(top, key),
       title: r.name,
       img: top.image_url,
       line: `上位${FLOOR_ENTITY_TOP}本に${r.count}本・最高${r.best}位`,

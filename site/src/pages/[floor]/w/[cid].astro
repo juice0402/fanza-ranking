@@ -1,0 +1,15 @@
+---
+// 売り場のコメントの無い作品のページ（/doujin/w/<作品ID>/ など。案A。2026-11-10）。中身は /<売り場>/item/ と同じ components/FloorItemPage.astro（noindex）。
+// robots.txt（lib/items.js の buildRobots）で検索エンジンに読ませない。コメントが付くと、次のビルドから /<売り場>/item/<作品ID>/ に移る
+import FloorItemPage from '../../../components/FloorItemPage.astro';
+import { activeFloors, floors } from '../../../lib/data.js';
+import { hasComment } from '../../../lib/items.js';
+
+export function getStaticPaths() {
+  return activeFloors.flatMap((floor) => floors[floor].items.filter((item) => !hasComment(item)).map((item) => ({ params: { floor, cid: item.cid }, props: { item } })));
+}
+
+const { item } = Astro.props;
+---
+
+<FloorItemPage item={item} />

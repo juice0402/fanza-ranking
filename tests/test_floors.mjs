@@ -192,6 +192,9 @@ console.log('\n■ 素人の「女の子のタイプから探す」・女の子�
 }
 
 console.log('\n■ ページの場所・タイトル・ファイルの数');
+check('場所（コメントの無い作品は /doujin/w/。2026-11-10）', L.floorWaitPath('doujin', 'd_1') === '/doujin/w/d_1/'
+  && L.floorItemPagePath({ floor: 'doujin', cid: 'd_1', comment: 'ひとこと' }) === '/doujin/item/d_1/' && L.floorItemPagePath({ floor: 'doujin', cid: 'd_1', comment: '' }) === '/doujin/w/d_1/'
+  && L.floorItemPagePath({ floor: 'doujin', cid: 'd_1' }, 'game') === '/game/w/d_1/');
 check('場所: /doujin/・/doujin/ranking/・/doujin/sale/・/doujin/item/<品番>/・/game/maker/<id>/',
   L.floorPath('doujin') === '/doujin/' && L.floorRankingPath('doujin') === '/doujin/ranking/' && L.floorSalePath('doujin') === '/doujin/sale/'
   && L.floorItemPath('doujin', 'd_1') === '/doujin/item/d_1/' && L.floorMakerPath('game', 5) === '/game/maker/5/' && L.floorMakerIndexPath('game') === '/game/maker/');
@@ -261,7 +264,8 @@ check('作品ページから: ジャンル・シリーズ・作家・発売月�
 const l6 = L.collectionLinksFor(cfl.items.find((i) => i.cid === 'd_300006'), cols);
 check('ページの無いジャンル（行為のジャンル）・月にはリンクしない', l6.genres.size === 0 && l6.series === null && l6.authors.get('作家B') === cols.author[1].path && l6.month === null);
 const ld = L.floorItemListLd(big.items, 'https://example.pages.dev', 2);
-check('一覧の構造化データ（ItemList）: 作品ページへのリンクを並びの順に', ld['@type'] === 'ItemList' && ld.numberOfItems === 2 && ld.itemListElement[1].position === 2 && ld.itemListElement[1].url === 'https://example.pages.dev/doujin/item/d_300002/', ld);
+check('一覧の構造化データ（ItemList）: 作品ページへのリンクを並びの順に', ld['@type'] === 'ItemList' && ld.numberOfItems === 2 && ld.itemListElement[1].position === 2 && ld.itemListElement[1].url === 'https://example.pages.dev/doujin/w/d_300002/'
+  && ld.itemListElement[0].url === 'https://example.pages.dev/doujin/item/d_300001/', ld); // コメントの無い作品は /doujin/w/（2026-11-10）
 check('ファイルの数: コレクションのページ＋種類ごとの一覧（ページが無い種類は一覧も無し）',
   L.floorFileCount(cfl, [], cols) === cfl.items.length + 10 + (2 + 1) + (1 + 1) + (2 + 1) + (1 + 1) + (1 + 1) && L.floorFileCount(cfl, [], { genre: [], series: [], author: [], month: [] }) === cfl.items.length + 10);
 
@@ -392,15 +396,17 @@ check('動きの文字', L.moveLabel(2) === '▲2' && L.moveLabel(-1) === '▼1'
 
 console.log('\n■ 運命の作品・作品検索');
 const gp2 = L.floorGachaPool(tfl.items);
-check('運命の作品の候補: 人気の順・作品ページの場所・同人は縮めた表紙（幅240）', gp2.length === 6 && gp2[0].h === '/doujin/item/d_500001/' && gp2[0].i === 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/voice/d_500001/d_500001pl.jpg?w=240&q=75' && /^https:\/\/[^/]*dmm\.co\.jp\//.test(gp2[0].i), gp2[0]);
+check('運命の作品の候補: 人気の順・作品ページの場所・同人は縮めた表紙（幅240）', gp2.length === 6 && gp2[0].h === '/doujin/w/d_500001/' && gp2[0].i === 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/voice/d_500001/d_500001pl.jpg?w=240&q=75' && /^https:\/\/[^/]*dmm\.co\.jp\//.test(gp2[0].i), gp2[0]);
 check('ゲームの候補は表紙（…ps.jpg）', L.floorGachaPool(g.items)[0].i.endsWith('ps.jpg'));
 const gacha = fs.readFileSync(new URL('../site/public/gacha.js', import.meta.url), 'utf-8');
-check('public/gacha.js: 候補の場所（h）が /<売り場>/item/…/ のときだけ使う・同人/ゲームは VR・単体の絞り込みを使わない（data-nofilter）',
-  gacha.includes("/^\\/[a-z]{2,10}\\/item\\/[A-Za-z0-9_-]+\\/$/.test(row.h)") && gacha.includes("hasAttribute('data-nofilter')") && G.eligible([{ c: 'a' }, { c: 'b', o: 1 }], false, false).length === 2);
+check('public/gacha.js: 候補の場所（h）が /<売り場>/item/…/・/<売り場>/w/…/ のときだけ使う・同人/ゲームは VR・単体の絞り込みを使わない（data-nofilter）',
+  gacha.includes("/^\\/[a-z]{2,10}\\/(?:item|w)\\/[A-Za-z0-9_-]+\\/$/.test(row.h)") && gacha.includes("hasAttribute('data-nofilter')") && G.eligible([{ c: 'a' }, { c: 'b', o: 1 }], false, false).length === 2);
 const SI = L.floorSearchIndex(tfl.items, 'doujin', tcols);
 check('検索の索引: 決まった形の表紙は省く・形式・特集・順位・セール・ジャンルはおだやかなものだけ',
   SI.items.length === 8 && !('i' in SI.items[0]) && SI.items.some((r) => r.c === 'd_500008' && !r.i) && SI.items[0].y === 'voice' && SI.items[0].r === 1 && SI.items[0].h.length === 4 && SI.themes[3].s === 'comiket108'
   && SI.genres.every((x) => L.FLOOR_GENRE_OK.includes(x)) && SI.types.map((t) => t.s).join() === 'comic,cg,voice' && L.floorSearchIndexPath('game') === '/data/game-index.json', SI.items[0]);
+check('検索の行: コメントのある作品だけ k: 1（リンクは /doujin/item/）・無い作品は /doujin/w/', SI.items.every((r) => (r.k === 1) === Boolean(tfl.items.find((i) => i.cid === r.c)?.comment))
+  && SI.items.every((r) => FS.rowView(r, 'doujin').href === (r.k === 1 ? `/doujin/item/${r.c}/` : `/doujin/w/${r.c}/`)) && FS.rowView({ ...SI.items[0], k: 1 }, 'doujin').href === `/doujin/item/${SI.items[0].c}/`);
 check('検索の行: ページを作るときの形（lib）とブラウザの形（public/floor-search.js）が同じ', SI.items.every((r) => JSON.stringify(Object.entries(L.floorSearchRow(r, 'doujin')).filter(([k]) => k !== 'rank')) === JSON.stringify(Object.entries(FS.rowView(r, 'doujin')))),
   [L.floorSearchRow(SI.items[0], 'doujin'), FS.rowView(SI.items[0], 'doujin')]);
 const idx = { genres: SI.genres, themes: SI.themes, items: SI.items.map((r) => ({ ...r, $k: FS.norm([r.t, r.m, r.a].join(' ')) })) };

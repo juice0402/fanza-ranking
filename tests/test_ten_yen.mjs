@@ -72,8 +72,9 @@ check('カードの1行', T.tenYenNote(ty.items.video[1]) === '10円（通常1,9
 console.log('\n■ 案内の表紙・リンク');
 const covers = T.heroCovers(ty, ['doujin', 'video'], 3);
 check('表紙は、売り場から1本ずつ順番に（先に並べる売り場から）', covers.map((i) => i.cid).join() === 'd_3,abc2,d_7', covers.map((i) => i.cid).join());
-check('作品ページがあれば作品ページ、無ければFANZAへ', T.tenYenHref(ty.items.doujin[0], new Set()).external === true && T.tenYenHref({ ...ty.items.doujin[0], hasPage: true }, new Set()).href === '/doujin/item/d_3/'
-  && T.tenYenHref(ty.items.video[0], new Set(['abc2'])).href === '/item/abc2/');
+check('作品ページがあれば作品ページ、無ければFANZAへ', T.tenYenHref(ty.items.doujin[0], new Set()).external === true && T.tenYenHref({ ...ty.items.doujin[0], hasPage: true }, new Set()).href === '/doujin/w/d_3/'
+  && T.tenYenHref({ ...ty.items.doujin[0], hasPage: true, comment: 'ひとこと' }, new Set()).href === '/doujin/item/d_3/'
+  && T.tenYenHref(ty.items.video[0], new Set(['abc2'])).href === '/item/abc2/' && T.tenYenHref({ ...ty.items.video[0], comment: '' }, new Set(['abc2'])).href === '/w/abc2/'); // コメントの無い作品は /w/（2026-11-10）
 check('ページのURL', T.tenYenPath() === '/sale/10yen/' && T.tenYenPath('doujin') === '/doujin/sale/10yen/' && T.tenYenPath('game') === '/game/sale/10yen/');
 const names = ['10円セール第1弾', '１０円セール', '【10円】作品', '100円セール', '110円セール', '1,010円均一', '30％OFF'];
 check('10円セールの特集の見分け（全角の「１０円」も。「110円」「1,010円」は入れない）・集める道具と同じ',

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import vm from 'node:vm';
 import { assetUrl } from '../site/src/lib/assets.js';
 import * as A from '../site/src/lib/assets.js';
 
@@ -118,12 +119,19 @@ check('sitemap: 絶対URL', xml.includes('<loc>https://av-sale-guide.com/</loc>'
 check('sitemap: 宣言とurlset', xml.startsWith('<?xml version="1.0"') && xml.includes('<urlset'));
 const robotsTxt = L.buildRobots();
 check('robots.txt: 全体を許可し、sitemapの場所を案内', robotsTxt.includes('User-agent: *') && robotsTxt.includes('Allow: /') && robotsTxt.includes('Sitemap: https://av-sale-guide.com/sitemap.xml'), robotsTxt);
-check('robots.txt: 作品検索の画面（/search/・売り場の /○○/search/）だけ止める', robotsTxt.includes('Disallow: /search/') && robotsTxt.includes('Disallow: /*/search/') && robotsTxt.split('\n').filter((l) => l.startsWith('Disallow')).length === 2, robotsTxt);
+check('robots.txt: 作品検索の画面（/search/・売り場の /○○/search/）とコメントの無い作品ページ（/w/・売り場の /○○/w/）だけ止める',
+  robotsTxt.includes('Disallow: /search/') && robotsTxt.includes('Disallow: /*/search/') && robotsTxt.includes('Disallow: /w/') && robotsTxt.includes('Disallow: /*/w/')
+  && robotsTxt.split('\n').filter((l) => l.startsWith('Disallow')).length === 4 && !robotsTxt.includes('Disallow: /item/'), robotsTxt);
 check('robots.txt: 指定したURLを使う', L.buildRobots('https://example.com').includes('Sitemap: https://example.com/sitemap.xml'));
 const long = { ...base, title: 'あ'.repeat(200) };
 check('タイトルを切り詰める', L.itemPageTitle(long).length < 80, L.itemPageTitle(long).length);
 check('説明文は120字以内', L.itemPageDescription({ ...base, comment: 'い'.repeat(300) }).length <= 120);
 check('作品パス', L.itemPath('abc123') === '/item/abc123/' && L.archivePath(3) === '/archive/3/');
+// 案A（2026-11-10）: コメントのある作品は /item/、無い作品は /w/（robots.txt で検索エンジンに読ませない）
+check('作品ページの住所: コメントがあれば /item/・無ければ（空白だけも）/w/',
+  L.waitPath('abc123') === '/w/abc123/' && L.itemPagePath({ cid: 'a1', comment: 'ひとこと' }) === '/item/a1/'
+  && L.itemPagePath({ cid: 'a1', comment: '' }) === '/w/a1/' && L.itemPagePath({ cid: 'a1', comment: '  ' }) === '/w/a1/' && L.itemPagePath({ cid: 'a1' }) === '/w/a1/'
+  && L.hasComment({ comment: 'x' }) && !L.hasComment({ comment: ' ' }) && !L.hasComment(null));
 
 console.log('\n■ 出演者ページ・メーカーページ');
 check('形式(formats)は英数字のタグだけ', items.every((i) => i.formats.every((t) => /^[0-9A-Za-z]{1,6}$/.test(t))));
@@ -343,6 +351,21 @@ check('作品ページのサンプル画像: 8枚以下は今と同じ（残り�
   && L.splitSamples(['a', 'b', 'c'], 2).rest.length === 1);
 
 fs.rmSync(tmp, { recursive: true, force: true });
+
+// 見つからないページ（404）から、作品ページの新しい住所へ送る（public/lost.js。2026-11-10。案A）
+console.log('\n■ 404 から作品ページの新しい住所へ（public/lost.js）');
+const lostSrc = fs.readFileSync(new URL('../site/public/lost.js', import.meta.url), 'utf-8');
+const lostBox = {};
+vm.runInNewContext(lostSrc, lostBox); // location が無い環境では、部品を出すだけ
+const fwd = lostBox.lostForward;
+check('/item/ と /w/ を入れかえて1回だけ送る（売り場も）・#nf の印があれば送らない',
+  fwd('/item/abc00123/', '') === '/w/abc00123/#nf' && fwd('/w/abc00123/', '') === '/item/abc00123/#nf' && fwd('/w/abc00123', '') === '/item/abc00123/#nf'
+  && fwd('/doujin/item/d_1/', '') === '/doujin/w/d_1/#nf' && fwd('/amateur/w/x_9/', '') === '/amateur/item/x_9/#nf' && fwd('/item/abc00123/', '#nf') === '');
+check('作品ページ以外・形の違う住所は送らない', ['/', '/actress/abc/', '/item/', '/item/a/b/', '/item/<x>/', '/item/w/abc/', '/sale/10yen/', '//evil.example/item/a/', '/DOUJIN/item/a/'].every((p) => fwd(p, '') === ''));
+const moved = [];
+vm.runInNewContext(lostSrc, { location: { pathname: '/item/abc00123/', hash: '', replace: (u) => moved.push(u) } });
+vm.runInNewContext(lostSrc, { location: { pathname: '/w/abc00123/', hash: '#nf', replace: (u) => moved.push(u) } });
+check('ページの中では、すぐ送る（送った先でも無ければ、もう送らない）', moved.join() === '/w/abc00123/#nf', moved);
 
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);

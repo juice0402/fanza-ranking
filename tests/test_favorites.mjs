@@ -130,6 +130,12 @@ console.log('\n■ トップの推しの棚（推しごとに、予約・新作�
   check('セールは割引・終わり・決まった形の画像を作り直す', hanako.sale[0].o === 30 && hanako.sale[0].e === '2026-10-03 23:59' && hanako.sale[0].i === 'https://pics.dmm.co.jp/digital/video/s1/s1pl.jpg');
   const aoi = people.find((p) => p.name === '葵');
   check('索引に画像があれば、その画像（割引0は0のまま）', aoi.sale[0].i === 'https://example.net/s3.jpg' && aoi.sale[0].o === 0);
+  // コメントの無い作品（作品ページが /w/）は、索引の w の番号（2026-11-10。案A）
+  const peopleW = plain(F.pickOshi(store, index, { ...sale, w: [0, 'x'] }, today, '2026-10-03 12:00', 14));
+  const hanakoW = peopleW.find((p) => p.name === '花子');
+  check('セール: 索引の w の番号の作品は /w/・ほかは /item/（w が無い・壊れていても止まらない）',
+    hanakoW.sale[0].w === 1 && F.workHref(hanakoW.sale[0]) === '/w/s1/' && F.workHref(hanako.sale[0]) === '/item/s1/' && aoi.sale[0].w === undefined
+    && F.workHref({ c: 'r1', w: 1 }) === '/w/r1/' && F.workHref({ c: 'r1' }) === '/item/r1/');
   const ma = people.find((p) => p.name === 'MA');
   check('メーカーの作品も（MA: 予約 u3・u1、セール s1）・種類と短い名前を持つ', ma.type === 'maker' && ma.up.map((x) => x.c).join() === 'u3,u1' && ma.sale.map((x) => x.c).join() === 's1' && hanako.slug === 'abcdef0123');
   check('セールの索引が壊れていても、予約・新作だけで出る', plain(F.pickOshi(store, index, null, today, '2026-10-03 12:00', 14)).map((p) => p.name).join() === '葵,MA,花子');

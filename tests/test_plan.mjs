@@ -63,6 +63,11 @@ check('作品ページがあれば作品ページ（サイトの中）', JSON.st
 const out = P.itemHref(catOld, paged);
 check('作品ページが無ければ、FANZAの作品ページ（外へのリンク）', out.href === catOld.url && out.external === true);
 check('FANZAのURLも無い作品は、作品ページのURLのまま（外へのリンクにしない）', P.itemHref({ ...catOld, url: '' }, paged).external === false);
+// 案A（2026-11-10）: コメントの無い作品は /w/。data.js の paged は pathOf で作品IDから住所を引く（コメントを持たない形の作品でも正しく）
+const pw = new Set(['w01', 'w02']);
+check('作品ページの住所: コメントがあれば /item/・無ければ /w/', P.itemHref({ cid: 'w01', comment: 'ひとこと' }, pw).href === '/item/w01/' && P.itemHref({ cid: 'w02', comment: '' }, pw).href === '/w/w02/');
+pw.pathOf = (cid) => (cid === 'w01' ? '/item/w01/' : '');
+check('paged に pathOf があれば、それを使う（today.json の予約のように comment を持たない形でも /item/）', P.itemHref({ cid: 'w01' }, pw).href === '/item/w01/' && P.itemHref({ cid: 'w02' }, pw).href === '/w/w02/');
 check('外へのリンクの属性は、サイトのほかの「FANZAで見る」と同じ', P.OUTBOUND_ATTRS.target === '_blank' && P.OUTBOUND_ATTRS.rel === 'sponsored nofollow noopener noreferrer');
 
 console.log('\n■ 検索エンジンに出すか（noindex・sitemap）');

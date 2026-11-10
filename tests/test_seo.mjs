@@ -79,7 +79,7 @@ check('説明文: コメントが長いときは、出演者の文とメーカ�
 const noCastDesc = L.itemPageDescription(mk({ cid: 'mkmp00761', comment: '落ち着いた雰囲気の一本。', actress: [] }), 'MKMP-761');
 check('説明文: 出演者がいない作品は、今までどおり（出演の話は書かない）', noCastDesc === '落ち着いた雰囲気の一本。 メーカーAの2026年11月1日発売作品（品番 MKMP-761）。', noCastDesc);
 
-const movie = L.movieLd(mk({ cid: 'mkmp00761', title: '作品の題名', actress: ['花子', '月子', '花子'], image_url: 'https://pics.dmm.co.jp/digital/video/mkmp00761/mkmp00761pl.jpg' }), 'MKMP-761',
+const movie = L.movieLd(mk({ cid: 'mkmp00761', title: '作品の題名', comment: 'ひとこと。', actress: ['花子', '月子', '花子'], image_url: 'https://pics.dmm.co.jp/digital/video/mkmp00761/mkmp00761pl.jpg' }), 'MKMP-761',
   { actress: (n) => (n === '花子' ? '/actress/abc/' : ''), maker: '/maker/def/' }, 'https://example.com');
 check('構造化データ Movie: 題名・品番・発売日・表紙・ページのURL',
   movie['@context'] === 'https://schema.org' && movie['@type'] === 'Movie' && movie.name === '作品の題名' && movie.identifier === 'MKMP-761' && movie.datePublished === '2026-11-01'
@@ -89,7 +89,7 @@ check('構造化データ Movie: 出演者は Person（同じ名前は1回）。
   && JSON.stringify(movie.productionCompany) === JSON.stringify({ '@type': 'Organization', name: 'メーカーA', url: 'https://example.com/maker/def/' }), JSON.stringify(movie));
 const movieBare = L.movieLd(mk({ cid: '1sun00072a', maker: '', actress: [] }), '');
 check('構造化データ Movie: 出演者がいなければ actor なし・メーカー不明なら productionCompany なし・品番を作れなければ作品ID・表紙が無ければ image なし',
-  !('actor' in movieBare) && !('productionCompany' in movieBare) && movieBare.identifier === '1sun00072a' && !('image' in movieBare) && movieBare.url === L.SITE_URL + '/item/1sun00072a/', JSON.stringify(movieBare));
+  !('actor' in movieBare) && !('productionCompany' in movieBare) && movieBare.identifier === '1sun00072a' && !('image' in movieBare) && movieBare.url === L.SITE_URL + '/w/1sun00072a/', JSON.stringify(movieBare)); // コメントの無い作品は /w/（2026-11-10）
 check('構造化データ Movie: 出演者は10人まで', L.movieLd(mk({ cid: 'a1', actress: Array.from({ length: 30 }, (_, i) => `人${i}`) })).actor.length === L.MOVIE_ACTOR_LIMIT);
 
 const og = L.itemOgMeta(mk({ cid: 'a1', actress: ['花子', '月子'], genres: ['ハイビジョン', '中出し', '巨乳', '独占配信', '人妻・主婦', '4K', '単体作品'] }));

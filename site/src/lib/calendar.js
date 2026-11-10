@@ -1,7 +1,7 @@
 // 発売日カレンダー（.ics）の部品（画面に依存しない）。
 // iPad・iPhone・Googleカレンダーなどで「購読」すると、発売日が自動でカレンダーに入る（毎日の更新に合わせて、カレンダー側が定期的に読み直す）。
 // カレンダーの予定の「題名」には、作品のタイトルを入れない（カレンダーを人に見られても困らないように）。タイトルと品番・リンクは、予定の詳細（説明）に入れる。
-import { SITE_URL, addDays, itemPath, isDay } from './items.js';
+import { SITE_URL, addDays, itemPagePath, isDay } from './items.js';
 import { productCode } from './facts.js';
 import { isMinorTitle } from './gacha.js';
 import { endLabel } from './sale.js';
@@ -97,7 +97,7 @@ export function buildIcs({ calName, items, today, subject = '', siteUrl = SITE_U
     if (!isDay(item.dateKey)) continue;
     const summary = eventSummary(item, subject);
     const code = productCode(item.cid); // 作品ページと同じ品番（作れないときは作品ID）
-    const description = `${item.title}\n${code ? `品番: ${code}` : `作品ID: ${item.cid}`}\n${siteUrl}${itemPath(item.cid)}`;
+    const description = `${item.title}\n${code ? `品番: ${code}` : `作品ID: ${item.cid}`}\n${siteUrl}${itemPagePath(item)}`;
     lines.push(
       'BEGIN:VEVENT',
       `UID:${item.cid}@${host}`,
@@ -106,7 +106,7 @@ export function buildIcs({ calName, items, today, subject = '', siteUrl = SITE_U
       `DTEND;VALUE=DATE:${nextDay(item.dateKey)}`,
       `SUMMARY:${escapeIcsText(summary)}`,
       `DESCRIPTION:${escapeIcsText(description)}`,
-      `URL:${siteUrl}${itemPath(item.cid)}`,
+      `URL:${siteUrl}${itemPagePath(item)}`,
       'TRANSP:TRANSPARENT',
     );
     if (item.dateKey >= today) {

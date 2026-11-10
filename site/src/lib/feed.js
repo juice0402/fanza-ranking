@@ -2,7 +2,7 @@
 // /feed.xml: 最近7日に発売された新作（ひとことコメントと作品ページのある作品だけ。新しい順に50本まで）
 // /weekly/feed.xml: 週のまとめ記事
 // こちらから配る案内なので、未成年を連想させるタイトルの作品は入れない。説明は文字だけ（HTMLは入れない）
-import { addDays, castLine, isDay, itemPath, SITE_NAME, SITE_URL, truncate } from './items.js';
+import { addDays, castLine, isDay, itemPagePath, SITE_NAME, SITE_URL, truncate } from './items.js';
 import { isMinorTitle } from './gacha.js';
 import { endLabel } from './sale.js';
 
@@ -56,7 +56,7 @@ export function newReleaseFeedItems(items, paged, today, { days = FEED_DAYS, lim
     .slice(0, limit)
     .map((i) => ({
       title: truncate(i.title, 80),
-      link: SITE_URL + itemPath(i.cid),
+      link: SITE_URL + itemPagePath(i),
       pubDate: rssDate(i.dateKey),
       description: [String(i.comment).trim(), `出演: ${castLine(i.actress, 3, '記載なし')}`, i.maker !== '不明' ? `メーカー: ${i.maker}` : ''].filter(Boolean).join(' ／ '),
     }));

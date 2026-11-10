@@ -168,7 +168,7 @@ console.log('\n■ 作品検索の「はじめの一覧」（ページを作る�
     const want = found.slice(0, S.PAGE_SIZE).map((r) => {
       const cast = r.a.filter((n) => typeof n === 'string' && n);
       const shown = plain(S.castShown(cast, S.CAST_LIMIT));
-      return { c: r.c, href: `/item/${r.c}/`, img: S.smallImageUrl(S.rowImage(r)), status: S.statusOf(r.d, today, index.newDays), title: r.t, cast: shown.names, castMore: shown.more, date: jp(r.d), maker: r.m || '', vr: r.v === 1, solo: r.o === 1 };
+      return { c: r.c, href: r.k === 1 ? `/item/${r.c}/` : `/w/${r.c}/`, img: S.smallImageUrl(S.rowImage(r)), status: S.statusOf(r.d, today, index.newDays), title: r.t, cast: shown.names, castMore: shown.more, date: jp(r.d), maker: r.m || '', vr: r.v === 1, solo: r.o === 1 };
     });
     check(`${name}: はじめの一覧（新しい順・はじめの${S.PAGE_SIZE}本）と本数は、ブラウザで作る一覧と同じ（画像・新作/予約の札・出演者・発売日・メーカー）`, JSON.stringify(fp.rows) === JSON.stringify(want) && fp.total === found.length,
       JSON.stringify(fp.rows.find((r, i) => JSON.stringify(r) !== JSON.stringify(want[i]))));
@@ -236,7 +236,11 @@ console.log('\n■ 作品検索の続き（/data/items-more/N.json。作品ペ�
   check('リンク: 続きの x:1 はFANZAの作品ページ（{cid} を作品IDに）・u はそのURL・ふつうの行は作品ページ',
     JSON.stringify(plain(S.rowLink({ c: 'z010', x: 1 }, fanza))) === JSON.stringify({ href: AF('z010'), external: true })
       && JSON.stringify(plain(S.rowLink({ c: 'z022', u: 'https://video.dmm.co.jp/av/content/?id=z022' }, fanza))) === JSON.stringify({ href: 'https://video.dmm.co.jp/av/content/?id=z022', external: true })
-      && JSON.stringify(plain(S.rowLink({ c: 'a001' }, fanza))) === JSON.stringify({ href: '/item/a001/', external: false }));
+      && JSON.stringify(plain(S.rowLink({ c: 'a001', k: 1 }, fanza))) === JSON.stringify({ href: '/item/a001/', external: false }));
+  // コメントのある作品（k: 1）は /item/、無い作品は /w/（2026-11-10。案A）
+  check('リンク: コメントのある行（k: 1）は /item/・無い行は /w/（索引の k はコメントのある作品だけ）',
+    JSON.stringify(plain(S.rowLink({ c: 'a002' }, fanza))) === JSON.stringify({ href: '/w/a002/', external: false })
+      && [...L.buildSearchIndexes(pagedItems, pagedItems, today).main.items].every((r) => (r.k === 1) === Boolean(pagedItems.find((i) => i.cid === r.c)?.comment?.trim())));
   check('リンク: FANZA(DMM)の https でないURL・形の違う作品ID・決まった形が無いときは使わない',
     S.rowLink({ c: 'z1', u: 'https://example.net/x' }, fanza) === null && S.rowLink({ c: 'z1', u: 'javascript:alert(1)' }, fanza) === null && S.rowLink({ c: 'z1', u: 'https://fanza.co.jp.evil.example/' }, fanza) === null
       && S.rowLink({ c: '../x', x: 1 }, fanza) === null && S.rowLink({ c: 'z1', x: 1 }, '') === null && S.rowLink({ c: 'z1', x: 1 }, 'https://example.net/{cid}') === null && S.rowLink(null, fanza) === null);

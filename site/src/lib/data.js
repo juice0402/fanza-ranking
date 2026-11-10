@@ -1,7 +1,7 @@
 // JSON（Pythonが毎日貯めているデータ）を読み込んで、画面で使う形にします。
 import raw from '../data/new_releases.json';
 import rawRoundups from '../data/roundups.json';
-import { normalizeItems, splitByRelease, jstToday, groupByActress, groupByMaker, indexByName, entitySlug, actressPath } from './items.js';
+import { normalizeItems, splitByRelease, jstToday, groupByActress, groupByMaker, indexByName, entitySlug, actressPath, itemPagePath } from './items.js';
 import { normalizeRoundups } from './roundups.js';
 import { normalizeMonthly } from './monthly.js';
 import { groupByMonth, groupByTag, monthPathByKey } from './collections.js';
@@ -264,6 +264,11 @@ export const pagePlan = planPages(all, {
   floors: FLOOR_KEYS.reduce((n, k) => n + floorFileCount(floors[k], floorMakerGroups[k], floorCollectionGroups[k], floorSalePageGroups[k]), 0),
 });
 export const paged = pagePlan.paged;
+// 作品IDから作品ページの住所（作品ページがある作品だけ。コメントがあれば /item/、無ければ /w/。無ければ ''。女優の歩みの作品名のリンク。2026-11-10）
+const itemOfCid = new Map(all.map((i) => [i.cid, i]));
+export const pagePathOf = (cid) => (paged.has(cid) && itemOfCid.has(cid) ? itemPagePath(itemOfCid.get(cid)) : '');
+// lib/plan.js の itemHref が、コメントを持たない作品の形（today.json の予約で人気など）を渡されても、正しい住所（/item/ か /w/）を出すため
+paged.pathOf = pagePathOf;
 
 // 所属事務所とSNS（事務所の公式サイトから週1回。scripts/agency_links.py）。まだ無ければ空
 export const agencies = normalizeAgencies(optionalData('agencies'));
