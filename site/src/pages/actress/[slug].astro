@@ -15,7 +15,7 @@ import MiniShelf from '../../components/MiniShelf.astro';
 import CastFaces from '../../components/CastFaces.astro';
 import { bodyNeighborsOf, bodyNote, bodySearchHref, nextActressNote, nextActressesOf } from '../../lib/stay.js';
 import { ratedShelf } from '../../lib/reviews.js';
-import { inlineScript } from '../../lib/assets.js';
+import { assetUrl, inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
 import { actressByName, actressLinks, actressPageGroups, bodyNear, bodyProfileOf, actressReading, agencyOfName, events, eventsOfName, historyByName, makerByName, profilesByName, sale, storiesByName, today, seriesById } from '../../lib/data.js';
 import { readingLine } from '../../lib/kana.js';
@@ -309,4 +309,6 @@ const trail = [
       </section>
     )}
   </div>
+  {/* つづきから（2026-11-12 #256）: トップの「つづきから」の棚のために、この端末に記録する（public/recent.js。localStorage だけ） */}
+  <script is:inline src={assetUrl('/recent.js')} defer data-recent-type="actress" data-name={group.name} data-path={group.path} data-face={faceUrl(profile, true) || ''}></script>
 </Base>

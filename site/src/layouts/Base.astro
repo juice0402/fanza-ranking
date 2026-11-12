@@ -31,6 +31,7 @@ const {
   ogMeta = [], // OGP に足す項目 [property, content] の配列（作品ページの video:actor・video:release_date・video:tag。lib/items.js の itemOgMeta）
   feeds = [], // このページだけの RSS（[{ title, href }]。/sale/ の「始まったセール」。issue #239）
   tenYenBar = true, // 10円セールの帯（開催中だけ出る）。10円セールの大きな案内があるページ（トップ・売り場のトップ・セールのページ・10円セールのページ）では出さない
+  recent = false, // トップの「つづきから」の棚（#256）: 最近見た女優・作品の記録がある端末に html.has-recent を付ける（トップだけ）
 } = Astro.props;
 
 const canonical = SITE_URL + path;
@@ -70,6 +71,7 @@ import { assetUrl } from '../lib/assets.js';
          ページごとに送られる小さなスクリプトなので、説明はここ（Astro のコメント。出力されない）に書く。
          お気に入りの出演者・メーカーがある人には has-favs と、トップの推しの棚が取っておく行の数 --oshi-rows（4人まで）を付ける */}
     <script is:inline>document.documentElement.classList.add('js');try{var fv=JSON.parse(localStorage.getItem('fanza-fav-v1')||'null'),fn=function(k){return fv&&fv[k]&&typeof fv[k]==='object'?Object.keys(fv[k]).length:0};if(fn('actress')||fn('maker')){document.documentElement.classList.add('has-favs');document.documentElement.style.setProperty('--oshi-rows',Math.min(4,fn('actress')+fn('maker')))}if(!fn('actress')&&!fn('maker')&&!fn('work'))document.documentElement.classList.add('fav-none')}catch(e){}try{if(localStorage.getItem('hide-vr')==='1')document.documentElement.classList.add('hide-vr');if(localStorage.getItem('only-solo')==='1')document.documentElement.classList.add('only-solo')}catch(e){}</script>
+    {recent && <script is:inline>try{var rc=JSON.parse(localStorage.getItem('fanza-recent-v1')||'null');if(rc&&((Array.isArray(rc.a)&&rc.a.length)||(Array.isArray(rc.w)&&rc.w.length)))document.documentElement.classList.add('has-recent')}catch(e){}</script>}
 
     {/* アイコンの URL にも、中身から作った印（?v=…。lib/assets.js）を付ける（2026-10-23。運営者の「ファビコンの更新を自動で」）。
          アイコンを変えると URL も変わるので、ブラウザが前のアイコンを覚えていても、次に開いたときに新しいものを取りに行く */}

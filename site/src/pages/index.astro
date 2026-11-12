@@ -108,6 +108,7 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
 
 <Base
   tenYenBar={false}
+  recent
   title={`${SITE_NAME}｜きょうのセール・10円セールと新作・予約を毎日更新`}
   description={homeDescription({ today, released, upcomingShown, upcomingLast: upcoming.slice(0, HOME_UPCOMING_LIMIT).at(-1)?.dateKey ?? '', top1: top[0] ?? null, topIsNew, saleCount: saleCamps.length })}
   path="/"
@@ -144,6 +145,15 @@ const GACHA_MOVE_JS = moveJs('gacha', 'gacha-home', true);
       )}
 
       <div class="home-side">
+      {/* つづきから（2026-11-12 #256）: この端末で最近見た女優6人・作品3本（public/recent.js。記録は localStorage だけ）。
+          記録がある人（html.has-recent。Base.astro の <head> が付ける）にだけ場所を出し、すぐ下にそのまま入れたスクリプトが読みこむそばに中身を入れる（下がずれない）。
+          スマホは TOP3 のすぐ下（推しの棚より上）、パソコンは右の欄のいちばん上（site.css の order） */}
+      <section id="recent-shelf" class="recent-shelf" aria-labelledby="recent-title" hidden>
+        <h2 id="recent-title" class="today-sec-title">つづきから</h2>
+        <p class="section-note">この端末で最近見た女優と作品</p>
+        <div class="recent-body" data-recent-body></div>
+      </section>
+      <script is:inline id="recent-early" set:html={inlineScript('/recent.js')} />
       {/* 推しの棚（2026-10-31。C-016 案B。前の1行のお知らせ「★ お気に入りの新作・予約を見る」の代わり）: ☆の出演者・メーカーがある人（html.has-favs）にだけ、
           推しごとに名前・予約/新作/セールの本数・小さな表紙4つ（favorites.js）。スマホは TOP3 のすぐ下、パソコンは右の欄のいちばん上（site.css の order）。
           はじめから場所を取る（あとから出てきて下がずれないように） */}

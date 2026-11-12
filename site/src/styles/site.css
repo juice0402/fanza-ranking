@@ -4747,7 +4747,63 @@ html:not(.js) .work-search,
   }
 }
 
-/* 「お気に入り」ページの「まだお気に入りがありません」: お気に入りが無い人（html.fav-none）にだけ、はじめから出す（あとから出てきて、下がずれないように） */
+/* ---------- トップの「つづきから」（2026-11-12 #256。index.astro の #recent-shelf・public/recent.js） ----------
+   この端末で最近見た女優6人（顔の丸の3つ並び×2段。CastFaces と同じ形）と作品3本（小さな表紙＋題の行）。
+   スマホは TOP3 のすぐ下（推しの棚より上）、パソコンは右の欄のいちばん上（推しの棚の上） */
+.recent-shelf[hidden] {
+  display: none;
+}
+
+/* 記録がある人（html.has-recent。Base.astro の <head> が付ける）には、はじめから場所を出す（中身は棚のすぐ下のスクリプトが、読みこむそばに入れる） */
+.has-recent .recent-shelf[hidden] {
+  display: block;
+}
+
+.home-side > .recent-shelf {
+  order: -4;
+}
+
+.recent-shelf .recent-works {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 8px;
+}
+
+.recent-clear {
+  display: inline-block;
+  min-height: 32px;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--paper-dim);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.recent-clear:hover {
+  color: var(--paper);
+}
+
+/* パソコン: 右の欄のいちばん上。下の推しの棚・作品を探すの上には細い線（棚が出ている人＝html.has-recent だけ） */
+@media (min-width: 960px) {
+  .home-side > .recent-shelf {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .has-recent .home-side > .oshi-shelf,
+  .has-recent .home-side > .find {
+    margin-top: 28px;
+    padding-top: 26px;
+    border-top: 1px solid var(--line);
+  }
+}
+
+/* 「お気に入り」ページの「まだお気に入りがありません」:お気に入りが無い人（html.fav-none）にだけ、はじめから出す（あとから出てきて、下がずれないように） */
 [data-fav-empty] {
   display: none;
 }
