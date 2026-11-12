@@ -63,5 +63,57 @@ const crowd = T.floorPickRow({ floor: 'anime', label: 'アニメ', item: f('anim
 check('作家・出演者は3人まで（多いときは「ほか」）・予約は売り場の名前のあと・値段が無ければ出さない・作り手が無くても止まらない',
   crowd.line === 'あ、い、うほか' && crowd.meta === 'アニメ・予約' && crowd.upcoming === false && T.FLOOR_PICK_NAMES === 3, JSON.stringify(crowd));
 
+console.log('■ 沼を深くする（人気の順に・次に見る女優。2026-11-12 案B）');
+{
+  const day = '2026-11-12';
+  const p = (cid, dateKey, actress, popAll, extra = {}) => w(cid, dateKey, actress, { popAll, popNew: null, ...extra });
+  // 女優Aの作品: 人気の順は a2(3位) → a1(10位) → a4(20位。新着の順位のほうが上なら、そちら) → 順位なしは新しい順 a3 → a5。a6 は発売前・a7 は未成年を連想させるタイトル
+  const A = [
+    p('a1', '2026-10-01', ['女優A'], 10),
+    p('a2', '2026-09-01', ['女優A'], 3),
+    p('a3', '2026-11-01', ['女優A'], null),
+    w('a4', '2026-08-01', ['女優A', '女優B'], { popAll: 50, popNew: 20 }),
+    p('a5', '2026-07-01', ['女優A'], null),
+    p('a6', '2026-12-01', ['女優A'], null),
+    p('a7', '2026-06-01', ['女優A'], 1, { title: '女子校生の作品' }),
+  ];
+  const B = [A[3], p('b1', '2026-10-05', ['女優B'], 5, { maker: 'メーカーB' }), p('b2', '2026-10-06', ['女優B'], 40, { maker: 'メーカーB' })];
+  const C = [p('c1', '2026-10-01', ['女優C'], 7), p('c2', '2026-10-02', ['女優C'], 8, { comment: 'ひとこと。' })];
+  const D = [p('d1', '2026-10-01', ['女優D'], 2, { maker: 'メーカーB' }), p('d2', '2026-10-02', ['女優D'], 9, { maker: 'メーカーB' })];
+  const groups = [
+    { name: '女優A', path: '/actress/a/', items: A },
+    { name: '女優B', path: '/actress/b/', items: B },
+    { name: '女優C', path: '/actress/c/', items: C },
+    { name: '女優D', path: '/actress/d/', items: D },
+  ];
+  const byName = new Map(groups.map((g) => [g.name, g]));
+  const order = T.walkList(A[0], A, day).map((x) => x.cid).join(',');
+  check('人気の順: 順位の小さい順（全体と新着の上のほう）→ 順位なしは新しい順・発売前と未成年を連想させるタイトルは入れない', order === 'a2,a1,a4,a3,a5', order);
+  check('発売前の作品のページでは、その作品だけ入れて位置を出す', T.walkList(A[5], A, day).some((x) => x.cid === 'a6'));
+  const mid = T.castWalksOf(A[0], byName, day)[0];
+  check('前の作品・次の作品・何本めか', mid.name === '女優A' && mid.at === 2 && mid.total === 5 && mid.prev.cid === 'a2' && mid.next.cid === 'a4' && mid.nextName === '' && mid.path === '/actress/a/', JSON.stringify({ at: mid.at, total: mid.total }));
+  const first = T.castWalksOf(A[1], byName, day)[0];
+  check('いちばん人気の作品は、前の作品なし', first.at === 1 && first.prev === null && first.next.cid === 'a1');
+  const two = T.castWalksOf(A[3], byName, day);
+  check('出演者が2人なら2人ぶん（出演者の並び順）', two.length === 2 && two[0].name === '女優A' && two[1].name === '女優B' && two[1].at === 2 && two[1].prev.cid === 'b1' && two[1].next.cid === 'b2');
+  check('出演者が多すぎる作品・作品が1本だけの人には出さない',
+    T.castWalksOf(w('z1', '2026-10-01', ['女優A', 'x', 'y', 'z', 'v']), byName, day).length === 0 &&
+    T.castWalksOf(w('z2', '2026-10-01', ['ひとり']), new Map([['ひとり', { name: 'ひとり', path: '/actress/h/', items: [w('z2', '2026-10-01', ['ひとり'])] }]]), day).length === 0);
+
+  // 次に見る女優: 女優Aの共演は女優B（1本）。同じメーカー（メーカーA）は女優C。検索に出せるページ（コメントのある作品がある）の人が先
+  const idx = T.actressLinkIndex(groups, (g) => g.items.some((x) => String(x.comment ?? '').trim()));
+  const nextA = T.nextActressesOf('女優A', idx);
+  check('検索に出せる人が先 → 共演 → 同じメーカー・自分は入れない', nextA.map((r) => r.name).join(',') === '女優C,女優B' && nextA[0].kind === 'maker' && nextA[1].kind === 'costar' && nextA[1].count === 1, JSON.stringify(nextA));
+  check('顔の下の文は「共演○本」と「同じメーカー」', T.nextActressNote(nextA[1]) === '共演1本' && T.nextActressNote(nextA[0]) === '同じメーカー');
+  const idx2 = T.actressLinkIndex(groups);
+  check('検索に出せる人がいなければ、共演が先', T.nextActressesOf('女優A', idx2).map((r) => r.name).join(',') === '女優B,女優C');
+  check('同じメーカーは、その人にいちばん多いメーカーの人が先（女優BはメーカーBの女優D → メーカーAの女優C）', T.nextActressesOf('女優B', idx2).map((r) => r.name).join(',') === '女優A,女優D,女優C', JSON.stringify(T.nextActressesOf('女優B', idx2)));
+  check('人数は NEXT_ACTRESS_SHOWN まで', T.NEXT_ACTRESS_SHOWN === 6 && T.nextActressesOf('女優A', idx2, 1).length === 1);
+  // 最後の作品では、次に見る女優のいちばん人気の作品へ（前の作品と同じ作品は選ばない）
+  const last = T.castWalksOf(A[4], byName, day, { nextActress: (name) => T.nextActressWork(name, idx, day, A[4].cid) })[0];
+  check('いちばん最後の作品では、次に見る女優のいちばん人気の作品へ', last.at === 5 && last.prev.cid === 'a3' && last.next.cid === 'c1' && last.nextName === '女優C', JSON.stringify({ next: last.next?.cid, name: last.nextName }));
+  check('次に見る女優の作品が無いときは、次の作品なし', T.castWalksOf(A[4], byName, day, { nextActress: () => null })[0].next === null);
+}
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);
