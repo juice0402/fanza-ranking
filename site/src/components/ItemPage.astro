@@ -406,6 +406,8 @@ import { assetUrl, inlineScript } from '../lib/assets.js';
   {zoomable && <script is:inline src={assetUrl('/lightbox.js')} defer></script>}
   <script is:inline src={assetUrl('/gacha.js')} defer></script>
   {hasMovie && <script is:inline src={assetUrl('/movie.js')} defer></script>}
+  {/* つづきから（2026-11-12 #256）: トップの「つづきから」の棚のために、この端末に記録する（public/recent.js。localStorage だけ）。題を隠す作品（未成年を連想させるタイトル）は記録しない */}
+  {!isMinorTitle(item.title) && <script is:inline src={assetUrl('/recent.js')} defer data-recent-type="work" data-cid={item.cid} data-title={truncate(item.title, 40)} data-image={item.image_url || ''} data-path={itemPagePath(item)}></script>}
 
   {item.url && (
     <div class="sticky-cta">

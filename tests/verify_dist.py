@@ -1635,8 +1635,38 @@ _oshi = re.search(r'<section id="oshi-shelf"[^>]*>(.*?)</section>', home_html, r
 check("トップに推しの棚（#oshi-shelf）がある（ふだんは hidden。見出し「推しの棚」・お気に入りへのリンク・中身の入れ物 data-oshi-body）",
       bool(_oshi) and re.search(r'<section id="oshi-shelf"[^>]*\bhidden\b', home_html) is not None and "推しの棚" in _oshi.group(1)
       and 'href="/favorites/"' in _oshi.group(1) and "data-oshi-body" in _oshi.group(1), _oshi.group(0)[:120] if _oshi else None)
-check("推しの棚は右の欄（.home-side）のいちばん上（スマホは TOP3 のすぐ下）",
-      re.search(r'<div class="home-side">\s*<section id="oshi-shelf"', home_html) is not None)
+check("推しの棚は右の欄（.home-side）のいちばん上（「つづきから」の棚のすぐ下。スマホは TOP3 のすぐ下）",
+      re.search(r'<div class="home-side">\s*<section id="recent-shelf".*?</section>\s*<script id="recent-early">.*?</script>\s*<section id="oshi-shelf"', home_html, re.S) is not None)
+# トップの「つづきから」（2026-11-12 #256。この端末で最近見た女優と作品。public/recent.js）
+_recent = re.search(r'<section id="recent-shelf"[^>]*>(.*?)</section>', home_html, re.S)
+check("トップに「つづきから」の棚（#recent-shelf）がある（はじめは hidden。見出し「つづきから」・説明1行・中身の入れ物 data-recent-body）",
+      bool(_recent) and re.search(r'<section id="recent-shelf"[^>]*\bhidden\b', home_html) is not None and "つづきから" in _recent.group(1)
+      and "この端末で最近見た女優と作品" in _recent.group(1) and "data-recent-body" in _recent.group(1), _recent.group(0)[:120] if _recent else None)
+_recent_js = read_raw(os.path.join(DIST, "recent.js")) if os.path.isfile(os.path.join(DIST, "recent.js")) else ""
+_recent_early = re.search(r'<script id="recent-early">(.*?)</script>', home_html, re.S)
+check("「つづきから」の棚のすぐ下に、recent.js の中身がそのまま入っている（読みこむそばに中身を入れる。下がずれない）",
+      bool(_recent_js) and bool(_recent_early) and "fanza-recent-v1" in _recent_early.group(1) and "recent-shelf" in _recent_early.group(1))
+_home_head = home_html[: home_html.find("</head>")]
+check("トップの <head> で、記録がある端末に html.has-recent を付ける（はじめから場所を取る）",
+      "localStorage.getItem('fanza-recent-v1')" in _home_head and "classList.add('has-recent')" in _home_head)
+_rec_pages = {"作品ページ（/item/）": next(iter(sorted(glob.glob(os.path.join(DIST, "item", "*", "index.html")))), None),
+              "作品ページ（/w/）": next(iter(sorted(glob.glob(os.path.join(DIST, "w", "*", "index.html")))), None),
+              "女優のページ": next(iter(sorted(glob.glob(os.path.join(DIST, "actress", "*", "index.html")))), None)}
+for _label, _f in _rec_pages.items():
+    if _f is None:
+        continue
+    _h = read_raw(_f)
+    _kind = "actress" if "女優" in _label else "work"
+    _minor = _kind == "work" and 'data-recent-type="work"' not in _h
+    check(f"{_label}に、見たことを記録するスクリプト（recent.js・data-recent-type=\"{_kind}\"）がある", _minor or re.search(r'<script src="/recent\.js\?v=[^"]+" defer data-recent-type="' + _kind + '"', _h) is not None, os.path.relpath(_f, DIST))
+_rec_bad = []
+for _f in glob.glob(os.path.join(DIST, "item", "*", "index.html")) + glob.glob(os.path.join(DIST, "w", "*", "index.html")):
+    _h = read_raw(_f)
+    _m = re.search(r'data-recent-type="work"[^>]*data-path="([^"]+)"', _h)
+    _c = re.search(r'<link rel="canonical" href="https?://[^/]+(/[^"]*)"', _h)
+    if _m and _c and _m.group(1) != _c.group(1):
+        _rec_bad.append(os.path.relpath(_f, DIST))
+check("作品ページで記録する住所は、そのページの住所（/item/ か /w/）と同じ", not _rec_bad, _rec_bad[:3])
 check("トップに前の1行のお知らせ（#fav-banner）が残っていない", 'id="fav-banner"' not in home_html)
 
 # 索引: お気に入りの出演者・メーカーの新作を、ブラウザ側で探すための小さなJSON
@@ -2222,6 +2252,8 @@ check("CSS: JavaScript が使えるときだけ使える部品（VR・単体の�
 check("CSS: お気に入りの出演者・メーカーがある人（html.has-favs）には、トップの推しの棚の場所を、はじめから出す（読みこむまでは推しの人数の行の高さを取る。あとから出てきて、下がずれないように）",
       any(".has-favs .oshi-shelf[hidden]" in [re.sub(r"\s+", " ", x) for x in sels] and re.search(r"display\s*:\s*block", b) for sels, b in css_rules)
       and any(".has-favs .oshi-body:empty" in [re.sub(r"\s+", " ", x) for x in sels] and "--oshi-rows" in b for sels, b in css_rules))
+check("CSS: 「つづきから」の記録がある人（html.has-recent）には、棚の場所をはじめから出す",
+      any(".has-recent .recent-shelf[hidden]" in [re.sub(r"\s+", " ", x) for x in sels] and re.search(r"display\s*:\s*block", b) for sels, b in css_rules))
 # 押した見た目は「□」の印（.vr-toggle-mark）が黄色になること（2026-10-22 から。スイッチの枠と地は付けない）
 _press = [sels for sels, b in css_rules if any(re.sub(r"\s+", " ", s_) == ".hide-vr .vr-toggle[data-vr-toggle] .vr-toggle-mark" for s_ in sels) and re.search(r"background\s*:\s*var\(--pop\)", b)]
 check("CSS: VR・単体のスイッチの押した見た目（□の印）は、html の印（hide-vr・only-solo）でもすぐに出る（スクリプトを待たない）", bool(_press) and any(".only-solo .vr-toggle[data-solo-toggle] .vr-toggle-mark" in [re.sub(r"\s+", " ", x) for x in sels] for sels in _press), _press[:1])

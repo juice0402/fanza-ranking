@@ -81,6 +81,7 @@ run "サンプル画像の拡大表示 (Node.js)" node tests/test_lightbox.mjs
 run "発売日カレンダー (.ics) の部品 (Node.js)" node tests/test_calendar.mjs
 
 run "お気に入りの部品 (Node.js)" node tests/test_favorites.mjs
+run "トップの「つづきから」（最近見た女優と作品の記録）の部品 (Node.js)" node tests/test_recent.mjs
 
 run "所属事務所・SNSの道具 (Python)" python3 tests/test_agencies.py
 
