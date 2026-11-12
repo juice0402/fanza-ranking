@@ -1,0 +1,320 @@
+[
+ {
+  "path": "/actress/fd7fdff272/",
+  "width": 390,
+  "issues": [
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 439,
+    "text": "大槻ひびき、波多野結衣、菊乃らん ほか4名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 393,
+    "text": "菊乃らん"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 451,
+    "text": "波多野結衣、推川ゆうり、吉根ゆりあ ほか1名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 405,
+    "text": "吉根ゆりあ"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 422,
+    "text": "羽月乃蒼、椿りか、新村あかり ほか32名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 415,
+    "text": "巴ひかり、弥生みづき、末広純 ほか7名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 451,
+    "text": "跡美しゅり、北川エリカ、波多野結衣 ほか9名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 405,
+    "text": "波多野結衣"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 470,
+    "text": "波多野結衣、大槻ひびき、有加里ののか ほか22名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 417,
+    "text": "有加里ののか"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 434,
+    "text": "逢沢みゆ、春陽モカ、松本いちか ほか43名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 439,
+    "text": "美丘さとみ、小谷舞花、波多野結衣 ほか2名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 393,
+    "text": "波多野結衣"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 405,
+    "text": "橘メアリー、大槻ひびき、波多野結衣"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 405,
+    "text": "波多野結衣"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 431,
+    "text": "AIKA、Nia（伊東める）、あべ藍 ほか86名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 446,
+    "text": "夏木りん、弥生みづき、水端あさみ ほか57名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 393,
+    "text": "水端あさみ"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 434,
+    "text": "稲場るか、篠田ゆう、波多野結衣 ほか46名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 422,
+    "text": "岡江凛、汐河佳奈、成田かなこ ほか85名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 422,
+    "text": "美園和花、羽月乃蒼、篠田ゆう ほか30名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 496,
+    "text": "木下ひまり（花沢ひまり）、東條なつ、AIKA ほか49名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 405,
+    "text": "東條なつ"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 444,
+    "text": "AIKA"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 458,
+    "text": "あおいれな、あべみかこ、かなで自由 ほか66名"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.nb",
+    "right": 405,
+    "text": "かなで自由"
+   },
+   {
+    "kind": "overflow",
+    "el": "span.ph",
+    "right": 404,
+    "text": "森沢かな（飯岡かなこ）"
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "今月のおすすめ30％OFF8本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "ブランドストア30％OFF4本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "HMN WORKS他30％OFF1本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "SODグループ30％OFF1本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "バコバコバスツアー6本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "VR BEST6本",
+    "lines": 3
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "レズれ！プレミアムBEST5本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "BOTAN厳選ベストっ！4本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "ROOKIEベスト3本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "撮り下ろしオナニー・シリーズ2本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "お姉さんの巨尻が猥褻過ぎて秒殺で悩殺！！1本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "ワンダーレディー1本",
+    "lines": 4
+   }
+  ]
+ },
+ {
+  "path": "/actress/fd7fdff272/",
+  "width": 1280,
+  "issues": [
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "今月のおすすめ30％OFF8本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "ブランドストア30％OFF4本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "HMN WORKS他30％OFF1本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "SODグループ30％OFF1本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "バコバコバスツアー6本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "VR BEST6本",
+    "lines": 3
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "レズれ！プレミアムBEST5本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "BOTAN厳選ベストっ！4本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "ROOKIEベスト3本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "撮り下ろしオナニー・シリーズ2本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "お姉さんの巨尻が猥褻過ぎて秒殺で悩殺！！1本",
+    "lines": 4
+   },
+   {
+    "kind": "orphan",
+    "el": "a.chip-link",
+    "text": "ワンダーレディー1本",
+    "lines": 4
+   }
+  ]
+ }
+]
