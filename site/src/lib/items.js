@@ -417,9 +417,11 @@ export function buildOldSitemap(xml, siteUrl = SITE_URL, oldUrl = OLD_SITE_URL) 
  * 読みに来ないよう止める（2026-11-08。Google が新しい住所を読みに来る回数が1日10回まで減り、11/1 は228回のうち84回が /search/ だった）。
  * コメントの無い作品ページ（/w/・売り場の /doujin/w/ など。waitPath・floors.js の floorWaitPath）も止める（2026-11-10。案A。
  * 10/28〜11/3 に Google が読みに来た1,223回のうち、少なくとも593回が noindex のページだった）
+ * 女優検索を条件つきで開く住所（/actress/?height=…&cup=…。女優のページの「身長とカップが近い女優」から）も止める（2026-11-12。
+ * 条件の組み合わせで住所がいくらでも増え、中身は /actress/ と同じ。/actress/<名前>/ は止めない）
  */
 export function buildRobots(siteUrl = SITE_URL) {
-  return `User-agent: *\nAllow: /\nDisallow: /search/\nDisallow: /*/search/\nDisallow: /${WAIT_DIR}/\nDisallow: /*/${WAIT_DIR}/\n\nSitemap: ${siteUrl}/sitemap.xml\n`;
+  return `User-agent: *\nAllow: /\nDisallow: /search/\nDisallow: /*/search/\nDisallow: /${WAIT_DIR}/\nDisallow: /*/${WAIT_DIR}/\nDisallow: ${ACTRESS_INDEX_PATH}?\n\nSitemap: ${siteUrl}/sitemap.xml\n`;
 }
 
 /**
