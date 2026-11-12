@@ -2127,7 +2127,8 @@ def prune_catalog(state):
     """一回りが終わったときに呼ぶ。2回続けて一回りで見かけなかった作品（人気の上位 CATALOG_LIMIT 本から外れた作品）を外し、外した本数を返す。
     1回だけ見かけなかった作品は外さない（順位が毎日少しずつ入れ替わるので、続きから取るあいだに取りこぼすことがあるため）。
     Claude がコメントを書いた作品は外さない（作品ページとコメントがあるので、コレクションに残す）
-    人気の女優を深く集めた作品も、その人を最後に集めた日から DEEP_KEEP_DAYS 日は外さない（deep_kept。集め直しは DEEP_REFRESH_DAYS 日ごと）"""
+    人気の女優を深く集めた作品も、その人を最後に集めた日から DEEP_KEEP_DAYS 日は外さない（deep_kept。集め直しは DEEP_REFRESH_DAYS 日ごと。
+    記録の c には毎日の更新の作品も入るが、過去作品に無い作品なので、ここでは関係しない）"""
     done = state["cycle"]  # 終わった一回りの番号
     seen = lambda cid: state["ranks"].get(cid, [0, done])[1]  # noqa: E731  最後に見かけた一回り
     kept = deep_kept(state, state.get("cycle_done") or datetime.now(JST).strftime("%Y-%m-%d"))
@@ -2292,7 +2293,7 @@ def update_catalog(state, archive, today, top_calls=None, calls=None, new_calls=
         print(f"  ⚠️ 人気順の一覧が、上位{CATALOG_LIMIT}本より手前で終わりました。念のため、一回りには数えず、続きの場所も進めません")
     # 人気の女優を深く（その人の FANZA の人気順の上位 DEEP_PER_ACTRESS 本。1人1回。集めてから日がたった人・まだの人から）
     deep = state.setdefault("deep", {})
-    targets = deep_targets(state, archive) if deep_calls > 0 else []
+    targets = deep_targets(state, archive)  # 集めない日（deep_calls=0）も、選ぶ人から外れた人の記録を消すのに使う
     order = {aid: n for n, (aid, _) in enumerate(targets)}
     due = [t for t in targets if t[0] not in deep or (days_between(deep[t[0]]["d"], today_str) or 0) >= DEEP_REFRESH_DAYS]
     due.sort(key=lambda t: (deep[t[0]]["d"] if t[0] in deep else "", order[t[0]]))
@@ -2320,6 +2321,7 @@ def update_catalog(state, archive, today, top_calls=None, calls=None, new_calls=
             if sale:
                 sales[cid] = sale
             if cid in archive:
+                cids.append(cid)  # 毎日の更新の作品は足さないが、その人の人気の順（サイトの「人気の順に」）には入れる
                 continue
             before = stats["added"]
             take(fresh)

@@ -1488,8 +1488,8 @@ check("1回に deep_calls 人まで・人気順（sort=rank）・100本・発売
 check("その人の作品を過去作品に足す（発売前の作品・毎日の更新の作品は足さない）",
       {"deep55000", "deep55002", "deep11001"} <= set(st_d["items"]) and "later11" not in st_d["items"] and "cat00001" not in st_d["items"]
       and r_d["deep"] == 2 and r_d["deep_added"] == 6, (r_d, sorted(st_d["items"])))
-check("どの人をいつ・何を集めたかを残す（毎日の更新の作品は入れない）",
-      st_d["deep"]["11"] == {"n": "検索に出せる人", "d": TODAY_STR, "c": ["deep11000", "deep11001", "deep11002"]} and set(st_d["deep"]) == {"11", "55"}, st_d["deep"])
+check("どの人をいつ・何を集めたかを、その人の人気の順に残す（毎日の更新の作品も、並びには入れる。発売前の作品は入れない）",
+      st_d["deep"]["11"] == {"n": "検索に出せる人", "d": TODAY_STR, "c": ["deep11000", "deep11001", "deep11002", "cat00001"]} and set(st_d["deep"]) == {"11", "55"}, st_d["deep"])
 d_queries.clear()
 m_d.update_catalog(st_d, archive_d, TODAY, top_calls=0, calls=0, new_calls=0, deep_calls=5)
 check("集めてから7日たっていない人は集め直さない（まだの人だけ）", [q["article_id"] for q in d_queries if q.get("article") == "actress"] == ["22", "33"], d_queries)
@@ -1513,6 +1513,10 @@ st_d["deep"]["99"] = {"n": "外れた人", "d": (TODAY - timedelta(days=50)).str
 st_d["deep"]["98"] = {"n": "外れたばかりの人", "d": (TODAY - timedelta(days=3)).strftime("%Y-%m-%d"), "c": []}
 m_d.update_catalog(st_d, archive_d, TODAY, top_calls=0, calls=0, new_calls=0, deep_calls=0)
 check("選ぶ人から外れて45日をこえた人の記録は消す（外れたばかりの人は残す）", "99" not in st_d["deep"] and "98" in st_d["deep"], sorted(st_d["deep"]))
+st_d["deep"]["11"]["d"] = (TODAY - timedelta(days=50)).strftime("%Y-%m-%d")
+m_d.update_catalog(st_d, archive_d, TODAY, top_calls=0, calls=0, new_calls=0, deep_calls=0)
+check("集めない日（deep_calls=0）でも、選ぶ人のままの人の記録は消さない", "11" in st_d["deep"], sorted(st_d["deep"]))
+st_d["deep"]["11"]["d"] = TODAY_STR
 # 保存して読み直す
 json.dump({"actresses": [{"id": "11", "name": "検索に出せる人"}, {"id": "x", "name": "id が数字でない人"}]}, open(m_d.ACTRESSES_PATH, "w", encoding="utf-8"), ensure_ascii=False)
 m_d.save_catalog(st_d)
