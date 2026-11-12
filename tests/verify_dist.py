@@ -919,7 +919,9 @@ for pth in actress_pages:
             here.append("「FANZAで全作品を見る」のリンクが無い・属性が足りない")
     elif btn_text in text:
         here.append("リンク先が無い人なのに「FANZAで全作品を見る」が出ている")
-    faces = [t for t in tags(text, "img") if has_class(t, "face-img")]
+    # その人の顔写真だけを見る（「次に見る女優」の欄の顔は、ほかの女優のもの。2026-11-12）
+    own_text = re.sub(r'<section[^>]*aria-labelledby="next-actress-title">.*?</section>', "", text, flags=re.S)
+    faces = [t for t in tags(own_text, "img") if has_class(t, "face-img")]
     if prof and (prof.get("image_large") or prof.get("image_small")) and not faces:
         here.append("顔写真があるはずなのに出ていない")
     if not prof and faces:
@@ -2996,7 +2998,7 @@ for p_ in glob.glob(os.path.join(DIST, "actress", "*", "index.html")):
     _na_count += 1
     self_ = "/actress/" + os.path.basename(os.path.dirname(p_)) + "/"
     links_ = re.findall(r'class="hot-link" href="([^"]+)"', m_.group(1))
-    notes_ = re.findall(r'class="cast-count">([^<]*)<', m_.group(1))
+    notes_ = [htmllib.unescape(strip_tags(n_)).strip() for n_ in re.findall(r'class="cast-count">(.*?)</a>', m_.group(1), re.S)]  # 文節の区切り（<span class="ph">・<wbr>）は外して読む
     if not 1 <= len(links_) <= 6 or self_ in links_ or "hot-rank" in m_.group(1) or len(notes_) != len(links_) or not all(re.fullmatch(r"共演\d+本|同じメーカー", n_) for n_ in notes_):
         _na_bad.append(self_)
 check(f"女優のページの「次に見る女優」（{_na_count}ページ）: 6人まで・自分のページは無い・順位の数字なし・顔の下は「共演○本」か「同じメーカー」", _na_count > 0 and not _na_bad, _na_bad[:3])
