@@ -38,7 +38,7 @@ CLAUDE.md は1万字以内に保つ。経緯・くわしいことは docs/ へ�
 | 毎日 10:12・12:12・16:12・20:12 | `ten-yen.yml`: 10円セールが変わったときだけ保存して公開 |
 | 毎日 4:23 | `actress-history.yml`: 女優の歩み（公開はしない） |
 | 毎週月曜 0:01 | `health.yml`: 見張り番（Claude を使わない） |
-| 公開・更新などが終わるたび | `mihari.yml`: 見張り（失敗したら issue・ラベル mihari。次の成功で閉じる。docs/shikumi.md の「見張り（mihari.yml）」） |
+| 公開・更新などが終わるたび・3時間ごと | `mihari.yml`: 見張り（失敗したら issue・ラベル mihari。次の成功で閉じる。bot が動かした公開は終わっても知らせが来ないので3時間ごとにも見る。docs/shikumi.md の「見張り（mihari.yml）」） |
 | ラベル merge-ok・CI が終わるたび | `merge-ok.yml`: マージの印（CI が通ったら GitHub がマージして公開を動かす。docs/shikumi.md の「マージの印（merge-ok.yml）」） |
 | 毎週月曜 0:50 | Claude の予約タスク: 週のまとめ（`docs/claude-roundups.md`）・月が変わって最初の月曜は月のまとめ（`docs/claude-monthly.md`）・読み物1本（`docs/claude-yomimono.md`）・見張り番の報告 |
 

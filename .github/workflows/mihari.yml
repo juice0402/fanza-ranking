@@ -1,7 +1,7 @@
 name: 見張り
 
 # 公開・毎日の更新・セールの読み直し・10円セール・週1回の見張り番が失敗したら、issue（ラベル mihari＝しょーくんに知らせるだけ）を作る。
-# 次に成功したら「直った」とコメントして閉じる。cancelled（あとの公開に含まれた）は無視（scripts/mihari.py。2026-11-02）。
+# 次に成功したら「直った」とコメントして閉じる。3時間ごとにも見る（bot が動かした公開は workflow_run が来ないため。2026-11-13）。cancelled（あとの公開に含まれた）は無視（scripts/mihari.py。2026-11-02）。
 # Claude を使わない。前は Claude の予約タスク「FANZA 公開の失敗の見張り」（1日2回）が見ていた。毎朝の Claude の「朝の確認」が issue を知らせる。
 # 手で試すときは Actions の画面の「Run workflow」（dry_run が true なら issue を作らず、作るはずの題と本文をログに出す。
 # run_id を入れると、その実行だけを見る。空なら、見張る workflow ごとにいちばん新しい実行）
@@ -11,6 +11,11 @@ on:
     workflows: [Deploy, Daily FANZA Update, Sale Refresh (daytime), 10-yen Sale Check, Health (weekly)]
     types: [completed]
     branches: [main]  # プレビュー（ブランチ）の公開は見ない
+  # 3時間ごとにも、見張る workflow ごとのいちばん新しい実行を見る（2026-11-13）。
+  # ほかの workflow が GITHUB_TOKEN で動かした公開（Deploy）は、終わっても workflow_run が来ない（GitHub の決まり）。
+  # 11/13 0:48 と 3:56 の公開の失敗に issue が作られなかったため。issue は1日1回しかコメントしない（noted_today）
+  schedule:
+    - cron: '23 */3 * * *'
   workflow_dispatch:
     inputs:
       dry_run:

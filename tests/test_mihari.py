@@ -160,6 +160,10 @@ for file in M.WATCH:
     wf_name = next((line.split(":", 1)[1].strip() for line in open(os.path.join(WF, file), encoding="utf-8") if line.startswith("name:")), "?")
     check(f"{file}（{wf_name}）が mihari.yml の workflows: にある", wf_name in [s.strip() for s in listed.strip("[]").split(",")], listed)
 
+_wf = open(os.path.join(WF, "mihari.yml"), encoding="utf-8").read()
+check("3時間ごとにも見る（bot が動かした Deploy は終わっても workflow_run が来ないため。2026-11-13）", "schedule:" in _wf and "cron: '23 */3 * * *'" in _wf)
+check("schedule のときは、手で動かしたときと同じく、見張る workflow ごとのいちばん新しい実行を見る", 'if event == "workflow_run":' in open(os.path.join(ROOT, "scripts", "mihari.py"), encoding="utf-8").read())
+
 print()
 print(f"見張り: {passed} 成功 / {failed} 失敗")
 sys.exit(1 if failed else 0)
