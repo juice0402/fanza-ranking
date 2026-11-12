@@ -13,11 +13,11 @@ import ActressHistory from '../../components/ActressHistory.astro';
 import { HISTORY_TOP_MIN, historyDescriptionHead, nenkanDescription, nenkanIndexable, nenkanPageTitle } from '../../lib/history.js';
 import MiniShelf from '../../components/MiniShelf.astro';
 import CastFaces from '../../components/CastFaces.astro';
-import { nextActressNote, nextActressesOf } from '../../lib/stay.js';
+import { bodyNeighborsOf, bodyNote, bodySearchHref, nextActressNote, nextActressesOf } from '../../lib/stay.js';
 import { ratedShelf } from '../../lib/reviews.js';
 import { assetUrl, inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
-import { actressByName, actressLinks, actressPageGroups, actressReading, agencyOfName, events, eventsOfName, historyByName, makerByName, profilesByName, sale, storiesByName, today, seriesById } from '../../lib/data.js';
+import { actressByName, actressLinks, actressPageGroups, bodyNear, bodyProfileOf, actressReading, agencyOfName, events, eventsOfName, historyByName, makerByName, profilesByName, sale, storiesByName, today, seriesById } from '../../lib/data.js';
 import { readingLine } from '../../lib/kana.js';
 import { entryChips } from '../../lib/insights.js';
 import EntryChips from '../../components/EntryChips.astro';
@@ -63,6 +63,9 @@ const story = history ? storiesByName.get(group.name) ?? null : null;
 const noindex = nenkan ? !nenkanIndexable(history, story) : !listIndexable(group.items);
 // 次に見る女優（共演 → 同じメーカー。検索に出せるページの人が先。2026-11-12 案B「順に見る道」。lib/stay.js の nextActressesOf）。名簿の人のページには出さない
 const nextActresses = nenkan ? [] : nextActressesOf(group.name, actressLinks);
+// 身長とカップが近い女優（FANZA公式のプロフィールの数字。顔や雰囲気が似ている、は出さない。2026-11-12。lib/stay.js の bodyNeighborsOf）。
+// 「次に見る女優」に出た人は除く。名簿の人のページには出さない
+const bodyNearBy = nenkan ? null : bodyNeighborsOf(group.name, bodyProfileOf(group.name), bodyNear, { exclude: nextActresses.map((r) => r.name) });
 // メーカーは、作品の多い順に8社まで（ほかは「ほか○社」。名前だけで画面が埋まらないように。2026-10-06）
 const MAKERS_SHOWN = 8;
 const makersAll = rankedNames(group.items.map((i) => i.maker).filter((m) => m !== '不明'), Infinity).names;
@@ -295,6 +298,14 @@ const trail = [
       <section class="section" aria-labelledby="next-actress-title">
         <h2 id="next-actress-title" class="section-title">次に見る女優</h2>
         <CastFaces rows={nextActresses} ranked={false} note={nextActressNote} />
+      </section>
+    )}
+
+    {bodyNearBy && bodyNearBy.rows.length > 0 && (
+      <section class="section" aria-labelledby="body-near-title">
+        <h2 id="body-near-title" class="section-title">身長とカップが近い女優</h2>
+        <CastFaces rows={bodyNearBy.rows} ranked={false} note={bodyNote} />
+        <p class="more"><a class="btn btn-quiet" href={bodySearchHref(ACTRESS_INDEX_PATH, bodyNearBy)}>身長{bodyNearBy.min}〜{bodyNearBy.max}cm・{bodyNearBy.cup}カップの女優をもっと見る</a></p>
       </section>
     )}
   </div>

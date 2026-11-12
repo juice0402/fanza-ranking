@@ -323,8 +323,9 @@ robots = os.path.join(DIST, "robots.txt")
 check("robots.txt に Sitemap の行がある", os.path.isfile(robots) and "Sitemap:" in read(robots))
 # 作品検索の画面（noindex・条件で住所がいくらでも増える）は読みに来ないよう止める（items.js の buildRobots。2026-11-08）。
 # コメントの無い作品ページ（/w/・売り場の /○○/w/。noindex）も止める（案A。2026-11-10）
-_robots_ok = ("Disallow: /search/", "Disallow: /*/search/", "Disallow: /w/", "Disallow: /*/w/")
-check("robots.txt で作品検索の画面（/search/・売り場の /○○/search/）とコメントの無い作品ページ（/w/・/○○/w/）を止め、ほかは止めない", os.path.isfile(robots)
+# 条件つきの女優検索（/actress/?height=…&cup=…。女優のページの「身長とカップが近い女優」から）も止める（2026-11-12）
+_robots_ok = ("Disallow: /search/", "Disallow: /*/search/", "Disallow: /w/", "Disallow: /*/w/", "Disallow: /actress/?")
+check("robots.txt で作品検索の画面（/search/・売り場の /○○/search/）・コメントの無い作品ページ（/w/・/○○/w/）・条件つきの女優検索（/actress/?）を止め、ほかは止めない", os.path.isfile(robots)
       and all(x in read(robots).splitlines() for x in _robots_ok)
       and all(ln.strip() in _robots_ok for ln in read(robots).splitlines() if ln.startswith("Disallow")),
       read(robots) if os.path.isfile(robots) else "")
@@ -424,6 +425,14 @@ _np_missing = [h for h in _np_hrefs if not os.path.isfile(os.path.join(DIST, h.s
 _np_count = len(_np_hrefs)
 check(f"女優の年表（/actress/nenpyo/）: ページがあり、{_np_count}人が50音の見出しで並び、名前から女優のページの歩みの欄へ（飛び先がある）",
       bool(_np_raw) and re.sub(r"<[^>]+>", "", (re.search(r'<h1 class="hero-title">(.*?)</h1>', _np_raw, re.S) or re.search("()", "")).group(1)).strip() == "女優の年表" and not _np_missing and _np_count <= len(_np_names) and (_np_count == 0 or 'class="kana-head"' in _np_raw), (_np_count, len(_np_names), _np_missing[:3]))
+# しぼりこみと並べかえ（2026-11-12 #255）: 全員の行に、しぼりこみ用のデータ（年・メーカーの番号・いまも新作あり・本数・最初の作品の日・50音の順）。
+# メーカーの番号は選択肢の中だけ。しぼりこみの欄とスクリプトがあり、条件を URL に入れない（フォームに action・name のある送信ボタンが無い）
+_np_lis = re.findall(r"<li([^>]*)>", "".join(_np_links))
+_np_mk_n = len(re.findall(r"<option value=\"\d+\"", (re.search(r'<select name="maker">(.*?)</select>', _np_raw, re.S) or re.search("()", "")).group(1)))
+_np_bad_li = [a for a in _np_lis if not re.search(r'data-y="(\d{4}|old)" data-m="(-1|\d+)" data-a="[01]" data-t="\d+" data-f="\d{8}" data-o="\d+"', a) or int(re.search(r'data-m="(-?\d+)"', a).group(1)) >= _np_mk_n]
+check(f"女優の年表: 全員（{len(_np_lis)}人）の行に、しぼりこみ用のデータがある・しぼりこみの欄（並び順・年・いまも新作あり）とスクリプトがある",
+      _np_count == 0 or (len(_np_lis) == _np_count and not _np_bad_li and all(f'<select name="{n}">' in _np_raw for n in ("sort", "year")) and 'name="active"' in _np_raw
+                         and 'src="/nenpyo.js?v=' in _np_raw and os.path.isfile(os.path.join(DIST, "nenpyo.js")) and not re.search(r'<form[^>]*\baction=', _np_raw)), (len(_np_lis), _np_count, _np_bad_li[:2]))
 _as_raw = read_raw(os.path.join(DIST, "actress", "index.html")) if os.path.isfile(os.path.join(DIST, "actress", "index.html")) else ""
 check("女優の年表: 年表のある人がいれば、女優検索のページに入口が1つ・sitemap に入る（0人なら noindex・sitemap に入れない）",
       (_as_raw.count('href="/actress/nenpyo/"') == 1 and ("/actress/nenpyo/" in sm_paths if os.path.isfile(sitemap_path) else True)) if _np_count > 0
@@ -919,8 +928,8 @@ for pth in actress_pages:
             here.append("「FANZAで全作品を見る」のリンクが無い・属性が足りない")
     elif btn_text in text:
         here.append("リンク先が無い人なのに「FANZAで全作品を見る」が出ている")
-    # その人の顔写真だけを見る（「次に見る女優」の欄の顔は、ほかの女優のもの。2026-11-12）
-    own_text = re.sub(r'<section[^>]*aria-labelledby="next-actress-title">.*?</section>', "", text, flags=re.S)
+    # その人の顔写真だけを見る（「次に見る女優」「身長とカップが近い女優」の欄の顔は、ほかの女優のもの。2026-11-12）
+    own_text = re.sub(r'<section[^>]*aria-labelledby="(?:next-actress|body-near)-title">.*?</section>', "", text, flags=re.S)
     faces = [t for t in tags(own_text, "img") if has_class(t, "face-img")]
     if prof and (prof.get("image_large") or prof.get("image_small")) and not faces:
         here.append("顔写真があるはずなのに出ていない")
@@ -1681,9 +1690,11 @@ if os.path.isfile(fav_index_path):
     check("索引が正しいJSONで、generated（日付）と items（配列）がある", isinstance(fav_index, dict) and DAY.match(str(fav_index.get("generated", ""))) and isinstance(fav_index.get("items"), list), str(fav_index)[:80])
     if isinstance(fav_index, dict) and isinstance(fav_index.get("items"), list):
         rows = fav_index["items"]
-        check("索引のすべての項目が、短い名前（c,t,d,a,m,i と、コメントの無い作品だけ w）だけで、データにある作品", all(isinstance(r, dict) and set(r) == ({"c", "t", "d", "a", "m", "i"} | (set() if r.get("c") in valid and has_comment(valid[r["c"]]) else {"w"})) and r["c"] in valid and r.get("w", 1) == 1 and DAY.match(str(r["d"])) and isinstance(r["a"], list) for r in rows), [r for r in rows if not (isinstance(r, dict) and set(r) == {"c", "t", "d", "a", "m", "i"})][:1])
+        check("索引のすべての項目が、短い名前（c,t,d,a,m と、決まった形でない画像 i・コメントの無い作品だけ w）だけで、データにある作品", all(isinstance(r, dict) and (set(r) - {"i"}) == ({"c", "t", "d", "a", "m"} | (set() if r.get("c") in valid and has_comment(valid[r["c"]]) else {"w"})) and r["c"] in valid and r.get("w", 1) == 1 and DAY.match(str(r["d"])) and isinstance(r["a"], list) for r in rows), [r for r in rows if not (isinstance(r, dict) and set(r) == {"c", "t", "d", "a", "m", "i"})][:1])
         check("索引は発売日の新しい順", [r["d"] for r in rows] == sorted((r["d"] for r in rows), reverse=True))
         warn("索引に作品が1件以上ある", bool(rows))
+        _std_i = [r for r in rows if isinstance(r, dict) and r.get("i") == f"https://pics.dmm.co.jp/digital/video/{r.get('c')}/{r.get('c')}pl.jpg"]
+        check("索引の決まった形の画像は省いている（favorites.js の indexItems が作り直す。2026-11-13）", not _std_i, _std_i[:1])
         check("索引の大きさが 300KB 以内（毎回ダウンロードされるため）", os.path.getsize(fav_index_path) <= 300 * 1024, os.path.getsize(fav_index_path))
 
 # 索引: 推しの棚が、お気に入りの出演者・メーカーのセール中の作品を探すための小さなJSON（2026-10-31）
@@ -2860,13 +2871,16 @@ for pth in actress_pages:
         here.append("歩み")
     if _has_hist:
         _hist_seen += 1
+        _hs = re.search(r'<section class="section hist".*?</section>', raw_, re.S)
+        if not _hs or 'href="/actress/nenpyo/"' not in _hs.group(0):
+            here.append("歩みの欄に年表の一覧へのリンクが無い")
         for _lb in re.findall(r'<span class="hist-label">(.*?)</span>(?=\s*(?:<a class="hist-title"|<span class="hist-title"|</dd>))', raw_, re.S):
             _lb = htmllib.unescape(re.sub(r"<[^>]+>", "", _lb)).replace("\u200b", "").strip()
             if not _hist_label.match(_lb):
                 here.append(("年譜の見出し", _lb))
     if here:
         bad_act2.append((name_, here))
-check(f"出演者のページ（{len(actress_pages)}ページ）: タイトルに年月（予約があれば「予約」も）・次の新作・セール中の作品（あるときだけ）・更新日・ProfilePage の構造化データ・歩み（集めてある{_hist_seen}人だけ・タイトルに「と年表」・年譜の見出し）・人気作ベスト{_top_seen['popular']}人・評価の高い作品（FANZA全体）{_top_seen['rated']}人は集めてある人だけ",
+check(f"出演者のページ（{len(actress_pages)}ページ）: タイトルに年月（予約があれば「予約」も）・次の新作・セール中の作品（あるときだけ）・更新日・ProfilePage の構造化データ・歩み（集めてある{_hist_seen}人だけ・タイトルに「と年表」・年譜の見出し・年表の一覧へのリンク）・人気作ベスト{_top_seen['popular']}人・評価の高い作品（FANZA全体）{_top_seen['rated']}人は集めてある人だけ",
       not bad_act2, bad_act2[:2])
 
 # 名簿の人のページ（女優名鑑その3。2026-10-27 #173。しょーくん「作品が多い人だけ増やす」）: 女優検索の名簿にいて、このサイトにページの無い人のうち、
@@ -3034,6 +3048,33 @@ for p_ in glob.glob(os.path.join(DIST, "actress", "*", "index.html")):
     if not 1 <= len(links_) <= 6 or self_ in links_ or "hot-rank" in m_.group(1) or len(notes_) != len(links_) or not all(re.fullmatch(r"共演\d+本|同じメーカー", n_) for n_ in notes_):
         _na_bad.append(self_)
 check(f"女優のページの「次に見る女優」（{_na_count}ページ）: 6人まで・自分のページは無い・順位の数字なし・顔の下は「共演○本」か「同じメーカー」", _na_count > 0 and not _na_bad, _na_bad[:3])
+# 女優のページの「身長とカップが近い女優」（2026-11-12。lib/stay.js の bodyNeighborsOf）: 6人まで・自分と「次に見る女優」の人は出ない・順位の数字なし・
+# 顔の下は「○cm・○カップ」（全員同じカップ・身長は±3cm）・リンク先は女優のページ・「もっと見る」は同じ身長の幅とカップの女優検索
+_bn_bad = []
+_bn_count = 0
+for p_ in glob.glob(os.path.join(DIST, "actress", "*", "index.html")):
+    raw_ = open(p_, encoding="utf-8").read()
+    m_ = re.search(r'aria-labelledby="body-near-title">(.*?)</section>', raw_, re.S)
+    if not m_:
+        continue
+    _bn_count += 1
+    self_ = "/actress/" + os.path.basename(os.path.dirname(p_)) + "/"
+    links_ = re.findall(r'class="hot-link" href="([^"]+)"', m_.group(1))
+    notes_ = [htmllib.unescape(strip_tags(n_)).strip() for n_ in re.findall(r'class="cast-count">(.*?)</a>', m_.group(1), re.S)]
+    na_ = re.search(r'aria-labelledby="next-actress-title">(.*?)</section>', raw_, re.S)
+    na_links_ = set(re.findall(r'class="hot-link" href="([^"]+)"', na_.group(1))) if na_ else set()
+    parsed_ = [re.fullmatch(r"(\d+)cm・([A-Z])カップ", n_) for n_ in notes_]
+    more_ = re.search(r'href="/actress/\?height=(\d+)-(\d+)(?:&amp;|&)cup=([A-Z])"', m_.group(1))
+    ok_ = (1 <= len(links_) <= 6 and self_ not in links_ and not (na_links_ & set(links_)) and "hot-rank" not in m_.group(1)
+           and len(notes_) == len(links_) and all(parsed_) and more_ is not None
+           and all(os.path.isfile(os.path.join(DIST, l_.strip("/"), "index.html")) for l_ in links_))
+    if ok_:
+        lo_, hi_, cup_ = int(more_.group(1)), int(more_.group(2)), more_.group(3)
+        ok_ = hi_ - lo_ == 6 and all(pm_.group(2) == cup_ and lo_ <= int(pm_.group(1)) <= hi_ for pm_ in parsed_)
+    if not ok_:
+        _bn_bad.append(self_)
+check(f"女優のページの「身長とカップが近い女優」（{_bn_count}ページ）: 6人まで・自分と「次に見る女優」の人は出ない・順位の数字なし・同じカップで身長±3cm・リンク先のページがある・「もっと見る」は同じ条件の女優検索",
+      _bn_count > 0 and not _bn_bad, _bn_bad[:3])
 _gj = os.path.join(DIST, "data", "gacha.json")
 try:
     _gacha_rows = json.load(open(_gj, encoding="utf-8"))

@@ -4,7 +4,7 @@
 // よく共演している人・多いジャンル・内訳。数字はどれも FANZA の作品から数えたもの（scripts/actress_history.py）。私生活・うわさは扱わない。
 // 作品のタイトルは、このサイトに作品ページがあればリンクにする。未成年を連想させるタイトルは出さない（isMinorTitle）
 import { pagePathOf, actressByName, contentGenres } from '../lib/data.js';
-import { historyGenres, historyLine, historyTimeline, peakYear, yearBars, yearTicks } from '../lib/history.js';
+import { NENPYO_PATH, historyGenres, historyLine, historyTimeline, peakYear, yearBars, yearTicks } from '../lib/history.js';
 import { isMinorTitle } from '../lib/gacha.js';
 import { truncate } from '../lib/items.js';
 
@@ -97,4 +97,6 @@ const barsLabel = bars.map((b) => `${b.year}年${b.n}本`).join('、');
       )}
     </dl>
   )}
+  {/* 年表のある人の一覧へ（2026-11-12 #255） */}
+  <p class="hist-more"><a class="spec-link" href={NENPYO_PATH}>女優の年表の一覧へ</a></p>
 </section>

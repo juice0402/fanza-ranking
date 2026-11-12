@@ -79,6 +79,12 @@ check('索引: メーカー「不明」は空文字にする', idx.items.find((i
 // コメントの無い作品は w: 1（作品ページが /w/。2026-11-10）
 check('索引: コメントの無い作品だけ w: 1', idx.items.every((r) => (r.w === 1) === !items.find((i) => i.cid === r.c).comment.trim())
   && F.buildFavoritesIndex(normalizeItems([{ cid: 'cm', title: 't', date: '2026-09-30', comment: 'ひとこと' }]), today).items[0].w === undefined);
+// 画像が決まった形のときは i を省く（public/favorites.js が作り直す。300KB の上限をこえたため。2026-11-13）
+const imgIdx = F.buildFavoritesIndex(normalizeItems([
+  { cid: 'std1', title: 't', date: '2026-09-30', image_url: F.standardImage('std1') },
+  { cid: 'oth1', title: 't', date: '2026-09-30', image_url: 'https://pics.dmm.co.jp/mono/movie/adult/oth1/oth1pl.jpg' },
+]), today).items;
+check('索引: 決まった形の画像は i を省き、それ以外の画像は残す', imgIdx.find((r) => r.c === 'std1').i === undefined && imgIdx.find((r) => r.c === 'oth1').i === 'https://pics.dmm.co.jp/mono/movie/adult/oth1/oth1pl.jpg', JSON.stringify(imgIdx));
 const attrs = F.workFavoriteAttrs(items[1]);
 check('作品の☆ボタンの情報', attrs['data-fav-type'] === 'work' && attrs['data-fav-key'] === 'recent1' && attrs['data-actress'] === 'A' && attrs['data-date'] === '2026-09-25' && attrs['data-maker'] === 'M');
 check('ページのパス', F.FAVORITES_PATH === '/favorites/' && F.FAVORITES_INDEX_PATH === '/data/favorites-index.json');

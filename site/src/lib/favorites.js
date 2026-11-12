@@ -8,7 +8,7 @@ export const FAVORITES_INDEX_DAYS = 60; // 索引に入れる作品: 発売日�
 
 /**
  * 「お気に入りの出演者・メーカーの新作」を、ブラウザ側で探すための索引。
- * 短い名前の項目 {c: 作品ID, t: タイトル, d: 発売日, a: 出演者, m: メーカー, i: 画像} を、発売日の新しい順に並べる。
+ * 短い名前の項目 {c: 作品ID, t: タイトル, d: 発売日, a: 出演者, m: メーカー, i: 画像（決まった形のときは省く）} を、発売日の新しい順に並べる。
  * タイトルには、文節の区切りに幅のない空白（U+200B）が入っている（ブラウザで、語の途中で改行しないため）。
  * 古い作品まで入れると大きくなるので、最近の作品と予約だけにする。
  * pages: 専用ページがある出演者・メーカーの {名前: 短い名前}（{ actress: {...}, maker: {...} }）。
@@ -24,7 +24,8 @@ export function buildFavoritesIndex(items, today, days = FAVORITES_INDEX_DAYS, p
       .filter((i) => i.dateKey >= from)
       .sort((a, b) => b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid))
       // コメントの無い作品は w: 1（作品ページが /w/。public/favorites.js がリンクを /w/ にする。2026-11-10）
-      .map((i) => ({ c: i.cid, t: phraseZwsp(i.title, namesRe), d: i.dateKey, a: i.actress, m: i.maker === '不明' ? '' : i.maker, i: i.image_url, ...(hasComment(i) ? {} : { w: 1 }) })),
+      // 画像が決まった形（standardImage）のときは i を省く（public/favorites.js の loadIndex が作り直す。300KB の上限をこえたため。2026-11-13）
+      .map((i) => ({ c: i.cid, t: phraseZwsp(i.title, namesRe), d: i.dateKey, a: i.actress, m: i.maker === '不明' ? '' : i.maker, ...(i.image_url === standardImage(i.cid) ? {} : { i: i.image_url }), ...(hasComment(i) ? {} : { w: 1 }) })),
   };
 }
 
