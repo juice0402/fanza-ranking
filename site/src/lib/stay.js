@@ -117,7 +117,7 @@ export function floorPickRow({ floor, label, item }) {
 // 11/12 に、女優のページ → 作品 → 女優のページに戻る → 別の作品…をくり返して、2時間で5人ほど渡り歩いた人がいた（claude/web-analytics.md）。
 // 戻らずに次へ行けるよう、作品ページに「○○の作品を人気の順に」（前の作品・次の作品）を、女優のページに「次に見る女優」（共演・同じメーカー）を置く。
 // 人気の順は、FANZA全体の人気の順位と新着の人気の順位の上のほう（bestRank）。順位の無い作品は、そのあとに新しい順
-export const WALK_MAX_CAST = 2; // 作品ページの「人気の順に」を出す出演者の数（出演者の並び順の先頭から、作品が2本以上ある人）
+export const WALK_MAX_CAST = 2; // 作品ページの「人気の順に」の欄の数の上限（出演者の並び順の先頭から、作品が2本以上ある人を2人まで。出演者が NEXT_WORKS_MAX_CAST 人より多い作品には出さない）
 export const NEXT_ACTRESS_SHOWN = 6; // 女優のページの「次に見る女優」の人数（顔の丸の3つ並び×2段）
 
 const popRankOf = (w) => bestRank(w.popAll, w.popNew);
