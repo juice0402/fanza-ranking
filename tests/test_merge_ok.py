@@ -284,6 +284,33 @@ check("鍵は GITHUB_TOKEN だけ", "secrets." not in wf and "GH_TOKEN: ${{ gith
 deploy = open(os.path.join(WF, M.PUBLISH), encoding="utf-8").read()
 check("公開の workflow（deploy.yml）は手で動かせる（workflow_dispatch）", "workflow_dispatch:" in deploy and "branches: [main]" in deploy)
 
+print("━━ 本文の Closes #◯（マージのあとに閉じる issue）")
+check("Closes：1つ", M.closes_of("Closes #150") == [150])
+check("Closes：順番の指定の番号は入れない", M.closes_of("⚠️ #106 の PR #109 のあとにマージ\n\nCloses #107") == [107])
+check("Closes：いろいろな書き方", M.closes_of("closed #3, fixes: #4\nResolves #5 close #6") == [3, 4, 5, 6])
+check("Closes：同じ番号は1つ・全角", M.closes_of("Closes #150\nCloses ＃１５０") == [150])
+check("Closes：一部・空は閉じない", M.closes_of("夜 #72 の一部") == [] and M.closes_of(None) == [])
+_calls = []
+def _gh(path, method="GET", body=None):
+    _calls.append(f"{method} {path}")
+    if path.endswith("/issues/7"):
+        return {"number": 7, "state": "open"}
+    if path.endswith("/issues/8"):
+        return {"number": 8, "state": "closed"}
+    if path.endswith("/issues/9"):
+        return {"number": 9, "state": "open", "pull_request": {}}
+    return {}
+_orig_gh = M.gh
+M.gh = _gh
+with redirect_stdout(io.StringIO()):
+    _done = M.close_linked({"number": 20, "body": "Closes #7\nCloses #8\nCloses #9"}, "abcdef1234")
+check("Closes：開いている issue だけ閉じる（閉じた issue・PR はさわらない）", _done == [7] and any(c.endswith("/issues/7") and c.startswith("PATCH") for c in _calls) and not any(c.startswith("PATCH") and (c.endswith("/issues/8") or c.endswith("/issues/9")) for c in _calls))
+_calls.clear()
+with redirect_stdout(io.StringIO()):
+    M.close_linked({"number": 20, "body": "Closes #7"}, "", dry=True)
+check("Closes：ためしでは閉じない", _calls == [f"GET repos/{M.REPO}/issues/7"])
+M.gh = _orig_gh
+
 print()
 print(f"マージの印: {passed} 成功 / {failed} 失敗")
 sys.exit(1 if failed else 0)
