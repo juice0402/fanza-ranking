@@ -22,6 +22,10 @@ on:
         description: 'PR の番号（空なら merge-ok の付いた PR を全部。その PR も merge-ok が無ければマージしない）'
         type: number
         required: false
+      sweep:
+        description: 'true ならマージせず、この21日にマージした PR の Closes #◯ で開いたままの issue を閉じる（掃除）'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -56,4 +60,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MERGE_OK_DRY_RUN: ${{ inputs.dry_run }}
           MERGE_OK_PR: ${{ inputs.pr }}
+          MERGE_OK_SWEEP: ${{ inputs.sweep }}
         run: python3 scripts/merge_ok.py

@@ -27,7 +27,7 @@ import subprocess
 import sys
 import time
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 REPO = os.environ.get("GITHUB_REPOSITORY", "juice0402/fanza-ranking")
 BASE = "main"
@@ -103,6 +103,17 @@ def closes(pr, n):
         return True
     return bool(re.search(rf"(?:^|/)night-{n}$", str((pr.get("head") or {}).get("ref") or "")))
 
+
+
+def closes_of(body):
+    """本文の Closes #◯ の番号ぜんぶ（GITHUB_TOKEN の squash では GitHub が issue を閉じないので、マージの印が閉じる）"""
+    s = unicodedata.normalize("NFKC", str(body or ""))
+    nums = [int(m) for m in re.findall(rf"(?<![A-Za-z])(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?){_SP}:?{_SP}#(\d+)(?!\d)", s, re.I)]
+    return list(dict.fromkeys(nums))
+
+
+def closed_text(n, sha=""):
+    return f"PR #{n} でマージ済み{f'（{str(sha)[:7]}）' if sha else ''}。閉じます（マージの印）"
 
 def blockers(pr, open_prs):
     """順番の指定で待つ理由（空ならマージしてよい）。open_prs は 番号 → 開いている PR"""
@@ -257,8 +268,40 @@ def process(pr, open_prs, dry, now):
         block(n, f"マージできなかった（GitHub の答え: {str(res.get('message', ''))[:150]}）", dry)
         return "blocked", None
     out(f"#{n}: マージした（{text}）")
+    close_linked(pr, res.get("sha") or "", dry)
     return "merged", None
 
+
+
+def close_linked(pr, sha="", dry=False):
+    """マージした PR の本文の Closes #◯ の issue を、コメントをつけて閉じる（開いている issue だけ。PR・閉じた issue はさわらない。失敗してもマージは止めない）"""
+    done = []
+    for k in closes_of(pr.get("body")):
+        try:
+            it = gh(f"repos/{REPO}/issues/{k}") or {}
+            if "pull_request" in it or it.get("state") != "open":
+                continue
+            if dry:
+                out(f"（ためし）#{k} を閉じるはず（PR #{pr.get('number')} の Closes）")
+                continue
+            gh(f"repos/{REPO}/issues/{k}/comments", "POST", {"body": closed_text(pr.get("number"), sha)})
+            gh(f"repos/{REPO}/issues/{k}", "PATCH", {"state": "closed", "state_reason": "completed"})
+            out(f"#{k} を閉じた（PR #{pr.get('number')} の Closes）")
+            done.append(k)
+        except ApiError as e:
+            out(f"#{k} を閉じられなかった（{str(e)[:150]}）")
+    return done
+
+
+def sweep(dry, now=None):
+    """掃除（手で動かすときの sweep）：この21日に main へマージされた PR の Closes #◯ で、まだ開いている issue を閉じる"""
+    since = (now or utcnow()) - timedelta(days=21)
+    for p in gh_all(f"repos/{REPO}/pulls?state=closed&sort=updated&direction=desc", pages=3):
+        t = parse_time(p.get("merged_at"))
+        if not t or t < since or (p.get("base") or {}).get("ref") != BASE:
+            continue
+        close_linked(p, p.get("merge_commit_sha") or "", dry)
+    out("掃除が終わった")
 
 def run_once(dry, now=None, only=None):
     """1回ぶん見る → (マージした番号, いちばん早く10分たつまでの秒数 or None, 失敗があったか)。
@@ -304,6 +347,9 @@ def main():
         out("ためし（dry_run）: マージ・コメント・ラベル・公開はしない")
     else:
         ensure_labels()
+    if os.environ.get("MERGE_OK_SWEEP", "").lower() == "true":
+        sweep(dry)
+        return 0
     merged, grace, error = run_once(dry, only=only)
     if grace and not dry:  # 点検のない PR: 10分たつまでここで待って、もう1回だけ見る
         out(f"点検（check-runs）のない PR があるので、{grace} 秒待って見直す")
