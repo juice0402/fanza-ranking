@@ -67,6 +67,32 @@ const idx = H.nenpyoIndex([
 check('50音の行の順・最後に「その他」（読みがなの無い人）', idx.map((r) => r.head).join(',') === 'あ,か,さ,英数,その他', idx.map((r) => r.head).join(','));
 check('行の中は読みの順（カタカナもひらがなで比べる・濁音はもとの行）', idx[0].entries.map((e) => e.name).join(',') === '阿部,伊藤' && idx[1].entries[0].name === '草野', JSON.stringify(idx.map((r) => r.entries.map((e) => e.name))));
 check('年表のデータが無い人は入れない・飛び先と短い数字', !idx.some((r) => r.entries.some((e) => e.name === 'データなし')) && idx[0].entries[0].path === '/actress/b/#hist-title' && idx[0].entries[0].brief === '2018〜2026年・120本' && idx[0].id === 'nenpyo-a');
+check('行にいちばん多いメーカーと本数（年表の makers の先頭）', idx[0].entries[0].maker && idx[0].entries[0].maker.name === 'メーカーA' && idx[0].entries[0].maker.n === 110);
+
+console.log('■ 女優の年表の一覧のしぼりこみと並べかえ（#255）');
+{
+  const mk = (over) => ({ ...h, upcoming: 0, latest: null, makers: [], ...over });
+  const people = [
+    { name: 'あ', path: '/actress/1/#hist-title', reading: 'あ', history: mk({ first: { ...h.first, d: '2025-03-01' }, total: 40, latest: { ...h.first, d: '2026-09-01' }, makers: [{ name: 'S', n: 30 }] }) },
+    { name: 'い', path: '/actress/2/#hist-title', reading: 'い', history: mk({ first: { ...h.first, d: '2010-01-01' }, total: 900, latest: { ...h.first, d: '2026-01-01' }, makers: [{ name: 'S', n: 300 }] }) },
+    { name: 'う', path: '/actress/3/#hist-title', reading: 'う', history: mk({ first: { ...h.first, d: '2014-12-31' }, total: 100, upcoming: 2, makers: [{ name: 'M', n: 50 }] }) },
+    { name: 'え', path: '/actress/4/#hist-title', reading: 'え', history: mk({ first: { ...h.first, d: '2015-01-01' }, total: 100, latest: { ...h.first, d: '2027-01-10' } }) },
+  ];
+  const flat = H.nenpyoIndex(people).flatMap((r) => r.entries);
+  const F = H.nenpyoFilters(flat, '2026-11-12');
+  check('年の選択肢: 人のいる年だけ・新しい順・2014年以前は1つ（最後）', F.years.map((y) => `${y.value}:${y.label}:${y.count}`).join(',') === '2025:2025年:1,2015:2015年:1,old:2014年以前:2', JSON.stringify(F.years));
+  check('メーカーの選択肢: 人数の多い順（同じなら名前の順）・メーカーの無い人は数えない', F.makers.map((m) => `${m.value}:${m.name}:${m.count}`).join(',') === '0:S:2,1:M:1', JSON.stringify(F.makers));
+  const rows = flat.map((e) => F.data.get(e));
+  check('行の値: 年・メーカーの番号（無い人は -1）・本数・最初の作品の日・50音の順', JSON.stringify(rows.map((r) => [r.y, r.m, r.t, r.f, r.o])) === JSON.stringify([['2025', 0, 40, 20250301, 0], ['old', 0, 900, 20100101, 1], ['old', 1, 100, 20141231, 2], ['2015', -1, 100, 20150101, 3]]), JSON.stringify(rows));
+  check('いまも新作あり: 90日以内・予約あり・発売前の日付（10か月前の人は入らない）', rows.map((r) => r.a).join('') === '1011', rows.map((r) => r.a).join(''));
+  check('90日ちょうどは入る・91日は入らない', H.nenpyoActive(mk({ latest: { ...h.first, d: '2026-08-14' } }), '2026-11-12') && !H.nenpyoActive(mk({ latest: { ...h.first, d: '2026-08-13' } }), '2026-11-12'));
+  const names = (list) => list.map((r) => flat[r.o].name).join('');
+  check('条件なし・50音順は元の順', names(H.nenpyoPick(rows)) === 'あいうえ');
+  check('最初の作品が新しい順', names(H.nenpyoPick(rows, { sort: 'first' })) === 'あえうい');
+  check('本数の多い順（同じなら50音順）', names(H.nenpyoPick(rows, { sort: 'total' })) === 'いうえあ');
+  check('年・メーカー・いまも新作ありでしぼる', names(H.nenpyoPick(rows, { year: 'old' })) === 'いう' && names(H.nenpyoPick(rows, { maker: '0' })) === 'あい' && names(H.nenpyoPick(rows, { active: true })) === 'あうえ' && names(H.nenpyoPick(rows, { year: 'old', maker: '1', active: true })) === 'う');
+  check('0人でもこわれない', H.nenpyoFilters([], '2026-11-12').years.length === 0 && H.nenpyoPick([], { sort: 'total' }).length === 0);
+}
 console.log('\n■ 人気作ベスト・評価の高い作品（FANZA全体。topWorks）');
 const own = { cid: 'own1', title: 'このサイトの作品', review: null };
 const tw = H.topWorks([

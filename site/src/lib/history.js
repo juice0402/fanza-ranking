@@ -187,7 +187,8 @@ export function nenpyoIndex(entries, prefix = 'nenpyo') {
     const reading = toHiragana(e.reading ?? '').replace(/\s+/g, '');
     const row = reading ? kanaRow(reading) : NENPYO_NONE;
     if (!rows.has(row.key)) rows.set(row.key, { head: row.head, key: row.key, id: `${prefix}-${row.key}`, entries: [] });
-    rows.get(row.key).entries.push({ name: e.name, path: e.path, reading, brief: historyBrief(e.history) });
+    const top = e.history.makers[0];
+    rows.get(row.key).entries.push({ name: e.name, path: e.path, reading, brief: historyBrief(e.history), maker: top ? { name: top.name, n: top.n } : null, history: e.history });
   }
   const by = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
   const order = [...KANA_ROWS, KANA_OTHER, NENPYO_NONE].map((r) => r.key);
@@ -197,6 +198,80 @@ export function nenpyoIndex(entries, prefix = 'nenpyo') {
       const r = rows.get(k);
       return { ...r, entries: r.entries.sort((a, b) => by(a.reading, b.reading) || by(a.name, b.name)) };
     });
+}
+
+// ------------------------------------------------------------------
+// 女優の年表の一覧のしぼりこみと並べかえ（2026-11-12 #255。しょーくん「案は全部おすすめで」）。
+// 条件は URL に入れない（住所をふやさない）。行ごとの値はページの data 属性に持たせ、public/nenpyo.js が同じやり方でしぼって並べる。
+// 「デビュー」「専属」とは書かない（FANZA のデータに無い・推測になるため）。「FANZAで最初の作品の年」「いちばん多いメーカー」
+// ------------------------------------------------------------------
+export const NENPYO_YEARS = 12; // 最初の作品の年は、今年から12年（2026〜2015）を1年ずつ、それより前は1つにまとめる
+export const NENPYO_MAKERS = 30; // いちばん多いメーカーの選択肢（人数の多い順）
+export const NENPYO_ACTIVE_DAYS = 90; // 「いまも新作あり」: いちばん新しい作品が、この日数より前でない人（予約がある人も）
+export const NENPYO_SORTS = [
+  ['kana', '50音順'],
+  ['first', 'FANZAで最初の作品が新しい順'],
+  ['total', 'FANZAの作品の多い順'],
+];
+
+const dayNum = (d) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 86400000;
+
+/** 最初の作品の年 → 選択肢の値（今年から NENPYO_YEARS 年は "2025" など、それより前は "old"） */
+export const nenpyoYearKey = (year, thisYear) => (year > thisYear - NENPYO_YEARS ? String(year) : 'old');
+
+/** いまも新作あり: 予約があるか、いちばん新しい作品が today から NENPYO_ACTIVE_DAYS 日以内（発売前の日付も入る） */
+export function nenpyoActive(h, today) {
+  if (!h || !DAY.test(String(today ?? ''))) return false;
+  if (h.upcoming > 0) return true;
+  const last = h.latest?.d || h.first?.d || '';
+  return DAY.test(last) && dayNum(today) - dayNum(last) <= NENPYO_ACTIVE_DAYS;
+}
+
+/**
+ * 一覧の行（nenpyoIndex の entries を並べたもの）→ しぼりこみの選択肢と、行ごとの値。
+ * 返す形: { years: [{ value, label, count }], makers: [{ value, name, count }], data: Map(行 → { y, m, a, t, f, o }) }
+ *   y: 年の値・m: メーカーの選択肢の番号（選択肢に無いメーカーは -1）・a: いまも新作あり 1/0・t: 本数・f: 最初の作品の日（20180401）・o: 50音の順番
+ * 選択肢は人のいるものだけ（空の選択肢を並べない）。メーカーは人数の多い順に NENPYO_MAKERS まで（同じなら名前の順）
+ */
+export function nenpyoFilters(entries, today) {
+  const thisYear = +String(today ?? '').slice(0, 4) || new Date().getFullYear();
+  const yearN = new Map();
+  const makerN = new Map();
+  for (const e of entries) {
+    const k = nenpyoYearKey(+e.history.first.d.slice(0, 4), thisYear);
+    yearN.set(k, (yearN.get(k) ?? 0) + 1);
+    if (e.maker) makerN.set(e.maker.name, (makerN.get(e.maker.name) ?? 0) + 1);
+  }
+  const years = [...yearN.entries()]
+    .sort((a, b) => (a[0] === 'old') - (b[0] === 'old') || +b[0] - +a[0])
+    .map(([value, count]) => ({ value, label: value === 'old' ? `${thisYear - NENPYO_YEARS}年以前` : `${value}年`, count }));
+  const makers = [...makerN.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .slice(0, NENPYO_MAKERS)
+    .map(([name, count], i) => ({ value: String(i), name, count }));
+  const makerIdx = new Map(makers.map((m, i) => [m.name, i]));
+  const data = new Map();
+  entries.forEach((e, o) => {
+    data.set(e, {
+      y: nenpyoYearKey(+e.history.first.d.slice(0, 4), thisYear),
+      m: e.maker && makerIdx.has(e.maker.name) ? makerIdx.get(e.maker.name) : -1,
+      a: nenpyoActive(e.history, today) ? 1 : 0,
+      t: e.history.total,
+      f: +e.history.first.d.replace(/-/g, ''),
+      o,
+    });
+  });
+  return { years, makers, data };
+}
+
+/**
+ * 行ごとの値（nenpyoFilters の data の値）を、条件でしぼって並べる（public/nenpyo.js と同じやり方）。
+ * cond: { year: '' | '2025' | 'old', maker: '' | '3', active: true/false, sort: 'kana' | 'first' | 'total' }
+ */
+export function nenpyoPick(rows, { year = '', maker = '', active = false, sort = 'kana' } = {}) {
+  const hit = rows.filter((r) => (!year || r.y === year) && (maker === '' || r.m === +maker) && (!active || r.a === 1));
+  const by = sort === 'first' ? (a, b) => b.f - a.f || a.o - b.o : sort === 'total' ? (a, b) => b.t - a.t || a.o - b.o : (a, b) => a.o - b.o;
+  return hit.sort(by);
 }
 
 // ------------------------------------------------------------------
