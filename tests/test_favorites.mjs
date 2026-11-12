@@ -24,6 +24,13 @@ check('読めなければ 縮めた版 → ps → pl の順に戻し、それも
 
 const work = { t: 'タイトル', i: 'https://pics.example/x.jpg', d: '2026-10-17', a: ['花子'], m: 'メーカーA' };
 
+console.log('■ お気に入りの索引の画像（省かれた決まった形の画像を作り直す。2026-11-13）');
+const ix = plain(F.indexItems([{ c: 'abc00001', t: 'A' }, { c: 'x', t: 'B', i: 'https://pics.example/y.jpg' }, { c: 'e', t: 'C', i: '' }, { c: 'bad key!', t: 'D' }, null]));
+check('i が無い作品は決まった形の画像になる', ix[0].i === 'https://pics.dmm.co.jp/digital/video/abc00001/abc00001pl.jpg' && ix[0].t === 'A');
+check('i がある作品・空の i・使えない作品IDは、そのまま', ix[1].i === 'https://pics.example/y.jpg' && ix[2].i === '' && ix[3].i === undefined && ix[4] === null);
+check('配列でなければ空', plain(F.indexItems(null)).length === 0 && plain(F.indexItems({})).length === 0);
+check('loadIndex が indexItems を通す', source.includes('items: indexItems(d.items)'));
+
 console.log('■ 読み込み（壊れた保存データでも落ちない）');
 check('空の保存データ', JSON.stringify(plain(F.parseStore(null))) === JSON.stringify({ v: 1, work: {}, actress: {}, maker: {} }));
 check('壊れたJSON・配列・数字・null は空になる', ['{oops', '[]', '123', 'null', '"x"', ''].every((t) => F.hasPeople(F.parseStore(t)) === false && Object.keys(F.parseStore(t).work).length === 0));

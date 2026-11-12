@@ -1651,9 +1651,11 @@ if os.path.isfile(fav_index_path):
     check("索引が正しいJSONで、generated（日付）と items（配列）がある", isinstance(fav_index, dict) and DAY.match(str(fav_index.get("generated", ""))) and isinstance(fav_index.get("items"), list), str(fav_index)[:80])
     if isinstance(fav_index, dict) and isinstance(fav_index.get("items"), list):
         rows = fav_index["items"]
-        check("索引のすべての項目が、短い名前（c,t,d,a,m,i と、コメントの無い作品だけ w）だけで、データにある作品", all(isinstance(r, dict) and set(r) == ({"c", "t", "d", "a", "m", "i"} | (set() if r.get("c") in valid and has_comment(valid[r["c"]]) else {"w"})) and r["c"] in valid and r.get("w", 1) == 1 and DAY.match(str(r["d"])) and isinstance(r["a"], list) for r in rows), [r for r in rows if not (isinstance(r, dict) and set(r) == {"c", "t", "d", "a", "m", "i"})][:1])
+        check("索引のすべての項目が、短い名前（c,t,d,a,m と、決まった形でない画像 i・コメントの無い作品だけ w）だけで、データにある作品", all(isinstance(r, dict) and (set(r) - {"i"}) == ({"c", "t", "d", "a", "m"} | (set() if r.get("c") in valid and has_comment(valid[r["c"]]) else {"w"})) and r["c"] in valid and r.get("w", 1) == 1 and DAY.match(str(r["d"])) and isinstance(r["a"], list) for r in rows), [r for r in rows if not (isinstance(r, dict) and set(r) == {"c", "t", "d", "a", "m", "i"})][:1])
         check("索引は発売日の新しい順", [r["d"] for r in rows] == sorted((r["d"] for r in rows), reverse=True))
         warn("索引に作品が1件以上ある", bool(rows))
+        _std_i = [r for r in rows if isinstance(r, dict) and r.get("i") == f"https://pics.dmm.co.jp/digital/video/{r.get('c')}/{r.get('c')}pl.jpg"]
+        check("索引の決まった形の画像は省いている（favorites.js の indexItems が作り直す。2026-11-13）", not _std_i, _std_i[:1])
         check("索引の大きさが 300KB 以内（毎回ダウンロードされるため）", os.path.getsize(fav_index_path) <= 300 * 1024, os.path.getsize(fav_index_path))
 
 # 索引: 推しの棚が、お気に入りの出演者・メーカーのセール中の作品を探すための小さなJSON（2026-10-31）
