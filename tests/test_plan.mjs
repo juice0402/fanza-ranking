@@ -2,7 +2,7 @@
 // 過去作品（カタログ）が増えても、上限（config.js の FILE_BUDGET。Workers の10万より下）をこえないように、
 // 作品ページを優先順に、残りの枠の数だけ作る。あふれた作品は、FANZAへ直接リンクする。
 import * as P from '../site/src/lib/plan.js';
-import { ARCHIVE_PAGE_SIZE, FILE_BUDGET, FIXED_FILES, ENTITY_LIST_LIMIT, INDEX_LIST_LIMIT, ACTRESS_FALLBACK_LIMIT } from '../site/src/config.js';
+import { ARCHIVE_PAGE_SIZE, FILE_BUDGET, FIXED_FILES, ENTITY_LIST_LIMIT, INDEX_LIST_LIMIT, ACTRESS_FALLBACK_LIMIT, NOINDEX_ACTRESS_PAGE_MAX, NOINDEX_MAKER_PAGE_MAX } from '../site/src/config.js';
 import { itemPath, actressSummary, makerSummary } from '../site/src/lib/items.js';
 
 let pass = 0, fail = 0;
@@ -48,7 +48,7 @@ check('元の並びは変えない', items[0] === catOld && items[5] === curated
 console.log('\n■ サイト全体の計画');
 const plan = P.planPages(items, { actress: 2, archiveItems: 6 }, FIXED_FILES + 1 + 2 + 4);
 check('全体の上限から作品ページ以外を引いた数だけ、作品ページを作る', plan.itemBudget === 4 && plan.paged.size === 4 && plan.nonItem === FIXED_FILES + 1 + 2, JSON.stringify({ b: plan.itemBudget, n: plan.nonItem }));
-const tight = P.planPages(items, { actress: 50000 });
+const tight = P.planPages(items, { actress: 200000 });
 check('作品ページ以外だけで上限をこえても、枠は0（負にならない）', tight.itemBudget === 0 && tight.paged.size === 0);
 // 大きな数でも、作品ページ＋それ以外が上限に収まる
 const many = Array.from({ length: 30000 }, (_, i) => it(`c${String(i).padStart(6, '0')}`, `20${String(10 + (i % 16)).padStart(2, '0')}-01-01`, { catalog: i >= 500 }));
@@ -74,6 +74,14 @@ console.log('\n■ 検索エンジンに出すか（noindex・sitemap）');
 check('コメントのある作品が1本でもある一覧は出す・過去作品だけ（コメント無し）の一覧は出さない',
   P.listIndexable([catOld, catCommented]) && !P.listIndexable([catOld, catNew]) && !P.listIndexable([it('x', '2020-01-01', { comment: '   ' })]));
 check('作品がまだ1本も無い一覧（最初の状態）は、これまでどおり出す', P.listIndexable([]));
+// 検索に出せない女優・メーカーのページは、作品の多いほうから上限まで（2026-11-12。人気の女優を深く集めても、noindex のページをふやさない）
+const grp = (name, n, noted = false) => ({ name, items: Array.from({ length: n }, (_, k) => it(`${name}${k}`, '2020-01-01', { comment: noted && k === 0 ? 'ひとこと' : '' })) });
+const groupsCap = [grp('A', 9), grp('B', 8, true), grp('C', 7), grp('D', 6), grp('E', 5, true), grp('F', 4)];
+check('検索に出せないページは前から max 件まで・検索に出せるページは全部残る・並びは変えない',
+  P.capNoindex(groupsCap, 2).map((x) => x.name).join() === 'A,B,C,E' && P.capNoindex(groupsCap, 0).map((x) => x.name).join() === 'B,E'
+  && P.capNoindex(groupsCap, 99).length === 6 && P.capNoindex([], 5).length === 0, P.capNoindex(groupsCap, 2).map((x) => x.name).join());
+check('上限は、深く集める前の日の数（女優 1,550・メーカー 210）', NOINDEX_ACTRESS_PAGE_MAX === 1550 && NOINDEX_MAKER_PAGE_MAX === 210);
+check('ファイル数の上限は7万（2026-11-12 に4万から。Workers の10万より下）', FILE_BUDGET === 70000);
 check('作品ページは、ページがあり、コメントがあるときだけ出す',
   P.itemIndexable(curatedNew, paged) && !P.itemIndexable(catCommented, paged) && !P.itemIndexable(curatedBare, new Set(['cur02'])));
 

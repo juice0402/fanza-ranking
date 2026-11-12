@@ -282,7 +282,8 @@ class Env:
         return FakeResponse({"candidates": [{"content": {"parts": [{"text": "「テスト用のAIコメントです。**上品**に紹介します。」\n"}]}}]})
 
 
-def load_module(data_path, api_id="fake", gemini="fake", max_calls=None, directory_calls=0, catalog_calls=0, catalog_top=0, catalog_limit=None, new_rank=0, today_stats=False):
+def load_module(data_path, api_id="fake", gemini="fake", max_calls=None, directory_calls=0, catalog_calls=0, catalog_top=0, catalog_limit=None, new_rank=0, today_stats=False, deep_calls=0):
+    os.environ["DEEP_CALLS"] = str(deep_calls)  # 人気の女優を深く集める人数（ふだんのシナリオでは呼ばない。専用のシナリオで試す）
     os.environ["DIRECTORY_CALLS"] = str(directory_calls)  # 女優検索の名簿の一覧取得（ふだんのシナリオでは呼ばない。専用のシナリオで試す）
     os.environ["CATALOG_CALLS"] = str(catalog_calls)  # 過去作品の一覧取得（上位より下を続きから。同じく、専用のシナリオで試す）
     os.environ["CATALOG_TOP_CALLS"] = str(catalog_top)  # 過去作品: その日の人気順の上位を取り直す回数
@@ -1282,7 +1283,7 @@ rk = json.load(open(cat_rank, encoding="utf-8"))
 check("順位（catalog_rank.json）: 作品ごとに [人気順の順位, 見かけた一回りの番号]。1作品1行・cid の順",
       len(rk) == 199 and rk["cat00010"] == [10, 1] and rk["cat00150"] == [150, 1] and list(rk) == sorted(rk) and open(cat_rank, encoding="utf-8").read().count("\n") == 201, (len(rk), rk.get("cat00010")))
 st_c = json.load(open(cat_state, encoding="utf-8"))
-check("続きの場所（catalog_state.json）: 次は201本目から・一回り目・まだ一回りしていない・集める深さ・本数", st_c == {"cursor": 201, "cycle": 1, "cycle_done": "", "limit": 10000, "items": 199}, st_c)
+check("続きの場所（catalog_state.json）: 次は201本目から・一回り目・まだ一回りしていない・集める深さ・本数・深く集めて外さない本数", st_c == {"cursor": 201, "cycle": 1, "cycle_done": "", "limit": 10000, "items": 199, "deep": 0}, st_c)
 check("毎日の更新のデータ（new_releases.json）には、過去作品を入れない", all(not d["cid"].startswith("cat") for d in json.load(open(c_path, encoding="utf-8"))))
 check("画面に結果が出る", "過去作品: 一覧を2回取得" in out_c and "うち新しく199本" in out_c and "上位10000本まで" in out_c, out_c[-300:])
 pop1 = json.load(open(os.path.join(c_dir, "popularity.json"), encoding="utf-8"))
@@ -1427,6 +1428,113 @@ m_c6.CATALOG_LIMIT = 50000
 m_c6.update_catalog(st_max, {}, TODAY, top_calls=0, calls=2)
 check("人気順の5万本目まで行ったら（offset は50000まで）、一回りして1本目へ", cat_offsets(env_c7) == ["49901", "1"] and st_max["cursor"] == 101 and st_max["cycle_done"] == TODAY_STR, (cat_offsets(env_c7), st_max["cursor"]))
 check("集める深さの既定は1万本（2026-10-09 に1.5万本から。同人・ゲームのページの分を空ける）・APIの上限をこえない", m_c4.CATALOG_LIMIT == 10000 and m_c4.CATALOG_MAX_OFFSET == 50000)
+
+print("\n■ 人気の女優を深く（2026-11-12。その人の FANZA の人気順の上位100本を過去作品に足す・しばらく外さない）")
+d_dir = scenario_dir("deep")
+m_d = load_module(os.path.join(d_dir, "new_releases.json"))
+m_d.CATALOG_DIR = os.path.join(d_dir, "catalog")
+m_d.CATALOG_STATE_PATH = os.path.join(d_dir, "catalog_state.json")
+m_d.CATALOG_RANK_PATH = os.path.join(d_dir, "catalog_rank.json")
+m_d.CATALOG_DEEP_PATH = os.path.join(d_dir, "catalog_deep.json")
+m_d.ACTRESSES_PATH = os.path.join(d_dir, "actresses.json")
+d_names = {"11": "検索に出せる人", "22": "人気の人", "33": "少ない人", "55": "順位の無い人"}
+d_queries = []
+
+
+def d_fake_list(params):
+    d_queries.append(dict(params))
+    if params.get("article") != "actress":
+        return []
+    aid = params["article_id"]
+    rows_ = [make_api_item(f"deep{aid}{k:03d}", -(100 + k), actress=(d_names[aid], "共演の人"), maker="深いメーカー", title=f"深い作品 {k}") for k in range(3)]
+    return rows_ + [make_api_item(f"later{aid}", 5, actress=(d_names[aid],), title="予約の作品"), make_api_item("cat00001", -40, actress=(d_names[aid],), title="毎日の更新の作品")]
+
+
+m_d.call_item_list = d_fake_list
+
+
+def d_item(cid, names, comment=""):
+    it_ = m_d.catalog_item(m_d.parse_api_item(make_api_item(cid, -60, actress=names, title=f"作品 {cid}")))
+    if comment:
+        it_["comment"], it_["comment_kind"] = comment, "claude"
+    return it_
+
+
+def d_state():
+    items_ = {"pop1": d_item("pop1", ("人気の人",)), "pop2": d_item("pop2", ("人気の人",)), "pop3": d_item("pop3", ("人気の人", "少ない人")),
+              "noted": d_item("noted", ("検索に出せる人",), "ひとこと"), "few1": d_item("few1", ("少ない人",)), "unranked": d_item("unranked", ("順位の無い人",))}
+    ranks_ = {c: [n + 1, 5] for n, c in enumerate(["pop1", "pop2", "pop3", "noted", "few1"])}
+    ranks_["unranked"] = [m_d.CATALOG_MAX_OFFSET, 5]
+    return {"items": items_, "ranks": ranks_, "cursor": 0, "cycle": 5, "cycle_done": "", "popular_all": {}, "deep": {},
+            "actress_ids": {n: a for a, n in d_names.items()}}
+
+
+st_d = d_state()
+check("深く集める人: 検索に出せる人（コメントのある作品がある人）が先、次に人気の上位に出ている本数の多い順。順位の無い作品だけの人・id の無い人は選ばない",
+      m_d.deep_targets(st_d, {}) == [("11", "検索に出せる人"), ("22", "人気の人"), ("33", "少ない人")], m_d.deep_targets(st_d, {}))
+archive_d = {"cat00001": m_d.normalize_loaded(m_d.parse_api_item(make_api_item("cat00001", -40, actress=("順位の無い人",), title="毎日の更新")))}
+check("毎日の更新の作品に出ている人も数える（毎日の更新の作品はコメントがある＝検索に出せる人）",
+      [a for a, _ in m_d.deep_targets(st_d, archive_d)] == ["11", "55", "22", "33"], m_d.deep_targets(st_d, archive_d))
+m_d.DEEP_ACTRESSES = 2
+check("選ぶのは DEEP_ACTRESSES 人まで", [a for a, _ in m_d.deep_targets(st_d, {})] == ["11", "22"])
+m_d.DEEP_ACTRESSES = 800
+check("既定: 800人・1人100本（APIの1回の上限）・毎日100人・7日ごとに集め直す・45日は外さない",
+      (m_d.DEEP_ACTRESSES, m_d.DEEP_PER_ACTRESS, m_d.DEEP_CALLS_PER_RUN, m_d.DEEP_REFRESH_DAYS, m_d.DEEP_KEEP_DAYS) == (800, 100, 0, 7, 45),
+      (m_d.DEEP_ACTRESSES, m_d.DEEP_CALLS_PER_RUN))
+r_d = m_d.update_catalog(st_d, archive_d, TODAY, top_calls=0, calls=0, new_calls=0, deep_calls=2)
+deep_q = [q for q in d_queries if q.get("article") == "actress"]
+check("1回に deep_calls 人まで・人気順（sort=rank）・100本・発売済みまで・女優ごと（article=actress）",
+      [q["article_id"] for q in deep_q] == ["11", "55"] and all(q["sort"] == "rank" and q["hits"] == 100 and "lte_date" in q for q in deep_q), deep_q)
+check("その人の作品を過去作品に足す（発売前の作品・毎日の更新の作品は足さない）",
+      {"deep55000", "deep55002", "deep11001"} <= set(st_d["items"]) and "later11" not in st_d["items"] and "cat00001" not in st_d["items"]
+      and r_d["deep"] == 2 and r_d["deep_added"] == 6, (r_d, sorted(st_d["items"])))
+check("どの人をいつ・何を集めたかを、その人の人気の順に残す（毎日の更新の作品も、並びには入れる。発売前の作品は入れない）",
+      st_d["deep"]["11"] == {"n": "検索に出せる人", "d": TODAY_STR, "c": ["deep11000", "deep11001", "deep11002", "cat00001"]} and set(st_d["deep"]) == {"11", "55"}, st_d["deep"])
+d_queries.clear()
+m_d.update_catalog(st_d, archive_d, TODAY, top_calls=0, calls=0, new_calls=0, deep_calls=5)
+check("集めてから7日たっていない人は集め直さない（まだの人だけ）", [q["article_id"] for q in d_queries if q.get("article") == "actress"] == ["22", "33"], d_queries)
+st_d["deep"]["11"]["d"] = (TODAY - timedelta(days=8)).strftime("%Y-%m-%d")
+st_d["deep"]["55"]["d"] = (TODAY - timedelta(days=9)).strftime("%Y-%m-%d")
+d_queries.clear()
+m_d.update_catalog(st_d, archive_d, TODAY, top_calls=0, calls=1 - 1, new_calls=0, deep_calls=1)
+check("集め直しは、集めた日が古い人から", [q["article_id"] for q in d_queries if q.get("article") == "actress"] == ["55"], d_queries)
+# 外さない（人気の上位から外れて2回一回りしても、その人を最後に集めた日から45日は残す）
+for c_ in [c for c in st_d["items"] if c.startswith("deep")]:
+    st_d["ranks"][c_] = [m_d.CATALOG_MAX_OFFSET, 1]
+st_d["cycle_done"] = TODAY_STR
+before_d = set(st_d["items"])
+m_d.prune_catalog(st_d)
+check("深く集めた作品は、一回りで見かけなくても外さない", before_d == set(st_d["items"]), before_d - set(st_d["items"]))
+st_d["deep"]["22"]["d"] = (TODAY - timedelta(days=46)).strftime("%Y-%m-%d")
+m_d.prune_catalog(st_d)
+check("その人を最後に集めてから45日をこえたら、ふつうに外れる（ほかの人の分は残る）",
+      not any(c.startswith("deep22") for c in st_d["items"]) and "deep11000" in st_d["items"], sorted(c for c in st_d["items"] if c.startswith("deep")))
+st_d["deep"]["99"] = {"n": "外れた人", "d": (TODAY - timedelta(days=50)).strftime("%Y-%m-%d"), "c": []}
+st_d["deep"]["98"] = {"n": "外れたばかりの人", "d": (TODAY - timedelta(days=3)).strftime("%Y-%m-%d"), "c": []}
+m_d.update_catalog(st_d, archive_d, TODAY, top_calls=0, calls=0, new_calls=0, deep_calls=0)
+check("選ぶ人から外れて45日をこえた人の記録は消す（外れたばかりの人は残す）", "99" not in st_d["deep"] and "98" in st_d["deep"], sorted(st_d["deep"]))
+st_d["deep"]["11"]["d"] = (TODAY - timedelta(days=50)).strftime("%Y-%m-%d")
+m_d.update_catalog(st_d, archive_d, TODAY, top_calls=0, calls=0, new_calls=0, deep_calls=0)
+check("集めない日（deep_calls=0）でも、選ぶ人のままの人の記録は消さない", "11" in st_d["deep"], sorted(st_d["deep"]))
+st_d["deep"]["11"]["d"] = TODAY_STR
+# 保存して読み直す
+json.dump({"actresses": [{"id": "11", "name": "検索に出せる人"}, {"id": "x", "name": "id が数字でない人"}]}, open(m_d.ACTRESSES_PATH, "w", encoding="utf-8"), ensure_ascii=False)
+m_d.save_catalog(st_d)
+head_d = json.load(open(m_d.CATALOG_STATE_PATH, encoding="utf-8"))
+back_d = m_d.load_catalog(TODAY_STR)
+check("集めた記録は catalog_deep.json に（1人1行）・読み直すと同じ・外さない作品の数は catalog_state.json の deep に",
+      back_d["deep"] == st_d["deep"] and open(m_d.CATALOG_DEEP_PATH, encoding="utf-8").read().count("\n") == len(st_d["deep"]) + 2
+      and head_d["deep"] == len(m_d.deep_kept(st_d, TODAY_STR) & set(st_d["items"])) and head_d["deep"] > 0, (head_d, sorted(back_d["deep"])))
+check("出演者の id は actresses.json から（id が数字の人だけ）", back_d["actress_ids"] == {"検索に出せる人": "11"}, back_d["actress_ids"])
+check("読めない行は捨てる（id が数字でない・日付が無い・作品の一覧が一覧でない）",
+      m_d.clean_deep({"1": {"n": "a", "d": "2026-11-01", "c": ["x", 3]}, "b": {"d": "2026-11-01"}, "2": {"n": "c"}, "3": {"d": "2026-11-01", "c": "x"}})
+      == {"1": {"n": "a", "d": "2026-11-01", "c": ["x"]}, "3": {"n": "", "d": "2026-11-01", "c": []}})
+open(m_d.CATALOG_DEEP_PATH, "w", encoding="utf-8").write("{broken")
+check("catalog_deep.json が壊れていたら、過去作品の更新をやめる（上書きしない）", m_d.load_catalog(TODAY_STR) is None)
+os.remove(m_d.CATALOG_DEEP_PATH)
+os.remove(m_d.ACTRESSES_PATH)
+check("catalog_deep.json・actresses.json が無くても読める（深く集めた人なし・id なし）",
+      (lambda st: st is not None and st["deep"] == {} and st["actress_ids"] == {})(m_d.load_catalog(TODAY_STR)))
 
 print("\n■ セール・キャンペーン（FANZA公式のAPIの campaign・prices。その日に見かけたものだけ）")
 s_dir = scenario_dir("sale")

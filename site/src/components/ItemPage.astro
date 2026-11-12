@@ -12,7 +12,7 @@ import GachaCorner from './GachaCorner.astro';
 import RankTrend from './RankTrend.astro';
 import PriceRecord from './PriceRecord.astro';
 import FloorRow from './FloorRow.astro';
-import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, today, rankHistory, seriesById, labelById, roundups, genreTops, contentGenres, tenYenInfo, campaignHrefOf, reviewRankOf, reviews, floors, actressLinks } from '../lib/data.js';
+import { all, paged, actressByName, makerByName, profilesByName, factsContext, monthByKey, tagByName, sale, today, rankHistory, seriesById, labelById, roundups, genreTops, contentGenres, tenYenInfo, campaignHrefOf, reviewRankOf, reviews, floors, actressLinks, deepOrder } from '../lib/data.js';
 import { REVIEW_RANKING_PATH } from '../lib/reviews.js';
 import { TEN_YEN_PATH } from '../lib/ten-yen.js';
 import { popularInGenre, roundupFor, sameSeries } from '../lib/insights.js';
@@ -63,7 +63,7 @@ const next = { names: nextAll.names, items: nextAll.items.slice(0, NEXT_WORKS_SH
 const floorPicks = floorPicksFor(item, floors);
 // 出演者の作品を人気の順に、前の作品・次の作品（2026-11-12 運営者「サイト沼に入れる方針が完璧。もっと伸ばしたい」。案B「順に見る道」。lib/stay.js の castWalksOf）。
 // 女優のページに戻らずに出演作をめくれる。いちばん最後の作品では、次に見る女優（共演・同じメーカー）のいちばん人気の作品へ
-const walks = castWalksOf(item, actressByName, today, { nextActress: (name) => nextActressWork(name, actressLinks, today, item.cid) });
+const walks = castWalksOf(item, actressByName, today, { deepOrder, nextActress: (name) => nextActressWork(name, actressLinks, today, item.cid, deepOrder) });
 const md = (d) => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 // 10円セールの対象なら、ふつうのセールの札の代わりに、10円セールの札（2026-10-09）
 const tenNow = tenYenInfo('video', item.cid);
