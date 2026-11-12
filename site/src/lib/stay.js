@@ -4,6 +4,7 @@
 // どちらも、こちらから案内する欄なので、未成年を連想させるタイトルの作品は入れない（運命の作品・きょうの話題と同じ）
 import { relatedItems } from './items.js';
 import { isMinorTitle } from './gacha.js';
+import { bestRank } from './popularity.js';
 import { FLOORS, FLOOR_GENRE_OK, floorItemPagePath } from './floors.js';
 
 export const NEXT_WORKS_SHOWN = 3; // 作品ページの「次の新作」の本数
@@ -111,3 +112,133 @@ export function floorPickRow({ floor, label, item }) {
     upcoming: false,
   };
 }
+
+// ---------- 沼を深くする（2026-11-12 運営者「深掘りして、関連に派生して、サイト沼に入れる方針が完璧。もっと伸ばしたい」。案B「順に見る道」） ----------
+// 11/12 に、女優のページ → 作品 → 女優のページに戻る → 別の作品…をくり返して、2時間で5人ほど渡り歩いた人がいた（claude/web-analytics.md）。
+// 戻らずに次へ行けるよう、作品ページに「○○の作品を人気の順に」（前の作品・次の作品）を、女優のページに「次に見る女優」（共演・同じメーカー）を置く。
+// 人気の順は、FANZA全体の人気の順位と新着の人気の順位の上のほう（bestRank）。順位の無い作品は、そのあとに新しい順
+export const WALK_MAX_CAST = 2; // 作品ページの「人気の順に」の欄の数の上限（出演者の並び順の先頭から、作品が2本以上ある人を2人まで。出演者が NEXT_WORKS_MAX_CAST 人より多い作品には出さない）
+export const NEXT_ACTRESS_SHOWN = 6; // 女優のページの「次に見る女優」の人数（顔の丸の3つ並び×2段）
+
+const popRankOf = (w) => bestRank(w.popAll, w.popNew);
+
+/** 人気の順の並べ方（順位の小さい順 → 順位の無い作品は新しい順） */
+export function byPopularity(a, b) {
+  const ra = popRankOf(a);
+  const rb = popRankOf(b);
+  if (ra && rb && ra !== rb) return ra - rb;
+  if (ra && !rb) return -1;
+  if (!ra && rb) return 1;
+  return b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid);
+}
+
+/**
+ * その人の作品を人気の順に（発売前の作品・未成年を連想させるタイトルの作品・出演者が maxCast 人より多い作品〔総集編・オムニバス〕は除く。
+ * この作品だけは、発売前でも入れて位置を出す。2026-11-12 の写真で「前の作品」に「ほか50名」の総集編が出たので、総集編も除いた）
+ */
+export function walkList(item, works, today, maxCast = NEXT_WORKS_MAX_CAST) {
+  return works.filter((w) => w.cid === item.cid || (w.dateKey <= today && w.actress.length <= maxCast && !isMinorTitle(w.title))).sort(byPopularity);
+}
+
+/** その人の、いちばん人気の作品（発売済み・未成年を連想させるタイトルと総集編〔出演者が maxCast 人より多い〕は除く。exclude の作品は除く）。無ければ null */
+export function topWorkOf(works, today, exclude = '', maxCast = NEXT_WORKS_MAX_CAST) {
+  return works.filter((w) => w.cid !== exclude && w.dateKey <= today && w.actress.length <= maxCast && !isMinorTitle(w.title)).sort(byPopularity)[0] ?? null;
+}
+
+/**
+ * 作品ページの「○○の作品を人気の順に」: [{ name, path, total, at（この作品が何本めか。1から）, prev, next, nextName }]。
+ * 出演者がその人の作品の中で前後の作品へ進める。いちばん最後の作品では、next に「次に見る女優」のいちばん人気の作品（nextName にその人の名前）。
+ * 出演者が maxCast 人より多い作品（総集編など）・その人の作品が1本だけの人には出さない
+ * nextActress: (名前) => { name, item } か null（lib/data.js の actressLinks で作る）
+ */
+export function castWalksOf(item, byName, today, { maxCast = NEXT_WORKS_MAX_CAST, limit = WALK_MAX_CAST, nextActress = null } = {}) {
+  if (!item.actress.length || item.actress.length > maxCast) return [];
+  const walks = [];
+  for (const name of item.actress) {
+    const group = byName.get(name);
+    if (!group?.items?.length) continue;
+    const list = walkList(item, group.items, today, maxCast);
+    const at = list.findIndex((w) => w.cid === item.cid);
+    if (at < 0 || list.length < 2) continue;
+    let next = list[at + 1] ?? null;
+    let nextName = '';
+    if (!next && nextActress) {
+      const n = nextActress(name);
+      if (n && n.item && n.item.cid !== item.cid && n.item.cid !== list[at - 1]?.cid) {
+        next = n.item;
+        nextName = n.name;
+      }
+    }
+    walks.push({ name, path: group.path, total: list.length, at: at + 1, prev: list[at - 1] ?? null, next, nextName });
+    if (walks.length >= limit) break;
+  }
+  return walks;
+}
+
+/**
+ * 女優のつながりの索引（ビルドのはじめに1回だけ作る。作品ページごとに全作品を見直さない）。
+ * groups: 出演者のページのまとまり（actressGroups＝作品が2本以上の人）。indexable: まとまり → 検索に出せるページか
+ * 共演は、出演者が maxCast 人までの作品で数える（総集編で関係の薄い人が並ばないように。メーカーのページの「よく出ている女優」と同じ考え）
+ */
+export function actressLinkIndex(groups, indexable = () => false, { maxCast = NEXT_WORKS_MAX_CAST } = {}) {
+  const byName = new Map();
+  const coStar = new Map();
+  const topMakers = new Map();
+  const makerCount = new Map();
+  const canIndex = new Map();
+  for (const g of groups) {
+    byName.set(g.name, g);
+    canIndex.set(g.name, Boolean(indexable(g)));
+    const co = new Map();
+    const mk = new Map();
+    for (const w of g.items) {
+      if (w.actress.length > maxCast) continue;
+      for (const o of w.actress) if (o !== g.name) co.set(o, (co.get(o) ?? 0) + 1);
+      if (w.maker && w.maker !== '不明') mk.set(w.maker, (mk.get(w.maker) ?? 0) + 1);
+    }
+    coStar.set(g.name, co);
+    topMakers.set(g.name, [...mk].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 2).map(([m]) => m));
+    for (const [m, c] of mk) {
+      if (!makerCount.has(m)) makerCount.set(m, new Map());
+      makerCount.get(m).set(g.name, c);
+    }
+  }
+  return { byName, coStar, topMakers, makerCount, canIndex, cache: new Map() };
+}
+
+/**
+ * 「次に見る女優」: [{ name, path, kind（'costar'＝共演・'maker'＝同じメーカー）, count, maker }]。
+ * 検索に出せるページの人が先（Google が検索に出せないページを読みに行く回数をふやさない。運営者 11/12「検索に出せる人を先に」）→ 共演 → 同じメーカー（その人にいちばん多いメーカー2つ）→ 本数の多い順
+ */
+export function nextActressesOf(name, index, limit = NEXT_ACTRESS_SHOWN) {
+  const key = `${name}\n${limit}`;
+  if (index.cache.has(key)) return index.cache.get(key);
+  const rows = [];
+  const seen = new Set([name]);
+  // tier: 0＝共演・1＝いちばん多いメーカー・2＝2番めに多いメーカー
+  const add = (other, kind, count, tier, maker = '') => {
+    if (seen.has(other) || !index.byName.has(other)) return;
+    seen.add(other);
+    rows.push({ name: other, path: index.byName.get(other).path, kind, count, maker, tier, ok: index.canIndex.get(other) ? 1 : 0 });
+  };
+  for (const [other, c] of index.coStar.get(name) ?? []) add(other, 'costar', c, 0);
+  (index.topMakers.get(name) ?? []).forEach((m, at) => {
+    for (const [other, c] of index.makerCount.get(m) ?? []) add(other, 'maker', c, at + 1, m);
+  });
+  rows.sort((a, b) => b.ok - a.ok || a.tier - b.tier || b.count - a.count || a.name.localeCompare(b.name));
+  const out = rows.slice(0, limit).map(({ ok, tier, ...r }) => r);
+  index.cache.set(key, out);
+  return out;
+}
+
+/** 作品ページの「人気の順に」の最後で進む先: 次に見る女優の先頭から、いちばん人気の作品がある人（{ name, item }）。無ければ null */
+export function nextActressWork(name, index, today, exclude = '') {
+  for (const r of nextActressesOf(name, index)) {
+    const top = topWorkOf(index.byName.get(r.name)?.items ?? [], today, exclude);
+    if (top) return { name: r.name, item: top };
+  }
+  return null;
+}
+
+/** 「次に見る女優」の顔の下の短い文（共演3本／同じメーカー） */
+export const nextActressNote = (r) => (r.kind === 'costar' ? `共演${r.count}本` : '同じメーカー');

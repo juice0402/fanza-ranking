@@ -919,7 +919,9 @@ for pth in actress_pages:
             here.append("「FANZAで全作品を見る」のリンクが無い・属性が足りない")
     elif btn_text in text:
         here.append("リンク先が無い人なのに「FANZAで全作品を見る」が出ている")
-    faces = [t for t in tags(text, "img") if has_class(t, "face-img")]
+    # その人の顔写真だけを見る（「次に見る女優」の欄の顔は、ほかの女優のもの。2026-11-12）
+    own_text = re.sub(r'<section[^>]*aria-labelledby="next-actress-title">.*?</section>', "", text, flags=re.S)
+    faces = [t for t in tags(own_text, "img") if has_class(t, "face-img")]
     if prof and (prof.get("image_large") or prof.get("image_small")) and not faces:
         here.append("顔写真があるはずなのに出ていない")
     if not prof and faces:
@@ -2962,6 +2964,16 @@ for pth in _item_pages:
     nx = re.search(r'<section class="subsection" aria-labelledby="next-title">(.*?)</section>', raw_, re.S)
     if nx:
         shown_titles += [htmllib.unescape(strip_tags(t)) for t in re.findall(r'class="item-title-link"[^>]*>(.*?)</a>', nx.group(1), re.S)]
+    # 出演者の作品を人気の順に（2026-11-12 案B「順に見る道」）: 2人ぶんまで・「○本め／○本」・前の作品と次の作品で1〜2行・その作品自身へのリンクは無い
+    walks_ = re.findall(r'<section class="subsection cast-walk"[^>]*>(.*?)</section>', raw_, re.S)
+    for wk_ in walks_:
+        shown_titles += [htmllib.unescape(strip_tags(t)) for t in re.findall(r'class="item-title-link"[^>]*>(.*?)</a>', wk_, re.S)]
+        pos_ = re.search(r'class="walk-pos">(\d+)本め／(\d+)本<', wk_)
+        rows_ = len(re.findall(r'<li class="ws-row"', wk_))
+        if not pos_ or not 1 <= int(pos_.group(1)) <= int(pos_.group(2)) or not 1 <= rows_ <= 2 or f'href="{item_href(cid_)}"' in wk_:
+            here.append("人気の順に")
+    if len(walks_) > 2:
+        here.append("人気の順にの数")
     if any(is_minor_title(t) for t in shown_titles):
         here.append("未成年を連想させるタイトル")
     # 小さな表紙の棚（同じシリーズ・同じ出演者/メーカー・同じジャンルで人気。2026-10-07 から3つ）: どれも6本まで・同じ作品が2つの棚に出ない・その作品自身は出ない
@@ -2973,8 +2985,23 @@ for pth in _item_pages:
         here.append("棚の重なり・その作品自身")
     if here:
         bad_stay.append((cid_, here))
-check(f"作品ページ（{len(_item_pages)}ページ）の次に見るもの: セール中の作品だけに札（と sale.js）・運命の作品（/data/gacha.json・その作品を除く）・小さな表紙の棚は3つまで・どれも6本まで・同じ作品が2つの棚に出ない・未成年を連想させるタイトルを出さない",
+check(f"作品ページ（{len(_item_pages)}ページ）の次に見るもの: セール中の作品だけに札（と sale.js）・運命の作品（/data/gacha.json・その作品を除く）・小さな表紙の棚は3つまで・どれも6本まで・同じ作品が2つの棚に出ない・人気の順に（2人ぶんまで・何本めか・前と次の1〜2行）・未成年を連想させるタイトルを出さない",
       not bad_stay, bad_stay[:2])
+# 女優のページの「次に見る女優」（2026-11-12 案B「順に見る道」。lib/stay.js の nextActressesOf）: 6人まで・自分のページは無い・順位の数字なし・顔の下は「共演○本」か「同じメーカー」
+_na_bad = []
+_na_count = 0
+for p_ in glob.glob(os.path.join(DIST, "actress", "*", "index.html")):
+    raw_ = open(p_, encoding="utf-8").read()
+    m_ = re.search(r'aria-labelledby="next-actress-title">(.*?)</section>', raw_, re.S)
+    if not m_:
+        continue
+    _na_count += 1
+    self_ = "/actress/" + os.path.basename(os.path.dirname(p_)) + "/"
+    links_ = re.findall(r'class="hot-link" href="([^"]+)"', m_.group(1))
+    notes_ = [htmllib.unescape(strip_tags(n_)).strip() for n_ in re.findall(r'class="cast-count">(.*?)</a>', m_.group(1), re.S)]  # 文節の区切り（<span class="ph">・<wbr>）は外して読む
+    if not 1 <= len(links_) <= 6 or self_ in links_ or "hot-rank" in m_.group(1) or len(notes_) != len(links_) or not all(re.fullmatch(r"共演\d+本|同じメーカー", n_) for n_ in notes_):
+        _na_bad.append(self_)
+check(f"女優のページの「次に見る女優」（{_na_count}ページ）: 6人まで・自分のページは無い・順位の数字なし・顔の下は「共演○本」か「同じメーカー」", _na_count > 0 and not _na_bad, _na_bad[:3])
 _gj = os.path.join(DIST, "data", "gacha.json")
 try:
     _gacha_rows = json.load(open(_gj, encoding="utf-8"))

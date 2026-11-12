@@ -7,7 +7,8 @@ import { normalizeMonthly } from './monthly.js';
 import { groupByMonth, groupByTag, monthPathByKey } from './collections.js';
 import { buildFactsContext } from './facts.js';
 import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay, ACTRESS_IMAGE_BASE, faceUrl, listTemplateOf } from './profiles.js';
-import { hasCalendar, planPages } from './plan.js';
+import { hasCalendar, listIndexable, planPages } from './plan.js';
+import { actressLinkIndex } from './stay.js';
 import { bestRank, catalogAllRank, normalizePopularity, normalizeRankHistory } from './popularity.js';
 import { SALE_PATH, campaignPages, campaignSlug, isTenYenCampaign, normalizeSale, normalizeSaleHistory, saleGroups, saleHref } from './sale.js';
 import { normalizePriceHistory } from './price-history.js';
@@ -109,6 +110,9 @@ export const nenkanActressGroups = nenkanGroups(historyByName, directoryByName, 
 });
 export const actressPageGroups = [...actressGroups, ...nenkanActressGroups];
 export const actressByName = indexByName(actressPageGroups);
+// 女優のつながりの索引（共演・同じメーカー。作品ページの「人気の順に」と女優のページの「次に見る女優」。2026-11-12。lib/stay.js の actressLinkIndex）。
+// 検索に出せるページの人を先に並べる（女優のページの noindex と同じ listIndexable）
+export const actressLinks = actressLinkIndex(actressGroups, (g) => listIndexable(g.items));
 export const makerByName = indexByName(makerGroups);
 // 発売日カレンダー（.ics）を作る出演者・メーカー: 毎日の更新で載せた作品がある人・メーカーだけ（過去作品だけの人の分まで作ると、ファイルが多くなりすぎるため）
 export const calendarActressGroups = actressGroups.filter(hasCalendar);

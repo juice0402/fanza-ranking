@@ -53,6 +53,7 @@ Gemini を使うのは `get_new_releases.py` のコメントの下書きだけ�
 - ページのくわしいこと（トップの推しの棚は docs/design.md・読み物 `/yomimono/`・名簿の人の女優のページ・`/sale/ending/`・`/hinban/`・`/actress/nenpyo/`・作品ページの品番と出演者）は docs/shikumi.md の「ページ（くわしく）」
 - `scripts/indexnow.py` — 検索エンジンへのお知らせ（IndexNow。本番の公開のときだけ）
 - 作品ページの住所は、コメントのある作品が `/item/`・無い作品が `/w/`（robots.txt で止める。`itemPagePath`・`floorItemPagePath`。2026-11-10。docs/architecture.md の `plan.js`）
+- 作品ページの「○○の作品を人気の順に」（前の作品・次の作品）と女優のページの「次に見る女優」（共演・同じメーカー。検索に出せる人が先）は `lib/stay.js`（2026-11-12。docs/architecture.md の `stay.js` の節）
 - `scripts/check.sh`（`quiet_step.sh`）— テスト一式 ／ `scripts/wait_run.py` — GitHub の実行を待つ ／ `scripts/already_updated.sh` — 今日の更新が済んだか
 - `site/` — サイト本体（Astro 7・静的出力）。`src/config.js` がサイト名・URL・件数・ファイル数の上限（`FILE_BUDGET`＝4万。Workers の静的ファイルは10万まで）の設定
 - `site/src/lib/` — 画面に依存しない部品（テストは `tests/test_*.mjs`）。`data.js`（読み込み）・`items.js`（並べ替え・構造化データ・規約の表記）など。一覧は docs/shikumi.md の「site/src/lib（くわしく）」

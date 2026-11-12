@@ -12,10 +12,12 @@ import RatedShelf from '../../components/RatedShelf.astro';
 import ActressHistory from '../../components/ActressHistory.astro';
 import { HISTORY_TOP_MIN, historyDescriptionHead, nenkanDescription, nenkanIndexable, nenkanPageTitle } from '../../lib/history.js';
 import MiniShelf from '../../components/MiniShelf.astro';
+import CastFaces from '../../components/CastFaces.astro';
+import { nextActressNote, nextActressesOf } from '../../lib/stay.js';
 import { ratedShelf } from '../../lib/reviews.js';
 import { inlineScript } from '../../lib/assets.js';
 import { isMinorTitle } from '../../lib/gacha.js';
-import { actressByName, actressPageGroups, actressReading, agencyOfName, events, eventsOfName, historyByName, makerByName, profilesByName, sale, storiesByName, today, seriesById } from '../../lib/data.js';
+import { actressByName, actressLinks, actressPageGroups, actressReading, agencyOfName, events, eventsOfName, historyByName, makerByName, profilesByName, sale, storiesByName, today, seriesById } from '../../lib/data.js';
 import { readingLine } from '../../lib/kana.js';
 import { entryChips } from '../../lib/insights.js';
 import EntryChips from '../../components/EntryChips.astro';
@@ -59,6 +61,8 @@ const history = historyByName.get(group.name) ?? null;
 const story = history ? storiesByName.get(group.name) ?? null : null;
 // コメントのある作品が1本も無いページ（過去作品だけ）は、検索エンジンには出さない。名簿の人は、年表と紹介文の両方がそろってから
 const noindex = nenkan ? !nenkanIndexable(history, story) : !listIndexable(group.items);
+// 次に見る女優（共演 → 同じメーカー。検索に出せるページの人が先。2026-11-12 案B「順に見る道」。lib/stay.js の nextActressesOf）。名簿の人のページには出さない
+const nextActresses = nenkan ? [] : nextActressesOf(group.name, actressLinks);
 // メーカーは、作品の多い順に8社まで（ほかは「ほか○社」。名前だけで画面が埋まらないように。2026-10-06）
 const MAKERS_SHOWN = 8;
 const makersAll = rankedNames(group.items.map((i) => i.maker).filter((m) => m !== '不明'), Infinity).names;
@@ -285,6 +289,13 @@ const trail = [
       </div>
       <DaySection groups={groups} />
     </section>
+    )}
+
+    {nextActresses.length > 0 && (
+      <section class="section" aria-labelledby="next-actress-title">
+        <h2 id="next-actress-title" class="section-title">次に見る女優</h2>
+        <CastFaces rows={nextActresses} ranked={false} note={nextActressNote} />
+      </section>
     )}
   </div>
 </Base>

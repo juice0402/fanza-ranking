@@ -1,11 +1,12 @@
 ---
 // よく出ている女優（メーカーのページ。2026-10-06）: 顔写真の丸・名前・このサイトに載っている本数を、3列で（いま人気の女優と同じ3つ並び）。
 // rows: [{ name, count }]（lib/sale.js の campaignSummary。出演者4人までの作品で2本以上の人）。顔写真が無い人は頭文字の丸。タップで出演者のページ（無ければ作品検索）
+// ranked={false}: 順位の数字を出さない（女優のページの「次に見る女優」。2026-11-12）。note: 名前の下の短い文（無ければ「○本」）
 import Face from './Face.astro';
 import { actressByName, faceOfName } from '../lib/data.js';
 import { SEARCH_PATH } from '../lib/search.js';
 
-const { rows } = Astro.props;
+const { rows, ranked = true, note = (r) => `${r.count}本` } = Astro.props;
 const hrefOf = (name) => actressByName.get(name)?.path ?? `${SEARCH_PATH}?q=${encodeURIComponent(name)}`;
 ---
 
@@ -16,10 +17,10 @@ const hrefOf = (name) => actressByName.get(name)?.path ?? `${SEARCH_PATH}?q=${en
         <a class="hot-link" href={hrefOf(r.name)}>
           <span class="hot-face">
             <Face name={r.name} src={faceOfName(r.name, true)} size="lg" />
-            <span class="hot-rank" aria-hidden="true">{i + 1}</span>
+            {ranked && <span class="hot-rank" aria-hidden="true">{i + 1}</span>}
           </span>
-          <span class="hot-name"><span class="visually-hidden">{i + 1}位 </span>{r.name}</span>
-          <span class="cast-count">{r.count}本</span>
+          <span class="hot-name">{ranked && <span class="visually-hidden">{i + 1}位 </span>}{r.name}</span>
+          <span class="cast-count">{note(r)}</span>
         </a>
       </li>
     ))}
