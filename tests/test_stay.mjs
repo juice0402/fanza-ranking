@@ -76,6 +76,7 @@ console.log('■ 沼を深くする（人気の順に・次に見る女優。202
     p('a5', '2026-07-01', ['女優A'], null),
     p('a6', '2026-12-01', ['女優A'], null),
     p('a7', '2026-06-01', ['女優A'], 1, { title: '女子校生の作品' }),
+    p('a8', '2026-05-01', ['女優A', 'x1', 'x2', 'x3', 'x4'], 2),
   ];
   const B = [A[3], p('b1', '2026-10-05', ['女優B'], 5, { maker: 'メーカーB' }), p('b2', '2026-10-06', ['女優B'], 40, { maker: 'メーカーB' })];
   const C = [p('c1', '2026-10-01', ['女優C'], 7), p('c2', '2026-10-02', ['女優C'], 8, { comment: 'ひとこと。' })];
@@ -88,7 +89,7 @@ console.log('■ 沼を深くする（人気の順に・次に見る女優。202
   ];
   const byName = new Map(groups.map((g) => [g.name, g]));
   const order = T.walkList(A[0], A, day).map((x) => x.cid).join(',');
-  check('人気の順: 順位の小さい順（全体と新着の上のほう）→ 順位なしは新しい順・発売前と未成年を連想させるタイトルは入れない', order === 'a2,a1,a4,a3,a5', order);
+  check('人気の順: 順位の小さい順（全体と新着の上のほう）→ 順位なしは新しい順・発売前・未成年を連想させるタイトル・総集編（出演者5人以上）は入れない', order === 'a2,a1,a4,a3,a5', order);
   check('発売前の作品のページでは、その作品だけ入れて位置を出す', T.walkList(A[5], A, day).some((x) => x.cid === 'a6'));
   const mid = T.castWalksOf(A[0], byName, day)[0];
   check('前の作品・次の作品・何本めか', mid.name === '女優A' && mid.at === 2 && mid.total === 5 && mid.prev.cid === 'a2' && mid.next.cid === 'a4' && mid.nextName === '' && mid.path === '/actress/a/', JSON.stringify({ at: mid.at, total: mid.total }));

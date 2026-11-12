@@ -132,14 +132,17 @@ export function byPopularity(a, b) {
   return b.dateKey.localeCompare(a.dateKey) || a.cid.localeCompare(b.cid);
 }
 
-/** その人の作品を人気の順に（発売前の作品と、未成年を連想させるタイトルの作品は除く。この作品だけは、発売前でも入れて位置を出す） */
-export function walkList(item, works, today) {
-  return works.filter((w) => w.cid === item.cid || (w.dateKey <= today && !isMinorTitle(w.title))).sort(byPopularity);
+/**
+ * その人の作品を人気の順に（発売前の作品・未成年を連想させるタイトルの作品・出演者が maxCast 人より多い作品〔総集編・オムニバス〕は除く。
+ * この作品だけは、発売前でも入れて位置を出す。2026-11-12 の写真で「前の作品」に「ほか50名」の総集編が出たので、総集編も除いた）
+ */
+export function walkList(item, works, today, maxCast = NEXT_WORKS_MAX_CAST) {
+  return works.filter((w) => w.cid === item.cid || (w.dateKey <= today && w.actress.length <= maxCast && !isMinorTitle(w.title))).sort(byPopularity);
 }
 
-/** その人の、いちばん人気の作品（発売済み・未成年を連想させるタイトルは除く。exclude の作品は除く）。無ければ null */
-export function topWorkOf(works, today, exclude = '') {
-  return works.filter((w) => w.cid !== exclude && w.dateKey <= today && !isMinorTitle(w.title)).sort(byPopularity)[0] ?? null;
+/** その人の、いちばん人気の作品（発売済み・未成年を連想させるタイトルと総集編〔出演者が maxCast 人より多い〕は除く。exclude の作品は除く）。無ければ null */
+export function topWorkOf(works, today, exclude = '', maxCast = NEXT_WORKS_MAX_CAST) {
+  return works.filter((w) => w.cid !== exclude && w.dateKey <= today && w.actress.length <= maxCast && !isMinorTitle(w.title)).sort(byPopularity)[0] ?? null;
 }
 
 /**
@@ -154,7 +157,7 @@ export function castWalksOf(item, byName, today, { maxCast = NEXT_WORKS_MAX_CAST
   for (const name of item.actress) {
     const group = byName.get(name);
     if (!group?.items?.length) continue;
-    const list = walkList(item, group.items, today);
+    const list = walkList(item, group.items, today, maxCast);
     const at = list.findIndex((w) => w.cid === item.cid);
     if (at < 0 || list.length < 2) continue;
     let next = list[at + 1] ?? null;
