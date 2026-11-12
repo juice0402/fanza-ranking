@@ -1937,6 +1937,63 @@ summary:focus-visible {
   white-space: nowrap;
 }
 
+/* 女優のページの歩みの欄のいちばん下: 年表の一覧へ（#255） */
+.hist-more {
+  margin: 14px 0 0;
+  font-size: 14px;
+}
+
+/* 行の2段目: いちばん多いメーカー（○本）。#255 */
+.nenpyo-list > li {
+  flex-wrap: wrap;
+  column-gap: 10px;
+  row-gap: 0;
+  padding: 6px 0;
+}
+
+.nenpyo-mk {
+  overflow: hidden;
+  flex: 1 0 100%;
+  min-width: 0;
+  color: var(--paper-dim);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 年表の一覧のしぼりこみと並べかえ（2026-11-12 #255）: 部品と並びは女優検索と同じ（.search-layout）。
+   JavaScript が無いときは、しぼりこみの欄を出さずに、50音の一覧だけを横いっぱいに */
+.np-side {
+  display: none;
+}
+
+.js .np-side {
+  display: block;
+}
+
+html:not(.js) .np-layout {
+  display: block;
+}
+
+.np-layout [hidden] {
+  display: none !important;
+}
+
+.np-layout .nenpyo-jump {
+  margin-top: 6px;
+}
+
+.np-flat {
+  margin-top: 12px;
+}
+
+@media (min-width: 960px) {
+  /* 一覧は右の欄なので、3列だと名前が切れる。2列に */
+  .np-layout .nenpyo-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* 出演者・メーカーのページの紹介文 */
 .summary {
   margin: 14px 0 0;

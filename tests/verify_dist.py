@@ -425,6 +425,14 @@ _np_missing = [h for h in _np_hrefs if not os.path.isfile(os.path.join(DIST, h.s
 _np_count = len(_np_hrefs)
 check(f"女優の年表（/actress/nenpyo/）: ページがあり、{_np_count}人が50音の見出しで並び、名前から女優のページの歩みの欄へ（飛び先がある）",
       bool(_np_raw) and re.sub(r"<[^>]+>", "", (re.search(r'<h1 class="hero-title">(.*?)</h1>', _np_raw, re.S) or re.search("()", "")).group(1)).strip() == "女優の年表" and not _np_missing and _np_count <= len(_np_names) and (_np_count == 0 or 'class="kana-head"' in _np_raw), (_np_count, len(_np_names), _np_missing[:3]))
+# しぼりこみと並べかえ（2026-11-12 #255）: 全員の行に、しぼりこみ用のデータ（年・メーカーの番号・いまも新作あり・本数・最初の作品の日・50音の順）。
+# メーカーの番号は選択肢の中だけ。しぼりこみの欄とスクリプトがあり、条件を URL に入れない（フォームに action・name のある送信ボタンが無い）
+_np_lis = re.findall(r"<li([^>]*)>", "".join(_np_links))
+_np_mk_n = len(re.findall(r"<option value=\"\d+\"", (re.search(r'<select name="maker">(.*?)</select>', _np_raw, re.S) or re.search("()", "")).group(1)))
+_np_bad_li = [a for a in _np_lis if not re.search(r'data-y="(\d{4}|old)" data-m="(-1|\d+)" data-a="[01]" data-t="\d+" data-f="\d{8}" data-o="\d+"', a) or int(re.search(r'data-m="(-?\d+)"', a).group(1)) >= _np_mk_n]
+check(f"女優の年表: 全員（{len(_np_lis)}人）の行に、しぼりこみ用のデータがある・しぼりこみの欄（並び順・年・いまも新作あり）とスクリプトがある",
+      _np_count == 0 or (len(_np_lis) == _np_count and not _np_bad_li and all(f'<select name="{n}">' in _np_raw for n in ("sort", "year")) and 'name="active"' in _np_raw
+                         and 'src="/nenpyo.js?v=' in _np_raw and os.path.isfile(os.path.join(DIST, "nenpyo.js")) and not re.search(r'<form[^>]*\baction=', _np_raw)), (len(_np_lis), _np_count, _np_bad_li[:2]))
 _as_raw = read_raw(os.path.join(DIST, "actress", "index.html")) if os.path.isfile(os.path.join(DIST, "actress", "index.html")) else ""
 check("女優の年表: 年表のある人がいれば、女優検索のページに入口が1つ・sitemap に入る（0人なら noindex・sitemap に入れない）",
       (_as_raw.count('href="/actress/nenpyo/"') == 1 and ("/actress/nenpyo/" in sm_paths if os.path.isfile(sitemap_path) else True)) if _np_count > 0
@@ -2829,13 +2837,16 @@ for pth in actress_pages:
         here.append("歩み")
     if _has_hist:
         _hist_seen += 1
+        _hs = re.search(r'<section class="section hist".*?</section>', raw_, re.S)
+        if not _hs or 'href="/actress/nenpyo/"' not in _hs.group(0):
+            here.append("歩みの欄に年表の一覧へのリンクが無い")
         for _lb in re.findall(r'<span class="hist-label">(.*?)</span>(?=\s*(?:<a class="hist-title"|<span class="hist-title"|</dd>))', raw_, re.S):
             _lb = htmllib.unescape(re.sub(r"<[^>]+>", "", _lb)).replace("\u200b", "").strip()
             if not _hist_label.match(_lb):
                 here.append(("年譜の見出し", _lb))
     if here:
         bad_act2.append((name_, here))
-check(f"出演者のページ（{len(actress_pages)}ページ）: タイトルに年月（予約があれば「予約」も）・次の新作・セール中の作品（あるときだけ）・更新日・ProfilePage の構造化データ・歩み（集めてある{_hist_seen}人だけ・タイトルに「と年表」・年譜の見出し）・人気作ベスト{_top_seen['popular']}人・評価の高い作品（FANZA全体）{_top_seen['rated']}人は集めてある人だけ",
+check(f"出演者のページ（{len(actress_pages)}ページ）: タイトルに年月（予約があれば「予約」も）・次の新作・セール中の作品（あるときだけ）・更新日・ProfilePage の構造化データ・歩み（集めてある{_hist_seen}人だけ・タイトルに「と年表」・年譜の見出し・年表の一覧へのリンク）・人気作ベスト{_top_seen['popular']}人・評価の高い作品（FANZA全体）{_top_seen['rated']}人は集めてある人だけ",
       not bad_act2, bad_act2[:2])
 
 # 名簿の人のページ（女優名鑑その3。2026-10-27 #173。しょーくん「作品が多い人だけ増やす」）: 女優検索の名簿にいて、このサイトにページの無い人のうち、

@@ -2,10 +2,13 @@
 // 女優の年表の一覧（/actress/nenpyo/。運営者の希望「世界一の女優深掘りサイト」。2026-10-27）
 // 年表のデータ（actress_history.json）がある女優だけを、50音の行ごとに並べる。名前から女優のページの「〇〇さんの歩み」（#hist-title）へ。
 // データは毎日少しずつ増えるので、ビルドのたびにデータから作る（lib/history.js の nenpyoIndex・historyBrief）
+// しぼりこみ（最初の作品の年・いちばん多いメーカー・いまも新作あり）と並べかえ（2026-11-12 #255）: 行ごとの値は data 属性、動きは public/nenpyo.js。
+// 条件は URL に入れない。JavaScript が無いときは、しぼりこみの欄を出さず、50音の一覧だけ（html.js が無いと .np-side を隠す）
 import Base from '../../layouts/Base.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import { actressByName, actressReading, historyByName, today } from '../../lib/data.js';
-import { NENPYO_PATH, nenpyoIndex } from '../../lib/history.js';
+import { NENPYO_PATH, NENPYO_SORTS, nenpyoFilters, nenpyoIndex } from '../../lib/history.js';
+import { assetUrl } from '../../lib/assets.js';
 import { nenpyoDescription } from '../../lib/describe.js';
 import { ACTRESS_INDEX_PATH, SITE_NAME, SITE_URL, breadcrumbLd } from '../../lib/items.js';
 
@@ -13,6 +16,8 @@ import { ACTRESS_INDEX_PATH, SITE_NAME, SITE_URL, breadcrumbLd } from '../../lib
 const people = [...historyByName.values()].filter((h) => actressByName.has(h.name));
 const rows = nenpyoIndex(people.map((h) => ({ name: h.name, path: `${actressByName.get(h.name).path}#hist-title`, history: h, reading: actressReading(h.name) })));
 const count = rows.reduce((n, r) => n + r.entries.length, 0);
+const filters = nenpyoFilters(rows.flatMap((r) => r.entries), today);
+const fmt = (n) => n.toLocaleString('ja-JP');
 const top = people.reduce((best, h) => (!best || h.total > best.total ? h : best), null);
 const trail = [
   { name: 'トップ', path: '/' },
@@ -38,23 +43,73 @@ const pageLd = { '@context': 'https://schema.org', '@type': 'CollectionPage', na
     </section>
 
     {rows.length > 0 && (
-      <section class="section" aria-labelledby="nenpyo-title">
-        <h2 id="nenpyo-title" class="section-title">50音で探す</h2>
-        <p class="section-note note-source">数字はFANZAの作品の年と本数です。</p>
-        <nav class="nenpyo-jump" aria-label="50音の行へ">
-          {rows.map((r) => <a href={`#${r.id}`}>{r.head}</a>)}
-        </nav>
-        {rows.map((r) => (
-          <div class="kana-block">
-            <h3 id={r.id} class="kana-head">{r.head}</h3>
-            <ul class="nenpyo-list">
-              {r.entries.map((e) => (
-                <li><a href={e.path}>{e.name}</a><span class="nenpyo-n">{e.brief}</span></li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      <section id="nenpyo" class="section search-layout np-layout" aria-labelledby="nenpyo-title">
+        {/* スマホは「しぼりこみ（たたむ）→ 一覧」の1列、パソコン（960px〜）は左にしぼりこみ（画面に固定）｜右に一覧。女優検索と同じ部品 */}
+        <div class="search-side np-side">
+          <form class="as-form np-form" autocomplete="off" aria-label="しぼりこみと並べかえ">
+            <details id="np-filters" class="ws-filters">
+              <summary class="ws-filters-toggle">しぼりこみ・並べかえ<span id="np-filter-note" class="ws-filter-note"></span></summary>
+              <label class="as-field as-field-wide">
+                並び順
+                <select name="sort">
+                  {NENPYO_SORTS.map(([value, label]) => <option value={value}>{label}</option>)}
+                </select>
+              </label>
+              <label class="as-field as-field-wide">
+                FANZAで最初の作品の年
+                <select name="year">
+                  <option value="">すべて</option>
+                  {filters.years.map((y) => <option value={y.value}>{y.label}（{fmt(y.count)}人）</option>)}
+                </select>
+              </label>
+              {filters.makers.length > 0 && (
+                <label class="as-field as-field-wide">
+                  いちばん多いメーカー
+                  <select name="maker">
+                    <option value="">すべて</option>
+                    {filters.makers.map((m) => <option value={m.value}>{m.name}（{fmt(m.count)}人）</option>)}
+                  </select>
+                </label>
+              )}
+              <div class="as-checks">
+                <label class="as-check"><input type="checkbox" name="active" value="1" /> いまも新作あり（90日以内か予約）</label>
+              </div>
+              <div class="as-actions">
+                <button type="reset" class="clear-link">条件をクリア</button>
+              </div>
+            </details>
+            {/* 広い画面では、はじめから開いておく（スクリプトを待つと、開いたときに一覧がずれるため。女優検索と同じ） */}
+            <script is:inline>(function(){var d=document.getElementById('np-filters');if(d&&window.matchMedia&&window.matchMedia('(min-width: 960px)').matches)d.open=true})();</script>
+          </form>
+        </div>
+        <div class="search-main">
+          <h2 id="nenpyo-title" class="visually-hidden">年表のある女優</h2>
+          <p id="np-count" class="as-count" aria-live="polite">{fmt(count)}人</p>
+          <p class="section-note note-source">FANZAの作品の年と本数・いちばん多いメーカーです。</p>
+          <nav class="nenpyo-jump" aria-label="50音の行へ">
+            {rows.map((r) => <a href={`#${r.id}`} data-row={r.id}>{r.head}</a>)}
+          </nav>
+          {rows.map((r) => (
+            <div class="kana-block">
+              <h3 id={r.id} class="kana-head">{r.head}</h3>
+              <ul class="nenpyo-list">
+                {r.entries.map((e) => {
+                  const d = filters.data.get(e);
+                  return (
+                    <li data-y={d.y} data-m={d.m} data-a={d.a} data-t={d.t} data-f={d.f} data-o={d.o}>
+                      <a href={e.path}>{e.name}</a>
+                      <span class="nenpyo-n">{e.brief}</span>
+                      {e.maker && <span class="nenpyo-mk">{e.maker.name}（{fmt(e.maker.n)}本）</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+          <ul id="np-flat" class="nenpyo-list np-flat" hidden></ul>
+        </div>
       </section>
     )}
   </div>
+  {rows.length > 0 && <script is:inline src={assetUrl('/nenpyo.js')} defer></script>}
 </Base>
