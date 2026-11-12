@@ -166,6 +166,17 @@
     return 'https://pics.dmm.co.jp/digital/video/' + cid + '/' + cid + 'pl.jpg';
   }
 
+  // お気に入りの索引の作品。画像（i）が省かれているもの（決まった形の画像）は作り直す（2026-11-13）
+  function indexItems(rows) {
+    return (Array.isArray(rows) ? rows : []).map(function (r) {
+      if (!r || typeof r !== 'object' || r.i !== undefined || !CID.test(String(r.c || ''))) return r;
+      var x = {};
+      for (var k in r) if (Object.prototype.hasOwnProperty.call(r, k)) x[k] = r[k];
+      x.i = oshiImage(r.c);
+      return x;
+    });
+  }
+
   // 推しの棚（トップ）: お気に入りの出演者・メーカーごとに、予約・新作（発売から recentDays 日）・セール中（終わりの時刻 nowKey をすぎていない）を集める。
   // items は favorites-index.json の items、sale は favorites-sale.json（lib/favorites.js の buildFavoritesSale の形）。
   // 1つも無い人は入れない。予約か新作がある人を先に、同じなら☆を付けたのが新しい人から
@@ -249,7 +260,7 @@
     module.exports = {
       castShown: castShown, CAST_LIMIT: CAST_LIMIT, THUMB_MEDIA: THUMB_MEDIA, smallImageUrl: smallImageUrl, tinyImageUrl: tinyImageUrl, unresizedUrl: unresizedUrl,
       emptyStore: emptyStore, parseStore: parseStore, isOn: isOn, toggle: toggle, remove: remove,
-      hasPeople: hasPeople, matches: matches, pickNew: pickNew, pickOshi: pickOshi, shortDay: shortDay, jstNowKey: jstNowKey, OSHI_DAYS: OSHI_DAYS, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT, workHref: workHref,
+      hasPeople: hasPeople, matches: matches, pickNew: pickNew, indexItems: indexItems, pickOshi: pickOshi, shortDay: shortDay, jstNowKey: jstNowKey, OSHI_DAYS: OSHI_DAYS, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT, workHref: workHref,
     };
     return;
   }
@@ -367,7 +378,7 @@
         })
         .then(function (data) {
           var d = data && typeof data === 'object' ? data : {};
-          return { items: Array.isArray(d.items) ? d.items : [], pages: d.pages && typeof d.pages === 'object' ? d.pages : {} };
+          return { items: indexItems(d.items), pages: d.pages && typeof d.pages === 'object' ? d.pages : {} };
         })
         .catch(function (error) {
           indexPromise = null; // 失敗を覚えっぱなしにしない（つながるようになったら、次に開いたときに読み直す）

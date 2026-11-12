@@ -242,3 +242,51 @@ export function nextActressWork(name, index, today, exclude = '') {
 
 /** 「次に見る女優」の顔の下の短い文（共演3本／同じメーカー） */
 export const nextActressNote = (r) => (r.kind === 'costar' ? `共演${r.count}本` : '同じメーカー');
+
+export const BODY_NEAR_SHOWN = 6; // 女優のページの「身長とカップが近い女優」の人数（顔の丸の3つ並び×2段）
+export const BODY_NEAR_CM = 3; // 身長の近さ（±cm）
+
+const heightOf = (p) => (Number.isFinite(p?.height) && p.height >= 120 && p.height <= 210 ? Math.round(p.height) : null);
+const cupOf = (p) => (typeof p?.cup === 'string' && /^[A-Z]$/.test(p.cup) ? p.cup : '');
+
+/**
+ * 「身長とカップが近い女優」の索引（ビルドのはじめに1回だけ作る）: カップ → [{ name, path, height, cup, works, ok }]。
+ * FANZA公式のプロフィールに身長とカップがある、ページのある人だけ。顔や雰囲気が「似ている」は FANZA のデータに無く推測になるので出さない。
+ * 公式の数字が近い人だけ（2026-11-12 運営者 OK）。groups: actressGroups。profileOf: 名前 → プロフィール。indexable: まとまり → 検索に出せるページか
+ */
+export function bodyIndex(groups, profileOf, indexable = () => false) {
+  const byCup = new Map();
+  for (const g of groups) {
+    const p = profileOf(g.name);
+    const height = heightOf(p);
+    const cup = cupOf(p);
+    if (!height || !cup) continue;
+    if (!byCup.has(cup)) byCup.set(cup, []);
+    byCup.get(cup).push({ name: g.name, path: g.path, height, cup, works: g.items.length, ok: indexable(g) ? 1 : 0 });
+  }
+  return byCup;
+}
+
+/**
+ * 「身長とカップが近い女優」: { rows: [{ name, path, height, cup }], height, cup, min, max } か null（その人の身長かカップが無いとき）。
+ * 同じカップで身長が ±cm の人。検索に出せるページの人が先 → 身長の近い順 → 作品の多い順。exclude（「次に見る女優」に出た人）は除く
+ */
+export function bodyNeighborsOf(name, profile, index, { exclude = [], limit = BODY_NEAR_SHOWN, cm = BODY_NEAR_CM } = {}) {
+  const height = heightOf(profile);
+  const cup = cupOf(profile);
+  if (!height || !cup) return null;
+  const skip = new Set([name, ...exclude]);
+  const rows = (index.get(cup) ?? [])
+    .filter((r) => !skip.has(r.name) && Math.abs(r.height - height) <= cm)
+    .sort((a, b) => b.ok - a.ok || Math.abs(a.height - height) - Math.abs(b.height - height) || b.works - a.works || a.name.localeCompare(b.name))
+    .slice(0, limit)
+    .map(({ ok, works, ...r }) => r);
+  return { rows, height, cup, min: height - cm, max: height + cm };
+}
+
+/** 「身長とカップが近い女優」の顔の下の短い文（158cm・Eカップ） */
+export const bodyNote = (r) => `${r.height}cm・${r.cup}カップ`;
+
+/** 女優検索を、その身長の幅とカップで開く住所（public/actress-search.js の height・cup）。robots.txt で止める（/actress/? の住所はいくらでも増えるため） */
+export const bodySearchHref = (base, near) => `${base}?height=${near.min}-${near.max}&cup=${near.cup}`;
+
