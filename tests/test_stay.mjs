@@ -116,5 +116,21 @@ console.log('■ 沼を深くする（人気の順に・次に見る女優。202
   check('次に見る女優の作品が無いときは、次の作品なし', T.castWalksOf(A[4], byName, day, { nextActress: () => null })[0].next === null);
 }
 
+console.log('\n■ 身長とカップが近い女優（女優のページ。FANZA公式のプロフィールの数字。2026-11-12）');
+{
+  const mk = (name, n, noted = false) => ({ name, path: `/actress/${name}/`, items: Array.from({ length: n }, (_, k) => ({ cid: `${name}${k}`, comment: noted && !k ? 'ひとこと' : '' })) });
+  const groups = [mk('本人', 5), mk('近い', 3), mk('近い出せる', 2, true), mk('遠い', 9), mk('別カップ', 9), mk('身長なし', 9), mk('ちょうど3cm', 4), mk('次に見る女優の人', 9, true)];
+  const prof = { 本人: { height: 158, cup: 'E' }, 近い: { height: 159, cup: 'E' }, 近い出せる: { height: 161, cup: 'E' }, 遠い: { height: 162, cup: 'E' }, 別カップ: { height: 158, cup: 'F' },
+    身長なし: { height: null, cup: 'E' }, ちょうど3cm: { height: 155, cup: 'E' }, 次に見る女優の人: { height: 158, cup: 'E' } };
+  const idx = T.bodyIndex(groups, (n) => prof[n] ?? null, (g) => g.items.some((i) => i.comment));
+  check('索引: 身長とカップがある人だけ・カップごと', idx.get('E').length === 6 && idx.get('F').length === 1 && !idx.get('E').some((r) => r.name === '身長なし'));
+  const near = T.bodyNeighborsOf('本人', prof['本人'], idx, { exclude: ['次に見る女優の人'] });
+  check('同じカップで身長±3cm・自分と「次に見る女優」の人は除く・検索に出せる人が先 → 身長の近い順',
+    near.rows.map((r) => r.name).join() === '近い出せる,近い,ちょうど3cm' && near.min === 155 && near.max === 161 && near.cup === 'E', JSON.stringify(near));
+  check('顔の下は「159cm・Eカップ」・女優検索は同じ身長の幅とカップで開く', T.bodyNote(near.rows[1]) === '159cm・Eカップ' && T.bodySearchHref('/actress/', near) === '/actress/?height=155-161&cup=E');
+  check('身長かカップが無い人には出さない（null）', T.bodyNeighborsOf('身長なし', prof['身長なし'], idx) === null && T.bodyNeighborsOf('x', null, idx) === null && T.bodyNeighborsOf('x', { height: 300, cup: 'E' }, idx) === null);
+  check('6人まで', T.bodyNeighborsOf('本人', prof['本人'], idx, { limit: 2 }).rows.length === 2);
+}
+
 console.log(`\n=== ${pass}/${pass + fail} 合格 ===`);
 process.exit(fail ? 1 : 0);
