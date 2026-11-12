@@ -91,6 +91,13 @@ console.log('■ 沼を深くする（人気の順に・次に見る女優。202
   const order = T.walkList(A[0], A, day).map((x) => x.cid).join(',');
   check('人気の順: 順位の小さい順（全体と新着の上のほう）→ 順位なしは新しい順・発売前・未成年を連想させるタイトル・総集編（出演者5人以上）は入れない', order === 'a2,a1,a4,a3,a5', order);
   check('発売前の作品のページでは、その作品だけ入れて位置を出す', T.walkList(A[5], A, day).some((x) => x.cid === 'a6'));
+  // 人気の女優を深く集めた人は、その人の FANZA の人気順（catalog_deep.json の c の並び）を先に（2026-11-12）
+  const deep = T.deepOrderByName({ 1: { n: '女優A', d: '2026-11-12', c: ['a4', 'zz', 'a1', 'a4'] }, 2: { n: '', c: ['a1'] }, 3: { n: '女優X', c: 'a1' }, 4: null });
+  check('深く集めた記録 → 名前ごとの人気順（重なり・形の違う行は捨てる）', deep.size === 1 && [...deep.get('女優A')].join() === 'a4,0,zz,1,a1,2');
+  const deepWalk = T.walkList(A[0], A, day, 4, deep.get('女優A')).map((x) => x.cid);
+  check('その人の FANZA の人気順にある作品が先（その順）・無い作品はそのあと、これまでの人気の順', deepWalk[0] === 'a4' && deepWalk[1] === 'a1' && deepWalk.slice(2).join() === order.split(',').filter((c) => c !== 'a4' && c !== 'a1').join(), deepWalk.join());
+  check('人気順が無い人（深く集めていない人）は、これまでどおり', T.walkList(A[0], A, day, 4, null).map((x) => x.cid).join() === order && T.deepOrderByName(null).size === 0);
+  check('深く集めた人の「いちばん人気の作品」も、その人の人気順の先頭', T.topWorkOf(A, day, '', 4, deep.get('女優A')).cid === 'a4' && T.topWorkOf(A, day, 'a4', 4, deep.get('女優A')).cid === 'a1');
   const mid = T.castWalksOf(A[0], byName, day)[0];
   check('前の作品・次の作品・何本めか', mid.name === '女優A' && mid.at === 2 && mid.total === 5 && mid.prev.cid === 'a2' && mid.next.cid === 'a4' && mid.nextName === '' && mid.path === '/actress/a/', JSON.stringify({ at: mid.at, total: mid.total }));
   const first = T.castWalksOf(A[1], byName, day)[0];

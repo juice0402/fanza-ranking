@@ -52,8 +52,10 @@ check("失敗が続いていれば、注意は「いちばん新しい実行」�
 w, row = H.check_runs("ten-yen.yml", "10円セール", [run("2026-10-18T03:00:00Z")] + [run(f"2026-10-0{d}T03:00:00Z", "failure") for d in (3, 4, 5)], since)
 check("7日より前の失敗は数えない", w == [] and row == "10円セール: 1回・失敗0回", (w, row))
 check("失敗の回数の決まり（FAILS_MAX）はもう無い", not hasattr(H, "FAILS_MAX"))
-w, _ = H.check_runs("deploy.yml", "公開", [run("2026-10-18T03:00:00Z", started="2026-10-18T03:00:00Z", ended="2026-10-18T03:35:00Z")], since)
-check("公開が30分をこえたら注意（上限は40分）", w == ["公開にいちばん長くて 35 分かかりました（上限は40分）"], w)
+w, _ = H.check_runs("deploy.yml", "公開", [run("2026-10-18T03:00:00Z", started="2026-10-18T03:00:00Z", ended="2026-10-18T04:15:00Z")], since)
+check("公開が70分をこえたら注意（上限は100分。2026-11-12 に人気の女優を深く集めてファイルが6万ほどに）", w == ["公開にいちばん長くて 75 分かかりました（上限は100分）"], w)
+w, _ = H.check_runs("deploy.yml", "公開", [run("2026-10-18T03:00:00Z", started="2026-10-18T03:00:00Z", ended="2026-10-18T03:45:00Z")], since)
+check("公開が45分なら注意しない", w == [], w)
 
 print("━━ コメントの仕上げ（Claude の予約タスク）")
 pr = lambda ref, merged: {"head": {"ref": ref}, "merged_at": merged}

@@ -27,7 +27,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 50  # ビルドと点検で16〜19分（2万7千ファイル。issue #188）・アップロードで数分（変わったファイルだけ送る）
+    timeout-minutes: 100  # ビルドと点検で16〜19分（2万7千ファイル。issue #188）・アップロードで数分（変わったファイルだけ送る）。2026-11-12 に50から（人気の女優を深く集めて、ファイルが6万ほどになるため）
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

@@ -25,8 +25,8 @@ CLAUDE.md は1万字以内に保つ。経緯・くわしいことは docs/ へ�
 - コード・デザインを変えるPR（`site/` の中。データは除く）は、CI がプレビュー（`<ブランチ名>-av-sale-guide.juice-juice-0402.workers.dev`。URL は check の注釈）を作る。
 - 独自ドメインは `https://av-sale-guide.com`（`site/src/config.js` の `SITE_URL` 1か所で、URL・canonical・sitemap・robots.txt・RSS・構造化データ・IndexNow が切りかわる）。旧 fanza-ranking.pages.dev は Bulk Redirects で 301（前の住所のサイトマップ `/sitemap-pages-dev.xml` は Search Console 用）。くわしくは docs/shikumi.md の「公開（くわしく）」
 - 本番の公開のたびに `deploy.yml` が `scripts/indexnow.py` で、新しいページ・変わったページを IndexNow で知らせる（Google は sitemap と Search Console）。くわしくは docs/shikumi.md
-- 本番もプレビューも Cloudflare Workers（`workers/wrangler.jsonc`・`scripts/deploy_workers.sh`・Secrets の `CLOUDFLARE_WORKERS_TOKEN`）。Pages には出さない。ファイル数の上限 `FILE_BUDGET` は4万。戻し方は docs/architecture.md の「Workers への引っ越し」
-- Cloudflare 側の自動ビルドは止めてある（2026-10-09。ダッシュボードの「ブランチコントロール」。戻すときはそこをオンに）。コミット・Merge のメッセージに `[CI Skip]` は要らない（入れても何も変わらない）。
+- 本番もプレビューも Cloudflare Workers（`workers/wrangler.jsonc`・`scripts/deploy_workers.sh`・Secrets の `CLOUDFLARE_WORKERS_TOKEN`）。Pages には出さない。ファイル数の上限 `FILE_BUDGET` は7万。戻し方は docs/architecture.md の「Workers への引っ越し」
+- Cloudflare 側の自動ビルドは止めてある（ダッシュボードの「ブランチコントロール」。戻すときはそこをオンに）。`[CI Skip]` は要らない。
 
 ## 仕組み（時刻は日本時間。くわしくは docs/architecture.md の「データの流れ」）
 
@@ -53,9 +53,10 @@ Gemini を使うのは `get_new_releases.py` のコメントの下書きだけ�
 - ページのくわしいこと（トップの推しの棚は docs/design.md・読み物 `/yomimono/`・名簿の人の女優のページ・`/sale/ending/`・`/hinban/`・`/actress/nenpyo/`・作品ページの品番と出演者）は docs/shikumi.md の「ページ（くわしく）」
 - `scripts/indexnow.py` — 検索エンジンへのお知らせ（IndexNow。本番の公開のときだけ）
 - 作品ページの住所は、コメントのある作品が `/item/`・無い作品が `/w/`（robots.txt で止める。`itemPagePath`・`floorItemPagePath`。2026-11-10。docs/architecture.md の `plan.js`）
+- 人気の女優を深く（800人×人気の上位100本。`get_new_releases.py` の `DEEP_*`・`catalog_deep.json`。2026-11-12。docs/architecture.md）
 - 作品ページの「○○の作品を人気の順に」（前の作品・次の作品）と女優のページの「次に見る女優」（共演・同じメーカー。検索に出せる人が先）は `lib/stay.js`（2026-11-12。docs/architecture.md の `stay.js` の節）
 - `scripts/check.sh`（`quiet_step.sh`）— テスト一式 ／ `scripts/wait_run.py` — GitHub の実行を待つ ／ `scripts/already_updated.sh` — 今日の更新が済んだか
-- `site/` — サイト本体（Astro 7・静的出力）。`src/config.js` がサイト名・URL・件数・ファイル数の上限（`FILE_BUDGET`＝4万。Workers の静的ファイルは10万まで）の設定
+- `site/` — サイト本体（Astro 7・静的出力）。`src/config.js` がサイト名・URL・件数・ファイル数の上限（`FILE_BUDGET`＝7万。Workers は10万まで）・noindex の女優・メーカーのページの上限の設定
 - `site/src/lib/` — 画面に依存しない部品（テストは `tests/test_*.mjs`）。`data.js`（読み込み）・`items.js`（並べ替え・構造化データ・規約の表記）など。一覧は docs/shikumi.md の「site/src/lib（くわしく）」
 - `site/src/pages/`・`components/`・`layouts/Base.astro`・`styles/site.css` — ページ・部品・全ページ共通の部分・デザイン
 - `site/src/data/` — **自動更新のデータ。手で編集しない**（書く道具が決まっている。形は docs/architecture.md の、そのファイルの節）
@@ -73,10 +74,10 @@ cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
 ```
 
 - `get_new_releases.py` を本物のAPIで動かすのは、運営者に頼まれたときだけ（`API_ID`/`GEMINI_API_KEY` が要る。`DATA_PATH` で書き込み先を変えられる）。
-  - Gemini を使わずに取り直しだけしたいときは `python get_new_releases.py --refresh-only`（Actions では「Refresh FANZA Data」）。くわしくは docs/shikumi.md の「コマンドの補足」
-- 本番サイトを WebFetch で確認するときは、URLの末尾に `?cb=日時` を付ける（付けないと、前に取得した古い内容が返ってきて、更新されていないように見えることがある。2026-10-03 の仮運転で確認）。
+  - Gemini を使わずに取り直しだけしたいときは `python get_new_releases.py --refresh-only`（Actions では「Refresh FANZA Data」）。
+- 本番サイトを WebFetch で見るときは、URL の末尾に `?cb=日時` を付ける（古い内容が返ることがある）。
 - Claude のクラウド環境では npm が使えない/ビルドが動かないことがある。その場合は `bash scripts/check.sh`（ビルドなし）で確認し、**PRのCIが最初のビルド**になる（プレビューの URL は check の注釈。クラウド環境からは開かない）。見ていないものを「確認した」と書かない。
-- 本番に公開されたかは `python3 scripts/wait_run.py deploy <Merge のコミット>`（`deploy.yml` の実行を見る。ビルドと点検とアップロードで10〜15分。`cancelled` は、あとの Merge の公開に含まれたということで、そちらの結果を返す）
+- 本番に公開されたかは `python3 scripts/wait_run.py deploy <Merge のコミット>`（`deploy.yml` の実行を見る。`cancelled` は、あとの Merge の公開に含まれたということで、そちらの結果を返す）
 
 ## 守ること
 

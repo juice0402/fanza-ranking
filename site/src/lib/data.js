@@ -7,15 +7,15 @@ import { normalizeMonthly } from './monthly.js';
 import { groupByMonth, groupByTag, monthPathByKey } from './collections.js';
 import { buildFactsContext } from './facts.js';
 import { buildActressSearchIndex, indexCoverage, normalizeDirectory, normalizeProfiles, profileByName, profileCoverage, rankingForDisplay, ACTRESS_IMAGE_BASE, faceUrl, listTemplateOf } from './profiles.js';
-import { hasCalendar, listIndexable, planPages } from './plan.js';
-import { actressLinkIndex } from './stay.js';
+import { capNoindex, hasCalendar, listIndexable, planPages } from './plan.js';
+import { actressLinkIndex, deepOrderByName } from './stay.js';
 import { bestRank, catalogAllRank, normalizePopularity, normalizeRankHistory } from './popularity.js';
 import { SALE_PATH, campaignPages, campaignSlug, isTenYenCampaign, normalizeSale, normalizeSaleHistory, saleGroups, saleHref } from './sale.js';
 import { normalizePriceHistory } from './price-history.js';
 import { normalizeAgencies, withAgencies } from './agencies.js';
 import { eventsByName, normalizeEvents, upcomingEvents } from './events.js';
 import { HOT_GENRE_SKIP, normalizeToday } from './topics.js';
-import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG_PAGE_GENRES } from '../config.js';
+import { LABEL_MIN_ITEMS, LABEL_PAGE_MAX, NOINDEX_ACTRESS_PAGE_MAX, NOINDEX_MAKER_PAGE_MAX, SERIES_MIN_ITEMS, SERIES_PAGE_MAX, TAG_PAGE_GENRES } from '../config.js';
 import { genreTopLists, groupByEntry, normalizeGenreTops } from './insights.js';
 import { SEARCH_MORE_SIZE, buildSearchIndexes } from './search.js';
 import { TEN_YEN_ALWAYS, TEN_YEN_KEYS, TEN_YEN_PATH, normalizeTenYen, tenYenIndexable, tenYenState } from './ten-yen.js';
@@ -28,7 +28,7 @@ import { FLOOR_KEYS, FLOOR_PERIODS, FLOORS, floorCollections, floorEntityRanking
 
 // 出演者データ・売れ筋ランキングは、毎日の更新が作るファイル。まだ無いとき（最初の更新の前）でもビルドが止まらないよう、
 // import ではなく glob で読む（無ければ空として扱う）
-const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews,readings,genre_tops,actress_history,actress_stories,price_history,yomimono}.json', { eager: true, import: 'default' });
+const optional = import.meta.glob('../data/{actresses,ranking,actress_directory,catalog_rank,popularity,sale,sale_history,today,agencies,events,rank_history,monthly,ten_yen,reviews,readings,genre_tops,actress_history,actress_stories,price_history,yomimono,catalog_deep}.json', { eager: true, import: 'default' });
 const optionalData = (name) => optional[`../data/${name}.json`] ?? null;
 
 // 過去作品（カタログ）: 毎日の更新が、FANZAの人気順に少しずつ集める発売済み作品（data/catalog/YYYY-MM.json。コメントは無いか、あとから Claude が書く）。
@@ -95,14 +95,16 @@ const directoryByName = (() => {
 })();
 export const faceOfName = (name, large = false) => faceUrl(profilesByName.get(name), large) || (directoryByName.get(name)?.img ? `${ACTRESS_IMAGE_BASE}${directoryByName.get(name).img}.jpg` : '');
 export const birthOfName = (name) => profilesByName.get(name)?.birthMD || directoryByName.get(name)?.birthMD || '';
-// 出演者・メーカーごとのページ（作品が ENTITY_MIN_ITEMS 本以上の人・メーカーだけ）
-export const actressGroups = groupByActress(all);
-export const makerGroups = groupByMaker(all);
+// 出演者・メーカーごとのページ（作品が ENTITY_MIN_ITEMS 本以上の人・メーカーだけ）。検索に出せないページは、作品の多いほうから
+// NOINDEX_ACTRESS_PAGE_MAX・NOINDEX_MAKER_PAGE_MAX 件まで（2026-11-12。lib/plan.js の capNoindex）。しぼって外れた人は、作品ページなどで名前だけ（リンクなし）
+const actressGroupsAll = groupByActress(all);
+export const actressGroups = capNoindex(actressGroupsAll, NOINDEX_ACTRESS_PAGE_MAX);
+export const makerGroups = capNoindex(groupByMaker(all), NOINDEX_MAKER_PAGE_MAX);
 // 女優名鑑その3（2026-10-27 #173）: 名簿にいて、このサイトにページの無い人のうち、年表（FANZA全体で50本以上）を集めた人のページ（作品が0本でも作る）。
 // 名前で引くとき（共演・イベントなどのリンク）は、こちらの人のページも出す。カレンダー・お気に入りの索引・一覧の数は actressGroups（このサイトの作品がある人）だけ
 export const nenkanActressGroups = nenkanGroups(historyByName, directoryByName, {
-  takenNames: new Set(actressGroups.map((g) => g.name)),
-  takenSlugs: new Set(actressGroups.map((g) => g.slug)),
+  takenNames: new Set(actressGroupsAll.map((g) => g.name)), // しぼって外れた人も、名簿の人のページにはしない（作品があるのに0本のページになるため）
+  takenSlugs: new Set(actressGroupsAll.map((g) => g.slug)),
   slugOf: entitySlug,
   pathOf: actressPath,
   template: listTemplateOf(profiles),
@@ -113,6 +115,8 @@ export const actressByName = indexByName(actressPageGroups);
 // 女優のつながりの索引（共演・同じメーカー。作品ページの「人気の順に」と女優のページの「次に見る女優」。2026-11-12。lib/stay.js の actressLinkIndex）。
 // 検索に出せるページの人を先に並べる（女優のページの noindex と同じ listIndexable）
 export const actressLinks = actressLinkIndex(actressGroups, (g) => listIndexable(g.items));
+// 人気の女優を深く集めた人の、FANZA の人気順（名前 → {cid → 何番め}。data/catalog_deep.json。2026-11-12）。「人気の順に」は、この並びを先に使う
+export const deepOrder = deepOrderByName(optionalData('catalog_deep'));
 export const makerByName = indexByName(makerGroups);
 // 発売日カレンダー（.ics）を作る出演者・メーカー: 毎日の更新で載せた作品がある人・メーカーだけ（過去作品だけの人の分まで作ると、ファイルが多くなりすぎるため）
 export const calendarActressGroups = actressGroups.filter(hasCalendar);

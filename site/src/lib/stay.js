@@ -122,6 +122,31 @@ export const NEXT_ACTRESS_SHOWN = 6; // 女優のページの「次に見る女�
 
 const popRankOf = (w) => bestRank(w.popAll, w.popNew);
 
+/**
+ * 人気の女優を深く集めた記録（data/catalog_deep.json の {出演者のid: {n: 名前, c: [cid…]}}。c はその人の FANZA の人気順）→
+ * 名前 → Map(cid → 何番め)。形が違う行は捨てる（2026-11-12。get_new_releases.py の DEEP_ACTRESSES）
+ */
+export function deepOrderByName(raw) {
+  const out = new Map();
+  for (const row of raw && typeof raw === 'object' && !Array.isArray(raw) ? Object.values(raw) : []) {
+    if (!row || typeof row.n !== 'string' || !row.n || !Array.isArray(row.c)) continue;
+    const order = new Map();
+    row.c.forEach((cid) => typeof cid === 'string' && !order.has(cid) && order.set(cid, order.size));
+    if (order.size) out.set(row.n, order);
+  }
+  return out;
+}
+
+/** その人の FANZA の人気順（order: Map(cid → 何番め)）にある作品を先に、その順で。無い作品どうしは byPopularity */
+export const byOrderThenPopularity = (order) => (a, b) => {
+  const pa = order?.get(a.cid);
+  const pb = order?.get(b.cid);
+  if (pa !== undefined && pb !== undefined) return pa - pb;
+  if (pa !== undefined) return -1;
+  if (pb !== undefined) return 1;
+  return byPopularity(a, b);
+};
+
 /** 人気の順の並べ方（順位の小さい順 → 順位の無い作品は新しい順） */
 export function byPopularity(a, b) {
   const ra = popRankOf(a);
@@ -136,13 +161,13 @@ export function byPopularity(a, b) {
  * その人の作品を人気の順に（発売前の作品・未成年を連想させるタイトルの作品・出演者が maxCast 人より多い作品〔総集編・オムニバス〕は除く。
  * この作品だけは、発売前でも入れて位置を出す。2026-11-12 の写真で「前の作品」に「ほか50名」の総集編が出たので、総集編も除いた）
  */
-export function walkList(item, works, today, maxCast = NEXT_WORKS_MAX_CAST) {
-  return works.filter((w) => w.cid === item.cid || (w.dateKey <= today && w.actress.length <= maxCast && !isMinorTitle(w.title))).sort(byPopularity);
+export function walkList(item, works, today, maxCast = NEXT_WORKS_MAX_CAST, order = null) {
+  return works.filter((w) => w.cid === item.cid || (w.dateKey <= today && w.actress.length <= maxCast && !isMinorTitle(w.title))).sort(byOrderThenPopularity(order));
 }
 
 /** その人の、いちばん人気の作品（発売済み・未成年を連想させるタイトルと総集編〔出演者が maxCast 人より多い〕は除く。exclude の作品は除く）。無ければ null */
-export function topWorkOf(works, today, exclude = '', maxCast = NEXT_WORKS_MAX_CAST) {
-  return works.filter((w) => w.cid !== exclude && w.dateKey <= today && w.actress.length <= maxCast && !isMinorTitle(w.title)).sort(byPopularity)[0] ?? null;
+export function topWorkOf(works, today, exclude = '', maxCast = NEXT_WORKS_MAX_CAST, order = null) {
+  return works.filter((w) => w.cid !== exclude && w.dateKey <= today && w.actress.length <= maxCast && !isMinorTitle(w.title)).sort(byOrderThenPopularity(order))[0] ?? null;
 }
 
 /**
@@ -150,14 +175,15 @@ export function topWorkOf(works, today, exclude = '', maxCast = NEXT_WORKS_MAX_C
  * 出演者がその人の作品の中で前後の作品へ進める。いちばん最後の作品では、next に「次に見る女優」のいちばん人気の作品（nextName にその人の名前）。
  * 出演者が maxCast 人より多い作品（総集編など）・その人の作品が1本だけの人には出さない
  * nextActress: (名前) => { name, item } か null（lib/data.js の actressLinks で作る）
+ * deepOrder: 名前 → Map(cid → 何番め)（深く集めた人の FANZA の人気順。lib/data.js の deepOrder。あればその並びを先に）
  */
-export function castWalksOf(item, byName, today, { maxCast = NEXT_WORKS_MAX_CAST, limit = WALK_MAX_CAST, nextActress = null } = {}) {
+export function castWalksOf(item, byName, today, { maxCast = NEXT_WORKS_MAX_CAST, limit = WALK_MAX_CAST, nextActress = null, deepOrder = null } = {}) {
   if (!item.actress.length || item.actress.length > maxCast) return [];
   const walks = [];
   for (const name of item.actress) {
     const group = byName.get(name);
     if (!group?.items?.length) continue;
-    const list = walkList(item, group.items, today, maxCast);
+    const list = walkList(item, group.items, today, maxCast, deepOrder?.get(name) ?? null);
     const at = list.findIndex((w) => w.cid === item.cid);
     if (at < 0 || list.length < 2) continue;
     let next = list[at + 1] ?? null;
@@ -232,9 +258,9 @@ export function nextActressesOf(name, index, limit = NEXT_ACTRESS_SHOWN) {
 }
 
 /** 作品ページの「人気の順に」の最後で進む先: 次に見る女優の先頭から、いちばん人気の作品がある人（{ name, item }）。無ければ null */
-export function nextActressWork(name, index, today, exclude = '') {
+export function nextActressWork(name, index, today, exclude = '', deepOrder = null) {
   for (const r of nextActressesOf(name, index)) {
-    const top = topWorkOf(index.byName.get(r.name)?.items ?? [], today, exclude);
+    const top = topWorkOf(index.byName.get(r.name)?.items ?? [], today, exclude, NEXT_WORKS_MAX_CAST, deepOrder?.get(r.name) ?? null);
     if (top) return { name: r.name, item: top };
   }
   return null;

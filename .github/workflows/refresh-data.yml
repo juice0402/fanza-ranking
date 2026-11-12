@@ -28,6 +28,10 @@ on:
         description: '過去作品の一覧を取る回数（上位1,000本より下を、1回100本。0〜500。ふだんは30、一気に上位1万本を集めるなら90）'
         required: false
         default: '30'
+      deep_calls:
+        description: '人気の女優を深く集める人数（1人1回で人気の上位100本。0〜1000。ふだんは100、最初にまとめて集めるなら800）'
+        required: false
+        default: '100'
       agencies:
         description: '所属事務所とSNSを、いますぐ事務所の公式サイトから集め直す（1 で集め直す。ふだんは毎日の更新が週1回）'
         required: false
@@ -74,12 +78,15 @@ jobs:
           AFFILIATE_ID: ${{ secrets.AFFILIATE_ID }}
           DIRECTORY_CALLS: ${{ inputs.directory_calls || '40' }}
           CATALOG_CALLS: ${{ inputs.catalog_calls || '30' }}
+          DEEP_CALLS: ${{ inputs.deep_calls || '100' }}
         run: |
-          # 回数は数字だけ・名簿は400回まで・過去作品は500回まで（打ちまちがいで、とても長く動かないように）
+          # 回数は数字だけ・名簿は400回まで・過去作品は500回まで・深く集める人数は1000人まで（打ちまちがいで、とても長く動かないように）
           case "$DIRECTORY_CALLS" in ''|*[!0-9]*) echo "名簿の一覧を取る回数は、数字で入れてください（いま: $DIRECTORY_CALLS）"; exit 1;; esac
           if [ "$DIRECTORY_CALLS" -gt 400 ]; then echo "名簿の一覧を取る回数は400回までです"; exit 1; fi
           case "$CATALOG_CALLS" in ''|*[!0-9]*) echo "過去作品の一覧を取る回数は、数字で入れてください（いま: $CATALOG_CALLS）"; exit 1;; esac
           if [ "$CATALOG_CALLS" -gt 500 ]; then echo "過去作品の一覧を取る回数は500回までです"; exit 1; fi
+          case "$DEEP_CALLS" in ''|*[!0-9]*) echo "人気の女優を深く集める人数は、数字で入れてください（いま: $DEEP_CALLS）"; exit 1;; esac
+          if [ "$DEEP_CALLS" -gt 1000 ]; then echo "人気の女優を深く集める人数は1000人までです"; exit 1; fi
           python get_new_releases.py --refresh-only
 
       - name: Refresh agencies

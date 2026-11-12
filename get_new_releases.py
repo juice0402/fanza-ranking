@@ -96,6 +96,17 @@ CATALOG_MAX_OFFSET = 50000  # 一覧の offset の上限（APIの決まり。人
 # 2026-10-09 に、運営者の判断で1万本にした（FANZA同人 1,000本・FANZAゲーム 500本のページの分を空けるため。scripts/doujin_game.py）。
 # 上位1万本より下の作品は、2回続けて一回りで見かけなかったところで外れる（prune_catalog）
 CATALOG_LIMIT = min(CATALOG_MAX_OFFSET, int(os.environ.get("CATALOG_LIMIT", "10000")))
+# 人気の女優を深く（2026-11-12 運営者「案2を100本までいこか」。沼の深さ＝迷い込んだあとの作品の数。女優のページの作品は、まんなかの人で5本だった）:
+# このサイトの女優のうち DEEP_ACTRESSES 人（検索に出せる人が先・人気の上位1万本に出ている本数の多い順）それぞれの、FANZAの人気順の上位
+# DEEP_PER_ACTRESS 本を過去作品に足す（1人1回）。毎日 DEEP_CALLS 人ずつ、集めてから DEEP_REFRESH_DAYS 日たった人（まだの人が先）を集め直す。
+# 集めた作品は、その人を最後に集めた日から DEEP_KEEP_DAYS 日は外さない（prune_catalog）。どの人の何を集めたかは catalog_deep.json
+# 人気の上位1万本に出ている本数で選ぶので、深く集めた作品で、選ぶ人が増えつづけることはない（共演の人の本数は増えるが、順位の無い作品は数えない）
+DEEP_ACTRESSES = int(os.environ.get("DEEP_ACTRESSES", "800"))
+DEEP_PER_ACTRESS = 100  # 1人あたりの本数（APIの1回の上限）
+DEEP_CALLS_PER_RUN = int(os.environ.get("DEEP_CALLS", "100"))  # 1回の実行で集める人数（1人1回。800人を8日ほどで一回り。最初にまとめて集めるときは「Refresh FANZA Data」の deep_calls）
+DEEP_REFRESH_DAYS = 7
+DEEP_KEEP_DAYS = 45
+CATALOG_DEEP_PATH = os.environ.get("CATALOG_DEEP_PATH", os.path.join(os.path.dirname(DATA_PATH), "catalog_deep.json"))
 # 新着の人気順（最近 NEW_RANK_DAYS 日に発売された作品の、その日の人気順の上位 NEW_RANK_CALLS×100本）。「新着の人気順」のランキングに使う
 NEW_RANK_CALLS = int(os.environ.get("NEW_RANK_CALLS", "5"))
 NEW_RANK_DAYS = 7  # 運営者の希望で1週間（毎日たくさん発売されるので、30日では新着らしさが薄い。2026-10-04 夜）
@@ -1862,9 +1873,17 @@ def load_catalog(today_str):
     try:
         head = read_json_file(CATALOG_STATE_PATH)
         ranks = read_json_file(CATALOG_RANK_PATH)
+        state["deep"] = clean_deep(read_json_file(CATALOG_DEEP_PATH))
     except ValueError as e:
         print(f"⚠️ 過去作品の{e}。上書きを防ぐため、過去作品の更新はやめます")
         return None
+    try:
+        profiles = read_json_file(ACTRESSES_PATH)
+    except ValueError:
+        profiles = None  # 出演者のファイルが読めない日は、深く集めるのだけやめる（過去作品のほかの更新は続ける）
+    rows_ = profiles.get("actresses") if isinstance(profiles, dict) else None
+    state["actress_ids"] = {str(r["name"]): str(r["id"]) for r in (rows_ if isinstance(rows_, list) else [])
+                            if isinstance(r, dict) and r.get("name") and str(r.get("id") or "").isdigit()}
     try:
         popular = read_json_file(POPULARITY_PATH)
     except ValueError:
@@ -1959,7 +1978,14 @@ def save_catalog(state):
         if state.get("sales_date"):
             save_sale_history(state["sales"], state["sales_date"])
             save_price_history(state["sales"], state["sales_date"], extras)  # 作品ごとの値段の記録（sale.json に書いた作品。issue #183）
-    head = {"cursor": state["cursor"], "cycle": state["cycle"], "cycle_done": state["cycle_done"], "limit": CATALOG_LIMIT, "items": len(state["items"])}
+    if "deep" in state:
+        # 人気の女優を深く集めた記録（1人1行・id の順）。見張り番は、外さない作品の数（deep）を深さに足して見る
+        body = ",\n".join(f"{json.dumps(aid)}:{json.dumps(row, ensure_ascii=False, separators=(',', ':'))}" for aid, row in sorted(state["deep"].items(), key=lambda kv: int(kv[0])))
+        with open(CATALOG_DEEP_PATH + ".tmp", "w", encoding="utf-8") as f:
+            f.write("{\n" + body + "\n}\n" if body else "{}\n")
+        os.replace(CATALOG_DEEP_PATH + ".tmp", CATALOG_DEEP_PATH)
+    kept = deep_kept(state, datetime.now(JST).strftime("%Y-%m-%d")) & set(state["items"])
+    head = {"cursor": state["cursor"], "cycle": state["cycle"], "cycle_done": state["cycle_done"], "limit": CATALOG_LIMIT, "items": len(state["items"]), "deep": len(kept)}
     with open(CATALOG_STATE_PATH + ".tmp", "w", encoding="utf-8") as f:
         json.dump(head, f, ensure_ascii=False)
         f.write("\n")
@@ -2053,13 +2079,59 @@ def update_rank_history(rank_today, keep):
     return {"tracked": len(hist["items"]), "removed": removed, "new_ok": rank_today.get("new") is not None, "all_ok": rank_today.get("all") is not None}
 
 
+def clean_deep(raw):
+    """catalog_deep.json {出演者のid: {"n": 名前, "d": 最後に集めた日, "c": [集めた作品の cid, …]}} を、読める行だけにそろえる"""
+    out = {}
+    for aid, row in (raw.items() if isinstance(raw, dict) else []):
+        if not isinstance(row, dict) or not str(aid).isdigit() or not re.match(r"^\d{4}-\d{2}-\d{2}$", day_key(row.get("d"))):
+            continue
+        cids = [c for c in (row.get("c") if isinstance(row.get("c"), list) else []) if isinstance(c, str) and c]
+        out[str(aid)] = {"n": str(row.get("n") or ""), "d": day_key(row.get("d")), "c": cids[:DEEP_PER_ACTRESS]}
+    return out
+
+
+def deep_kept(state, today_str):
+    """深く集めた作品のうち、外さない作品の cid（その人を最後に集めた日から DEEP_KEEP_DAYS 日以内）"""
+    keep = set()
+    for row in state.get("deep", {}).values():
+        age = days_between(row["d"], today_str)
+        if age is not None and age <= DEEP_KEEP_DAYS:
+            keep.update(row["c"])
+    return keep
+
+
+def deep_targets(state, archive):
+    """深く集める女優 [(出演者のid, 名前)]（DEEP_ACTRESSES 人まで。並びは集める順の優先）。
+    検索に出せる人（コメントのある作品がある人＝女優のページの listIndexable と同じ）が先、次に、人気の上位 CATALOG_LIMIT 本
+    （順位のある過去作品）と毎日の更新の作品に出ている本数の多い順。順位の無い作品（深く集めた作品など）は数えない（選ぶ人が増えつづけないように）"""
+    ids = state.get("actress_ids", {})
+    pop, commented = {}, set()
+    for cid, item in state["items"].items():
+        ranked = state["ranks"].get(cid, [CATALOG_MAX_OFFSET])[0] <= CATALOG_LIMIT
+        noted = item.get("comment_kind") == "claude" and str(item.get("comment") or "").strip() != ""
+        for name in set(item.get("actress") or []):
+            if ranked:
+                pop[name] = pop.get(name, 0) + 1
+            if noted:
+                commented.add(name)
+    for item in (archive.values() if isinstance(archive, dict) else []):
+        for name in set(item.get("actress") or []):
+            pop[name] = pop.get(name, 0) + 1
+            if str(item.get("comment") or "").strip():
+                commented.add(name)
+    names = sorted((n for n, c in pop.items() if c > 0 and n in ids), key=lambda n: (n not in commented, -pop[n], n))
+    return [(ids[n], n) for n in names[:DEEP_ACTRESSES]]
+
+
 def prune_catalog(state):
     """一回りが終わったときに呼ぶ。2回続けて一回りで見かけなかった作品（人気の上位 CATALOG_LIMIT 本から外れた作品）を外し、外した本数を返す。
     1回だけ見かけなかった作品は外さない（順位が毎日少しずつ入れ替わるので、続きから取るあいだに取りこぼすことがあるため）。
-    Claude がコメントを書いた作品は外さない（作品ページとコメントがあるので、コレクションに残す）"""
+    Claude がコメントを書いた作品は外さない（作品ページとコメントがあるので、コレクションに残す）
+    人気の女優を深く集めた作品も、その人を最後に集めた日から DEEP_KEEP_DAYS 日は外さない（deep_kept。集め直しは DEEP_REFRESH_DAYS 日ごと）"""
     done = state["cycle"]  # 終わった一回りの番号
     seen = lambda cid: state["ranks"].get(cid, [0, done])[1]  # noqa: E731  最後に見かけた一回り
-    gone = [cid for cid, item in state["items"].items() if seen(cid) < done - 1 and item.get("comment_kind") != "claude"]
+    kept = deep_kept(state, state.get("cycle_done") or datetime.now(JST).strftime("%Y-%m-%d"))
+    gone = [cid for cid, item in state["items"].items() if seen(cid) < done - 1 and item.get("comment_kind") != "claude" and cid not in kept]
     # 一度に外れるのは、ふつうは少し（順位の入れ替わりで、上位から外れた分だけ）。多すぎるときは、APIの答えがおかしかったものとして外さない。
     # 数えるのは、この一回りで新しく外れる作品（前の前の一回りまでは見かけていた作品）だけ。それより前から見かけていない作品は、
     # 前の一回りで外れているはずだった分なので、数に入れずに外す（2026-10-19。前は全部を数えていたので、外れるはずの作品がたまって
@@ -2078,7 +2150,7 @@ def prune_catalog(state):
     return len(gone)
 
 
-def update_catalog(state, archive, today, top_calls=None, calls=None, new_calls=None):
+def update_catalog(state, archive, today, top_calls=None, calls=None, new_calls=None, deep_calls=None):
     """FANZAの人気順（発売済みだけ）の一覧を取って、過去作品に足す・順位を入れ替える・空だった項目を補う。
     ・まず、その日の上位 top_calls×100本（毎日取り直す。その日の人気順）
     ・次に、新着の人気順（最近 NEW_RANK_DAYS 日の発売の、その日の人気順の上位 new_calls×100本）。順位は popularity.json の new に。
@@ -2087,14 +2159,16 @@ def update_catalog(state, archive, today, top_calls=None, calls=None, new_calls=
     ・次に、その下（上位の下〜CATALOG_LIMIT本目）を、続きから calls×100本。最後まで行ったら、上位の下に戻る（一回り。cycle を1つ進め、
       2回続けて見かけなかった作品を外す）
     毎日の更新で載せた作品（archive）と同じ作品は入れない（入っていたら外す）。続けて失敗したら、その回はやめる（続きの場所は、取れたところまで進める）。
-    {"calls", "got", "added", "filled", "removed", "pruned"} を返す"""
+    ・最後に、人気の女優を深く（deep_targets の人それぞれの人気順の上位 DEEP_PER_ACTRESS 本。1回の実行で deep_calls 人まで）
+    {"calls", "got", "added", "filled", "removed", "pruned", "deep", "deep_added", "deep_people"} を返す"""
     top_calls = CATALOG_TOP_CALLS if top_calls is None else top_calls
+    deep_calls = DEEP_CALLS_PER_RUN if deep_calls is None else deep_calls
     calls = CATALOG_CALLS_PER_RUN if calls is None else calls
     new_calls = NEW_RANK_CALLS if new_calls is None else new_calls
     today_str = today.strftime("%Y-%m-%d")
     lte = iso(today.replace(hour=23, minute=59, second=59))
     items, ranks = state["items"], state["ranks"]
-    stats = {"calls": 0, "got": 0, "added": 0, "filled": 0, "removed": 0, "pruned": 0}
+    stats = {"calls": 0, "got": 0, "added": 0, "filled": 0, "removed": 0, "pruned": 0, "deep": 0, "deep_added": 0, "deep_people": 0}
     for cid in [c for c in items if c in archive]:
         del items[cid]  # 毎日の更新で載せた作品のほうを使う
         ranks.pop(cid, None)
@@ -2216,6 +2290,47 @@ def update_catalog(state, archive, today, top_calls=None, calls=None, new_calls=
             cur += CATALOG_PAGE
     if short:
         print(f"  ⚠️ 人気順の一覧が、上位{CATALOG_LIMIT}本より手前で終わりました。念のため、一回りには数えず、続きの場所も進めません")
+    # 人気の女優を深く（その人の FANZA の人気順の上位 DEEP_PER_ACTRESS 本。1人1回。集めてから日がたった人・まだの人から）
+    deep = state.setdefault("deep", {})
+    targets = deep_targets(state, archive) if deep_calls > 0 else []
+    order = {aid: n for n, (aid, _) in enumerate(targets)}
+    due = [t for t in targets if t[0] not in deep or (days_between(deep[t[0]]["d"], today_str) or 0) >= DEEP_REFRESH_DAYS]
+    due.sort(key=lambda t: (deep[t[0]]["d"] if t[0] in deep else "", order[t[0]]))
+    for aid, name in due[:deep_calls]:
+        if fails >= MAX_API_FAILS_IN_ROW:
+            break
+        stats["deep"] += 1
+        stats["calls"] += 1
+        try:
+            rows = call_item_list({"article": "actress", "article_id": aid, "sort": "rank", "hits": DEEP_PER_ACTRESS, "lte_date": lte})
+            fails = 0
+        except RuntimeError as e:
+            fails += 1
+            print(f"  ⚠️ {name} の人気順の作品を取れませんでした: {e}")
+            continue
+        time.sleep(DMM_INTERVAL_SEC)
+        cids = []
+        for raw in rows:
+            fresh = parse_api_item(raw)
+            if not fresh or day_key(fresh["date"]) > today_str:
+                continue
+            stats["got"] += 1
+            cid = fresh["cid"]
+            sale = sale_of(raw, today_str)
+            if sale:
+                sales[cid] = sale
+            if cid in archive:
+                continue
+            before = stats["added"]
+            take(fresh)
+            stats["deep_added"] += stats["added"] - before
+            if cid in items:
+                cids.append(cid)
+        deep[aid] = {"n": name, "d": today_str, "c": cids[:DEEP_PER_ACTRESS]}
+    want = set(order)
+    for aid in [a for a, row in deep.items() if a not in want and (days_between(row["d"], today_str) or 0) > DEEP_KEEP_DAYS]:
+        del deep[aid]  # 選ぶ人から外れて日がたった人（作品は、外さない期間がすぎたので、ふつうに外れる）
+    stats["deep_people"] = len(deep)
     if fails >= MAX_API_FAILS_IN_ROW:
         print("  ⏸ 続けて失敗したので、今回の過去作品の取得はやめます")
     state["cursor"] = cur
@@ -2521,6 +2636,7 @@ def main():
     if catalog_result:
         print(f"🗂️ 過去作品: 一覧を{catalog_result['calls']}回取得 / {catalog_result['got']}本を確認・うち新しく{catalog_result['added']}本・空だった項目を補った{catalog_result['filled']}本・"
               f"人気の上位から外れて外した{catalog_result['pruned']}本（過去作品 {len(catalog['items'])}本。人気順の上位{CATALOG_LIMIT}本まで。次は{catalog['cursor']}本目から）")
+        print(f"🔎 人気の女優を深く: {catalog_result.get('deep', 0)}人を集めた・うち新しく{catalog_result.get('deep_added', 0)}本（集めた人 {catalog_result.get('deep_people', 0)}人・1人{DEEP_PER_ACTRESS}本まで）")
         print(f"🔥 新着の人気順: {len(catalog.get('popular_new', {}))}本" + ("" if catalog.get("popular_date") == today_str else "（取れなかったので、前の日のまま）")
               + f" / セール中の作品: {catalog_result.get('sales', 0)}本")
         if catalog_result.get("ranks"):
@@ -2581,6 +2697,7 @@ def main():
     if catalog_result:
         summary.append(f"- 過去作品: {len(catalog['items'])}本（人気順の上位{CATALOG_LIMIT}本まで。今回 一覧を{catalog_result['calls']}回取得・新しく{catalog_result['added']}本・"
                        f"補った{catalog_result['filled']}本・人気の上位から外れて外した{catalog_result['pruned']}本。次は{catalog['cursor']}本目から。一回りした日: {catalog['cycle_done'] or 'まだ'}）")
+        summary.append(f"- 人気の女優を深く: 今回 {catalog_result.get('deep', 0)}人・新しく{catalog_result.get('deep_added', 0)}本（集めた人 {catalog_result.get('deep_people', 0)}人。1人{DEEP_PER_ACTRESS}本まで・{DEEP_ACTRESSES}人まで）")
         summary.append(f"- 新着の人気順（最近{NEW_RANK_DAYS}日の発売）: {len(catalog.get('popular_new', {}))}本" + ("" if catalog.get("popular_date") == today_str else "（取れなかったので、前の日のまま）")
                        + f" / セール中の作品: {catalog_result.get('sales', 0)}本")
         if catalog_result.get("ranks"):

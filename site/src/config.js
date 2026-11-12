@@ -30,6 +30,11 @@ export const NEW_BADGE_DAYS = 6;       // 発売から何日間「新作」シ�
 export const ENTITY_MIN_ITEMS = 2;     // 出演者・メーカーのページを作る最小の作品数（1本だけだと内容が薄いので作らない）
 export const ENTITY_LIST_LIMIT = 120;  // 出演者・メーカーのページに並べる最大数（新しい順。過去作品が増えると、1ページが重くなりすぎるため）
 export const INDEX_LIST_LIMIT = 500;   // 「メーカーから探す」に並べる最大数（作品数の多い順）
+// 検索に出せない（noindex の）女優・メーカーのページの数の上限（2026-11-12。人気の女優を深く集めると、共演の人・メーカーのページがふえる。
+// noindex のページは Google が読みに来てから捨てるので、検索に出せるページを読む時間をうばう＝#248 と同じ理由。深く集める前の日の数のまま）。
+// 検索に出せるページ（コメントのある作品がある人・メーカー）は、しぼらない。作品が多いほうから残す（lib/plan.js の capNoindex）
+export const NOINDEX_ACTRESS_PAGE_MAX = 1550;
+export const NOINDEX_MAKER_PAGE_MAX = 210;
 export const ACTRESS_FALLBACK_LIMIT = 150; // 「女優検索」の、JavaScriptが使えないとき用の一覧の最大数（作品数の多い順。ふだんは条件で探す画面に入れかわって隠れるので、ページを軽くするため少なめ。2026-10-05）
 
 // サイト全体のファイル数の上限。2026-10-28 から本番もプレビューも Cloudflare Workers（静的ファイルは1つのサイトに10万まで。Pages は2万まで）。
@@ -38,7 +43,9 @@ export const ACTRESS_FALLBACK_LIMIT = 150; // 「女優検索」の、JavaScript
 // 2026-10-12 に 19,000 から 19,500 へ（運営者の判断「素人を1,000本にする分は、余裕の枠を使う」。動画の作品ページを約1万のまま残すため。
 // 2026-10-28 に 19,500 から 40,000 へ（issue #188。運営者「ページは徐々に9万まで」。まず4万。次に上げるかは、公開の時間と検索に出ているかを見て決める。
 // 上限は tests/verify_dist.py の FILE_LIMIT＝Workers の10万。Pages に戻すときは、2万より下＝19,500 に戻す。docs/architecture.md の「Workers への引っ越し」）
-export const FILE_BUDGET = 40000;
+// 2026-11-12 に 40,000 から 70,000 へ（運営者「案2を100本までいこか」＝人気の女優を深く集める。get_new_releases.py の DEEP_ACTRESSES。
+// 作品は2万6千本ほどから5万本ほどへ。ふえるのはコメントの無い作品＝/w/ のページ（robots.txt で止める）なので、Google の読む時間は使わない）
+export const FILE_BUDGET = 70000;
 export const FIXED_FILES = 150;        // 作品・出演者・メーカー・月・ジャンル・過去の作品・カレンダー・まとめ記事のページ以外のファイル（トップ・検索・画像・スクリプト・CSS など）の見積もり（実際は30ほど）
 
 // 月ごと（/month/2026-11/）・ジャンルごと（/tag/…）のページ。検索エンジンから「11月 新作」「巨乳 新作」のような言葉で来てもらうための、作品のまとめページ

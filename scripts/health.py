@@ -7,7 +7,7 @@ Claude を使わずに、GitHub Actions（.github/workflows/health.yml。毎週�
 見ること（どれも、データから数えた事実だけ）:
   1. 毎日の更新: この7日の「データ更新: 日付」の記録がそろっているか
   2. 公開・毎日の更新・セールの読み直し・10円セール（deploy.yml・update.yml・sale-refresh.yml・ten-yen.yml）:
-     main の実行で、いちばん新しい実行が失敗していないか（mihari.yml が動いていなかったときの念のため）・公開が30分をこえていないか（上限は40分）。
+     main の実行で、いちばん新しい実行が失敗していないか（mihari.yml が動いていなかったときの念のため）・公開が70分をこえていないか（上限は100分）。
      この7日の失敗の回数は表に書くだけで、注意にしない（失敗はそのたびに mihari.yml が issue にして、次の成功で閉じる。
      もう直った失敗で毎週知らせない。2026-11-02。前は3回以上で注意にしていて、引っ越しの日の失敗で4週続けて失敗になった）
   3. Claude のコメント（毎日 0:20 の予約タスク）: この7日に Merge された「コメントの仕上げ」の日数（5日に満たなければ注意）
@@ -36,7 +36,7 @@ DATA = os.path.join(ROOT, "site", "src", "data")
 JST = timezone(timedelta(hours=9))
 DAYS = 7
 WORKFLOWS = (("deploy.yml", "公開"), ("update.yml", "毎日の更新"), ("sale-refresh.yml", "セールの読み直し"), ("ten-yen.yml", "10円セール"))
-DEPLOY_WARN_MIN = 30     # 公開がこの分数をこえたら注意（deploy.yml の上限は40分）
+DEPLOY_WARN_MIN = 70     # 公開がこの分数をこえたら注意（deploy.yml の上限は100分。2026-11-12 に30から＝人気の女優を深く集めてファイルが6万ほどに）
 COMMENT_DAYS_MIN = 5     # コメントの仕上げが Merge された日が、この日数に満たなければ注意
 CATALOG_SLACK = 1.5      # 外したあとのコメントの無い過去作品が、深さのこの倍をこえて、
 CATALOG_GROWS = 3        # 外したあとの本数が、この回数続けて
@@ -96,7 +96,7 @@ def check_runs(name, label, runs, since):
             if a and b and r.get("conclusion") == "success":
                 longest = max(longest, int((b - a).total_seconds() // 60))
         if longest > DEPLOY_WARN_MIN:
-            warn.append(f"公開にいちばん長くて {longest} 分かかりました（上限は40分）")
+            warn.append(f"公開にいちばん長くて {longest} 分かかりました（上限は100分）")
     row = f"{label}: {len(done)}回・失敗{len(fails)}回" + (f"・いちばん長くて{longest}分" if name == "deploy.yml" else "")
     return warn, row
 
@@ -158,7 +158,8 @@ def catalog_numbers():
             history.append((int(s["cycle"]), int(s["items"])))
         except (TypeError, ValueError, KeyError):
             continue
-    return int(state.get("items") or 0), commented, int(state.get("limit") or 0), pruned_points(history)
+    # 深さ＝人気の上位の本数（limit）＋人気の女優を深く集めて外さない作品の数（deep。2026-11-12。get_new_releases.py の deep_kept）
+    return int(state.get("items") or 0), commented, int(state.get("limit") or 0) + int(state.get("deep") or 0), pruned_points(history)
 
 
 def run_checks(today=None):

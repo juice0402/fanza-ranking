@@ -48,6 +48,14 @@ export const OUTBOUND_ATTRS = { target: '_blank', rel: 'sponsored nofollow noope
  * 作品がまだ1本も無い（最初の状態の）一覧は、これまでどおり出す */
 export const listIndexable = (items) => items.length === 0 || items.some((i) => String(i.comment ?? '').trim() !== '');
 
+/** 出演者・メーカーのページのまとまり（作品の多い順）のうち、検索に出せないページ（listIndexable でない）を、前から max 件までにしぼる。
+ * 検索に出せるページはしぼらない。人気の女優を深く集めて共演の人・メーカーの noindex のページがふえても、Google がそれを読む時間で
+ * 検索に出せるページの分をうばわないように（2026-11-12。config.js の NOINDEX_ACTRESS_PAGE_MAX・NOINDEX_MAKER_PAGE_MAX） */
+export function capNoindex(groups, max) {
+  let kept = 0;
+  return groups.filter((g) => listIndexable(g.items) || kept++ < max);
+}
+
 /** 作品ページを検索エンジンに出してよいか: 作品ページがあり、コメントがある作品だけ（sitemap に入れる作品） */
 export const itemIndexable = (item, paged) => paged.has(item.cid) && String(item.comment ?? '').trim() !== '';
 
