@@ -19,6 +19,21 @@
    "prefectures": "茨城県"
   },
   {
+   "id": "87",
+   "name": "ジーナ リン",
+   "ruby": "じーな りん",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "",
+   "fetched": ""
+  },
+  {
    "id": "126",
    "name": "牧本千幸（つかもと.友希）",
    "ruby": "まきもとちゆき（つかもとゆうき）",
@@ -1507,6 +1522,21 @@
    "prefectures": "千葉県"
   },
   {
+   "id": "18873",
+   "name": "若林美保",
+   "ruby": "わかばやしみほ",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "",
+   "fetched": ""
+  },
+  {
    "id": "18878",
    "name": "織田真子",
    "ruby": "おだまこ",
@@ -1990,7 +2020,10 @@
    "height": null,
    "birthday": "",
    "list_url": "",
-   "fetched": ""
+   "fetched": "",
+   "blood_type": "O",
+   "prefectures": "東京都",
+   "hobby": "音楽鑑賞、卓球"
   },
   {
    "id": "21268",
@@ -3004,6 +3037,23 @@
    "prefectures": "神奈川県"
   },
   {
+   "id": "1000337",
+   "name": "橘慶子",
+   "ruby": "たちばなけいこ",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "",
+   "fetched": "",
+   "blood_type": "B",
+   "hobby": "スキューバダイビング"
+  },
+  {
    "id": "1000370",
    "name": "沢村麻耶",
    "ruby": "さわむらまや",
@@ -3244,6 +3294,21 @@
    "fetched": "2026-10-03"
   },
   {
+   "id": "1003157",
+   "name": "ソフィア・リー",
+   "ruby": "そふぃありー",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "",
+   "fetched": ""
+  },
+  {
    "id": "1003758",
    "name": "北川エリカ",
    "ruby": "きたがわえりか",
@@ -3259,6 +3324,37 @@
    "fetched": "",
    "hobby": "エステ、騎乗位、飲みカラオケ、料理",
    "prefectures": "東京都"
+  },
+  {
+   "id": "1003808",
+   "name": "結城みさ",
+   "ruby": "ゆうきみさ",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "",
+   "fetched": "",
+   "hobby": "料理"
+  },
+  {
+   "id": "1003860",
+   "name": "矢城小百合",
+   "ruby": "やしろさゆり",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "",
+   "fetched": ""
   },
   {
    "id": "1004053",
@@ -3655,8 +3751,8 @@
    "list_url": "",
    "fetched": "",
    "blood_type": "A",
-   "prefectures": "東京都",
-   "hobby": "ショッピング、カラオケ、コスプレ"
+   "hobby": "ショッピング、カラオケ、コスプレ",
+   "prefectures": "東京都"
   },
   {
    "id": "1008098",
@@ -5614,8 +5710,8 @@
    "list_url": "",
    "fetched": "",
    "blood_type": "O",
-   "prefectures": "東京都",
-   "hobby": "読書、料理、ダンス、バスケット"
+   "hobby": "読書、料理、ダンス、バスケット",
+   "prefectures": "東京都"
   },
   {
    "id": "1021388",
@@ -7800,6 +7896,21 @@
    "fetched": ""
   },
   {
+   "id": "1033806",
+   "name": "キアラ・ロード",
+   "ruby": "あきらろーど",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "",
+   "fetched": ""
+  },
+  {
    "id": "1033841",
    "name": "麻里梨夏",
    "ruby": "まりりか",
@@ -8829,6 +8940,21 @@
    "blood_type": "B",
    "hobby": "旅行",
    "prefectures": "静岡県"
+  },
+  {
+   "id": "1038634",
+   "name": "キャシー・ヘブン",
+   "ruby": "きゃしーへぶん",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "",
+   "fetched": ""
   },
   {
    "id": "1038661",
@@ -10954,46 +11080,46 @@
    "id": "1047956",
    "name": "真崎陽子",
    "ruby": "まさきようこ",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/masaki_youko.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/masaki_youko.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1047956%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1048042",
    "name": "夢咲ひなみ",
    "ruby": "ゆめさきひなみ",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/yumesaki_hinami.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/yumesaki_hinami.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1048042%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1048046",
    "name": "深田結梨",
    "ruby": "ふかだゆうり",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/hukada_yuuri.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/hukada_yuuri.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1048046%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1048052",
@@ -11007,53 +11133,53 @@
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1048052%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1048128",
    "name": "水卜麻衣奈",
    "ruby": "みうらまいな",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/miura_maina2.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/miura_maina2.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1048128%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1048135",
    "name": "夕美しおん",
    "ruby": "ゆうみしおん",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
-   "cup": "",
-   "waist": null,
-   "hip": null,
-   "height": null,
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/yuumi_sion.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/yuumi_sion.jpg",
+   "bust": 100,
+   "cup": "I",
+   "waist": 63,
+   "hip": 95,
+   "height": 149,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1048135%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1048277",
    "name": "星宮一花",
    "ruby": "ほしみやいちか",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
-   "cup": "",
-   "waist": null,
-   "hip": null,
-   "height": null,
-   "birthday": "",
-   "list_url": "",
-   "fetched": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/hosimiya_itika.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/hosimiya_itika.jpg",
+   "bust": 85,
+   "cup": "D",
+   "waist": 59,
+   "hip": 89,
+   "height": 168,
+   "birthday": "1998-06-28",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1048277%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14",
    "hobby": "カフェ巡り、料理",
    "prefectures": "神奈川県"
   },
@@ -11076,46 +11202,46 @@
    "id": "1048339",
    "name": "時田こずえ",
    "ruby": "ときたこずえ",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/tokita_kozue.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/tokita_kozue.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1048339%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1048400",
    "name": "一ノ瀬あやめ",
    "ruby": "いちのせあやめ",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/itinose_ayame.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/itinose_ayame.jpg",
+   "bust": 89,
    "cup": "",
-   "waist": null,
-   "hip": null,
+   "waist": 63,
+   "hip": 88,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1048400%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1048468",
    "name": "深田えいみ",
    "ruby": "ふかだえいみ",
-   "image_small": "",
-   "image_large": "",
-   "bust": null,
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/hukada_eimi.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/hukada_eimi.jpg",
+   "bust": 88,
    "cup": "",
-   "waist": null,
-   "hip": null,
-   "height": null,
-   "birthday": "",
-   "list_url": "",
-   "fetched": "",
+   "waist": 59,
+   "hip": 91,
+   "height": 158,
+   "birthday": "1998-03-18",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1048468%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14",
    "hobby": "美容、筋トレ、ゲーム、華道",
    "prefectures": "東京都"
   },
@@ -11123,31 +11249,31 @@
    "id": "1048552",
    "name": "七瀬沙菜",
    "ruby": "ななせさな",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/nanase_sana.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/nanase_sana.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1048552%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1048870",
    "name": "雨宮凜",
    "ruby": "あまみやりん",
-   "image_small": "",
-   "image_large": "",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/amamiya_rin.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/amamiya_rin.jpg",
    "bust": null,
    "cup": "",
    "waist": null,
    "hip": null,
    "height": null,
    "birthday": "",
-   "list_url": "",
-   "fetched": ""
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1048870%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1048957",
@@ -17022,6 +17148,21 @@
    "fetched": "2026-10-04"
   },
   {
+   "id": "1070821",
+   "name": "イザベラ・クラーク",
+   "ruby": "いざべらくらーく",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1070821%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
+  },
+  {
    "id": "1070842",
    "name": "結城りの",
    "ruby": "ゆうきりの",
@@ -18399,6 +18540,21 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1075252%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-10-04"
+  },
+  {
+   "id": "1075253",
+   "name": "加藤ロゼ",
+   "ruby": "かとうろぜ",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/katou_roze.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/katou_roze.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1075253%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1075254",
@@ -20762,6 +20918,21 @@
    "fetched": "2026-11-01"
   },
   {
+   "id": "1083280",
+   "name": "ネリー・ケント",
+   "ruby": "ねりーけんと",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1083280%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
+  },
+  {
    "id": "1083282",
    "name": "桐香ゆうり",
    "ruby": "とうかゆうり",
@@ -21122,6 +21293,21 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1084476%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-10-12"
+  },
+  {
+   "id": "1084622",
+   "name": "ナタリー・グレイス",
+   "ruby": "なたりーぐれいす",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/natarii_gureisu.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/natarii_gureisu.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1084622%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1084757",
@@ -22281,6 +22467,21 @@
    "fetched": "2026-11-03"
   },
   {
+   "id": "1088337",
+   "name": "華澄結愛",
+   "ruby": "かすみゆあ",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1088337%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
+  },
+  {
    "id": "1088420",
    "name": "百田光稀（百田光希）",
    "ruby": "ももたみつき",
@@ -23402,6 +23603,21 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1092828%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-10-20"
+  },
+  {
+   "id": "1092829",
+   "name": "三枝木玲実",
+   "ruby": "さえきれいみ",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/saeki_reimi.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/saeki_reimi.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1092829%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1092918",
@@ -24791,6 +25007,21 @@
    "fetched": "2026-10-27"
   },
   {
+   "id": "1098104",
+   "name": "タリア・レイン",
+   "ruby": "たりあれいん",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/taria_rein.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/taria_rein.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1098104%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
+  },
+  {
    "id": "1098255",
    "name": "天羽りりか",
    "ruby": "あまうりりか",
@@ -24834,6 +25065,21 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1098260%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-10-17"
+  },
+  {
+   "id": "1098304",
+   "name": "セルバ・ラ・ピエドラ",
+   "ruby": "せるばらぴえどら",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1098304%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1098305",
@@ -25001,6 +25247,36 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1098810%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-10-03"
+  },
+  {
+   "id": "1098866",
+   "name": "リア・リン",
+   "ruby": "りありん",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/ria_rin.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/ria_rin.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1098866%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
+  },
+  {
+   "id": "1098946",
+   "name": "牧野怜奈",
+   "ruby": "まきのれな",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/makino_rena.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/makino_rena.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1098946%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1098947",
@@ -26104,6 +26380,21 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1102441%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-10-09"
+  },
+  {
+   "id": "1102502",
+   "name": "ブラック・エンジェル",
+   "ruby": "ぶらっくえんじぇる",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1102502%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1102564",
@@ -29188,6 +29479,21 @@
    "fetched": "2026-10-23"
   },
   {
+   "id": "1111139",
+   "name": "椿琴葉",
+   "ruby": "つばきことは",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/tubaki_kotoha.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/tubaki_kotoha.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1111139%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
+  },
+  {
    "id": "1111140",
    "name": "白石透羽",
    "ruby": "しらいしとわ",
@@ -29653,6 +29959,21 @@
    "fetched": "2026-10-16"
   },
   {
+   "id": "1112414",
+   "name": "青嶋なづき",
+   "ruby": "あおしまなづき",
+   "image_small": "https://pics.dmm.co.jp/mono/actjpgs/thumbnail/aosima_naduki.jpg",
+   "image_large": "https://pics.dmm.co.jp/mono/actjpgs/aosima_naduki.jpg",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1112414%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
+  },
+  {
    "id": "1112548",
    "name": "杉咲穂果",
    "ruby": "すぎさきほのか",
@@ -30056,6 +30377,21 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1113771%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-10-23"
+  },
+  {
+   "id": "1113797",
+   "name": "江南美沙子",
+   "ruby": "えなみみさこ",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1113797%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1114128",
@@ -31438,6 +31774,21 @@
    "fetched": "2026-11-13"
   },
   {
+   "id": "1115549",
+   "name": "上高なりみ",
+   "ruby": "かみたかなりみ",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1115549%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
+  },
+  {
    "id": "1115585",
    "name": "樹ノ宮怜衣",
    "ruby": "きのみやれい",
@@ -31451,6 +31802,51 @@
    "birthday": "",
    "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1115585%2F&af_id=juice0402-990&ch=api",
    "fetched": "2026-11-05"
+  },
+  {
+   "id": "1115624",
+   "name": "キラ・クィーン",
+   "ruby": "きらくぃーん",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1115624%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
+  },
+  {
+   "id": "1115625",
+   "name": "安川由美",
+   "ruby": "やすかわゆみ",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1115625%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
+  },
+  {
+   "id": "1115626",
+   "name": "小椋和香",
+   "ruby": "おぐらわか",
+   "image_small": "",
+   "image_large": "",
+   "bust": null,
+   "cup": "",
+   "waist": null,
+   "hip": null,
+   "height": null,
+   "birthday": "",
+   "list_url": "https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Flist%2F%3Factress%3D1115626%2F&af_id=juice0402-990&ch=api",
+   "fetched": "2026-11-14"
   },
   {
    "id": "1115627",
