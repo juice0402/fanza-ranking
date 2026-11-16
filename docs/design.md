@@ -31,3 +31,17 @@ CLAUDE.md の「変更のしかた」から移したもの（2026-10-30。CLAUDE
 
 - 見出し「つづきから」・説明1行「この端末で最近見た女優と作品」。最後に見た女優6人（顔の丸の3つ並び×2段。`CastFaces` と同じ形・順位なし）と作品3本（小さな表紙＋題の行）。棚の最後に「記録を消す」（押すと消えて棚が閉じる）
 - スマホは TOP3 のすぐ下（推しの棚より上）、パソコンは右の欄のいちばん上（推しの棚の上）。記録の無い人のトップは変わらない。記録は端末の中だけ（`public/recent.js`。docs/architecture.md）
+
+## CLAUDE.md の「変更のしかた」から移した行
+
+CLAUDE.md から移した行（2026-11-16 #272。CLAUDE.md を5,000字くらいにするため）:
+
+#### 変更のしかた（例）
+
+- 表示件数・サイト名・URL・ページを作るジャンル → `site/src/config.js`
+- デザイン → `site/src/styles/site.css`、部品は `site/src/components/`、全ページ共通部分は `site/src/layouts/Base.astro`
+  - 押せるものの枠と地は `--edge`・`--fill`。説明文は短く（見出しの下は1文まで）。あとから出てきて画面がずれる作りにしない。AIっぽさゼロ（絵文字・右はしの「›」「→」・決まりの言葉・左はしの色の帯・色をぬる四角いボタンの切りかえ・小さな「見る」・シールや札を使わない。`tests/test_ai_style.py`）。一覧のカードは低く。3つ並びと棚は置かれた場所の幅に合わせる。くわしくは docs/design.md（デザインを変える前に読む）
+- コメントの文体・代替文 → `get_new_releases.py`（`ANGLES`/`OPENINGS`/`CLOSINGS` など。docs/design.md の「コメントの文体・代替文」）。Claude が書くコメント → `docs/claude-comments.md`。週のまとめ → `docs/claude-roundups.md`。月のまとめ → `docs/claude-monthly.md`
+- 取得する件数・日数 → `get_new_releases.py` 冒頭の定数（`NEW_ITEMS_PER_RUN` など。Geminiの回数上限とセットで考える → 守ること8）
+
+背景・デザインの経緯・API と Gemini で学んだ注意点・今後の予定は `docs/design-notes.md`（大きいので、全部は読まずに検索して、必要な所だけ）。

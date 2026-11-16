@@ -17,6 +17,16 @@ CLAUDE.md から移した行（2026-11-16）:
 - 本番の公開のたびに `deploy.yml` が `scripts/indexnow.py` で、新しいページ・変わったページを IndexNow で知らせる（Google は sitemap と Search Console）。くわしくは docs/shikumi.md
 - Cloudflare 側の自動ビルドは止めてある（2026-10-09。ダッシュボードの「ブランチコントロール」。戻すときはそこをオンに）。コミット・Merge のメッセージに `[CI Skip]` は要らない（入れても何も変わらない）。
 
+CLAUDE.md から移した行（2026-11-16 #272。CLAUDE.md を5,000字くらいにするため）:
+
+**公開は GitHub Actions が行う**（`deploy.yml`: ビルド → 全ページの点検 `tests/verify_dist.py` → Cloudflare Workers に直接アップロード）。Cloudflare のビルド（月500回を「あそびトーク」と共有）は使わない。
+- main に入ると本番に公開される。毎日の更新・取り直しは、データを保存したあとに `deploy.yml` を動かす（ワークフローが保存したコミットでは、ほかのワークフローが自動では動かないため）。点検に落ちたら公開しない（前の公開のまま）。
+- コード・デザインを変えるPR（`site/` の中。データは除く）は、CI がプレビュー（`<ブランチ名>-av-sale-guide.juice-juice-0402.workers.dev`。URL は check の注釈）を作る。
+- 独自ドメインは `https://av-sale-guide.com`（`site/src/config.js` の `SITE_URL` 1か所で全部が切りかわる）。旧 pages.dev の転送・前の住所のサイトマップは docs/shikumi.md の「公開（くわしく）」
+- 本番の公開のたびに `scripts/indexnow.py` が IndexNow で知らせる（docs/shikumi.md の「公開（くわしく）」）
+- 本番もプレビューも Cloudflare Workers（`workers/wrangler.jsonc`・`scripts/deploy_workers.sh`・Secrets の `CLOUDFLARE_WORKERS_TOKEN`）。Pages には出さない。ファイル数の上限 `FILE_BUDGET` は4万。戻し方は docs/architecture.md の「Workers への引っ越し」
+- Cloudflare 側の自動ビルドは止めてある。コミット・Merge に `[CI Skip]` は要らない（docs/shikumi.md の「公開（くわしく）」）
+
 ## 毎日・毎週の仕組み（くわしい表）
 
 | いつ | 何が動く | おもに書くデータ（`site/src/data/`） |
@@ -33,6 +43,24 @@ CLAUDE.md から移した行（2026-11-16）:
 
 週1回の仕事は、日曜から月曜に日付が変わったあとにそろえる（運営者の希望。2026-10-13）: 所属事務所・読みがなも、月曜 0:05 の毎日の更新で集める（月曜に集められなかったときは7日たった日）。
 
+CLAUDE.md から移した行（2026-11-16 #272。CLAUDE.md を5,000字くらいにするため）:
+
+#### 仕組み（時刻は日本時間。くわしくは docs/architecture.md の「データの流れ」）
+
+| いつ | 何が動く（くわしい表は docs/shikumi.md） |
+|---|---|
+| 毎日 0:05 | `update.yml`: `get_new_releases.py`（新作・予約・Gemini の下書き・出演者・過去作品・人気・セール・レビュー）と売り場など → main に commit → `deploy.yml` |
+| 毎日 0:20 | Claude の予約タスク: コメント（1日60件。ふえた20件は過去作品。`docs/claude-comments.md`）＋女優の歩みの紹介文5人（`docs/claude-history.md`） |
+| 毎日 0:35・10:17 | `sale-refresh.yml`: セールと売り場の読み直し |
+| 毎日 10:12・12:12・16:12・20:12 | `ten-yen.yml`: 10円セールが変わったときだけ保存して公開 |
+| 毎日 4:23 | `actress-history.yml`: 女優の歩み（公開はしない） |
+| 毎週月曜 0:01 | `health.yml`: 見張り番（Claude を使わない） |
+| 公開・更新などが終わるたび・3時間ごと | `mihari.yml`: 見張り（失敗したら issue・ラベル mihari。次の成功で閉じる。bot が動かした公開は終わっても知らせが来ないので3時間ごとにも見る。docs/shikumi.md の「見張り（mihari.yml）」） |
+| ラベル merge-ok・CI が終わるたび | `merge-ok.yml`: マージの印（CI が通ったら GitHub がマージして公開を動かす。docs/shikumi.md の「マージの印（merge-ok.yml）」） |
+| 毎週月曜 0:50 | Claude の予約タスク: 週のまとめ（`docs/claude-roundups.md`）・月が変わって最初の月曜は月のまとめ（`docs/claude-monthly.md`）・読み物1本（`docs/claude-yomimono.md`）・見張り番の報告 |
+
+週1回の仕事は、日曜から月曜に日付が変わったあとにそろえる（所属事務所・読みがなも月曜 0:05 の更新で集める）。
+
 ## ページ（くわしく）
 
 - 読み物 `/yomimono/`（ジャンル・テーマのブログ調の記事＋厳選5本＋自動の棚。`lib/yomimono.js`・データ `yomimono.json`・外す題の言葉は `lib/yomimono-exclude.json` だけ）— 2026-10-28 #181。docs/architecture.md の「読み物」
@@ -48,6 +76,13 @@ CLAUDE.md から移した行（2026-11-16）:
 - 作品ページの住所は、コメントのある作品が `/item/`・無い作品が `/w/`（robots.txt で止める。`itemPagePath`・`floorItemPagePath`。2026-11-10。docs/architecture.md の `plan.js`）
 - 作品ページの「○○の作品を人気の順に」（前の作品・次の作品）と女優のページの「次に見る女優」（共演・同じメーカー。検索に出せる人が先）は `lib/stay.js`（2026-11-12。docs/architecture.md の `stay.js` の節）
 
+CLAUDE.md から移した行（2026-11-16 #272。CLAUDE.md を5,000字くらいにするため）:
+
+- ページのくわしいこと（トップの推しの棚は docs/design.md・読み物 `/yomimono/`・名簿の人の女優のページ・`/sale/ending/`・`/hinban/`・`/actress/nenpyo/`・作品ページの品番と出演者）は docs/shikumi.md の「ページ（くわしく）」
+- `scripts/indexnow.py` — 検索エンジンへのお知らせ（IndexNow。本番の公開のときだけ）
+- 作品ページの住所は、コメントのある作品が `/item/`・無い作品が `/w/`（docs/shikumi.md の「ページ（くわしく）」）
+- 前の作品・次の作品と「次に見る女優」は `lib/stay.js`（docs/shikumi.md の「ページ（くわしく）」）
+
 ## site/src/lib（くわしく）
 
 - `site/src/lib/` — 画面に依存しない部品（テストは `tests/test_*.mjs`）。`data.js`（読み込み）・`items.js`（並べ替え・構造化データ・規約の表記）・`plan.js`（ファイル数の計画）・`floors.js`（売り場）・`sale.js`・`ten-yen.js`・`topics.js`（トップ）・`search.js`・`profiles.js`・`insights.js`・`reviews.js`・`kana.js`・`phrase.js`（文節の改行）・`describe.js`（検索結果の説明文。ページのデータの数字から80〜120文字）など
@@ -62,6 +97,22 @@ CLAUDE.md から移した行（2026-11-16）:
 - 本番サイトを WebFetch で確認するときは、URLの末尾に `?cb=日時` を付ける（付けないと、前に取得した古い内容が返ってきて、更新されていないように見えることがある。2026-10-03 の仮運転で確認）。
 - Claude のクラウド環境では npm が使えない/ビルドが動かないことがある。その場合は `bash scripts/check.sh`（ビルドなし）で確認し、**PRのCIが最初のビルド**になる（プレビューの URL は check の注釈。クラウド環境からは開かない）。見ていないものを「確認した」と書かない。
 
+CLAUDE.md から移した行（2026-11-16 #272。CLAUDE.md を5,000字くらいにするため）:
+
+```sh
+bash scripts/check.sh            # テスト一式（30秒ほど）。変更したら必ず実行。成功は1行ずつ・失敗だけくわしく
+bash scripts/check.sh --build    # + ビルドして全ページを点検（Node 22.12+ が必要。CIでも実行される）
+bash scripts/check.sh --verbose  # テストの出力を全部出す
+python3 scripts/wait_run.py ci <sha>      # CI が終わるまで待って1行で（update・deploy <sha> も）
+cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
+```
+
+- `get_new_releases.py` を本物のAPIで動かすのは、運営者に頼まれたときだけ（`API_ID`/`GEMINI_API_KEY` が要る。`DATA_PATH` で書き込み先を変えられる）。
+  - Gemini を使わずに取り直しだけしたいときは `python get_new_releases.py --refresh-only`（Actions では「Refresh FANZA Data」）。くわしくは docs/shikumi.md の「コマンドの補足」
+- 本番サイトを WebFetch で確認するときは URL の末尾に `?cb=日時`（docs/shikumi.md の「コマンドの補足」）
+- クラウド環境でビルドが動かないときは `bash scripts/check.sh` で確認し、PRのCIが最初のビルド。見ていないものを「確認した」と書かない（docs/shikumi.md の「コマンドの補足」）
+- 本番に公開されたかは `python3 scripts/wait_run.py deploy <Merge のコミット>`（`deploy.yml` の実行を見る。ビルドと点検とアップロードで10〜15分。`cancelled` は、あとの Merge の公開に含まれたということで、そちらの結果を返す）
+
 ## ファイル（くわしく）
 
 - `scripts/claude_comments.py`・`claude_roundups.py`・`claude_monthly.py`・`claude_history.py`・`claude_yomimono.py` — Claude がコメント・週/月のまとめ・女優の歩みの紹介文・読み物を書く道具（`list` → 書く → `apply` が点検して書き込む）
@@ -74,6 +125,20 @@ CLAUDE.md から移した行（2026-11-16）:
 - `scripts/screens.mjs`（`screens.yml`）— 画面の写真と形のくずれの点検（GitHub の上で撮る）／ `scripts/probe_api.py`（`probe-api.yml`）— API の応答の形を調べる
 - `.github/workflows/` — update・sale-refresh・ten-yen・ci・deploy（`scripts/deploy_pages.sh`）・health（見張り番）・mihari（見張り）・merge-ok（マージの印）・refresh-data（取り直しだけ。手動）・probe-api・screens
 - `site/public/` — ブラウザで動く小さなスクリプト（作品検索・女優検索・売り場の検索・VR/単体の絞り込み・お気に入り・運命の作品・セール・拡大表示・サンプル動画）と `_headers`・`_redirects`
+
+CLAUDE.md から移した行（2026-11-16 #272。CLAUDE.md を5,000字くらいにするため）:
+
+#### どこに何があるか（くわしくは docs/architecture.md の、そのファイルの節）
+
+- `get_new_releases.py` — 毎日の更新（動画の新作・予約・過去作品・人気・セール・レビュー）。Python の標準ライブラリだけ
+- Claude が書く道具 `scripts/claude_*.py`（コメント・まとめ・紹介文・読み物。`list` → 書く → `apply` が点検して書き込む）・売り場 `scripts/doujin_game.py`・`floor_*.py`・10円セール `ten_yen.py`・読みがな `readings.py`・所属事務所 `agency_*.py`（守ること9）・見張り番 `health.py`・画面の点検 `screens.mjs`・`.github/workflows/`・`site/public/`（ブラウザの小さなスクリプト）は docs/shikumi.md の「ファイル（くわしく）」
+- `scripts/check.sh`（`quiet_step.sh`）— テスト一式 ／ `scripts/wait_run.py` — GitHub の実行を待つ ／ `scripts/already_updated.sh` — 今日の更新が済んだか
+- `site/` — サイト本体（Astro 7・静的出力）。`src/config.js` がサイト名・URL・件数・ファイル数の上限（`FILE_BUDGET`＝4万。Workers の静的ファイルは10万まで）の設定
+- `site/src/lib/` — 画面に依存しない部品（テストは `tests/test_*.mjs`）。`data.js`（読み込み）・`items.js`（並べ替え・構造化データ・規約の表記）など。一覧は docs/shikumi.md の「site/src/lib（くわしく）」
+- `site/src/pages/`・`components/`・`layouts/Base.astro`・`styles/site.css` — ページ・部品・全ページ共通の部分・デザイン
+- `site/src/data/` — **自動更新のデータ。手で編集しない**（書く道具が決まっている。形は docs/architecture.md の、そのファイルの節）
+- `tests/` — テスト一式（`fixtures/` は固定データ）。`tests/verify_dist.py` がビルドした全ページを点検する
+- `docs/` — 予約タスクの手順書（`claude-comments.md`・`claude-roundups.md`・`claude-monthly.md`）・`architecture.md`・`design-notes.md`
 
 ## 見張り（mihari.yml）
 
@@ -90,3 +155,18 @@ CLAUDE.md から移した行（2026-11-16）:
 ## コード・デザインのPRのプレビュー
 
 - コード・デザインを変えるPR（`site/` の中。データ `site/src/data/` は除く）は、CI が**プレビュー**（`<ブランチ名を英数字とハイフンにしたもの>-av-sale-guide.juice-juice-0402.workers.dev`。URL は check の注釈と要約）を作る。データだけ・手順書やテストだけのPRには作らない。
+
+## トークンの節約（くわしく）
+
+CLAUDE.md から移した行（2026-11-16 #272。CLAUDE.md を5,000字くらいにするため）:
+
+**くわしい説明は `docs/architecture.md`**（データの流れの全体・ファイルごとの役割と決まり・経緯・運営者の希望）。**全部は読まない**: 変えるファイル・機能の名前で検索して（`grep -n "floor_sales" docs/architecture.md`）、その節だけ Read の offset/limit で読む。**変える前に、そのファイルの節は必ず読む。** 新しい機能を足したら、くわしい説明はそこの節に書き、このファイルには1行だけ足す。
+くわしいことは docs/ の `shikumi.md`（公開・毎日の仕組みの表・ページ・コマンドの補足）・`kimari.md`（守ることのくわしいこと）・`design.md`（デザインの決まり）・`architecture.md`（ファイルごと）（全部は読まず、さわる所の節・行だけ読む）。
+
+#### トークンの節約（運営者の希望「クロードのトークンをできるだけ節約したい。サイトが確実に運用されることが優先」。2026-10-13）
+
+- このファイルは、毎回の会話で自動で読み込まれる（読み直さない）。**短く保つ**（くわしいことは docs/architecture.md へ）
+- テストは `bash scripts/check.sh`（成功は1行ずつ・失敗したテストだけ ❌ の行と出力の後ろ。全部見たいときだけ `--verbose`。CI では全部出る）
+- GitHub の実行（毎日の更新・CI・公開）を待つときは、何度も見に行かずに `python3 scripts/wait_run.py update|ci <sha>|deploy <sha>` を1回（Bash の timeout は 600000。中で30秒ごとに見て、終わったら1行で返す。3 が返ったら同じコマンドをもう一度）
+- 大きなファイル（docs/design-notes.md・docs/architecture.md・データの JSON・ビルドのログ）は、全部を読まずに検索して必要な所だけ。`gh api` は `--jq` で要る所だけ出す（PR を作った答えの全体は数万文字ある）
+- 点検（テスト・CI・公開前の全ページの点検）は減らさない
