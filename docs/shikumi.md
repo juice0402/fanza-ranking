@@ -11,6 +11,12 @@ CLAUDE.md の「公開」「仕組み」「どこに何があるか」「コマ�
 - **検索エンジンへのお知らせ（IndexNow。2026-10-17）**: 本番の公開のたびに `deploy.yml` が `scripts/indexnow.py` で、新しいページ・コメントや記事が入ったページ（一覧・ランキングなどは7日に1回まで）を Bing などへ知らせる（1万件ずつ。前回の記録は本番の `/indexnow-pages.json`。受け付けてもらえなかったページは Actions の置き場（cache）にとっておき、次の公開で送り直す。main にはコミットしない。鍵は `site/public/<鍵>.txt`。Google は sitemap と Search Console のまま。くわしくは docs/architecture.md の「公開」）
 - **Workers への引っ越し（連絡 C-012。2026-10-28）**: Pages は有料プランでも2万ファイルまで（本物で確かめた）。本番もプレビューも Workers（静的ファイル10万まで）に出す（`workers/wrangler.jsonc` の `routes` で av-sale-guide.com が Workers から出る・`scripts/deploy_workers.sh`・鍵は Secrets の `CLOUDFLARE_WORKERS_TOKEN`）。Pages には出さない（プロジェクトは pages.dev の転送のために残す）。`FILE_BUDGET` は4万（#188。次に上げるかは11/10 の見直しで）。戻し方は docs/architecture.md の「Workers への引っ越し」
 
+CLAUDE.md から移した行（2026-11-16）:
+
+- 独自ドメインは `https://av-sale-guide.com`（`site/src/config.js` の `SITE_URL` 1か所で、URL・canonical・sitemap・robots.txt・RSS・構造化データ・IndexNow が切りかわる）。旧 fanza-ranking.pages.dev は Bulk Redirects で 301（前の住所のサイトマップ `/sitemap-pages-dev.xml` は Search Console 用）。くわしくは docs/shikumi.md の「公開（くわしく）」
+- 本番の公開のたびに `deploy.yml` が `scripts/indexnow.py` で、新しいページ・変わったページを IndexNow で知らせる（Google は sitemap と Search Console）。くわしくは docs/shikumi.md
+- Cloudflare 側の自動ビルドは止めてある（2026-10-09。ダッシュボードの「ブランチコントロール」。戻すときはそこをオンに）。コミット・Merge のメッセージに `[CI Skip]` は要らない（入れても何も変わらない）。
+
 ## 毎日・毎週の仕組み（くわしい表）
 
 | いつ | 何が動く | おもに書くデータ（`site/src/data/`） |
@@ -36,6 +42,12 @@ CLAUDE.md の「公開」「仕組み」「どこに何があるか」「コマ�
 - **作品ページの住所**（案A。2026-11-10）: コメントのある作品は `/item/<作品ID>/`（検索に出す）、コメントの無い作品は `/w/<作品ID>/`（売り場は `/doujin/w/…` など。noindex・robots.txt で止める）。コメントが付くと /item/ に移る。くわしくは docs/architecture.md の `site/src/lib/plan.js`
 - 作品ページの品番と出演者（説明文の頭・見出しの下の1行・構造化データ Movie・OGP video.movie・タイトル「品番 ○○出演｜題名」〔2026-11-08 C-018〕。出演者がいない作品には何も足さない）— 2026-10-28 #174。docs/architecture.md の `items.js` の節
 
+
+CLAUDE.md から移した行（2026-11-16）:
+
+- 作品ページの住所は、コメントのある作品が `/item/`・無い作品が `/w/`（robots.txt で止める。`itemPagePath`・`floorItemPagePath`。2026-11-10。docs/architecture.md の `plan.js`）
+- 作品ページの「○○の作品を人気の順に」（前の作品・次の作品）と女優のページの「次に見る女優」（共演・同じメーカー。検索に出せる人が先）は `lib/stay.js`（2026-11-12。docs/architecture.md の `stay.js` の節）
+
 ## site/src/lib（くわしく）
 
 - `site/src/lib/` — 画面に依存しない部品（テストは `tests/test_*.mjs`）。`data.js`（読み込み）・`items.js`（並べ替え・構造化データ・規約の表記）・`plan.js`（ファイル数の計画）・`floors.js`（売り場）・`sale.js`・`ten-yen.js`・`topics.js`（トップ）・`search.js`・`profiles.js`・`insights.js`・`reviews.js`・`kana.js`・`phrase.js`（文節の改行）・`describe.js`（検索結果の説明文。ページのデータの数字から80〜120文字）など
@@ -44,6 +56,11 @@ CLAUDE.md の「公開」「仕組み」「どこに何があるか」「コマ�
 
 - **Geminiを使わずに、取り直しだけ**したいときは `python get_new_releases.py --refresh-only`（Actions では「Refresh FANZA Data」）。新しい作品の追加もAIコメントもしないので、Geminiの無料枠を使わない。`ACTRESSES_PATH` / `RANKING_PATH` で出演者データ・ランキングの書き込み先も変えられる。
 - Claude のクラウド環境では npm が使えない/ビルドが動かないことがある。その場合は `bash scripts/check.sh`（ビルドなし）で確認し、**PRのCIが最初のビルド**になる。コード・デザインのPRなら、CI がプレビュー（`<名前>-av-sale-guide.juice-juice-0402.workers.dev`）も作るので、運営者にスマホで見てもらえる（URL は check の注釈。クラウド環境からは開かない）。見ていないものを「確認した」と書かない。
+
+CLAUDE.md から移した行（2026-11-16）:
+
+- 本番サイトを WebFetch で確認するときは、URLの末尾に `?cb=日時` を付ける（付けないと、前に取得した古い内容が返ってきて、更新されていないように見えることがある。2026-10-03 の仮運転で確認）。
+- Claude のクラウド環境では npm が使えない/ビルドが動かないことがある。その場合は `bash scripts/check.sh`（ビルドなし）で確認し、**PRのCIが最初のビルド**になる（プレビューの URL は check の注釈。クラウド環境からは開かない）。見ていないものを「確認した」と書かない。
 
 ## ファイル（くわしく）
 

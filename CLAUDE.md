@@ -23,10 +23,10 @@ CLAUDE.md は1万字以内に保つ。経緯・くわしいことは docs/ へ�
 **公開は GitHub Actions が行う**（`deploy.yml`: ビルド → 全ページの点検 `tests/verify_dist.py` → Cloudflare Workers に直接アップロード）。Cloudflare のビルド（月500回を「あそびトーク」と共有）は使わない。
 - main に入ると本番に公開される。毎日の更新・取り直しは、データを保存したあとに `deploy.yml` を動かす（ワークフローが保存したコミットでは、ほかのワークフローが自動では動かないため）。点検に落ちたら公開しない（前の公開のまま）。
 - コード・デザインを変えるPR（`site/` の中。データは除く）は、CI がプレビュー（`<ブランチ名>-av-sale-guide.juice-juice-0402.workers.dev`。URL は check の注釈）を作る。
-- 独自ドメインは `https://av-sale-guide.com`（`site/src/config.js` の `SITE_URL` 1か所で、URL・canonical・sitemap・robots.txt・RSS・構造化データ・IndexNow が切りかわる）。旧 fanza-ranking.pages.dev は Bulk Redirects で 301（前の住所のサイトマップ `/sitemap-pages-dev.xml` は Search Console 用）。くわしくは docs/shikumi.md の「公開（くわしく）」
-- 本番の公開のたびに `deploy.yml` が `scripts/indexnow.py` で、新しいページ・変わったページを IndexNow で知らせる（Google は sitemap と Search Console）。くわしくは docs/shikumi.md
+- 独自ドメインは `https://av-sale-guide.com`（`site/src/config.js` の `SITE_URL` 1か所で全部が切りかわる）。旧 pages.dev の転送・前の住所のサイトマップは docs/shikumi.md の「公開（くわしく）」
+- 本番の公開のたびに `scripts/indexnow.py` が IndexNow で知らせる（docs/shikumi.md の「公開（くわしく）」）
 - 本番もプレビューも Cloudflare Workers（`workers/wrangler.jsonc`・`scripts/deploy_workers.sh`・Secrets の `CLOUDFLARE_WORKERS_TOKEN`）。Pages には出さない。ファイル数の上限 `FILE_BUDGET` は4万。戻し方は docs/architecture.md の「Workers への引っ越し」
-- Cloudflare 側の自動ビルドは止めてある（2026-10-09。ダッシュボードの「ブランチコントロール」。戻すときはそこをオンに）。コミット・Merge のメッセージに `[CI Skip]` は要らない（入れても何も変わらない）。
+- Cloudflare 側の自動ビルドは止めてある。コミット・Merge に `[CI Skip]` は要らない（docs/shikumi.md の「公開（くわしく）」）
 
 ## 仕組み（時刻は日本時間。くわしくは docs/architecture.md の「データの流れ」）
 
@@ -52,8 +52,8 @@ Gemini を使うのは `get_new_releases.py` のコメントの下書きだけ�
 - Claude が書く道具 `scripts/claude_*.py`（コメント・まとめ・紹介文・読み物。`list` → 書く → `apply` が点検して書き込む）・売り場 `scripts/doujin_game.py`・`floor_*.py`・10円セール `ten_yen.py`・読みがな `readings.py`・所属事務所 `agency_*.py`（守ること9）・見張り番 `health.py`・画面の点検 `screens.mjs`・`.github/workflows/`・`site/public/`（ブラウザの小さなスクリプト）は docs/shikumi.md の「ファイル（くわしく）」
 - ページのくわしいこと（トップの推しの棚は docs/design.md・読み物 `/yomimono/`・名簿の人の女優のページ・`/sale/ending/`・`/hinban/`・`/actress/nenpyo/`・作品ページの品番と出演者）は docs/shikumi.md の「ページ（くわしく）」
 - `scripts/indexnow.py` — 検索エンジンへのお知らせ（IndexNow。本番の公開のときだけ）
-- 作品ページの住所は、コメントのある作品が `/item/`・無い作品が `/w/`（robots.txt で止める。`itemPagePath`・`floorItemPagePath`。2026-11-10。docs/architecture.md の `plan.js`）
-- 作品ページの「○○の作品を人気の順に」（前の作品・次の作品）と女優のページの「次に見る女優」（共演・同じメーカー。検索に出せる人が先）は `lib/stay.js`（2026-11-12。docs/architecture.md の `stay.js` の節）
+- 作品ページの住所は、コメントのある作品が `/item/`・無い作品が `/w/`（docs/shikumi.md の「ページ（くわしく）」）
+- 前の作品・次の作品と「次に見る女優」は `lib/stay.js`（docs/shikumi.md の「ページ（くわしく）」）
 - `scripts/check.sh`（`quiet_step.sh`）— テスト一式 ／ `scripts/wait_run.py` — GitHub の実行を待つ ／ `scripts/already_updated.sh` — 今日の更新が済んだか
 - `site/` — サイト本体（Astro 7・静的出力）。`src/config.js` がサイト名・URL・件数・ファイル数の上限（`FILE_BUDGET`＝4万。Workers の静的ファイルは10万まで）の設定
 - `site/src/lib/` — 画面に依存しない部品（テストは `tests/test_*.mjs`）。`data.js`（読み込み）・`items.js`（並べ替え・構造化データ・規約の表記）など。一覧は docs/shikumi.md の「site/src/lib（くわしく）」
@@ -74,8 +74,8 @@ cd site && npm ci && npm run dev # 画面を見ながら開発（ローカル）
 
 - `get_new_releases.py` を本物のAPIで動かすのは、運営者に頼まれたときだけ（`API_ID`/`GEMINI_API_KEY` が要る。`DATA_PATH` で書き込み先を変えられる）。
   - Gemini を使わずに取り直しだけしたいときは `python get_new_releases.py --refresh-only`（Actions では「Refresh FANZA Data」）。くわしくは docs/shikumi.md の「コマンドの補足」
-- 本番サイトを WebFetch で確認するときは、URLの末尾に `?cb=日時` を付ける（付けないと、前に取得した古い内容が返ってきて、更新されていないように見えることがある。2026-10-03 の仮運転で確認）。
-- Claude のクラウド環境では npm が使えない/ビルドが動かないことがある。その場合は `bash scripts/check.sh`（ビルドなし）で確認し、**PRのCIが最初のビルド**になる（プレビューの URL は check の注釈。クラウド環境からは開かない）。見ていないものを「確認した」と書かない。
+- 本番サイトを WebFetch で確認するときは URL の末尾に `?cb=日時`（docs/shikumi.md の「コマンドの補足」）
+- クラウド環境でビルドが動かないときは `bash scripts/check.sh` で確認し、PRのCIが最初のビルド。見ていないものを「確認した」と書かない（docs/shikumi.md の「コマンドの補足」）
 - 本番に公開されたかは `python3 scripts/wait_run.py deploy <Merge のコミット>`（`deploy.yml` の実行を見る。ビルドと点検とアップロードで10〜15分。`cancelled` は、あとの Merge の公開に含まれたということで、そちらの結果を返す）
 
 ## 守ること
