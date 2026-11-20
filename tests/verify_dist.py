@@ -6,6 +6,7 @@
 """
 import datetime
 import glob
+import gzip as _gzip
 import hashlib as _hl
 import html as htmllib
 import importlib.util
@@ -1695,7 +1696,11 @@ if os.path.isfile(fav_index_path):
         warn("索引に作品が1件以上ある", bool(rows))
         _std_i = [r for r in rows if isinstance(r, dict) and r.get("i") == f"https://pics.dmm.co.jp/digital/video/{r.get('c')}/{r.get('c')}pl.jpg"]
         check("索引の決まった形の画像は省いている（favorites.js の indexItems が作り直す。2026-11-13）", not _std_i, _std_i[:1])
-        check("索引の大きさが 300KB 以内（毎回ダウンロードされるため）", os.path.getsize(fav_index_path) <= 300 * 1024, os.path.getsize(fav_index_path))
+        # 大きさは「運ばれる大きさ（gzip）」で見る（2026-11-21）。作品は発売日の60日前からなので、データが60日ぶんたまるまで大きくなる
+        # （11/21：1,046件・307KB・gzip 109KB。60日ぶんで約370KB・gzip 約130KB の見こみ）。前は 300KB（gzip ではない大きさ）で、毎日の公開が止まった
+        _fav_raw = read(fav_index_path).encode("utf-8")
+        check("索引の運ばれる大きさ（gzip）が 150KB 以内（毎回ダウンロードされるため）", len(_gzip.compress(_fav_raw, 9)) <= 150 * 1024, len(_gzip.compress(_fav_raw, 9)))
+        check("索引の大きさが 450KB 以内（ブラウザで読むときの重さ）", len(_fav_raw) <= 450 * 1024, len(_fav_raw))
 
 # 索引: 推しの棚が、お気に入りの出演者・メーカーのセール中の作品を探すための小さなJSON（2026-10-31）
 fav_sale_path = os.path.join(DIST, "data", "favorites-sale.json")
