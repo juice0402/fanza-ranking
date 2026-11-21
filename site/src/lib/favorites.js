@@ -4,7 +4,10 @@ import { addDays, hasComment } from './items.js';
 import { namesPattern, phraseZwsp } from './phrase.js';
 export const FAVORITES_PATH = '/favorites/';
 export const FAVORITES_INDEX_PATH = '/data/favorites-index.json';
-export const FAVORITES_INDEX_DAYS = 60; // 索引に入れる作品: 発売日がこの日数前から先（予約も全部）
+// 索引に入れる作品: 発売日がこの日数前から先（予約も全部）。ブラウザが使うのは「お気に入り」ページの30日（public/favorites.js の RECENT_DAYS）と
+// 推しの棚の14日（OSHI_DAYS）だけ。ブラウザの今日はビルドの日と同じか後なので、30日で足りる（前は60日で、使わない31〜60日前の作品まで運んで
+// 300KB の点検をこえ、毎日の公開が止まった。2026-11-21）。RECENT_DAYS より短くしない（tests/test_favorites.mjs が見る）
+export const FAVORITES_INDEX_DAYS = 30;
 
 /**
  * 「お気に入りの出演者・メーカーの新作」を、ブラウザ側で探すための索引。

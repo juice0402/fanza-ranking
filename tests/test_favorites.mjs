@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { smallImage, tinyImage, THUMB_MEDIA } from '../site/src/lib/items.js';
+import { FAVORITES_INDEX_DAYS } from '../site/src/lib/favorites.js';
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => {
@@ -23,6 +24,9 @@ check('読めなければ 縮めた版 → ps → pl の順に戻し、それも
  // vm の中で作られたオブジェクトを、普通のオブジェクトにする
 
 const work = { t: 'タイトル', i: 'https://pics.example/x.jpg', d: '2026-10-17', a: ['花子'], m: 'メーカーA' };
+
+console.log('■ お気に入りの索引の日数（2026-11-21）');
+check('索引の日数（lib/favorites.js）は、ブラウザが使う「最近発売」の日数と推しの棚の日数より短くない', typeof F.RECENT_DAYS === 'number' && FAVORITES_INDEX_DAYS >= F.RECENT_DAYS && FAVORITES_INDEX_DAYS >= F.OSHI_DAYS, `${FAVORITES_INDEX_DAYS} / ${F.RECENT_DAYS} / ${F.OSHI_DAYS}`);
 
 console.log('■ お気に入りの索引の画像（省かれた決まった形の画像を作り直す。2026-11-13）');
 const ix = plain(F.indexItems([{ c: 'abc00001', t: 'A' }, { c: 'x', t: 'B', i: 'https://pics.example/y.jpg' }, { c: 'e', t: 'C', i: '' }, { c: 'bad key!', t: 'D' }, null]));
