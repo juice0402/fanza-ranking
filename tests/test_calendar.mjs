@@ -68,8 +68,8 @@ check('カレンダーのパス', C.actressIcsPath('abc') === '/calendar/actress
 
 console.log('\n■ お気に入りの索引');
 const idx = F.buildFavoritesIndex(items, today);
-check('索引: 予約も含めて、新しい順（9/1 は32日前なので入る）', idx.items.map((i) => i.c).join() === 'soon2,soon1,today1,recent1,old1', idx.items.map((i) => i.c).join());
-check('索引: ちょうど60日前(8/4)は入り、その前日(8/3)は入らない', F.buildFavoritesIndex(normalizeItems([{ cid: 'in', title: 't', date: '2026-08-04' }, { cid: 'out', title: 't', date: '2026-08-03' }]), today).items.map((i) => i.c).join() === 'in');
+check('索引: 予約も含めて、新しい順（9/1 は32日前なので入らない。索引は30日。2026-11-21）', idx.items.map((i) => i.c).join() === 'soon2,soon1,today1,recent1', idx.items.map((i) => i.c).join());
+check('索引: ちょうど30日前(9/3)は入り、その前日(9/2)は入らない', F.FAVORITES_INDEX_DAYS === 30 && F.buildFavoritesIndex(normalizeItems([{ cid: 'in', title: 't', date: '2026-09-03' }, { cid: 'out', title: 't', date: '2026-09-02' }]), today).items.map((i) => i.c).join() === 'in');
 check('索引: 日付は generated に入る', idx.generated === today);
 check('索引: 専用ページのある出演者・メーカーの {名前: 短い名前}（pages）。渡さなければ空', JSON.stringify(idx.pages) === JSON.stringify({ actress: {}, maker: {} }) && JSON.stringify(F.buildFavoritesIndex(items, today, 60, { actress: { A: 'abcdef0123' }, maker: {} }).pages) === JSON.stringify({ actress: { A: 'abcdef0123' }, maker: {} }));
 check('索引: グループ → {名前: 短い名前}', JSON.stringify(F.pageSlugMap([{ name: 'A', slug: 's1' }, { name: 'B', slug: 's2' }])) === JSON.stringify({ A: 's1', B: 's2' }) && JSON.stringify(F.pageSlugMap([])) === '{}');
