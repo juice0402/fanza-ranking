@@ -9,7 +9,7 @@
   var CID = /^[A-Za-z0-9_-]+$/;
   var DAY = /^\d{4}-\d{2}-\d{2}$/;
   var SLUG = /^[0-9a-f]{10}$/;
-  var RECENT_DAYS = 30; // 「最近発売」に出す日数
+  var RECENT_DAYS = 30; // 「最近発売」に出す日数（のばすときは、索引の日数 lib/favorites.js の FAVORITES_INDEX_DAYS も）
   var OSHI_DAYS = 14; // トップの推しの棚の「新作」に入れる、発売済みの日数
   var OSHI_PEOPLE = 4; // 推しの棚に出す人数（ほかは「お気に入り」ページへ）
   var OSHI_COVERS = 4; // 1人に出す表紙の数
@@ -260,7 +260,7 @@
     module.exports = {
       castShown: castShown, CAST_LIMIT: CAST_LIMIT, THUMB_MEDIA: THUMB_MEDIA, smallImageUrl: smallImageUrl, tinyImageUrl: tinyImageUrl, unresizedUrl: unresizedUrl,
       emptyStore: emptyStore, parseStore: parseStore, isOn: isOn, toggle: toggle, remove: remove,
-      hasPeople: hasPeople, matches: matches, pickNew: pickNew, indexItems: indexItems, pickOshi: pickOshi, shortDay: shortDay, jstNowKey: jstNowKey, OSHI_DAYS: OSHI_DAYS, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT, workHref: workHref,
+      hasPeople: hasPeople, matches: matches, pickNew: pickNew, indexItems: indexItems, pickOshi: pickOshi, shortDay: shortDay, jstNowKey: jstNowKey, OSHI_DAYS: OSHI_DAYS, RECENT_DAYS: RECENT_DAYS, resolveSlugs: resolveSlugs, hasCalendar: hasCalendar, addDays: addDays, jstToday: jstToday, jpDate: jpDate, LIMIT: LIMIT, workHref: workHref,
     };
     return;
   }
