@@ -2186,6 +2186,7 @@ check("2列のページ（.page-cols）: トップと同じ幅の2列（左は�
       and css_has(".page-cols .col-side .pick-card", r"[\"']note\s+note[\"']"))  # ビルドで ' が " になる
 # 読み物: 本文（.col-main）→ 柱（中身の一覧 → 厳選の作品）→ 棚 → あわせて読む（柱の続き）の順。中身の一覧は、すべての節へのページ内リンク
 _cols_bad = []
+_no_picks = []
 for _slug, _p in sorted(yomi_pages.items()):
     _raw = read_raw(_p)
     _ids = re.findall(r'<h2 id="(yomi-sec-\d+)"', _raw)
@@ -2193,11 +2194,17 @@ for _slug, _p in sorted(yomi_pages.items()):
     _order = [_raw.find(k_) for k_ in ('class="wrap page-cols"', 'class="col-main"', 'class="col-side"', 'class="section yomi-shelf"', 'col-side-more"')]
     if _order[-1] < 0 and 'class="section yomi-next' not in _raw:
         _order.pop()  # あわせて読むが無い読み物（ほかの読み物も関係するジャンルも無いとき）
+    # 厳選の作品が0本の読み物（選んだ作品がみんなデータから消えたとき。PickCards は節ごと出さない）は、その節だけ見ない（2026-11-25。
+    # 前は全部の公開が止まった。消えたことは下の注意に出す）。節があるときは、いままでどおり柱の中身の一覧のあと
+    _has_picks = 'id="yomi-picks-title"' in _raw
+    if not _has_picks:
+        _no_picks.append(_slug)
     if not (_ids and _toc and re.findall(r'href="#(yomi-sec-\d+)"', _toc.group(1)) == _ids and min(_order) >= 0 and _order == sorted(_order)
-            and _raw.find('class="pick-list"') > _order[2]):
+            and (_raw.find('class="pick-list"') > _order[2] if _has_picks else 'class="pick-list"' not in _raw)):
         _cols_bad.append((_slug, _order, len(_ids)))
 check(f"読み物（{len(yomi_pages)}本）: パソコンの2列の形（本文｜中身の一覧 → 厳選の作品、棚のあとに あわせて読む）・中身の一覧はすべての節へのリンク",
       bool(yomi_pages) and not _cols_bad, _cols_bad[:3])
+warn(f"読み物の厳選の作品が残っている（0本の読み物 {len(_no_picks)}本。選んだ作品がデータから消えた。読み物の道具で選び直す）", not _no_picks, _no_picks[:7])
 # 女優のページ: 2列のページは、柱（プロフィール）→ 左の欄 → 柱の続き（イベントの予定・シリーズ）→ 出演作品の一覧 の順。名簿の人のページも同じ形
 _act_cols, _act_bad, _act_nenkan = 0, [], 0
 for pth in actress_pages:
