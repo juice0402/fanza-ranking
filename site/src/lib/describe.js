@@ -130,7 +130,10 @@ export function rankingDescription({ date, list = [] }) {
   const vr = list.filter((i) => i.vr).length;
   const who = n ? whoMade(list[0]) : '';
   const tail = who ? `1位は${who}${n > 1 ? `で、${n}本のうちVR作品は${vr}本です。` : 'です。'}` : '';
-  return fit([head + body, tail]);
+  // 1位の出演者・メーカーが説明文に出せない日や、名前が長くて入らない日は、VR作品の本数だけを足す（短すぎて点検に落ち、公開が止まらないように。2026-11-25）
+  const vrOnly = n > 1 ? `${n}本のうちVR作品は${vr}本です。` : '';
+  const second = tail && descLength(head + body + tail) <= DESC_MAX ? tail : vrOnly;
+  return fit([head + body, second]);
 }
 
 /** 過去作品の一覧: 「2026年10月24日〜25日に発売されたFANZA動画30本の一覧です（2ページ目・全474ページ）。メーカーは…など、出演は…ほか。」 */
