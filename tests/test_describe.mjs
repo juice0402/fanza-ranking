@@ -52,7 +52,11 @@ console.log('\n■ 新着の人気ランキング');
 const list = Array.from({ length: 100 }, (_, i) => it(i + 1, '2026-10-24'));
 const rk = D.rankingDescription({ date: '2026-10-25', list });
 check('ランキング: 日付・本数・1位・VR作品の本数・80〜120文字', rk === '10月25日の新着の人気順です。最近1週間に発売されたFANZA動画の新作から上位100本を並べています。1位は女優1さん出演のメーカー1作品で、100本のうちVR作品は20本です。' && ok(rk), [rk, D.descLength(rk)]);
-check('ランキング: 空でも文になる', D.rankingDescription({ date: '2026-10-25', list: [] }).startsWith('10月25日の新着の人気順です。'));
+const rkNoWho = D.rankingDescription({ date: '2026-11-24', list: [it(1, '2026-11-24', { maker: '不明', actress: [] }), ...list.slice(1)] });
+check('ランキング: 1位の出演者・メーカーが出せない日も、VR作品の本数で60文字以上', rkNoWho === '11月24日の新着の人気順です。最近1週間に発売されたFANZA動画の新作から上位100本を並べています。100本のうちVR作品は20本です。' && D.descLength(rkNoWho) >= 60, [rkNoWho, D.descLength(rkNoWho)]);
+const rkLong = D.rankingDescription({ date: '2026-11-24', list: [it(1, '2026-11-24', { maker: 'あ'.repeat(60) }), ...list.slice(1)] });
+check('ランキング: 1位の名前が長くて入らない日も、VR作品の本数で60〜120文字', rkLong.endsWith('100本のうちVR作品は20本です。') && D.descLength(rkLong) >= 60 && D.descLength(rkLong) <= D.DESC_MAX, [rkLong, D.descLength(rkLong)]);
+check('ランキング: 空でも文になる',D.rankingDescription({ date: '2026-10-25', list: [] }).startsWith('10月25日の新着の人気順です。'));
 
 console.log('\n■ 過去の作品の一覧');
 const page2 = [it(1, '2026-10-25', { maker: 'アリーナエンターテインメント', actress: ['尾崎えりか'] }), it(2, '2026-10-24', { maker: 'million', actress: ['白羽舞菜'] }), it(3, '2026-10-24', { maker: 'アリーナエンターテインメント', actress: ['尾崎えりか', '白羽舞菜'] }), it(4, '2026-10-24', { maker: '不明', actress: [] })];
